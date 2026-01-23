@@ -2,14 +2,19 @@ import { Token, Position } from './types';
 
 const KEYWORDS = new Set([
   'entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose',
-  'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard',
-  'as', 'from', 'to', 'with', 'where', 'connect',
+  'command', 'module', 'policy', 'store', 'event', 'computed', 'derived',
+  'hasMany', 'hasOne', 'belongsTo', 'ref', 'through',
+  'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'publish', 'persist',
+  'as', 'from', 'to', 'with', 'where', 'connect', 'returns',
   'string', 'number', 'boolean', 'list', 'map', 'any', 'void',
   'true', 'false', 'null',
-  'required', 'unique', 'indexed', 'private', 'readonly',
-  'rest', 'graphql', 'websocket', 'function',
-  'http', 'storage', 'timer', 'event', 'custom',
-  'and', 'or', 'not', 'is', 'in', 'contains'
+  'required', 'unique', 'indexed', 'private', 'readonly', 'optional',
+  'rest', 'graphql', 'websocket', 'function', 'server',
+  'http', 'storage', 'timer', 'custom',
+  'memory', 'postgres', 'supabase', 'localStorage',
+  'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny',
+  'and', 'or', 'not', 'is', 'in', 'contains',
+  'user', 'self', 'context'
 ]);
 
 const OPERATORS = new Set([

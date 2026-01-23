@@ -2,7 +2,9 @@ import { Lexer } from './lexer';
 import {
   Token, ManifestProgram, EntityNode, PropertyNode, TypeNode, BehaviorNode,
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,
-  ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError
+  ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
+  CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
+  ComputedPropertyNode, RelationshipNode
 } from './types';
 
 export class Parser {
@@ -15,17 +17,25 @@ export class Parser {
     this.pos = 0;
     this.errors = [];
 
-    const program: ManifestProgram = { entities: [], flows: [], effects: [], exposures: [], compositions: [] };
+    const program: ManifestProgram = {
+      modules: [], entities: [], commands: [], flows: [], effects: [],
+      exposures: [], compositions: [], policies: [], stores: [], events: []
+    };
 
     while (!this.isEnd()) {
       this.skipNL();
       if (this.isEnd()) break;
       try {
-        if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
+        if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
+        else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
+        else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
         else if (this.check('KEYWORD', 'expose')) program.exposures.push(this.parseExpose());
         else if (this.check('KEYWORD', 'compose')) program.compositions.push(this.parseComposition());
+        else if (this.check('KEYWORD', 'policy')) program.policies.push(this.parsePolicy());
+        else if (this.check('KEYWORD', 'store')) program.stores.push(this.parseStore());
+        else if (this.check('KEYWORD', 'event')) program.events.push(this.parseOutboxEvent());
         else this.advance();
       } catch (e) {
         this.errors.push({ message: e instanceof Error ? e.message : 'Parse error', position: this.current()?.position, severity: 'error' });
@@ -35,31 +45,62 @@ export class Parser {
     return { program, errors: this.errors };
   }
 
+  private parseModule(): ModuleNode {
+    this.consume('KEYWORD', 'module');
+    const name = this.consume('IDENTIFIER').value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    const entities: EntityNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+      if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
+      else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
+      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy());
+      else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
+      else if (this.check('KEYWORD', 'event')) events.push(this.parseOutboxEvent());
+      else this.advance();
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+    return { type: 'Module', name, entities, commands, policies, stores, events };
+  }
+
   private parseEntity(): EntityNode {
     this.consume('KEYWORD', 'entity');
     const name = this.consume('IDENTIFIER').value;
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
-    const properties: PropertyNode[] = [], behaviors: BehaviorNode[] = [], constraints: ConstraintNode[] = [];
+    const properties: PropertyNode[] = [], computedProperties: ComputedPropertyNode[] = [], relationships: RelationshipNode[] = [];
+    const behaviors: BehaviorNode[] = [], commands: CommandNode[] = [], constraints: ConstraintNode[] = [], policies: PolicyNode[] = [];
+    let store: string | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
       if (this.check('PUNCTUATION', '}')) break;
+
       if (this.check('KEYWORD', 'property')) properties.push(this.parseProperty());
+      else if (this.check('KEYWORD', 'computed') || this.check('KEYWORD', 'derived')) computedProperties.push(this.parseComputedProperty());
+      else if (this.check('KEYWORD', 'hasMany') || this.check('KEYWORD', 'hasOne') || this.check('KEYWORD', 'belongsTo') || this.check('KEYWORD', 'ref')) relationships.push(this.parseRelationship());
       else if (this.check('KEYWORD', 'behavior') || this.check('KEYWORD', 'on')) behaviors.push(this.parseBehavior());
+      else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
+      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy());
+      else if (this.check('KEYWORD', 'store')) { this.advance(); store = this.advance().value; }
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Entity', name, properties, behaviors, constraints };
+    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, store };
   }
 
   private parseProperty(): PropertyNode {
     this.consume('KEYWORD', 'property');
     const modifiers: string[] = [];
-    while (['required', 'unique', 'indexed', 'private', 'readonly'].includes(this.current()?.value || '')) {
+    while (['required', 'unique', 'indexed', 'private', 'readonly', 'optional'].includes(this.current()?.value || '')) {
       modifiers.push(this.advance().value);
     }
     const name = this.consume('IDENTIFIER').value;
@@ -68,6 +109,147 @@ export class Parser {
     let defaultValue: ExpressionNode | undefined;
     if (this.check('OPERATOR', '=')) { this.advance(); defaultValue = this.parseExpr(); }
     return { type: 'Property', name, dataType, defaultValue, modifiers };
+  }
+
+  private parseComputedProperty(): ComputedPropertyNode {
+    this.advance();
+    const name = this.consume('IDENTIFIER').value;
+    this.consume('OPERATOR', ':');
+    const dataType = this.parseType();
+    this.consume('OPERATOR', '=');
+    const expression = this.parseExpr();
+    const dependencies = this.extractDependencies(expression);
+    return { type: 'ComputedProperty', name, dataType, expression, dependencies };
+  }
+
+  private extractDependencies(expr: ExpressionNode): string[] {
+    const deps = new Set<string>();
+    const walk = (e: ExpressionNode) => {
+      if (e.type === 'Identifier' && !['self', 'this', 'user', 'context'].includes((e as any).name)) deps.add((e as any).name);
+      if (e.type === 'MemberAccess') { walk((e as any).object); }
+      if (e.type === 'BinaryOp') { walk((e as any).left); walk((e as any).right); }
+      if (e.type === 'UnaryOp') walk((e as any).operand);
+      if (e.type === 'Call') { walk((e as any).callee); (e as any).arguments.forEach(walk); }
+      if (e.type === 'Conditional') { walk((e as any).condition); walk((e as any).consequent); walk((e as any).alternate); }
+      if (e.type === 'Array') (e as any).elements.forEach(walk);
+      if (e.type === 'Object') (e as any).properties.forEach((p: any) => walk(p.value));
+      if (e.type === 'Lambda') walk((e as any).body);
+    };
+    walk(expr);
+    return Array.from(deps);
+  }
+
+  private parseRelationship(): RelationshipNode {
+    const kind = this.advance().value as RelationshipNode['kind'];
+    const name = this.consume('IDENTIFIER').value;
+    this.consume('OPERATOR', ':');
+    const target = this.consume('IDENTIFIER').value;
+    let foreignKey: string | undefined, through: string | undefined;
+    if (this.check('KEYWORD', 'through')) { this.advance(); through = this.consume('IDENTIFIER').value; }
+    if (this.check('KEYWORD', 'with')) { this.advance(); foreignKey = this.consume('IDENTIFIER').value; }
+    return { type: 'Relationship', kind, name, target, foreignKey, through };
+  }
+
+  private parseCommand(): CommandNode {
+    this.consume('KEYWORD', 'command');
+    const name = this.consume('IDENTIFIER').value;
+    this.consume('PUNCTUATION', '(');
+    const parameters: ParameterNode[] = [];
+    while (!this.check('PUNCTUATION', ')') && !this.isEnd()) {
+      const required = !this.check('KEYWORD', 'optional');
+      if (!required) this.advance();
+      const pname = this.consume('IDENTIFIER').value;
+      this.consume('OPERATOR', ':');
+      const dataType = this.parseType();
+      let defaultValue: ExpressionNode | undefined;
+      if (this.check('OPERATOR', '=')) { this.advance(); defaultValue = this.parseExpr(); }
+      parameters.push({ type: 'Parameter', name: pname, dataType, required, defaultValue });
+      if (this.check('PUNCTUATION', ',')) this.advance();
+    }
+    this.consume('PUNCTUATION', ')');
+
+    let returns: TypeNode | undefined;
+    if (this.check('KEYWORD', 'returns')) { this.advance(); returns = this.parseType(); }
+
+    const guards: ExpressionNode[] = [], actions: ActionNode[] = [], emits: string[] = [];
+
+    if (this.check('PUNCTUATION', '{')) {
+      this.advance(); this.skipNL();
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', '}')) break;
+        if (this.check('KEYWORD', 'guard') || this.check('KEYWORD', 'when')) { this.advance(); guards.push(this.parseExpr()); }
+        else if (this.check('KEYWORD', 'emit')) { this.advance(); emits.push(this.consume('IDENTIFIER').value); }
+        else actions.push(this.parseAction());
+        this.skipNL();
+      }
+      this.consume('PUNCTUATION', '}');
+    } else if (this.check('OPERATOR', '=>')) {
+      this.advance();
+      actions.push(this.parseAction());
+    }
+
+    return { type: 'Command', name, parameters, guards: guards.length ? guards : undefined, actions, emits: emits.length ? emits : undefined, returns };
+  }
+
+  private parsePolicy(): PolicyNode {
+    this.consume('KEYWORD', 'policy');
+    const name = this.consume('IDENTIFIER').value;
+    let action: PolicyNode['action'] = 'all';
+    if (this.check('KEYWORD', 'read') || this.check('KEYWORD', 'write') || this.check('KEYWORD', 'delete') || this.check('KEYWORD', 'execute') || this.check('KEYWORD', 'all')) {
+      action = this.advance().value as PolicyNode['action'];
+    }
+    this.consume('OPERATOR', ':');
+    const expression = this.parseExpr();
+    const message = this.check('STRING') ? this.advance().value : undefined;
+    return { type: 'Policy', name, action, expression, message };
+  }
+
+  private parseStore(): StoreNode {
+    this.consume('KEYWORD', 'store');
+    const entity = this.consume('IDENTIFIER').value;
+    this.consume('KEYWORD', 'in');
+    const target = this.advance().value as StoreNode['target'];
+    const config: Record<string, ExpressionNode> = {};
+    if (this.check('PUNCTUATION', '{')) {
+      this.advance(); this.skipNL();
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', '}')) break;
+        const key = this.consume('IDENTIFIER').value;
+        this.consume('OPERATOR', ':');
+        config[key] = this.parseExpr();
+        this.skipNL();
+      }
+      this.consume('PUNCTUATION', '}');
+    }
+    return { type: 'Store', entity, target, config: Object.keys(config).length ? config : undefined };
+  }
+
+  private parseOutboxEvent(): OutboxEventNode {
+    this.consume('KEYWORD', 'event');
+    const name = this.consume('IDENTIFIER').value;
+    this.consume('OPERATOR', ':');
+    const channel = this.check('STRING') ? this.advance().value : name;
+    let payload: OutboxEventNode['payload'] = { type: 'Type', name: 'any', nullable: false };
+    if (this.check('PUNCTUATION', '{')) {
+      this.advance(); this.skipNL();
+      const fields: ParameterNode[] = [];
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', '}')) break;
+        const fname = this.consume('IDENTIFIER').value;
+        this.consume('OPERATOR', ':');
+        const ftype = this.parseType();
+        fields.push({ type: 'Parameter', name: fname, dataType: ftype, required: true });
+        this.skipNL();
+      }
+      this.consume('PUNCTUATION', '}');
+      payload = { fields };
+    } else if (this.check('IDENTIFIER') || this.check('KEYWORD')) {
+      payload = this.parseType();
+    }
+    return { type: 'OutboxEvent', name, channel, payload };
   }
 
   private parseType(): TypeNode {
@@ -109,6 +291,8 @@ export class Parser {
     if (this.check('KEYWORD', 'mutate')) { this.advance(); kind = 'mutate'; target = this.consume('IDENTIFIER').value; this.consume('OPERATOR', '='); }
     else if (this.check('KEYWORD', 'emit')) { this.advance(); kind = 'emit'; }
     else if (this.check('KEYWORD', 'effect')) { this.advance(); kind = 'effect'; }
+    else if (this.check('KEYWORD', 'publish')) { this.advance(); kind = 'publish'; }
+    else if (this.check('KEYWORD', 'persist')) { this.advance(); kind = 'persist'; }
     return { type: 'Action', kind, target, expression: this.parseExpr() };
   }
 
@@ -164,14 +348,23 @@ export class Parser {
     this.consume('KEYWORD', 'as');
     const protocol = this.advance().value as ExposeNode['protocol'];
     let name = entity.toLowerCase();
+    let generateServer = false;
+    if (this.check('KEYWORD', 'server')) { this.advance(); generateServer = true; }
     if (this.check('STRING')) name = this.advance().value;
-    const operations: string[] = [];
+    const operations: string[] = [], middleware: string[] = [];
     if (this.check('PUNCTUATION', '{')) {
       this.advance(); this.skipNL();
-      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) { this.skipNL(); if (this.check('PUNCTUATION', '}')) break; operations.push(this.advance().value); if (this.check('PUNCTUATION', ',')) this.advance(); this.skipNL(); }
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL(); if (this.check('PUNCTUATION', '}')) break;
+        const val = this.advance().value;
+        if (val === 'middleware') { this.consume('OPERATOR', ':'); middleware.push(this.consume('IDENTIFIER').value); }
+        else operations.push(val);
+        if (this.check('PUNCTUATION', ',')) this.advance();
+        this.skipNL();
+      }
       this.consume('PUNCTUATION', '}');
     }
-    return { type: 'Expose', name, protocol, entity, operations };
+    return { type: 'Expose', name, protocol, entity, operations, generateServer, middleware: middleware.length ? middleware : undefined };
   }
 
   private parseComposition(): CompositionNode {
@@ -286,7 +479,7 @@ export class Parser {
       this.pos = startPos;
       const expr = this.parseExpr(); this.consume('PUNCTUATION', ')'); return expr;
     }
-    if (this.check('IDENTIFIER')) return { type: 'Identifier', name: this.advance().value };
+    if (this.check('IDENTIFIER') || this.check('KEYWORD', 'user') || this.check('KEYWORD', 'self') || this.check('KEYWORD', 'context')) return { type: 'Identifier', name: this.advance().value };
     throw new Error(`Unexpected: ${this.current()?.value || 'EOF'}`);
   }
 
@@ -296,5 +489,5 @@ export class Parser {
   private current() { return this.tokens[this.pos]; }
   private isEnd() { return this.pos >= this.tokens.length || this.tokens[this.pos]?.type === 'EOF'; }
   private skipNL() { while (this.check('NEWLINE', '\n')) this.advance(); }
-  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'flow', 'effect', 'expose', 'compose'].includes(this.current()?.value || '')) this.advance(); }
+  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event'].includes(this.current()?.value || '')) this.advance(); }
 }

@@ -10,8 +10,8 @@ export class ManifestCompiler {
     const { program, errors } = this.parser.parse(source);
     if (errors.length > 0) return { success: false, errors, ast: program };
     try {
-      const code = this.generator.generate(program);
-      return { success: true, code, ast: program, errors: [] };
+      const { code, serverCode, testCode } = this.generator.generate(program);
+      return { success: true, code, serverCode, testCode, ast: program, errors: [] };
     } catch (e) {
       return { success: false, errors: [{ message: e instanceof Error ? e.message : 'Generation failed', severity: 'error' }], ast: program };
     }

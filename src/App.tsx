@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers } from 'lucide-react';
+import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube } from 'lucide-react';
 import { ManifestCompiler, ManifestProgram, CompilationError } from './manifest/compiler';
 import { examples } from './manifest/examples';
 
 const compiler = new ManifestCompiler();
 
-const KEYWORDS = ['entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose', 'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'as', 'from', 'to', 'with', 'where', 'connect', 'string', 'number', 'boolean', 'list', 'map', 'any', 'void', 'true', 'false', 'null', 'required', 'unique', 'indexed', 'private', 'readonly', 'rest', 'graphql', 'websocket', 'function', 'http', 'storage', 'timer', 'event', 'custom', 'and', 'or', 'not', 'is', 'in', 'contains'];
+const KEYWORDS = ['entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose', 'command', 'module', 'policy', 'store', 'event', 'computed', 'derived', 'hasMany', 'hasOne', 'belongsTo', 'ref', 'through', 'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'publish', 'persist', 'as', 'from', 'to', 'with', 'where', 'connect', 'returns', 'string', 'number', 'boolean', 'list', 'map', 'any', 'void', 'true', 'false', 'null', 'required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'rest', 'graphql', 'websocket', 'function', 'server', 'http', 'storage', 'timer', 'custom', 'memory', 'postgres', 'supabase', 'localStorage', 'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny', 'and', 'or', 'not', 'is', 'in', 'contains', 'user', 'self', 'context'];
 
 function highlight(code: string, lang: 'manifest' | 'ts'): string {
   let r = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -18,9 +18,9 @@ function highlight(code: string, lang: 'manifest' | 'ts'): string {
     r = r.replace(kw, '<span class="text-sky-400 font-medium">$1</span>');
     r = r.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span class="text-emerald-400">$1</span>');
   } else {
-    const tsKw = ['class', 'interface', 'type', 'function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'new', 'this', 'extends', 'export', 'import', 'async', 'await', 'try', 'catch', 'throw', 'private', 'public', 'get', 'set'];
+    const tsKw = ['class', 'interface', 'type', 'function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'new', 'this', 'extends', 'export', 'import', 'async', 'await', 'try', 'catch', 'throw', 'private', 'public', 'get', 'set', 'implements'];
     r = r.replace(new RegExp(`\\b(${tsKw.join('|')})\\b`, 'g'), '<span class="text-sky-400 font-medium">$1</span>');
-    r = r.replace(/\b(string|number|boolean|any|void|null|undefined|true|false)\b/g, '<span class="text-orange-400">$1</span>');
+    r = r.replace(/\b(string|number|boolean|any|void|null|undefined|true|false|Promise)\b/g, '<span class="text-orange-400">$1</span>');
   }
   return r;
 }
@@ -73,45 +73,91 @@ function Docs() {
     <div className="h-full overflow-auto p-6">
       <div className="max-w-3xl mx-auto space-y-8">
         <section>
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3"><Sparkles className="text-sky-400" />What is Manifest?</h2>
-          <p className="text-gray-300 leading-relaxed">Manifest is a declarative language designed for AI systems to describe software at a high level of abstraction. Instead of writing implementation code, you describe <em>what</em> should exist and <em>how it should behave</em>. The compiler generates working code.</p>
-          <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"><p className="text-sm text-gray-400"><strong className="text-sky-400">Philosophy:</strong> The source of truth is the specification, not the generated code. AI describes intent; machines generate implementation.</p></div>
-        </section>
-        <section>
-          <h3 className="text-xl font-semibold text-white mb-3">Core Constructs</h3>
-          <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3"><Sparkles className="text-sky-400" />Manifest v2.0</h2>
+          <p className="text-gray-300 leading-relaxed">A declarative language for AI to describe software systems. Now with commands, computed properties, relationships, policies, stores, modules, and realtime events.</p>
+          <div className="mt-4 grid grid-cols-3 gap-3">
             {[
-              { kw: 'entity', desc: 'Data structure with properties, behaviors, and constraints', ex: `entity User {\n  property required email: string\n  property active: boolean = true\n  behavior on activate { mutate active = true }\n  constraint validEmail: email contains "@"\n}` },
-              { kw: 'property', desc: 'Data field with modifiers: required, unique, readonly, indexed', ex: `property required id: string\nproperty count: number = 0\nproperty tags: list<string> = []` },
-              { kw: 'behavior', desc: 'Event handler with guards and actions', ex: `behavior on increment when count < 100 {\n  mutate count = count + 1\n  emit countChanged\n}` },
-              { kw: 'constraint', desc: 'Invariant that must always hold', ex: `constraint positive: value >= 0 "Must be positive"` },
-              { kw: 'flow', desc: 'Data transformation pipeline', ex: `flow process(Input) -> Output {\n  validate: (x) => x.value > 0\n  map: (x) => x.value * 2\n}` },
-              { kw: 'effect', desc: 'Side effect declaration (http, storage, timer)', ex: `effect api: http {\n  url: "https://api.example.com"\n  method: "GET"\n}` },
-              { kw: 'expose', desc: 'Generate API (rest, graphql, websocket, function)', ex: `expose User as rest "/api/users" {\n  list, get, create, update, delete\n}` },
-              { kw: 'compose', desc: 'Wire entities together', ex: `compose System {\n  Cart as cart\n  Payment as payment\n  connect cart.checkout -> payment.process\n}` }
-            ].map(({ kw, desc, ex }) => (
-              <div key={kw} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <h4 className="font-mono text-sky-400 mb-2">{kw}</h4>
-                <p className="text-sm text-gray-300 mb-2">{desc}</p>
-                <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{ex}</pre>
+              { label: 'Commands', desc: 'Explicit business operations' },
+              { label: 'Computed', desc: 'Auto-updating derived fields' },
+              { label: 'Relations', desc: 'hasMany, belongsTo, ref' },
+              { label: 'Policies', desc: 'Auth/permission rules' },
+              { label: 'Stores', desc: 'Persistence targets' },
+              { label: 'Events', desc: 'Realtime pub/sub' },
+            ].map(({ label, desc }) => (
+              <div key={label} className="p-3 bg-gray-800/50 rounded border border-gray-700">
+                <div className="text-sky-400 font-medium text-sm">{label}</div>
+                <div className="text-gray-500 text-xs mt-1">{desc}</div>
               </div>
             ))}
           </div>
         </section>
         <section>
-          <h3 className="text-xl font-semibold text-white mb-3">Types</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {[{ t: 'string', d: 'Text' }, { t: 'number', d: 'Numeric' }, { t: 'boolean', d: 'true/false' }, { t: 'list<T>', d: 'Array' }, { t: 'map<T>', d: 'Key-value' }, { t: 'any', d: 'Any type' }, { t: 'Type?', d: 'Nullable' }, { t: 'void', d: 'No return' }].map(({ t, d }) => (
-              <div key={t} className="p-3 bg-gray-800/50 rounded border border-gray-700"><code className="text-sky-400 text-sm">{t}</code><p className="text-xs text-gray-400 mt-1">{d}</p></div>
-            ))}
-          </div>
-        </section>
-        <section className="pb-8">
-          <h3 className="text-xl font-semibold text-white mb-3">Why Manifest?</h3>
-          <div className="space-y-3">
-            <div className="p-4 bg-gradient-to-r from-sky-900/30 to-cyan-900/30 rounded-lg border border-sky-800/50"><h4 className="font-medium text-sky-300">Intent over Implementation</h4><p className="text-sm text-gray-400 mt-1">Describe what you want, not how to build it.</p></div>
-            <div className="p-4 bg-gradient-to-r from-emerald-900/30 to-teal-900/30 rounded-lg border border-emerald-800/50"><h4 className="font-medium text-emerald-300">Built-in Correctness</h4><p className="text-sm text-gray-400 mt-1">Constraints ensure your system behaves correctly by construction.</p></div>
-            <div className="p-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 rounded-lg border border-amber-800/50"><h4 className="font-medium text-amber-300">Target Agnostic</h4><p className="text-sm text-gray-400 mt-1">One spec generates code for any platform.</p></div>
+          <h3 className="text-xl font-semibold text-white mb-3">New in v2</h3>
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">command</h4>
+              <p className="text-sm text-gray-300 mb-2">Explicit business operations with guards, actions, and emits.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`command claimTask(taskId: string, employeeId: string) {
+  guard user.role == "manager" or task.assignedTo == null
+  mutate assignedTo = employeeId
+  mutate status = "in_progress"
+  emit taskClaimed
+}`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">computed / derived</h4>
+              <p className="text-sm text-gray-300 mb-2">Auto-recalculating properties like a spreadsheet.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`computed total: number = subtotal + tax
+computed isOverdue: boolean = dueDate < now()
+computed fullName: string = firstName + " " + lastName`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">relationships</h4>
+              <p className="text-sm text-gray-300 mb-2">Model connections between entities.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`hasMany orders: Order
+hasOne profile: Profile
+belongsTo team: Team
+ref product: Product`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">policy</h4>
+              <p className="text-sm text-gray-300 mb-2">Auth rules - like RLS but in your spec.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`policy canEdit write: user.id == ownerId or user.role == "admin"
+policy canView read: user.teamId == self.teamId
+policy canDelete delete: user.role == "admin"`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">store</h4>
+              <p className="text-sm text-gray-300 mb-2">Where data lives - memory, localStorage, Supabase.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`store User in supabase { table: "users" }
+store Cart in memory
+store Settings in localStorage { key: "app_settings" }`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">event (outbox)</h4>
+              <p className="text-sm text-gray-300 mb-2">Realtime events for pub/sub.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`event TaskClaimed: "kitchen.task.claimed" {
+  taskId: string
+  employeeId: string
+  timestamp: string
+}`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">expose ... server</h4>
+              <p className="text-sm text-gray-300 mb-2">Generate server routes, not just client stubs.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`expose User as rest server "/api/users" {
+  list, get, create, update, delete
+}`}</pre>
+            </div>
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <h4 className="font-mono text-sky-400 mb-2">module</h4>
+              <p className="text-sm text-gray-300 mb-2">Group related entities and commands.</p>
+              <pre className="p-3 bg-gray-900 rounded text-xs text-gray-300 overflow-x-auto">{`module kitchen {
+  entity PrepTask { ... }
+  entity Station { ... }
+  command claimTask(...) { ... }
+}`}</pre>
+            </div>
           </div>
         </section>
       </div>
@@ -119,11 +165,13 @@ function Docs() {
   );
 }
 
-type Tab = 'output' | 'ast' | 'docs';
+type Tab = 'output' | 'server' | 'tests' | 'ast' | 'docs';
 
 export default function App() {
   const [source, setSource] = useState(examples[0].code);
   const [output, setOutput] = useState('');
+  const [serverCode, setServerCode] = useState('');
+  const [testCode, setTestCode] = useState('');
   const [ast, setAst] = useState<ManifestProgram | null>(null);
   const [errors, setErrors] = useState<CompilationError[]>([]);
   const [tab, setTab] = useState<Tab>('output');
@@ -134,8 +182,16 @@ export default function App() {
     const t0 = performance.now();
     const result = compiler.compile(source);
     setTime(Math.round((performance.now() - t0) * 100) / 100);
-    if (result.success && result.code) { setOutput(result.code); setAst(result.ast || null); setErrors([]); }
-    else { setErrors(result.errors || []); setAst(result.ast || null); }
+    if (result.success && result.code) {
+      setOutput(result.code);
+      setServerCode(result.serverCode || '');
+      setTestCode(result.testCode || '');
+      setAst(result.ast || null);
+      setErrors([]);
+    } else {
+      setErrors(result.errors || []);
+      setAst(result.ast || null);
+    }
   }, [source]);
 
   useEffect(() => { const t = setTimeout(compile, 300); return () => clearTimeout(t); }, [source, compile]);
@@ -149,7 +205,10 @@ export default function App() {
               <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-sky-500/20"><Sparkles className="w-5 h-5 text-white" /></div>
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center"><Zap className="w-2.5 h-2.5 text-white" /></div>
             </div>
-            <div><h1 className="text-xl font-bold text-white tracking-tight">Manifest</h1><p className="text-xs text-gray-500">A language for AI, by AI</p></div>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Manifest <span className="text-sky-400 text-sm font-normal">v2.0</span></h1>
+              <p className="text-xs text-gray-500">Commands / Computed / Relations / Policies / Stores</p>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -187,12 +246,20 @@ export default function App() {
         </div>
         <div className="w-1/2 flex flex-col">
           <div className="flex-shrink-0 border-b border-gray-800 bg-gray-900/50 flex">
-            {[{ id: 'output' as Tab, icon: Code2, label: 'Output' }, { id: 'ast' as Tab, icon: TreeDeciduous, label: 'AST' }, { id: 'docs' as Tab, icon: Layers, label: 'Guide' }].map(({ id, icon: Icon, label }) => (
+            {[
+              { id: 'output' as Tab, icon: Code2, label: 'Client' },
+              { id: 'server' as Tab, icon: Server, label: 'Server' },
+              { id: 'tests' as Tab, icon: TestTube, label: 'Tests' },
+              { id: 'ast' as Tab, icon: TreeDeciduous, label: 'AST' },
+              { id: 'docs' as Tab, icon: Layers, label: 'Docs' }
+            ].map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${tab === id ? 'text-sky-400 bg-gray-800/50 border-b-2 border-sky-400' : 'text-gray-400 hover:text-gray-300'}`}><Icon size={14} />{label}</button>
             ))}
           </div>
           <div className="flex-1 overflow-hidden bg-gray-900">
-            {tab === 'output' && <Editor value={output} onChange={() => {}} lang="ts" readOnly placeholder="Compiled output..." />}
+            {tab === 'output' && <Editor value={output} onChange={() => {}} lang="ts" readOnly placeholder="Generated client code..." />}
+            {tab === 'server' && <Editor value={serverCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated server routes (add 'server' keyword to expose)..." />}
+            {tab === 'tests' && <Editor value={testCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated tests from constraints..." />}
             {tab === 'ast' && <ASTViewer ast={ast} />}
             {tab === 'docs' && <Docs />}
           </div>

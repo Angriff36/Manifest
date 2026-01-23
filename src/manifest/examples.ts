@@ -1,280 +1,442 @@
 export const examples = [
   {
-    name: 'Counter',
-    desc: 'Simple reactive counter with constraints',
-    code: `// Manifest: A language designed for AI to describe systems
-// Instead of implementation, we describe intent
+    name: 'Kitchen Module',
+    desc: 'Full module with commands, policies, and events',
+    code: `// Module: encapsulates related entities and commands
+module kitchen {
+  entity PrepTask {
+    property required id: string
+    property required name: string
+    property assignedTo: string?
+    property status: string = "pending"
+    property priority: number = 1
 
-entity Counter {
-  property value: number = 0
+    // Computed property - auto-recalculates
+    computed isUrgent: boolean = priority >= 3
 
-  behavior on increment {
-    mutate value = value + 1
-    emit changed
+    // Relationships
+    belongsTo station: Station
+    hasMany ingredients: Ingredient
+
+    // Commands - explicit business operations
+    command claim(employeeId: string) {
+      guard status == "pending"
+      guard user.role == "cook" or user.role == "chef"
+      mutate assignedTo = employeeId
+      mutate status = "in_progress"
+      emit taskClaimed
+    }
+
+    command complete() {
+      guard status == "in_progress"
+      guard assignedTo == user.id
+      mutate status = "completed"
+      emit taskCompleted
+    }
+
+    // Policies - auth rules
+    policy canView read: true
+    policy canClaim execute: user.role in ["cook", "chef"]
+    policy canEdit write: user.id == assignedTo or user.role == "chef"
+
+    constraint validStatus: status in ["pending", "in_progress", "completed"]
+    constraint validPriority: priority >= 1 and priority <= 5
   }
 
-  behavior on decrement when value > 0 {
-    mutate value = value - 1
-    emit changed
+  entity Station {
+    property required id: string
+    property required name: string
+    property capacity: number = 4
+    hasMany tasks: PrepTask
   }
 
-  behavior on reset {
-    mutate value = 0
-    emit changed
+  entity Ingredient {
+    property required id: string
+    property required name: string
+    property quantity: number = 0
+    property unit: string = "g"
   }
 
-  constraint positive: value >= 0 "Counter cannot be negative"
+  // Outbox events for realtime
+  event TaskClaimed: "kitchen.task.claimed" {
+    taskId: string
+    employeeId: string
+    stationId: string
+  }
+
+  event TaskCompleted: "kitchen.task.completed" {
+    taskId: string
+    completedBy: string
+    duration: number
+  }
 }
 
-expose Counter as function`
-  },
-  {
-    name: 'User Entity',
-    desc: 'User with authentication behaviors',
-    code: `entity User {
-  property required id: string
-  property required email: string
-  property name: string = ""
-  property passwordHash: string = ""
-  property readonly createdAt: string = now()
-  property lastLogin: string?
-  property active: boolean = true
-  property loginAttempts: number = 0
+// Persistence
+store PrepTask in supabase { table: "prep_tasks" }
+store Station in supabase { table: "stations" }
 
-  behavior on login(password) {
-    compute validate(password, passwordHash)
-    mutate lastLogin = now()
-    mutate loginAttempts = 0
-    emit loggedIn
-  }
-
-  behavior on failedLogin when loginAttempts < 5 {
-    mutate loginAttempts = loginAttempts + 1
-  }
-
-  behavior on failedLogin when loginAttempts >= 5 {
-    mutate active = false
-    emit accountLocked
-  }
-
-  constraint validEmail: email contains "@" "Invalid email"
-  constraint nameLength: name.length >= 2 "Name too short"
-}
-
-effect userStorage: storage {
-  key: "users"
-}
-
-expose User as rest "/api/users" {
-  list, get, create, update, delete
+// API with server generation
+expose PrepTask as rest server "/api/tasks" {
+  list, get, create, update
 }`
   },
   {
-    name: 'Data Flow',
-    desc: 'Transform data through pipelines',
-    code: `// Flows describe data transformations
+    name: 'Order with Computed',
+    desc: 'Derived properties that auto-update',
+    code: `entity OrderItem {
+  property required id: string
+  property required productId: string
+  property required name: string
+  property price: number = 0
+  property quantity: number = 1
+  property discount: number = 0
 
-flow processOrder(Order) -> ProcessedOrder {
-  validate: (order) => order.items.length > 0
-
-  map: (order) => {
-    subtotal: sum(order.items.map(i => i.price * i.quantity)),
-    items: order.items
-  }
-
-  transform: {
-    subtotal: _value.subtotal,
-    tax: _value.subtotal * 0.08,
-    total: _value.subtotal * 1.08,
-    items: _value.items
-  }
-
-  tap: (result) => log("Order processed", result.total)
+  // Computed properties - spreadsheet-like
+  computed subtotal: number = price * quantity
+  computed discountAmount: number = subtotal * (discount / 100)
+  computed total: number = subtotal - discountAmount
 }
 
 entity Order {
   property required id: string
-  property items: list<OrderItem> = []
-  property status: string = "pending"
+  property customerId: string?
+  property status: string = "draft"
+  property taxRate: number = 0.08
+  property readonly createdAt: string = now()
 
-  behavior on submit {
-    compute processOrder(self)
-    mutate status = "submitted"
-    emit orderSubmitted
-  }
-}
+  hasMany items: OrderItem
 
-entity OrderItem {
-  property required productId: string
-  property required price: number
-  property quantity: number = 1
-}`
-  },
-  {
-    name: 'Todo App',
-    desc: 'Complete todo application',
-    code: `entity Todo {
-  property required id: string
-  property required title: string
-  property completed: boolean = false
-  property createdAt: string = now()
-  property completedAt: string?
-  property priority: string = "normal"
-  property tags: list<string> = []
+  // These recompute when items change
+  computed itemCount: number = items.length
+  computed subtotal: number = items.reduce((sum, i) => sum + i.total, 0)
+  computed tax: number = subtotal * taxRate
+  computed total: number = subtotal + tax
 
-  behavior on toggle {
-    mutate completed = not completed
-    mutate completedAt = completed ? now() : null
-    emit toggled
-  }
-
-  behavior on setPriority(level) {
-    mutate priority = level
-    emit priorityChanged
-  }
-
-  behavior on addTag(tag) when not (tags contains tag) {
-    mutate tags = tags.concat([tag])
-    emit tagAdded
-  }
-
-  constraint titleNotEmpty: title.length > 0 "Title required"
-  constraint validPriority: priority in ["low", "normal", "high", "urgent"]
-}
-
-entity TodoList {
-  property todos: list<Todo> = []
-  property filter: string = "all"
-
-  behavior on add(title) {
-    compute newTodo = createTodo({ id: uuid(), title: title })
-    mutate todos = todos.concat([newTodo])
-    emit todoAdded
-  }
-
-  behavior on remove(id) {
-    mutate todos = todos.filter((t) => t.id != id)
-    emit todoRemoved
-  }
-
-  behavior on clearCompleted {
-    mutate todos = todos.filter((t) => not t.completed)
-    emit cleared
-  }
-}
-
-effect todoStorage: storage {
-  key: "todos"
-}
-
-expose TodoList as rest "/api/todos"`
-  },
-  {
-    name: 'Composition',
-    desc: 'Wire entities into systems',
-    code: `// Compositions connect entities together
-
-entity ShoppingCart {
-  property items: list<CartItem> = []
-  property total: number = 0
-
-  behavior on addItem(product, quantity) {
-    compute item = { productId: product.id, price: product.price, quantity: quantity }
-    mutate items = items.concat([item])
-    mutate total = calculateTotal(items)
+  command addItem(productId: string, name: string, price: number, quantity: number) {
+    guard status == "draft"
+    compute newItem = { id: uuid(), productId: productId, name: name, price: price, quantity: quantity }
+    mutate items = items.concat([newItem])
     emit itemAdded
   }
 
-  behavior on checkout {
+  command submit() {
+    guard status == "draft"
+    guard items.length > 0
+    mutate status = "submitted"
+    emit orderSubmitted
+  }
+
+  constraint hasItems: status != "submitted" or items.length > 0 "Order must have items"
+}
+
+store Order in localStorage { key: "orders" }
+expose Order as function`
+  },
+  {
+    name: 'User with Policies',
+    desc: 'Auth and permission rules',
+    code: `entity User {
+  property required id: string
+  property required email: string
+  property name: string = ""
+  property role: string = "user"
+  property teamId: string?
+  property active: boolean = true
+  property loginAttempts: number = 0
+  property readonly createdAt: string = now()
+
+  // Only admins or self can read sensitive data
+  policy readBasic read: true
+  policy readSensitive read: user.id == self.id or user.role == "admin"
+
+  // Only admins can change roles
+  policy canChangeRole write: user.role == "admin" "Only admins can modify users"
+
+  // Self or admin can deactivate
+  policy canDeactivate execute: user.id == self.id or user.role == "admin"
+
+  command deactivate() {
+    guard active == true
+    mutate active = false
+    emit userDeactivated
+  }
+
+  command changeRole(newRole: string) {
+    guard user.role == "admin"
+    mutate role = newRole
+    emit roleChanged
+  }
+
+  constraint validEmail: email contains "@" "Invalid email"
+  constraint validRole: role in ["user", "manager", "admin"]
+}
+
+entity Team {
+  property required id: string
+  property required name: string
+  property ownerId: string
+
+  hasMany members: User
+
+  policy canView read: user.teamId == self.id or user.role == "admin"
+  policy canEdit write: user.id == ownerId or user.role == "admin"
+}
+
+store User in supabase { table: "users" }
+store Team in supabase { table: "teams" }
+
+expose User as rest server "/api/users" {
+  list, get, create, update, delete
+}`
+  },
+  {
+    name: 'Realtime Events',
+    desc: 'Outbox pattern for pub/sub',
+    code: `// Define event types for realtime channels
+event OrderCreated: "orders.created" {
+  orderId: string
+  customerId: string
+  total: number
+}
+
+event OrderStatusChanged: "orders.status" {
+  orderId: string
+  oldStatus: string
+  newStatus: string
+  timestamp: string
+}
+
+event InventoryLow: "inventory.alerts" {
+  productId: string
+  productName: string
+  currentStock: number
+  threshold: number
+}
+
+entity Order {
+  property required id: string
+  property customerId: string
+  property status: string = "pending"
+  property total: number = 0
+
+  command create(customerId: string, total: number) {
+    mutate customerId = customerId
+    mutate total = total
+    // Publish to outbox
+    publish OrderCreated
+    emit created
+  }
+
+  command updateStatus(newStatus: string) {
+    guard newStatus in ["pending", "processing", "shipped", "delivered"]
+    publish OrderStatusChanged
+    mutate status = newStatus
+    emit statusChanged
+  }
+}
+
+entity Product {
+  property required id: string
+  property required name: string
+  property stock: number = 0
+  property lowStockThreshold: number = 10
+
+  computed isLowStock: boolean = stock <= lowStockThreshold
+
+  command reduceStock(amount: number) {
+    guard stock >= amount
+    mutate stock = stock - amount
+    // Alert when stock is low
+    compute checkLowStock()
+    emit stockReduced
+  }
+
+  behavior on stockReduced when isLowStock {
+    publish InventoryLow
+  }
+}
+
+store Order in supabase
+store Product in supabase
+
+expose Order as rest server "/api/orders"
+expose Product as rest server "/api/products"`
+  },
+  {
+    name: 'E-commerce System',
+    desc: 'Full composition with relationships',
+    code: `entity Customer {
+  property required id: string
+  property required email: string
+  property name: string = ""
+  property loyaltyPoints: number = 0
+
+  hasMany orders: Order
+  hasOne cart: ShoppingCart
+
+  computed totalSpent: number = orders.reduce((sum, o) => sum + o.total, 0)
+  computed tier: string = totalSpent > 1000 ? "gold" : totalSpent > 500 ? "silver" : "bronze"
+
+  command addLoyaltyPoints(points: number) {
+    mutate loyaltyPoints = loyaltyPoints + points
+    emit pointsAdded
+  }
+}
+
+entity ShoppingCart {
+  property required id: string
+  property customerId: string
+
+  hasMany items: CartItem
+  belongsTo customer: Customer
+
+  computed itemCount: number = items.length
+  computed subtotal: number = items.reduce((sum, i) => sum + i.total, 0)
+
+  command addItem(productId: string, price: number, quantity: number) {
+    compute item = { id: uuid(), productId: productId, price: price, quantity: quantity }
+    mutate items = items.concat([item])
+    emit itemAdded
+  }
+
+  command checkout() {
+    guard items.length > 0
     emit checkoutStarted
+  }
+
+  command clear() {
+    mutate items = []
+    emit cartCleared
   }
 }
 
 entity CartItem {
+  property required id: string
   property required productId: string
-  property required price: number
+  property price: number = 0
   property quantity: number = 1
+  computed total: number = price * quantity
+
+  belongsTo cart: ShoppingCart
+  ref product: Product
 }
 
-entity Inventory {
-  property products: map<Product>
+entity Product {
+  property required id: string
+  property required name: string
+  property required price: number
+  property stock: number = 0
+  property category: string = "general"
 
-  behavior on reserve(productId, quantity) {
-    compute updateStock(productId, quantity)
-    emit reserved
+  hasMany cartItems: CartItem
+
+  constraint positivePrice: price > 0 "Price must be positive"
+  constraint validStock: stock >= 0 "Stock cannot be negative"
+}
+
+entity Order {
+  property required id: string
+  property customerId: string
+  property status: string = "pending"
+  property total: number = 0
+
+  hasMany items: OrderItem
+  belongsTo customer: Customer
+
+  command process() {
+    guard status == "pending"
+    mutate status = "processing"
+    emit orderProcessing
+  }
+
+  command ship() {
+    guard status == "processing"
+    mutate status = "shipped"
+    emit orderShipped
   }
 }
 
-entity PaymentProcessor {
-  behavior on process(amount, method) {
-    effect processPayment(amount, method)
-    emit paymentComplete
-  }
+entity OrderItem {
+  property required id: string
+  property productId: string
+  property quantity: number = 1
+  property price: number = 0
+
+  belongsTo order: Order
+  ref product: Product
+
+  computed total: number = price * quantity
 }
 
-compose CheckoutSystem {
+// Persistence configuration
+store Customer in supabase
+store ShoppingCart in memory
+store Product in supabase
+store Order in supabase
+
+// Compose the checkout flow
+compose CheckoutFlow {
   ShoppingCart as cart
-  Inventory as inventory
-  PaymentProcessor as payment
+  Order as order
+  Customer as customer
 
-  connect cart.checkoutStarted -> inventory.reserve
-  connect inventory.reserved -> payment.process
-  connect payment.paymentComplete -> cart.clear
-}`
+  connect cart.checkoutStarted -> order.create
+  connect order.orderProcessing -> customer.addLoyaltyPoints
+}
+
+expose Customer as rest server "/api/customers"
+expose Product as rest server "/api/products"
+expose Order as rest server "/api/orders"`
   },
   {
-    name: 'Effects & APIs',
-    desc: 'Side effects and external services',
-    code: `// Effects encapsulate side effects
+    name: 'Simple Counter',
+    desc: 'Basic example with all v2 features',
+    code: `// Simple counter showing v2 features
 
-effect weatherAPI: http {
-  url: "https://api.weather.example/v1"
-  method: "GET"
-}
+entity Counter {
+  property value: number = 0
+  property step: number = 1
+  property maxValue: number = 100
+  property minValue: number = 0
 
-effect analytics: custom {
-  provider: "mixpanel"
-  token: env("ANALYTICS_TOKEN")
-}
+  // Computed - auto updates
+  computed percentage: number = (value / maxValue) * 100
+  computed isAtMax: boolean = value >= maxValue
+  computed isAtMin: boolean = value <= minValue
 
-effect cache: storage {
-  key: "app_cache"
-}
-
-effect autoSave: timer {
-  interval: 30000
-}
-
-entity WeatherDashboard {
-  property location: string = ""
-  property currentWeather: any?
-  property forecast: list<any> = []
-  property loading: boolean = false
-  property error: string?
-
-  behavior on setLocation(loc) {
-    mutate location = loc
-    mutate loading = true
-    mutate error = null
-    emit locationChanged
+  // Commands instead of behaviors
+  command increment() {
+    guard not isAtMax
+    mutate value = value + step
+    emit incremented
   }
 
-  behavior on fetchWeather {
-    effect weatherAPI.execute({ location: location })
-    emit fetchStarted
+  command decrement() {
+    guard not isAtMin
+    mutate value = value - step
+    emit decremented
   }
 
-  behavior on weatherReceived(data) {
-    mutate currentWeather = data.current
-    mutate forecast = data.forecast
-    mutate loading = false
-    emit weatherUpdated
+  command reset() {
+    mutate value = 0
+    emit reset
   }
 
-  constraint validLocation: location.length > 0 "Location required"
+  command setStep(newStep: number) {
+    guard newStep > 0
+    mutate step = newStep
+    emit stepChanged
+  }
+
+  // Constraints
+  constraint inRange: value >= minValue and value <= maxValue "Value out of range"
+  constraint positiveStep: step > 0 "Step must be positive"
 }
 
-expose WeatherDashboard as rest "/api/weather"
-expose WeatherDashboard as websocket "/ws/weather"`
+// Store in browser
+store Counter in localStorage { key: "counter" }
+
+// Generate function factory
+expose Counter as function`
   }
 ];

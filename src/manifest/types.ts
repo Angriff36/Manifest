@@ -14,12 +14,27 @@ export interface ASTNode {
   position?: Position;
 }
 
+export interface ModuleNode extends ASTNode {
+  type: 'Module';
+  name: string;
+  entities: EntityNode[];
+  commands: CommandNode[];
+  policies: PolicyNode[];
+  stores: StoreNode[];
+  events: OutboxEventNode[];
+}
+
 export interface EntityNode extends ASTNode {
   type: 'Entity';
   name: string;
   properties: PropertyNode[];
+  computedProperties: ComputedPropertyNode[];
+  relationships: RelationshipNode[];
   behaviors: BehaviorNode[];
+  commands: CommandNode[];
   constraints: ConstraintNode[];
+  policies: PolicyNode[];
+  store?: string;
 }
 
 export interface PropertyNode extends ASTNode {
@@ -28,6 +43,63 @@ export interface PropertyNode extends ASTNode {
   dataType: TypeNode;
   defaultValue?: ExpressionNode;
   modifiers: string[];
+}
+
+export interface ComputedPropertyNode extends ASTNode {
+  type: 'ComputedProperty';
+  name: string;
+  dataType: TypeNode;
+  expression: ExpressionNode;
+  dependencies: string[];
+}
+
+export interface RelationshipNode extends ASTNode {
+  type: 'Relationship';
+  kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
+  name: string;
+  target: string;
+  foreignKey?: string;
+  through?: string;
+}
+
+export interface CommandNode extends ASTNode {
+  type: 'Command';
+  name: string;
+  parameters: ParameterNode[];
+  guards?: ExpressionNode[];
+  actions: ActionNode[];
+  emits?: string[];
+  returns?: TypeNode;
+}
+
+export interface ParameterNode extends ASTNode {
+  type: 'Parameter';
+  name: string;
+  dataType: TypeNode;
+  required: boolean;
+  defaultValue?: ExpressionNode;
+}
+
+export interface PolicyNode extends ASTNode {
+  type: 'Policy';
+  name: string;
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  expression: ExpressionNode;
+  message?: string;
+}
+
+export interface StoreNode extends ASTNode {
+  type: 'Store';
+  entity: string;
+  target: 'memory' | 'postgres' | 'supabase' | 'localStorage';
+  config?: Record<string, ExpressionNode>;
+}
+
+export interface OutboxEventNode extends ASTNode {
+  type: 'OutboxEvent';
+  name: string;
+  channel: string;
+  payload: TypeNode | { fields: ParameterNode[] };
 }
 
 export interface TypeNode extends ASTNode {
@@ -53,7 +125,7 @@ export interface TriggerNode extends ASTNode {
 
 export interface ActionNode extends ASTNode {
   type: 'Action';
-  kind: 'mutate' | 'emit' | 'compute' | 'effect';
+  kind: 'mutate' | 'emit' | 'compute' | 'effect' | 'publish' | 'persist';
   target?: string;
   expression: ExpressionNode;
 }
@@ -93,6 +165,8 @@ export interface ExposeNode extends ASTNode {
   protocol: 'rest' | 'graphql' | 'websocket' | 'function';
   entity: string;
   operations: string[];
+  generateServer: boolean;
+  middleware?: string[];
 }
 
 export interface CompositionNode extends ASTNode {
@@ -188,16 +262,23 @@ export interface LambdaNode extends ASTNode {
 }
 
 export interface ManifestProgram {
+  modules: ModuleNode[];
   entities: EntityNode[];
+  commands: CommandNode[];
   flows: FlowNode[];
   effects: EffectNode[];
   exposures: ExposeNode[];
   compositions: CompositionNode[];
+  policies: PolicyNode[];
+  stores: StoreNode[];
+  events: OutboxEventNode[];
 }
 
 export interface CompilationResult {
   success: boolean;
   code?: string;
+  serverCode?: string;
+  testCode?: string;
   errors?: CompilationError[];
   ast?: ManifestProgram;
 }
