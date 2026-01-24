@@ -1,49 +1,116 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube } from 'lucide-react';
+import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube, Package } from 'lucide-react';
 import { ManifestCompiler, ManifestProgram, CompilationError } from './manifest/compiler';
 import { examples } from './manifest/examples';
+import { ArtifactsPanel } from './artifacts';
 
 const compiler = new ManifestCompiler();
 
 const KEYWORDS = ['entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose', 'command', 'module', 'policy', 'store', 'event', 'computed', 'derived', 'hasMany', 'hasOne', 'belongsTo', 'ref', 'through', 'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'publish', 'persist', 'as', 'from', 'to', 'with', 'where', 'connect', 'returns', 'string', 'number', 'boolean', 'list', 'map', 'any', 'void', 'true', 'false', 'null', 'required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'rest', 'graphql', 'websocket', 'function', 'server', 'http', 'storage', 'timer', 'custom', 'memory', 'postgres', 'supabase', 'localStorage', 'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny', 'and', 'or', 'not', 'is', 'in', 'contains', 'user', 'self', 'context'];
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function highlight(code: string, lang: 'manifest' | 'ts'): string {
-  let r = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  r = r.replace(/(\/\/[^\n]*)/g, '<span class="text-gray-500">$1</span>');
-  r = r.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="text-gray-500">$1</span>');
-  r = r.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, '<span class="text-amber-400">$1</span>');
-  r = r.replace(/\b(\d+\.?\d*)\b/g, '<span class="text-cyan-400">$1</span>');
+  const escaped = escapeHtml(code);
+  const tokens: { start: number; end: number; className: string }[] = [];
+
+  const addTokens = (regex: RegExp, className: string) => {
+    let match;
+    while ((match = regex.exec(escaped)) !== null) {
+      tokens.push({ start: match.index, end: match.index + match[0].length, className });
+    }
+  };
+
+  addTokens(/(\/\/[^\n]*)/g, 'text-gray-500');
+  addTokens(/(\/\*[\s\S]*?\*\/)/g, 'text-gray-500');
+  addTokens(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, 'text-amber-400');
+  addTokens(/\b(\d+\.?\d*)\b/g, 'text-cyan-400');
+
   if (lang === 'manifest') {
-    const kw = new RegExp(`\\b(${KEYWORDS.join('|')})\\b`, 'g');
-    r = r.replace(kw, '<span class="text-sky-400 font-medium">$1</span>');
-    r = r.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span class="text-emerald-400">$1</span>');
+    const kwRegex = new RegExp(`\\b(${KEYWORDS.join('|')})\\b`, 'g');
+    addTokens(kwRegex, 'text-sky-400 font-medium');
+    addTokens(/\b([A-Z][a-zA-Z0-9]*)\b/g, 'text-emerald-400');
   } else {
     const tsKw = ['class', 'interface', 'type', 'function', 'const', 'let', 'var', 'return', 'if', 'else', 'for', 'while', 'new', 'this', 'extends', 'export', 'import', 'async', 'await', 'try', 'catch', 'throw', 'private', 'public', 'get', 'set', 'implements'];
-    r = r.replace(new RegExp(`\\b(${tsKw.join('|')})\\b`, 'g'), '<span class="text-sky-400 font-medium">$1</span>');
-    r = r.replace(/\b(string|number|boolean|any|void|null|undefined|true|false|Promise)\b/g, '<span class="text-orange-400">$1</span>');
+    addTokens(new RegExp(`\\b(${tsKw.join('|')})\\b`, 'g'), 'text-sky-400 font-medium');
+    addTokens(/\b(string|number|boolean|any|void|null|undefined|true|false|Promise)\b/g, 'text-orange-400');
   }
-  return r;
+
+  tokens.sort((a, b) => a.start - b.start);
+
+  const filtered: typeof tokens = [];
+  for (const token of tokens) {
+    const overlaps = filtered.some(t =>
+      (token.start >= t.start && token.start < t.end) ||
+      (token.end > t.start && token.end <= t.end)
+    );
+    if (!overlaps) {
+      filtered.push(token);
+    }
+  }
+
+  let result = '';
+  let pos = 0;
+  for (const token of filtered) {
+    if (token.start > pos) {
+      result += escaped.slice(pos, token.start);
+    }
+    result += `<span class="${token.className}">${escaped.slice(token.start, token.end)}</span>`;
+    pos = token.end;
+  }
+  result += escaped.slice(pos);
+
+  return result;
 }
 
 function Editor({ value, onChange, lang, readOnly, placeholder }: { value: string; onChange: (v: string) => void; lang: 'manifest' | 'ts'; readOnly?: boolean; placeholder?: string }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const hlRef = useRef<HTMLDivElement>(null);
-  const sync = useCallback(() => { if (textRef.current && hlRef.current) { hlRef.current.scrollTop = textRef.current.scrollTop; hlRef.current.scrollLeft = textRef.current.scrollLeft; } }, []);
+  const sync = useCallback(() => {
+    if (textRef.current && hlRef.current) {
+      hlRef.current.scrollTop = textRef.current.scrollTop;
+      hlRef.current.scrollLeft = textRef.current.scrollLeft;
+    }
+  }, []);
   useEffect(sync, [value, sync]);
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
       const s = e.currentTarget.selectionStart, end = e.currentTarget.selectionEnd;
-      onChange(value.substring(0, s) + '  ' + value.substring(end));
+      const newValue = value.substring(0, s) + '  ' + value.substring(end);
+      onChange(newValue);
       setTimeout(() => { if (textRef.current) textRef.current.selectionStart = textRef.current.selectionEnd = s + 2; }, 0);
     }
   };
 
+  const displayHtml = value ? highlight(value, lang) : `<span class="text-gray-600">${placeholder || ''}</span>`;
+
   return (
     <div className="relative h-full font-mono text-sm">
-      <div ref={hlRef} className="absolute inset-0 p-4 overflow-auto whitespace-pre-wrap break-words pointer-events-none" style={{ color: '#e2e8f0' }} dangerouslySetInnerHTML={{ __html: highlight(value, lang) || `<span class="text-gray-600">${placeholder || ''}</span>` }} />
-      <textarea ref={textRef} value={value} onChange={e => onChange(e.target.value)} onScroll={sync} onKeyDown={onKey} readOnly={readOnly} placeholder={placeholder} spellCheck={false} className="absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-white resize-none outline-none selection:bg-sky-500/30" style={{ caretColor: 'white' }} />
+      <div
+        ref={hlRef}
+        className="absolute inset-0 p-4 overflow-auto whitespace-pre-wrap break-words pointer-events-none"
+        style={{ color: '#e2e8f0' }}
+        dangerouslySetInnerHTML={{ __html: displayHtml }}
+      />
+      <textarea
+        ref={textRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onScroll={sync}
+        onKeyDown={onKey}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        spellCheck={false}
+        className="absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-white resize-none outline-none selection:bg-sky-500/30"
+        style={{ caretColor: 'white' }}
+      />
     </div>
   );
 }
@@ -177,6 +244,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('output');
   const [exOpen, setExOpen] = useState(false);
   const [time, setTime] = useState<number | null>(null);
+  const [showArtifacts, setShowArtifacts] = useState(true);
 
   const compile = useCallback(() => {
     const t0 = performance.now();
@@ -211,6 +279,13 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowArtifacts(!showArtifacts)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showArtifacts ? 'bg-sky-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`}
+            >
+              <Package size={16} />
+              Artifacts
+            </button>
             <div className="relative">
               <button onClick={() => setExOpen(!exOpen)} className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors"><BookOpen size={16} />Examples<ChevronDown size={14} className={`transition-transform ${exOpen ? 'rotate-180' : ''}`} /></button>
               {exOpen && (
@@ -235,7 +310,7 @@ export default function App() {
         )}
       </header>
       <main className="flex-1 flex overflow-hidden">
-        <div className="w-1/2 border-r border-gray-800 flex flex-col">
+        <div className={`${showArtifacts ? 'w-1/3' : 'w-1/2'} border-r border-gray-800 flex flex-col transition-all`}>
           <div className="flex-shrink-0 px-4 py-2 border-b border-gray-800 bg-gray-900/50 flex items-center gap-2"><FileCode size={14} className="text-sky-400" /><span className="text-sm font-medium text-gray-300">Source</span><span className="text-xs text-gray-600 ml-auto">.manifest</span></div>
           <div className="flex-1 overflow-hidden bg-gray-900"><Editor value={source} onChange={setSource} lang="manifest" placeholder="Write Manifest code..." /></div>
           {errors.length > 0 && (
@@ -244,7 +319,7 @@ export default function App() {
             </div>
           )}
         </div>
-        <div className="w-1/2 flex flex-col">
+        <div className={`${showArtifacts ? 'w-1/3' : 'w-1/2'} flex flex-col border-r border-gray-800 transition-all`}>
           <div className="flex-shrink-0 border-b border-gray-800 bg-gray-900/50 flex">
             {[
               { id: 'output' as Tab, icon: Code2, label: 'Client' },
@@ -264,6 +339,18 @@ export default function App() {
             {tab === 'docs' && <Docs />}
           </div>
         </div>
+        {showArtifacts && (
+          <div className="w-1/3 flex flex-col transition-all">
+            <ArtifactsPanel
+              source={source}
+              clientCode={output}
+              serverCode={serverCode}
+              testCode={testCode}
+              ast={ast}
+              hasErrors={errors.length > 0}
+            />
+          </div>
+        )}
       </main>
     </div>
   );
