@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Download, Copy, Check, Package, FolderTree } from 'lucide-react';
+import { Download, Copy, Check, Package, FolderTree, Rocket } from 'lucide-react';
 import { FileTree } from './FileTree';
 import { FileViewer } from './FileViewer';
 import { SmokeTestPanel } from './SmokeTestPanel';
-import { buildFileMap, exportZip, copyAllFiles, generateProjectName } from './zipExporter';
+import { buildFileMap, exportZip, exportRunnableZip, copyAllFiles, generateProjectName } from './zipExporter';
 import { ProjectFiles } from './types';
 
 interface ArtifactsPanelProps {
@@ -26,6 +26,7 @@ export function ArtifactsPanel({
   const [selectedFile, setSelectedFile] = useState<string | null>('src/generated/client.ts');
   const [copiedAll, setCopiedAll] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingRunnable, setExportingRunnable] = useState(false);
 
   const files: ProjectFiles = {
     source,
@@ -54,6 +55,16 @@ export function ArtifactsPanel({
     }
   };
 
+  const handleExportRunnable = async () => {
+    if (hasErrors) return;
+    setExportingRunnable(true);
+    try {
+      await exportRunnableZip(files);
+    } finally {
+      setExportingRunnable(false);
+    }
+  };
+
   const handleCopyAll = async () => {
     await copyAllFiles(files);
     setCopiedAll(true);
@@ -70,35 +81,49 @@ export function ArtifactsPanel({
             <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-800 rounded">{projectName}</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2">
           <button
-            onClick={handleExport}
-            disabled={hasErrors || exporting}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded transition-colors ${
-              hasErrors || exporting
+            onClick={handleExportRunnable}
+            disabled={hasErrors || exportingRunnable}
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 text-sm rounded transition-colors ${
+              hasErrors || exportingRunnable
                 ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                : 'bg-sky-600 hover:bg-sky-500 text-white'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white'
             }`}
           >
-            <Download size={14} />
-            {exporting ? 'Exporting...' : 'Export .zip'}
+            <Rocket size={14} />
+            {exportingRunnable ? 'Exporting...' : 'Export Runnable Project'}
           </button>
-          <button
-            onClick={handleCopyAll}
-            className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
-          >
-            {copiedAll ? (
-              <>
-                <Check size={14} className="text-emerald-400" />
-                <span className="text-emerald-400">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy size={14} />
-                <span>Copy All</span>
-              </>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              disabled={hasErrors || exporting}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded transition-colors ${
+                hasErrors || exporting
+                  ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  : 'bg-sky-600 hover:bg-sky-500 text-white'
+              }`}
+            >
+              <Download size={14} />
+              {exporting ? 'Exporting...' : 'Export .zip'}
+            </button>
+            <button
+              onClick={handleCopyAll}
+              className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            >
+              {copiedAll ? (
+                <>
+                  <Check size={14} className="text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={14} />
+                  <span>Copy All</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
         {hasErrors && (
           <div className="mt-2 text-xs text-rose-400">
