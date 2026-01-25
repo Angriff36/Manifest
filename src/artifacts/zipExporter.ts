@@ -9,7 +9,10 @@ import {
   generateIndexCss,
   generateAppTsx,
   generateReadme,
-  RUNTIME_SOURCE
+  RUNTIME_SOURCE,
+  IR_TYPES_SOURCE,
+  IR_COMPILER_SOURCE,
+  RUNTIME_ENGINE_SOURCE
 } from '../project-template/templates';
 import { StandaloneGenerator } from '../manifest/standalone-generator';
 import { Parser } from '../manifest/parser';
@@ -91,6 +94,9 @@ export function buildRunnableProjectFiles(files: ProjectFiles): Record<string, s
     'src/manifest/compiler/parser.ts': COMPILER_PARSER_SOURCE,
     'src/manifest/compiler/generator.ts': COMPILER_GENERATOR_SOURCE,
     'src/manifest/compiler/index.ts': COMPILER_INDEX_SOURCE,
+    'src/manifest/ir/types.ts': IR_TYPES_SOURCE,
+    'src/manifest/ir/ir-compiler.ts': IR_COMPILER_SOURCE,
+    'src/manifest/ir/runtime-engine.ts': RUNTIME_ENGINE_SOURCE,
     'src/vite-env.d.ts': '/// <reference types="vite/client" />'
   };
 }
