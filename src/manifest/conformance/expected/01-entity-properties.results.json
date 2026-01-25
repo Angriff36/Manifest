@@ -1,0 +1,48 @@
+{
+  "testCases": [
+    {
+      "name": "create entity with defaults",
+      "setup": {},
+      "createInstance": {
+        "entity": "Product",
+        "data": { "id": "prod-1", "name": "Test Product" }
+      },
+      "expectedInstance": {
+        "id": "prod-1",
+        "name": "Test Product",
+        "price": 0,
+        "inStock": true,
+        "description": ""
+      }
+    },
+    {
+      "name": "create entity with overridden defaults",
+      "setup": {},
+      "createInstance": {
+        "entity": "Product",
+        "data": { "id": "prod-2", "name": "Custom Product", "price": 99, "inStock": false, "description": "A custom product" }
+      },
+      "expectedInstance": {
+        "id": "prod-2",
+        "name": "Custom Product",
+        "price": 99,
+        "inStock": false,
+        "description": "A custom product"
+      }
+    },
+    {
+      "name": "persistence: create → serialize → restore → entity exists",
+      "persistenceTest": {
+        "entity": "Product",
+        "createData": { "id": "persist-1", "name": "Persisted Product", "price": 50 },
+        "expectedAfterRestore": {
+          "id": "persist-1",
+          "name": "Persisted Product",
+          "price": 50,
+          "inStock": true,
+          "description": ""
+        }
+      }
+    }
+  ]
+}

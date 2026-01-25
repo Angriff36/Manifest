@@ -14,6 +14,11 @@ export interface RuntimeContext {
   [key: string]: unknown;
 }
 
+export interface RuntimeOptions {
+  generateId?: () => string;
+  now?: () => number;
+}
+
 export interface EntityInstance {
   id: string;
   [key: string]: unknown;
@@ -45,6 +50,11 @@ export interface Store<T extends EntityInstance = EntityInstance> {
 
 class MemoryStore<T extends EntityInstance> implements Store<T> {
   private items: Map<string, T> = new Map();
+  private generateId: () => string;
+
+  constructor(generateId?: () => string) {
+    this.generateId = generateId || (() => crypto.randomUUID());
+  }
 
   getAll(): T[] {
     return Array.from(this.items.values());
@@ -55,7 +65,7 @@ class MemoryStore<T extends EntityInstance> implements Store<T> {
   }
 
   create(data: Partial<T>): T {
-    const id = data.id || crypto.randomUUID();
+    const id = data.id || this.generateId();
     const item = { ...data, id } as T;
     this.items.set(id, item);
     return item;
@@ -144,13 +154,15 @@ type EventListener = (event: EmittedEvent) => void;
 export class RuntimeEngine {
   private ir: IR;
   private context: RuntimeContext;
+  private options: RuntimeOptions;
   private stores: Map<string, Store> = new Map();
   private eventListeners: EventListener[] = [];
   private eventLog: EmittedEvent[] = [];
 
-  constructor(ir: IR, context: RuntimeContext = {}) {
+  constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
     this.context = context;
+    this.options = options;
     this.initializeStores();
   }
 
@@ -170,14 +182,18 @@ export class RuntimeEngine {
           }
           case 'memory':
           default:
-            store = new MemoryStore();
+            store = new MemoryStore(this.options.generateId);
         }
       } else {
-        store = new MemoryStore();
+        store = new MemoryStore(this.options.generateId);
       }
 
       this.stores.set(entity.name, store);
     }
+  }
+
+  private getNow(): number {
+    return this.options.now ? this.options.now() : Date.now();
   }
 
   getIR(): IR {
@@ -323,7 +339,7 @@ export class RuntimeEngine {
         name: eventName,
         channel: event?.channel || eventName,
         payload: { ...input, result },
-        timestamp: Date.now(),
+        timestamp: this.getNow(),
       };
       emittedEvents.push(emitted);
       this.eventLog.push(emitted);
@@ -342,6 +358,7 @@ export class RuntimeEngine {
     instance?: EntityInstance
   ): Record<string, unknown> {
     return {
+      ...(instance || {}),
       ...input,
       self: instance,
       this: instance,
@@ -396,7 +413,7 @@ export class RuntimeEngine {
           name: 'action_event',
           channel: 'default',
           payload: value,
-          timestamp: Date.now(),
+          timestamp: this.getNow(),
         };
         this.eventLog.push(event);
         this.notifyListeners(event);
@@ -571,10 +588,36 @@ export class RuntimeEngine {
     const instance = this.getInstance(entityName, instanceId);
     if (!instance) return undefined;
 
+    return this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+  }
+
+  private evaluateComputedInternal(
+    entity: IREntity,
+    instance: EntityInstance,
+    propertyName: string,
+    visited: Set<string>
+  ): unknown {
+    if (visited.has(propertyName)) return undefined;
+    visited.add(propertyName);
+
+    const computed = entity.computedProperties.find(c => c.name === propertyName);
+    if (!computed) return undefined;
+
+    const computedValues: Record<string, unknown> = {};
+    if (computed.dependencies) {
+      for (const dep of computed.dependencies) {
+        const depComputed = entity.computedProperties.find(c => c.name === dep);
+        if (depComputed && !visited.has(dep)) {
+          computedValues[dep] = this.evaluateComputedInternal(entity, instance, dep, new Set(visited));
+        }
+      }
+    }
+
     const context = {
       self: instance,
       this: instance,
       ...instance,
+      ...computedValues,
       user: this.context.user,
       context: this.context,
     };

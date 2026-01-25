@@ -1,0 +1,105 @@
+{
+  "version": "1.0",
+  "modules": [],
+  "entities": [
+    {
+      "name": "Document",
+      "properties": [
+        {
+          "name": "title",
+          "type": { "name": "string", "nullable": false },
+          "modifiers": ["required"]
+        },
+        {
+          "name": "content",
+          "type": { "name": "string", "nullable": false },
+          "defaultValue": { "kind": "string", "value": "" },
+          "modifiers": []
+        },
+        {
+          "name": "isPublic",
+          "type": { "name": "boolean", "nullable": false },
+          "defaultValue": { "kind": "boolean", "value": false },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        {
+          "name": "makePublic",
+          "entity": "Document",
+          "parameters": [],
+          "guards": [],
+          "actions": [
+            {
+              "kind": "mutate",
+              "target": "isPublic",
+              "expression": { "kind": "literal", "value": { "kind": "boolean", "value": true } }
+            }
+          ],
+          "emits": ["DocumentPublished"]
+        },
+        {
+          "name": "remove",
+          "entity": "Document",
+          "parameters": [],
+          "guards": [],
+          "actions": [],
+          "emits": ["DocumentDeleted"]
+        }
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Document",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "DocumentPublished",
+      "channel": "document.published",
+      "payload": [
+        {
+          "name": "documentId",
+          "type": { "name": "string", "nullable": false },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DocumentDeleted",
+      "channel": "document.deleted",
+      "payload": [
+        {
+          "name": "documentId",
+          "type": { "name": "string", "nullable": false },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [],
+  "policies": [
+    {
+      "name": "adminOnly",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": { "kind": "identifier", "name": "user" },
+          "property": "role"
+        },
+        "right": { "kind": "literal", "value": { "kind": "string", "value": "admin" } }
+      },
+      "message": "Only administrators can execute commands"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+entity Author {
+  property required name: string
+  hasMany books: Book
+}
+
+entity Book {
+  property required title: string
+  property year: number = 2024
+  belongsTo author: Author
+}
+
+store Author in memory
+store Book in memory

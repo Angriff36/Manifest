@@ -1,0 +1,12 @@
+entity Item {
+  property required price: number
+  property quantity: number = 1
+  property discountPercent: number = 0
+
+  computed total: number = price * quantity
+  computed discountedTotal: number = total * (1 - discountPercent / 100)
+  computed hasDiscount: boolean = discountPercent > 0
+  computed isExpensive: boolean = total > 100
+}
+
+store Item in memory

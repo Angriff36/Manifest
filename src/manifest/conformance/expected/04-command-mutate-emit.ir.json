@@ -1,0 +1,131 @@
+{
+  "version": "1.0",
+  "modules": [],
+  "entities": [
+    {
+      "name": "Counter",
+      "properties": [
+        {
+          "name": "value",
+          "type": { "name": "number", "nullable": false },
+          "defaultValue": { "kind": "number", "value": 0 },
+          "modifiers": []
+        },
+        {
+          "name": "lastUpdated",
+          "type": { "name": "string", "nullable": false },
+          "defaultValue": { "kind": "string", "value": "" },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        {
+          "name": "increment",
+          "entity": "Counter",
+          "parameters": [],
+          "guards": [],
+          "actions": [
+            {
+              "kind": "mutate",
+              "target": "value",
+              "expression": {
+                "kind": "binary",
+                "operator": "+",
+                "left": { "kind": "identifier", "name": "value" },
+                "right": { "kind": "literal", "value": { "kind": "number", "value": 1 } }
+              }
+            }
+          ],
+          "emits": ["CounterIncremented"]
+        },
+        {
+          "name": "reset",
+          "entity": "Counter",
+          "parameters": [],
+          "guards": [],
+          "actions": [
+            {
+              "kind": "mutate",
+              "target": "value",
+              "expression": { "kind": "literal", "value": { "kind": "number", "value": 0 } }
+            }
+          ],
+          "emits": ["CounterReset"]
+        },
+        {
+          "name": "setValue",
+          "entity": "Counter",
+          "parameters": [
+            {
+              "name": "newValue",
+              "type": { "name": "number", "nullable": false },
+              "required": true
+            }
+          ],
+          "guards": [],
+          "actions": [
+            {
+              "kind": "mutate",
+              "target": "value",
+              "expression": { "kind": "identifier", "name": "newValue" }
+            }
+          ],
+          "emits": ["CounterSet"]
+        }
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Counter",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "CounterIncremented",
+      "channel": "counter.incremented",
+      "payload": [
+        {
+          "name": "counterId",
+          "type": { "name": "string", "nullable": false },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CounterReset",
+      "channel": "counter.reset",
+      "payload": [
+        {
+          "name": "counterId",
+          "type": { "name": "string", "nullable": false },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CounterSet",
+      "channel": "counter.set",
+      "payload": [
+        {
+          "name": "counterId",
+          "type": { "name": "string", "nullable": false },
+          "required": true
+        },
+        {
+          "name": "newValue",
+          "type": { "name": "number", "nullable": false },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [],
+  "policies": []
+}

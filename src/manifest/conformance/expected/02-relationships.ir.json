@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "modules": [],
+  "entities": [
+    {
+      "name": "Author",
+      "properties": [
+        {
+          "name": "name",
+          "type": { "name": "string", "nullable": false },
+          "modifiers": ["required"]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "books",
+          "kind": "hasMany",
+          "target": "Book"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Book",
+      "properties": [
+        {
+          "name": "title",
+          "type": { "name": "string", "nullable": false },
+          "modifiers": ["required"]
+        },
+        {
+          "name": "year",
+          "type": { "name": "number", "nullable": false },
+          "defaultValue": { "kind": "number", "value": 2024 },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "author",
+          "kind": "belongsTo",
+          "target": "Author"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Author",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Book",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": []
+}

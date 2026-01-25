@@ -1,0 +1,169 @@
+{
+  "testCases": [
+    {
+      "name": "complete command succeeds on incomplete task",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-1", "title": "Test Task", "completed": false }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Task",
+        "instanceId": "task-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": true,
+        "emittedEvents": [
+          {
+            "name": "TaskCompleted",
+            "channel": "task.completed",
+            "payload": { "result": true },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-1",
+        "title": "Test Task",
+        "completed": true,
+        "priority": 1
+      }
+    },
+    {
+      "name": "complete command fails on already completed task",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-2", "title": "Done Task", "completed": true }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Task",
+        "instanceId": "task-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'complete'",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "setPriority succeeds with valid level",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-3", "title": "Priority Task", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "setPriority",
+        "entityName": "Task",
+        "instanceId": "task-3",
+        "input": { "level": 3 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 3,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "task-3",
+        "title": "Priority Task",
+        "completed": false,
+        "priority": 3
+      }
+    },
+    {
+      "name": "setPriority fails with level below 1",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-4", "title": "Low Priority Task", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "setPriority",
+        "entityName": "Task",
+        "instanceId": "task-4",
+        "input": { "level": 0 }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'setPriority'",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "setPriority fails with level above 5",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-5", "title": "High Priority Task", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "setPriority",
+        "entityName": "Task",
+        "instanceId": "task-5",
+        "input": { "level": 10 }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'setPriority'",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "archive fails on incomplete task",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-6", "title": "Incomplete Task", "completed": false }
+        }
+      },
+      "command": {
+        "name": "archive",
+        "entityName": "Task",
+        "instanceId": "task-6",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'archive'",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "archive succeeds on completed task",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-7", "title": "Completed Task", "completed": true }
+        }
+      },
+      "command": {
+        "name": "archive",
+        "entityName": "Task",
+        "instanceId": "task-7",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "TaskArchived",
+            "channel": "task.archived",
+            "payload": { "result": null },
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    }
+  ]
+}

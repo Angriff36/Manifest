@@ -1,0 +1,26 @@
+entity Document {
+  property required title: string
+  property content: string = ""
+  property isPublic: boolean = false
+
+  command makePublic() {
+    mutate isPublic = true
+    emit DocumentPublished
+  }
+
+  command remove() {
+    emit DocumentDeleted
+  }
+}
+
+store Document in memory
+
+event DocumentPublished: "document.published" {
+  documentId: string
+}
+
+event DocumentDeleted: "document.deleted" {
+  documentId: string
+}
+
+policy adminOnly execute: user.role == "admin" "Only administrators can execute commands"

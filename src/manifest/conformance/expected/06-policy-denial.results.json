@@ -1,0 +1,117 @@
+{
+  "testCases": [
+    {
+      "name": "admin user can execute makePublic command",
+      "context": {
+        "user": { "id": "admin-1", "role": "admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-1", "title": "Admin Doc", "isPublic": false }
+        }
+      },
+      "command": {
+        "name": "makePublic",
+        "entityName": "Document",
+        "instanceId": "doc-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentPublished",
+            "channel": "document.published",
+            "payload": { "result": true },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "doc-1",
+        "title": "Admin Doc",
+        "content": "",
+        "isPublic": true
+      }
+    },
+    {
+      "name": "non-admin user is denied by policy",
+      "context": {
+        "user": { "id": "user-1", "role": "user" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-2", "title": "User Doc", "isPublic": false }
+        }
+      },
+      "command": {
+        "name": "makePublic",
+        "entityName": "Document",
+        "instanceId": "doc-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only administrators can execute commands",
+        "deniedBy": "adminOnly",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "user without role is denied by policy",
+      "context": {
+        "user": { "id": "user-2" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-3", "title": "Guest Doc", "isPublic": false }
+        }
+      },
+      "command": {
+        "name": "remove",
+        "entityName": "Document",
+        "instanceId": "doc-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only administrators can execute commands",
+        "deniedBy": "adminOnly",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "admin user can execute remove command",
+      "context": {
+        "user": { "id": "admin-2", "role": "admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-4", "title": "Delete Doc" }
+        }
+      },
+      "command": {
+        "name": "remove",
+        "entityName": "Document",
+        "instanceId": "doc-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentDeleted",
+            "channel": "document.deleted",
+            "payload": { "result": null },
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    }
+  ]
+}

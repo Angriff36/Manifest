@@ -1,0 +1,94 @@
+{
+  "testCases": [
+    {
+      "name": "total computed property (numeric)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-1", "price": 25, "quantity": 4 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-1",
+        "property": "total"
+      },
+      "expectedValue": 100
+    },
+    {
+      "name": "discountedTotal computed property (numeric)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-2", "price": 100, "quantity": 1, "discountPercent": 20 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-2",
+        "property": "discountedTotal"
+      },
+      "expectedValue": 80
+    },
+    {
+      "name": "hasDiscount is true when discount > 0 (boolean)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-3", "price": 50, "discountPercent": 10 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-3",
+        "property": "hasDiscount"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "hasDiscount is false when discount is 0 (boolean)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-4", "price": 50, "discountPercent": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-4",
+        "property": "hasDiscount"
+      },
+      "expectedValue": false
+    },
+    {
+      "name": "isExpensive is true when total > 100 (boolean)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-5", "price": 51, "quantity": 2 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-5",
+        "property": "isExpensive"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "isExpensive is false when total <= 100 (boolean)",
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-6", "price": 50, "quantity": 2 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-6",
+        "property": "isExpensive"
+      },
+      "expectedValue": false
+    }
+  ]
+}

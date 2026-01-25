@@ -1,0 +1,34 @@
+entity Counter {
+  property value: number = 0
+  property lastUpdated: string = ""
+
+  command increment() {
+    mutate value = value + 1
+    emit CounterIncremented
+  }
+
+  command reset() {
+    mutate value = 0
+    emit CounterReset
+  }
+
+  command setValue(newValue: number) {
+    mutate value = newValue
+    emit CounterSet
+  }
+}
+
+store Counter in memory
+
+event CounterIncremented: "counter.incremented" {
+  counterId: string
+}
+
+event CounterReset: "counter.reset" {
+  counterId: string
+}
+
+event CounterSet: "counter.set" {
+  counterId: string
+  newValue: number
+}

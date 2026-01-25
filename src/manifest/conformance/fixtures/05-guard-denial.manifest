@@ -1,0 +1,31 @@
+entity Task {
+  property required title: string
+  property completed: boolean = false
+  property priority: number = 1
+
+  command complete() {
+    guard not completed
+    mutate completed = true
+    emit TaskCompleted
+  }
+
+  command setPriority(level: number) {
+    guard level >= 1 and level <= 5
+    mutate priority = level
+  }
+
+  command archive() {
+    guard completed
+    emit TaskArchived
+  }
+}
+
+store Task in memory
+
+event TaskCompleted: "task.completed" {
+  taskId: string
+}
+
+event TaskArchived: "task.archived" {
+  taskId: string
+}

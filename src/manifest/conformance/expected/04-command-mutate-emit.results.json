@@ -1,0 +1,100 @@
+{
+  "testCases": [
+    {
+      "name": "increment command mutates value and emits event",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": { "id": "counter-1", "value": 5 }
+        }
+      },
+      "command": {
+        "name": "increment",
+        "entityName": "Counter",
+        "instanceId": "counter-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 6,
+        "emittedEvents": [
+          {
+            "name": "CounterIncremented",
+            "channel": "counter.incremented",
+            "payload": { "result": 6 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "counter-1",
+        "value": 6,
+        "lastUpdated": ""
+      }
+    },
+    {
+      "name": "reset command sets value to zero",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": { "id": "counter-2", "value": 10 }
+        }
+      },
+      "command": {
+        "name": "reset",
+        "entityName": "Counter",
+        "instanceId": "counter-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 0,
+        "emittedEvents": [
+          {
+            "name": "CounterReset",
+            "channel": "counter.reset",
+            "payload": { "result": 0 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "counter-2",
+        "value": 0,
+        "lastUpdated": ""
+      }
+    },
+    {
+      "name": "setValue command with parameter",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": { "id": "counter-3", "value": 0 }
+        }
+      },
+      "command": {
+        "name": "setValue",
+        "entityName": "Counter",
+        "instanceId": "counter-3",
+        "input": { "newValue": 42 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 42,
+        "emittedEvents": [
+          {
+            "name": "CounterSet",
+            "channel": "counter.set",
+            "payload": { "newValue": 42, "result": 42 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "counter-3",
+        "value": 42,
+        "lastUpdated": ""
+      }
+    }
+  ]
+}
