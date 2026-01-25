@@ -1,4 +1,4 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, PolicyNode, StoreNode, OutboxEventNode, ComputedPropertyNode, RelationshipNode } from './types';
+import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
 
 export class CodeGenerator {
   private out: string[] = [];
@@ -428,8 +428,7 @@ export class CodeGenerator {
     this.de(); this.line('};');
   }
 
-  private genExpose(x: ExposeNode, program: ManifestProgram) {
-    const entity = program.entities.find(e => e.name === x.entity);
+  private genExpose(x: ExposeNode, _program: ManifestProgram) {
     if (x.protocol === 'rest') {
       this.line(`const ${x.name}API = {`);
       this.in(); this.line(`basePath: '/${x.name}',`);

@@ -1,4 +1,4 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, PolicyNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
+import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
 
 export class StandaloneGenerator {
   private out: string[] = [];
@@ -376,7 +376,7 @@ export class StandaloneGenerator {
     this.de(); this.line('};');
   }
 
-  private genExpose(x: ExposeNode, program: ManifestProgram) {
+  private genExpose(x: ExposeNode, _program: ManifestProgram) {
     if (x.protocol === 'rest') {
       this.line(`export const ${x.name}API = {`);
       this.in(); this.line(`basePath: '/${x.name}',`);

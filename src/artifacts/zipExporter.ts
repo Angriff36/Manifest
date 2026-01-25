@@ -21,20 +21,6 @@ export function generateProjectName(source: string): string {
   return name.toLowerCase();
 }
 
-function extractEntityNames(source: string): string[] {
-  const entities: string[] = [];
-  const regex = /entity\s+(\w+)/g;
-  let match;
-  while ((match = regex.exec(source)) !== null) {
-    entities.push(match[1]);
-  }
-  return entities;
-}
-
-function hasStoreDeclarations(source: string): boolean {
-  return /store\s+\w+\s+in\s+/.test(source);
-}
-
 export function buildFileMap(files: ProjectFiles): Record<string, string> {
   const projectName = generateProjectName(files.source);
 
@@ -79,9 +65,6 @@ export function buildFileMap(files: ProjectFiles): Record<string, string> {
 
 export function buildRunnableProjectFiles(files: ProjectFiles): Record<string, string> {
   const projectName = generateProjectName(files.source);
-  const entityNames = extractEntityNames(files.source);
-  const hasStores = hasStoreDeclarations(files.source);
-
   const parser = new Parser();
   const { program, errors } = parser.parse(files.source);
 
@@ -91,10 +74,6 @@ export function buildRunnableProjectFiles(files: ProjectFiles): Record<string, s
     generatedCode = generator.generate(program);
   }
 
-  const storeDeclarations = hasStores || entityNames.length > 0;
-  const actualEntityNames = program.entities.map(e => e.name);
-  const storeNames = program.stores.map(s => s.entity);
-
   return {
     'index.html': generateIndexHtml(projectName),
     'vite.config.ts': generateViteConfig(),
@@ -103,7 +82,7 @@ export function buildRunnableProjectFiles(files: ProjectFiles): Record<string, s
     'README.md': generateReadme(projectName),
     'src/main.tsx': generateMainTsx(),
     'src/index.css': generateIndexCss(),
-    'src/App.tsx': generateAppTsx(actualEntityNames, storeNames.length > 0),
+    'src/App.tsx': generateAppTsx(),
     'src/manifest/source.manifest': files.source,
     'src/manifest/runtime.ts': RUNTIME_SOURCE,
     'src/manifest/generated.ts': generatedCode,
