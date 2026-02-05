@@ -1,0 +1,33 @@
+// Concurrency Conflict Detection - vNext Optimistic Concurrency
+// Tests versionProperty and versionAtProperty features
+
+entity Document {
+  property required id: string = ""
+  property title: string = ""
+  property content: string = ""
+
+  versionProperty version: number
+  versionAtProperty versionAt: number
+
+  command create(title: string, content: string) {
+    guard title != null and title != ""
+    mutate id = uuid()
+    mutate title = title
+    mutate content = content
+    mutate version = 1
+    mutate versionAt = now()
+    emit DocumentCreated
+  }
+
+  command update(newTitle: string, newContent: string, currentVersion: number) {
+    guard newTitle != null and newTitle != ""
+    guard self.version == currentVersion
+    mutate title = newTitle
+    mutate content = newContent
+    mutate version = currentVersion + 1
+    mutate versionAt = now()
+    emit DocumentUpdated
+  }
+}
+
+store Document in memory

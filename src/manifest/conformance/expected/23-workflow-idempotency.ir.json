@@ -1,0 +1,518 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "ad56b7ad9efe468b4023cfe194ec981018a4eea9378182cd60c82ec89bf7a695",
+    "compilerVersion": "0.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "WorkflowStep",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "executedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "retryCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "isPending",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "pending"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isInProgress",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "in_progress"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isCompleted",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "completed"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "canStart",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "isPending"
+          },
+          "dependencies": []
+        },
+        {
+          "name": "canComplete",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "isInProgress"
+          },
+          "dependencies": []
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "startStep",
+        "completeStep",
+        "forceComplete",
+        "retryStep"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [],
+  "events": [
+    {
+      "name": "StepStarted",
+      "channel": "workflow.step.started",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "startedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "StepCompleted",
+      "channel": "workflow.step.completed",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "completedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "StepRetried",
+      "channel": "workflow.step.retried",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "retryCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "retriedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "startStep",
+      "entity": "WorkflowStep",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "in_progress"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "StepStarted"
+      ]
+    },
+    {
+      "name": "completeStep",
+      "entity": "WorkflowStep",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "in_progress"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "executedAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "StepCompleted"
+      ]
+    },
+    {
+      "name": "forceComplete",
+      "entity": "WorkflowStep",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "executedAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "StepCompleted"
+      ]
+    },
+    {
+      "name": "retryStep",
+      "entity": "WorkflowStep",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "failed"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "retryCount",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "retryCount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "emits": [
+        "StepRetried"
+      ]
+    }
+  ],
+  "policies": []
+}

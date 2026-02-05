@@ -1,0 +1,17 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Reserved word 'block' cannot be used as an identifier",
+      "line": 14,
+      "column": 20
+    },
+    {
+      "severity": "error",
+      "message": "Unexpected: \n",
+      "line": 54,
+      "column": 31
+    }
+  ]
+}

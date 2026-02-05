@@ -1,0 +1,378 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "c9acf9c2ee36fa303cedbe805e09e3c570bea961a50879c631d43515eab3ec5d",
+    "compilerVersion": "0.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "FinancialRecord",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "requestedBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "approvedBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "approve",
+        "reject",
+        "process"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "FinancialRecord",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "RecordApproved",
+      "channel": "financial.record.approved",
+      "payload": [
+        {
+          "name": "recordId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "approvedBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "RecordRejected",
+      "channel": "financial.record.rejected",
+      "payload": [
+        {
+          "name": "recordId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "RecordProcessed",
+      "channel": "financial.record.processed",
+      "payload": [
+        {
+          "name": "recordId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "processedBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "approve",
+      "entity": "FinancialRecord",
+      "parameters": [],
+      "guards": [],
+      "constraints": [
+        {
+          "code": "approvalPending",
+          "expression": {
+            "kind": "binary",
+            "operator": "&&",
+            "left": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "status"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "pending"
+                }
+              }
+            },
+            "right": {
+              "kind": "binary",
+              "operator": ">",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "amount"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 500
+                }
+              }
+            }
+          },
+          "severity": "WARN",
+          "messageTemplate": "Must be approved before processing",
+          "detailsMapping": {
+            "currentStatus": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "currentAmount": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "approvedBy": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "approvedBy"
+            }
+          },
+          "overrideable": true,
+          "overridePolicyRef": "canApproveLargeAmounts"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "approved"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "approvedBy",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "id"
+          }
+        }
+      ],
+      "emits": [
+        "RecordApproved"
+      ]
+    },
+    {
+      "name": "reject",
+      "entity": "FinancialRecord",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "rejected"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "RecordRejected"
+      ]
+    },
+    {
+      "name": "process",
+      "entity": "FinancialRecord",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "processed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "RecordProcessed"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "canApproveLargeAmounts",
+      "action": "override",
+      "expression": {
+        "kind": "binary",
+        "operator": "||",
+        "left": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "manager"
+            }
+          }
+        },
+        "right": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "admin"
+            }
+          }
+        }
+      },
+      "message": "Only managers and admins can approve large amounts"
+    }
+  ]
+}

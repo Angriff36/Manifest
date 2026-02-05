@@ -62,7 +62,8 @@
             }
           },
           "severity": "block",
-          "message": "Price must be positive"
+          "message": "Price must be positive",
+          "overrideable": false
         },
         {
           "name": "nameNotEmpty",
@@ -87,7 +88,8 @@
             }
           },
           "severity": "block",
-          "message": "Name cannot be empty"
+          "message": "Name cannot be empty",
+          "overrideable": false
         }
       ],
       "policies": []

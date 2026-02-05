@@ -1,0 +1,30 @@
+{
+  "testCases": [
+    {
+      "name": "first execution succeeds",
+      "entity": "WorkflowStep",
+      "data": { "id": "step1", "name": "Initial Setup" },
+      "command": "startStep",
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "re-execution of completed step is safe (no-op)",
+      "entity": "WorkflowStep",
+      "data": { "id": "step1", "name": "Initial Setup", "status": "completed", "executedAt": 1000000000000 },
+      "command": "completeStep",
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "invalid status transition is blocked",
+      "entity": "WorkflowStep",
+      "data": { "id": "step2", "name": "Invalid Transition", "status": "completed" },
+      "command": "startStep",
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validStatusTransition",
+          "expression": "self.status in [\"pending\", \"in_progress\", \"completed\", \"failed\"]"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,211 @@
+{
+  "testCases": [
+    {
+      "name": "valid order passes all constraints",
+      "entity": "Order",
+      "data": { "id": "o1", "customerId": "c1", "status": "pending", "amount": 500, "priority": "normal", "createdAt": 1000000000000 },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "negative amount fails positiveAmount constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o2", "customerId": "c2", "status": "pending", "amount": -100, "priority": "normal", "createdAt": 1000000000000 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "positiveAmount",
+          "expression": "self.amount >= 0",
+          "severity": "block"
+        }
+      ]
+    },
+    {
+      "name": "invalid status fails validStatus constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o3", "customerId": "c3", "status": "unknown", "amount": 100, "priority": "normal", "createdAt": 1000000000000 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validStatus",
+          "expression": "self.status in [\"pending\", \"processing\", \"shipped\", \"delivered\", \"cancelled\"]",
+          "severity": "block"
+        }
+      ]
+    },
+    {
+      "name": "high priority + large amount triggers severityWarning constraint (warn)",
+      "entity": "Order",
+      "data": { "id": "o4", "customerId": "c4", "status": "pending", "amount": 2000, "priority": "high", "createdAt": 1000000000000 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityWarning",
+          "expression": "self.priority == \"high\" and self.amount > 1000",
+          "severity": "warn"
+        }
+      ]
+    },
+    {
+      "name": "cancelled order with non-zero amount triggers severityBlock constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o5", "customerId": "c5", "status": "cancelled", "amount": 500, "priority": "normal", "createdAt": 1000000000000 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityBlock",
+          "expression": "self.status == \"cancelled\" and self.amount > 0",
+          "severity": "block"
+        }
+      ]
+    },
+    {
+      "name": "recently created order triggers severityInfo constraint (ok)",
+      "entity": "Order",
+      "data": { "id": "o6", "customerId": "c6", "status": "pending", "amount": 100, "priority": "normal", "createdAt": 0 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityInfo",
+          "expression": "self.createdAt == 0",
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "name": "updateStatus with same status triggers infoUpdate constraint (ok)",
+      "entity": "Order",
+      "data": { "id": "o7", "customerId": "c7", "status": "pending", "amount": 100, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "updateStatus",
+      "commandArgs": { "newStatus": "pending" },
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "infoUpdate",
+            "expression": "self.status != newStatus",
+            "severity": "ok",
+            "message": "Status is being changed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateStatus cancelled order triggers blockCancelled constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o8", "customerId": "c8", "status": "cancelled", "amount": 0, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "updateStatus",
+      "commandArgs": { "newStatus": "processing" },
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "blockCancelled",
+            "expression": "self.status == \"cancelled\"",
+            "severity": "block",
+            "message": "Cannot update cancelled order"
+          }
+        ]
+      }
+    },
+    {
+      "name": "process with large amount triggers warnManualReview constraint (warn)",
+      "entity": "Order",
+      "data": { "id": "o9", "customerId": "c9", "status": "pending", "amount": 15000, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "process",
+      "commandArgs": {},
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "warnManualReview",
+            "expression": "self.amount > 10000",
+            "severity": "warn",
+            "message": "Manual review required for large orders"
+          }
+        ]
+      }
+    },
+    {
+      "name": "process shipped order triggers blockInvalid constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o10", "customerId": "c10", "status": "shipped", "amount": 100, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "process",
+      "commandArgs": {},
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "blockInvalid",
+            "expression": "self.status not in [\"pending\", \"processing\"]",
+            "severity": "block",
+            "message": "Cannot process order in current state"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel already cancelled order triggers alreadyCancelled constraint (ok)",
+      "entity": "Order",
+      "data": { "id": "o11", "customerId": "c11", "status": "cancelled", "amount": 0, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "cancel",
+      "commandArgs": {},
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "alreadyCancelled",
+            "expression": "self.status == \"cancelled\"",
+            "severity": "ok",
+            "message": "Order is already cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel order with large amount triggers refundWarning constraint (warn)",
+      "entity": "Order",
+      "data": { "id": "o12", "customerId": "c12", "status": "pending", "amount": 500, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "cancel",
+      "commandArgs": {},
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "refundWarning",
+            "expression": "self.amount > 100",
+            "severity": "warn",
+            "message": "Refund required"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel shipped order triggers blockShipped constraint (block)",
+      "entity": "Order",
+      "data": { "id": "o13", "customerId": "c13", "status": "shipped", "amount": 100, "priority": "normal", "createdAt": 1000000000000 },
+      "command": "cancel",
+      "commandArgs": {},
+      "expectedCommandResult": {
+        "constraintFailures": [
+          {
+            "constraintName": "blockShipped",
+            "expression": "self.status == \"shipped\"",
+            "severity": "block",
+            "message": "Cannot cancel shipped order"
+          }
+        ]
+      }
+    },
+    {
+      "name": "multiple constraint failures simultaneously (mixed severities)",
+      "entity": "Order",
+      "data": { "id": "o14", "customerId": "c14", "status": "cancelled", "amount": 2000, "priority": "high", "createdAt": 0 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityBlock",
+          "expression": "self.status == \"cancelled\" and self.amount > 0",
+          "severity": "block"
+        },
+        {
+          "constraintName": "severityWarning",
+          "expression": "self.priority == \"high\" and self.amount > 1000",
+          "severity": "warn"
+        },
+        {
+          "constraintName": "severityInfo",
+          "expression": "self.createdAt == 0",
+          "severity": "ok"
+        }
+      ]
+    }
+  ]
+}

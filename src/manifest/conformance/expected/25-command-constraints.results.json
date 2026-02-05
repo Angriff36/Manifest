@@ -1,0 +1,264 @@
+{
+  "testCases": [
+    {
+      "name": "updateStatus with valid parameters and passing constraints",
+      "entity": "Order",
+      "data": {
+        "id": "order1",
+        "customerId": "customer1",
+        "status": "pending",
+        "amount": 150
+      },
+      "command": "updateStatus",
+      "parameters": {
+        "newStatus": "processing"
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintOutcomes": [
+          {
+            "code": "statusChangeAllowed",
+            "constraintName": "statusChangeAllowed",
+            "severity": "block",
+            "formatted": "newStatus != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": true
+          },
+          {
+            "code": "amountVerified",
+            "constraintName": "amountVerified",
+            "severity": "block",
+            "formatted": "self.amount >= 100",
+            "message": "Orders under $100 require manual approval",
+            "passed": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateStatus with warn constraint (passed)",
+      "entity": "Order",
+      "data": {
+        "id": "order2",
+        "customerId": "customer2",
+        "status": "pending",
+        "amount": 50
+      },
+      "command": "updateStatus",
+      "parameters": {
+        "newStatus": "processing"
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintOutcomes": [
+          {
+            "code": "statusChangeAllowed",
+            "constraintName": "statusChangeAllowed",
+            "severity": "block",
+            "formatted": "newStatus != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": true
+          },
+          {
+            "code": "amountVerified",
+            "constraintName": "amountVerified",
+            "severity": "block",
+            "formatted": "self.amount >= 100",
+            "message": "Orders under $100 require manual approval",
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel command with warn constraint (passed)",
+      "entity": "Order",
+      "data": {
+        "id": "order3",
+        "customerId": "customer3",
+        "status": "pending",
+        "amount": 75
+      },
+      "command": "cancel",
+      "parameters": {},
+      "expectedResult": {
+        "success": true,
+        "constraintOutcomes": [
+          {
+            "code": "cannotCancelCancelled",
+            "constraintName": "cannotCancelCancelled",
+            "severity": "block",
+            "formatted": "self.status != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": true
+          },
+          {
+            "code": "verifyCancellation",
+            "constraintName": "verifyCancellation",
+            "severity": "warn",
+            "formatted": "true",
+            "message": "Cancellation confirmed",
+            "passed": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "updateStatus with block constraint (status change prevented)",
+      "entity": "Order",
+      "data": {
+        "id": "order4",
+        "customerId": "customer4",
+        "status": "cancelled",
+        "amount": 200
+      },
+      "command": "updateStatus",
+      "parameters": {
+        "newStatus": "shipped"
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Cannot cancel an already cancelled order",
+        "constraintOutcomes": [
+          {
+            "code": "statusChangeAllowed",
+            "constraintName": "statusChangeAllowed",
+            "severity": "block",
+            "formatted": "newStatus != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": false
+          },
+          {
+            "code": "amountVerified",
+            "constraintName": "amountVerified",
+            "severity": "block",
+            "formatted": "self.amount >= 100",
+            "message": "Orders under $100 require manual approval",
+            "passed": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "cancel command with block constraint (prevented)",
+      "entity": "Order",
+      "data": {
+        "id": "order5",
+        "customerId": "customer5",
+        "status": "cancelled",
+        "amount": 100
+      },
+      "command": "cancel",
+      "parameters": {},
+      "expectedResult": {
+        "success": false,
+        "error": "Cannot cancel an already cancelled order",
+        "constraintOutcomes": [
+          {
+            "code": "cannotCancelCancelled",
+            "constraintName": "cannotCancelCancelled",
+            "severity": "block",
+            "formatted": "self.status != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": false
+          },
+          {
+            "code": "verifyCancellation",
+            "constraintName": "verifyCancellation",
+            "severity": "warn",
+            "formatted": "true",
+            "message": "Cancellation confirmed",
+            "passed": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "entity constraints with block constraint (prevented)",
+      "entity": "Order",
+      "data": {
+        "id": "order6",
+        "customerId": "customer6",
+        "status": "invalid",
+        "amount": -50
+      },
+      "command": "updateStatus",
+      "parameters": {
+        "newStatus": "processing"
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Invalid order status",
+        "constraintOutcomes": [
+          {
+            "code": "positiveAmount",
+            "constraintName": "positiveAmount",
+            "severity": "block",
+            "formatted": "self.amount >= 0",
+            "message": "Amount must be non-negative",
+            "passed": false
+          },
+          {
+            "code": "validStatus",
+            "constraintName": "validStatus",
+            "severity": "block",
+            "formatted": "self.status in [\"pending\", \"processing\", \"shipped\", \"delivered\", \"cancelled\"]",
+            "message": "Invalid order status",
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "entity constraints with warn constraint (passed)",
+      "entity": "Order",
+      "data": {
+        "id": "order7",
+        "customerId": "customer7",
+        "status": "pending",
+        "amount": 80
+      },
+      "command": "updateStatus",
+      "parameters": {
+        "newStatus": "shipped"
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintOutcomes": [
+          {
+            "code": "positiveAmount",
+            "constraintName": "positiveAmount",
+            "severity": "block",
+            "formatted": "self.amount >= 0",
+            "message": "Amount must be non-negative",
+            "passed": true
+          },
+          {
+            "code": "validStatus",
+            "constraintName": "validStatus",
+            "severity": "block",
+            "formatted": "self.status in [\"pending\", \"processing\", \"shipped\", \"delivered\", \"cancelled\"]",
+            "message": "Invalid order status",
+            "passed": true
+          },
+          {
+            "code": "statusChangeAllowed",
+            "constraintName": "statusChangeAllowed",
+            "severity": "block",
+            "formatted": "newStatus != \"cancelled\"",
+            "message": "Cannot cancel an already cancelled order",
+            "passed": true
+          },
+          {
+            "code": "amountVerified",
+            "constraintName": "amountVerified",
+            "severity": "block",
+            "formatted": "self.amount >= 100",
+            "message": "Orders under $100 require manual approval",
+            "passed": false
+          }
+        ]
+      }
+    }
+  ]
+}

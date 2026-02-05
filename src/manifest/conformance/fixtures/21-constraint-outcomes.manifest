@@ -1,0 +1,61 @@
+entity Order {
+  property required id: string
+  property required customerId: string
+  property required status: string = "pending"
+  property amount: number = 0
+  property priority: string = "normal"
+  property createdAt: number = 0
+  property updatedAt: number = 0
+
+  constraint positiveAmount: self.amount >= 0 "Amount must be non-negative"
+  constraint validStatus: self.status in ["pending", "processing", "shipped", "delivered", "cancelled"] "Invalid order status"
+  constraint severityInfo:ok self.createdAt == 0 "Order created recently"
+  constraint severityWarning:warn self.priority == "high" and self.amount > 1000 "High priority order with large amount"
+  constraint severityBlock:block self.status == "cancelled" and self.amount > 0 "Cannot modify cancelled orders with non-zero amount"
+
+  command updateStatus(newStatus: string) {
+    constraint infoUpdate:ok self.status != newStatus "Status is being changed"
+    constraint warnHighAmount:warn self.amount > 5000 "Large amount change requires verification"
+    constraint blockCancelled:block self.status == "cancelled" "Cannot update cancelled order"
+
+    mutate status = newStatus
+    mutate updatedAt = now()
+    emit OrderStatusUpdated
+  }
+
+  command process() {
+    constraint infoProcessing:ok self.status == "pending" "Order is being processed"
+    constraint warnManualReview:warn self.amount > 10000 "Manual review required for large orders"
+    constraint blockInvalid:block not (self.status in ["pending", "processing"]) "Cannot process order in current state"
+
+    mutate status = "processing"
+    emit OrderProcessing
+  }
+
+  command cancel() {
+    constraint alreadyCancelled:ok self.status == "cancelled" "Order is already cancelled"
+    constraint refundWarning:warn self.amount > 100 "Refund required"
+    constraint blockShipped:block self.status == "shipped" "Cannot cancel shipped order"
+
+    mutate status = "cancelled"
+    emit OrderCancelled
+  }
+}
+
+store Order in memory
+
+event OrderStatusUpdated: "order.status.updated" {
+  orderId: string
+  oldStatus: string
+  newStatus: string
+}
+
+event OrderProcessing: "order.processing" {
+  orderId: string
+  timestamp: number
+}
+
+event OrderCancelled: "order.cancelled" {
+  orderId: string
+  timestamp: number
+}

@@ -2,7 +2,9 @@
 
 **Status**: Phases 1-5 Complete - plus Relationship Memoization Done
 
-**Last Updated**: 2026-02-05
+**⚠️ AGENT INTERRUPTED**: Fixing vNext constraint severity tests (41/149 failing). See "Current Work" section below for details.
+
+**Last Updated**: 2026-02-06 (Agent interrupted during constraint severity test fixes)
 
 
 ---
@@ -50,7 +52,7 @@ The following features are FULLY IMPLEMENTED and VERIFIED:
 | emitConcurrencyConflictEvent method | ✅ DONE | `runtime-engine.ts` |
 | IR cache module | ✅ DONE | `ir-cache.ts` |
 | Relationship memoization | ✅ DONE | `runtime-engine.ts` |
-| Conformance fixtures 21-27 | ❌ PENDING | Files do not exist |
+| Conformance fixtures 21-27 | ⚠️ CREATED | Fixtures exist but tests failing (41/149 failed) |
 | vNext documentation | ❌ PENDING | Not written |
 
 
@@ -78,7 +80,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - ✅ New event types (OverrideApplied, ConcurrencyConflict)
 
 **Remaining Work:**
-- ❌ Conformance fixtures 21-27 for testing vNext features
+- ⚠️ Fix vNext constraint severity tests (41/149 failing - see "Current Work" section below)
 - ❌ Documentation updates for all new features
 
 **Implementation Progress:**
@@ -91,6 +93,110 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 
 ---
 
+
+---
+
+## Current Work (BLOCKER IDENTIFIED - 2026-02-05)
+
+### Progress Made:
+- ✅ Fixed lexer: Added missing `block` keyword to KEYWORDS set (was causing parse errors)
+- ✅ Fixed runtime: Updated `validateConstraints()` to only return `severity='block'` failures (ok/warn don't block)
+- ✅ Regenerated IR for all 27 fixtures
+
+### Remaining Blocker: Constraint Semantics Ambiguity
+
+**Problem:**
+The baseline fixtures (01-20) and vNext fixtures (21-27) use incompatible constraint semantics:
+
+1. **Baseline semantics (fixtures 01-20):**
+   - Constraints define POSITIVE conditions (what must be true for validity)
+   - Expression FALSE → Constraint FAILS (condition not met)
+   - Example: `pricePositive: self.price > 0` → FALSE when price=0 → FAILS ✓
+
+2. **vNext fixture 21 semantics:**
+   - Some constraints define NEGATIVE conditions (what must NOT be true for validity)
+   - Expression TRUE → Constraint should FAIL (bad condition present)
+   - Example: `severityBlock: self.status == "cancelled" and self.amount > 0`
+     - TRUE when status="cancelled" → Should FAIL (bad state present)
+     - But with baseline semantics, TRUE would PASS
+
+**Evidence:**
+- Test case 5: `{ "status": "cancelled", "amount": 500 }` expects `severityBlock` in failures
+- Expression evaluates TRUE, but baseline semantics would consider this a PASS
+- Test case 4: `{ "priority": "high", "amount": 2000 }` expects `severityWarning` in failures
+- Expression evaluates TRUE, but should not block (warn severity)
+
+**Resolution Required (Spec Decision):**
+One of these needs to be chosen:
+
+**Option A:** Fix vNext fixtures to use baseline-compatible semantics:
+```manifest
+// Change from (describes bad state):
+constraint severityBlock:block self.status == "cancelled" and self.amount > 0
+
+// To (describes required state):
+constraint severityBlock:block self.status != "cancelled" or self.amount <= 0
+```
+
+**Option B:** Implement hybrid constraint type detection:
+- Positive constraints (like `amount >= 0`): FALSE = fail
+- Negative constraints (like `status == "cancelled"`): TRUE = fail
+- Detection heuristic: Constraints starting with "severity" are negative-type?
+
+**Option C:** Introduce explicit syntax for negative constraints:
+```manifest
+// Proposed syntax:
+negative constraint severityBlock:block self.status == "cancelled" and self.amount > 0
+```
+
+**Decision Point:** Which approach aligns with the Manifest vNext design intent?
+
+---
+
+## Current Work (INTERRUPTED - 2026-02-06)
+
+### Agent Interrupted During: Fixing vNext Constraint Severity Tests
+
+**What was completed:**
+- ✅ Deleted 4 obsolete `.diagnostics.json` files (fixtures 21, 25, 26, 27) - no longer needed since fixtures now compile successfully
+- ✅ Ran `npm run conformance:regen` - all 27 fixtures compiled successfully to IR
+
+**Current issue being debugged:**
+- ❌ 41 tests failing out of 149 total tests
+- Specific failure: `21-constraint-outcomes.manifest > valid order passes all constraints`
+  - Expected: 0 constraint failures
+  - Actual: 3 constraint failures
+  - AssertionError at `conformance.test.ts:406` in `checkConstraints` call
+
+**Root cause identified:**
+The vNext constraint severity system (`ok`/`warn`/`block`) is not working correctly in the runtime. Constraints with `severity: ok` or `severity: warn` should NOT be counted as failures in the same way `block` constraints are, but they're being counted as failures.
+
+**Next step to continue:**
+Investigate and fix the `checkConstraints` method in `runtime-engine.ts` (around line 406 based on stack trace) to properly handle severity levels:
+- `ok` constraints: informational only, never block, never count as failure
+- `warn` constraints: don't block execution, may be counted separately
+- `block` constraints: block on failure, count as failure
+
+**⚠️ IMPORTANT SEMANTIC NOTE:**
+There's ambiguity about whether constraints should be reported when they evaluate TRUE (fire) or FALSE (fail). The test names suggest "triggers" means TRUE, but traditional constraint semantics suggest FALSE means failure. Verify actual test output with `npm test -- --grep "valid order passes all constraints"` before implementing changes. The fix may be:
+- Check `constraint.severity` field in the IR
+- Only add to `failures` array based on severity (ok = never, warn = informational only, block = always)
+- Or: OK/WARN report when TRUE (they "fire"), BLOCK reports when TRUE (it "blocks")
+
+**🚨 IF STUCK: Log a blocker in this implementation plan and END THE ITERATION.**
+Do not go in circles. If you cannot determine the correct semantics from the tests within 2-3 attempts:
+1. Add a "Blockers" section below with details
+2. Commit your findings
+3. Let the next iteration pick it up with fresh context
+
+**Conformance fixtures created (need fixing):**
+- 21-constraint-outcomes.manifest ✅ exists, tests failing
+- 22-override-authorization.manifest ✅ exists
+- 23-workflow-idempotency.manifest ✅ exists
+- 24-concurrency-conflict.manifest ✅ exists
+- 25-command-constraints.manifest ✅ exists
+- 26-performance-constraints.manifest ✅ exists
+- 27-vnext-integration.manifest ✅ exists
 
 ---
 

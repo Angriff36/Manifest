@@ -1,0 +1,438 @@
+{
+  "testCases": [
+    {
+      "name": "create workflow instance successfully",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-001",
+            "name": "Order Processing",
+            "version": "1.0.0",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "expectedResult": {
+        "success": true,
+        "instanceExists": true
+      },
+      "expectedInstanceState": {
+        "id": "wf-001",
+        "name": "Order Processing",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": "",
+        "isLocked": false,
+        "concurrencyVersion": 1
+      }
+    },
+    {
+      "name": "start workflow with invalid version format",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-002",
+            "name": "Invalid Version Test",
+            "version": "invalid",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "expectedResult": {
+        "success": false,
+        "constraintViolated": "workflowVersion"
+      }
+    },
+    {
+      "name": "pause workflow with override (admin role)",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-003",
+            "name": "Pausable Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "admin-1",
+          "role": "admin"
+        }
+      },
+      "command": {
+        "name": "pause",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-003",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintOverrides": [
+          "severityWarning",
+          "severityCritical"
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "wf-003",
+        "name": "Pausable Workflow",
+        "version": "1.0.0",
+        "status": "paused",
+        "createdBy": "user-123",
+        "isLocked": false,
+        "concurrencyVersion": 1
+      },
+      "expectedEvents": [
+        {
+          "name": "WorkflowPaused",
+          "channel": "workflow.paused",
+          "payload": {
+            "workflowId": "wf-003",
+            "previousStatus": "active"
+          },
+          "timestamp": 1000000000000
+        }
+      ]
+    },
+    {
+      "name": "lock workflow and increment concurrency version",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-004",
+            "name": "Lockable Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "admin-1",
+          "role": "admin"
+        }
+      },
+      "command": {
+        "name": "lock",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-004",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true
+      },
+      "expectedInstanceState": {
+        "id": "wf-004",
+        "name": "Lockable Workflow",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "user-123",
+        "isLocked": true,
+        "concurrencyVersion": 2
+      },
+      "expectedEvents": [
+        {
+          "name": "WorkflowLocked",
+          "channel": "workflow.locked",
+          "payload": {
+            "workflowId": "wf-004",
+            "newVersion": 2
+          },
+          "timestamp": 1000000000000
+        }
+      ]
+    },
+    {
+      "name": "fail to pause locked workflow without override",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-005",
+            "name": "Locked Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123",
+            "isLocked": true,
+            "concurrencyVersion": 3
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "manager-1",
+          "role": "manager"
+        }
+      },
+      "command": {
+        "name": "pause",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-005",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "constraintViolated": "severityCritical"
+      }
+    },
+    {
+      "name": "unlock locked workflow with critical override",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-006",
+            "name": "Locked Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123",
+            "isLocked": true,
+            "concurrencyVersion": 5
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "admin-1",
+          "role": "admin"
+        }
+      },
+      "command": {
+        "name": "unlock",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-006",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintOverrides": [
+          "severityCritical"
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "wf-006",
+        "name": "Locked Workflow",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "user-123",
+        "isLocked": false,
+        "concurrencyVersion": 6
+      },
+      "expectedEvents": [
+        {
+          "name": "WorkflowUnlocked",
+          "channel": "workflow.unlocked",
+          "payload": {
+            "workflowId": "wf-006",
+            "newVersion": 6
+          },
+          "timestamp": 1000000000000
+        }
+      ]
+    },
+    {
+      "name": "owner can modify their workflow",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-007",
+            "name": "Owner Workflow",
+            "version": "1.0.0",
+            "createdBy": "owner-1"
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "owner-1",
+          "role": "user"
+        }
+      },
+      "command": {
+        "name": "resume",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-007",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true
+      },
+      "expectedInstanceState": {
+        "id": "wf-007",
+        "name": "Owner Workflow",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "owner-1"
+      }
+    },
+    {
+      "name": "non-owner cannot modify workflow",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-008",
+            "name": "Owner Workflow",
+            "version": "1.0.0",
+            "createdBy": "owner-1"
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "user-456",
+          "role": "user"
+        }
+      },
+      "command": {
+        "name": "pause",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-008",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "policyViolation": "ownerCanModify"
+      }
+    },
+    {
+      "name": "complete workflow successfully",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-009",
+            "name": "Completable Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-009",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true
+      },
+      "expectedInstanceState": {
+        "id": "wf-009",
+        "name": "Completable Workflow",
+        "version": "1.0.0",
+        "status": "completed",
+        "createdBy": "user-123"
+      },
+      "expectedEvents": [
+        {
+          "name": "WorkflowCompleted",
+          "channel": "workflow.completed",
+          "payload": {
+            "workflowId": "wf-009",
+            "finalStatus": "completed"
+          },
+          "timestamp": 1000000000000
+        }
+      ]
+    },
+    {
+      "name": "manager can pause workflow",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-010",
+            "name": "Manager Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123"
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "manager-2",
+          "role": "manager"
+        }
+      },
+      "command": {
+        "name": "pause",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-010",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true
+      },
+      "expectedInstanceState": {
+        "id": "wf-010",
+        "name": "Manager Workflow",
+        "version": "1.0.0",
+        "status": "paused",
+        "createdBy": "user-123"
+      },
+      "expectedEvents": [
+        {
+          "name": "WorkflowPaused",
+          "channel": "workflow.paused",
+          "payload": {
+            "workflowId": "wf-010",
+            "previousStatus": "active"
+          },
+          "timestamp": 1000000000000
+        }
+      ]
+    },
+    {
+      "name": "warning constraint triggered at high concurrency",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowInstance",
+          "data": {
+            "id": "wf-011",
+            "name": "High Concurrency Workflow",
+            "version": "1.0.0",
+            "createdBy": "user-123",
+            "concurrencyVersion": 11
+          }
+        }
+      },
+      "context": {
+        "user": {
+          "id": "admin-1",
+          "role": "admin"
+        }
+      },
+      "command": {
+        "name": "lock",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-011",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "constraintWarnings": [
+          {
+            "constraint": "severityWarning",
+            "message": "Warning: High concurrency version detected"
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "wf-011",
+        "name": "High Concurrency Workflow",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "user-123",
+        "isLocked": true,
+        "concurrencyVersion": 12
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+entity WorkflowInstance {
+  property required id: string
+  property required name: string
+  property required version: string
+  property required status: string = "active"
+  property required createdBy: string
+  property createdAt: string = ""
+  property updatedAt: string = ""
+  property isLocked: boolean = false
+  property concurrencyVersion: number = 1
+
+  constraint workflowVersion: self.version matches "^\\d+\\.\\d+\\.\\d+$" "Version must be in semantic version format"
+  constraint statusValid: self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
+  constraint concurrencyConflict: self.isLocked == false "Workflow instance is locked for concurrent access"
+  constraint severityCritical:critical self.isLocked == true "Critical: Workflow instance is locked"
+  constraint severityWarning:warn self.concurrencyVersion > 10 "Warning: High concurrency version detected"
+
+  command pause() {
+    constraint canPause: self.status == "active" "Can only pause active workflows"
+    mutate status = "paused"
+    mutate updatedAt = now()
+    emit WorkflowPaused
+  }
+
+  command resume() {
+    constraint canResume: self.status == "paused" "Can only resume paused workflows"
+    mutate status = "active"
+    mutate updatedAt = now()
+    emit WorkflowResumed
+  }
+
+  command lock() {
+    constraint canLock: self.isLocked == false "Already locked"
+    mutate isLocked = true
+    mutate concurrencyVersion = self.concurrencyVersion + 1
+    mutate updatedAt = now()
+    emit WorkflowLocked
+  }
+
+  command unlock() {
+    constraint canUnlock: self.isLocked == true "Not locked"
+    mutate isLocked = false
+    mutate concurrencyVersion = self.concurrencyVersion + 1
+    mutate updatedAt = now()
+    emit WorkflowUnlocked
+  }
+
+  command complete() {
+    constraint canComplete: self.status in ["active", "paused"] "Cannot complete workflow in current state"
+    mutate status = "completed"
+    mutate updatedAt = now()
+    emit WorkflowCompleted
+  }
+}
+
+store WorkflowInstance in memory
+
+event WorkflowPaused: "workflow.paused" {
+  workflowId: string
+  previousStatus: string
+}
+
+event WorkflowResumed: "workflow.resumed" {
+  workflowId: string
+  previousStatus: string
+}
+
+event WorkflowLocked: "workflow.locked" {
+  workflowId: string
+  newVersion: number
+}
+
+event WorkflowUnlocked: "workflow.unlocked" {
+  workflowId: string
+  newVersion: number
+}
+
+event WorkflowCompleted: "workflow.completed" {
+  workflowId: string
+  finalStatus: string
+}
+
+policy adminCanLock:
+  user.role == "admin"
+  "Administrators can lock workflows"
+
+policy managerCanPause:
+  user.role in ["admin", "manager"]
+  "Managers and admins can pause workflows"
+
+policy ownerCanModify:
+  user.id == self.createdBy
+  "Workflow owner can modify their workflows"

@@ -1,0 +1,323 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "649f133b58b76505d1b43ce372724ec20f5e5f74599eb2657e55bf5b355a8db7",
+    "compilerVersion": "0.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Document",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "create",
+        "update"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Document",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "create",
+      "entity": "Document",
+      "parameters": [
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "title"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "title"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "uuid"
+            },
+            "args": []
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "title"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "content",
+          "expression": {
+            "kind": "identifier",
+            "name": "content"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "version",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 1
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "versionAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "DocumentCreated"
+      ]
+    },
+    {
+      "name": "update",
+      "entity": "Document",
+      "parameters": [
+        {
+          "name": "newTitle",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "newContent",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "currentVersion",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "newTitle"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "newTitle"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "version"
+          },
+          "right": {
+            "kind": "identifier",
+            "name": "currentVersion"
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "newTitle"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "content",
+          "expression": {
+            "kind": "identifier",
+            "name": "newContent"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "version",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "identifier",
+              "name": "currentVersion"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "versionAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "DocumentUpdated"
+      ]
+    }
+  ],
+  "policies": []
+}

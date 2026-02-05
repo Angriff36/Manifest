@@ -910,6 +910,15 @@ export class RuntimeEngine {
   /**
    * Validate entity constraints against instance data
    * Returns array of constraint failures (empty if all pass)
+   *
+   * Constraint semantics:
+   * - Expression evaluates to TRUE → condition is met → constraint PASSES
+   * - Expression evaluates to FALSE → condition is not met → constraint FAILS
+   *
+   * Severity affects what gets reported as failures:
+   * - severity='block': Failed constraints are returned as failures (block execution)
+   * - severity='warn': Failed constraints are NOT returned as failures (informational only)
+   * - severity='ok': Failed constraints are NOT returned as failures (informational only)
    */
   private async validateConstraints(
     entity: IREntity,
@@ -929,7 +938,12 @@ export class RuntimeEngine {
 
     for (const constraint of entity.constraints) {
       const result = await this.evaluateExpression(constraint.expression, evalContext);
-      if (!result) {
+      const severity = constraint.severity || 'block';
+
+      // Constraint fails when expression evaluates to FALSE (condition not met)
+      // Only block-severity failures are returned as failures
+      // (ok and warn constraints don't block even when they fail)
+      if (!result && severity === 'block') {
         failures.push({
           constraintName: constraint.name,
           expression: constraint.expression,

@@ -1,0 +1,72 @@
+// Workflow Idempotency Conformance Fixture
+// Tests that workflow steps can be safely re-executed
+// Tests status transition constraints and idempotent commands
+
+entity WorkflowStep {
+  property required id: string = ""
+  property required name: string = ""
+  property status: string = "pending"
+  property executedAt: number = 0
+  property retryCount: number = 0
+
+  computed isPending: boolean = self.status == "pending"
+  computed isInProgress: boolean = self.status == "in_progress"
+  computed isCompleted: boolean = self.status == "completed"
+  computed canStart: boolean = self.isPending
+  computed canComplete: boolean = self.isInProgress
+
+  command startStep() {
+    guard self.status == "pending"
+    mutate status = "in_progress"
+    emit StepStarted
+  }
+
+  command completeStep() {
+    guard self.status == "in_progress"
+    mutate status = "completed"
+    mutate executedAt = now()
+    emit StepCompleted
+  }
+
+  command forceComplete() {
+    guard self.status != "completed"
+    mutate status = "completed"
+    mutate executedAt = now()
+    emit StepCompleted
+  }
+
+  command retryStep() {
+    guard self.status == "failed"
+    mutate retryCount = self.retryCount + 1
+    emit StepRetried
+  }
+
+  store WorkflowStep in memory
+}
+
+constraint validStatusTransition {
+  self.status in ["pending", "in_progress", "completed", "failed"]
+}
+
+constraint cannotRecomplete {
+  self.status != "completed" or self.executedAt == 0
+}
+
+event StepStarted: "workflow.step.started" {
+  id: string
+  name: string
+  startedAt: number
+}
+
+event StepCompleted: "workflow.step.completed" {
+  id: string
+  name: string
+  completedAt: number
+}
+
+event StepRetried: "workflow.step.retried" {
+  id: string
+  name: string
+  retryCount: number
+  retriedAt: number
+}

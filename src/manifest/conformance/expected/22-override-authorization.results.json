@@ -1,0 +1,187 @@
+{
+  "testCases": [
+    {
+      "name": "process command fails without override for large amount",
+      "context": {
+        "user": { "id": "user-1", "role": "user" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "FinancialRecord",
+          "data": { "id": "record-1", "amount": 750, "requestedBy": "user-1" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "FinancialRecord",
+        "instanceId": "record-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Must be approved before processing",
+        "constraintFailures": [
+          {
+            "code": "approvalPending",
+            "message": "Must be approved before processing",
+            "details": {
+              "currentStatus": "pending",
+              "currentAmount": 750,
+              "approvedBy": ""
+            }
+          }
+        ],
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "record-1",
+        "amount": 750,
+        "status": "pending",
+        "requestedBy": "user-1",
+        "approvedBy": ""
+      }
+    },
+    {
+      "name": "process command succeeds with authorized override",
+      "context": {
+        "user": { "id": "manager-1", "role": "manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "FinancialRecord",
+          "data": { "id": "record-2", "amount": 750, "requestedBy": "user-1" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "FinancialRecord",
+        "instanceId": "record-2",
+        "input": {},
+        "overrides": [
+          {
+            "constraintCode": "approvalPending",
+            "reason": "Approved by manager"
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": true,
+        "result": true,
+        "emittedEvents": [
+          {
+            "name": "RecordProcessed",
+            "channel": "financial.record.processed",
+            "payload": { "result": true },
+            "timestamp": 1000000000000
+          },
+          {
+            "name": "OverrideApplied",
+            "channel": "override.applied",
+            "payload": {
+              "constraintCode": "approvalPending",
+              "reason": "Approved by manager",
+              "authorizedBy": "canApproveLargeAmounts"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "record-2",
+        "amount": 750,
+        "status": "processed",
+        "requestedBy": "user-1",
+        "approvedBy": "manager-1"
+      }
+    },
+    {
+      "name": "process command fails with unauthorized override",
+      "context": {
+        "user": { "id": "user-2", "role": "user" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "FinancialRecord",
+          "data": { "id": "record-3", "amount": 750, "requestedBy": "user-2" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "FinancialRecord",
+        "instanceId": "record-3",
+        "input": {},
+        "overrides": [
+          {
+            "constraintCode": "approvalPending",
+            "reason": "Trying to override"
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only managers and admins can approve large amounts",
+        "deniedBy": "canApproveLargeAmounts",
+        "constraintFailures": [
+          {
+            "code": "approvalPending",
+            "message": "Must be approved before processing",
+            "details": {
+              "currentStatus": "pending",
+              "currentAmount": 750,
+              "approvedBy": ""
+            }
+          }
+        ],
+        "emittedEvents": []
+      },
+      "expectedPolicyDenial": {
+        "policyName": "canApproveLargeAmounts",
+        "expression": "user.role == \"manager\" || user.role == \"admin\""
+      },
+      "expectedInstanceState": {
+        "id": "record-3",
+        "amount": 750,
+        "status": "pending",
+        "requestedBy": "user-2",
+        "approvedBy": ""
+      }
+    },
+    {
+      "name": "approve command succeeds for manager without override",
+      "context": {
+        "user": { "id": "manager-2", "role": "manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "FinancialRecord",
+          "data": { "id": "record-4", "amount": 750, "requestedBy": "user-3" }
+        }
+      },
+      "command": {
+        "name": "approve",
+        "entityName": "FinancialRecord",
+        "instanceId": "record-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": true,
+        "emittedEvents": [
+          {
+            "name": "RecordApproved",
+            "channel": "financial.record.approved",
+            "payload": { "result": true },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "record-4",
+        "amount": 750,
+        "status": "approved",
+        "requestedBy": "user-3",
+        "approvedBy": "manager-2"
+      }
+    }
+  ]
+}

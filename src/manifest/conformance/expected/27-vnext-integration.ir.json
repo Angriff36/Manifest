@@ -1,0 +1,823 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcd",
+    "compilerVersion": "0.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "WorkflowInstance",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "version",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "createdBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "isLocked",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "concurrencyVersion",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 1
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "start",
+        "pause",
+        "resume",
+        "lock",
+        "unlock",
+        "complete"
+      ],
+      "constraints": [
+        {
+          "name": "workflowVersion",
+          "expression": {
+            "kind": "binary",
+            "operator": "matches",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "version"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "^\\d+\\.\\d+\\.\\d+$"
+              }
+            }
+          },
+          "message": "Version must be in semantic version format"
+        },
+        {
+          "name": "statusValid",
+          "expression": {
+            "kind": "binary",
+            "operator": "in",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "array",
+                "elements": [
+                  {
+                    "kind": "string",
+                    "value": "active"
+                  },
+                  {
+                    "kind": "string",
+                    "value": "paused"
+                  },
+                  {
+                    "kind": "string",
+                    "value": "completed"
+                  },
+                  {
+                    "kind": "string",
+                    "value": "cancelled"
+                  }
+                ]
+              }
+            }
+          },
+          "message": "Status must be one of: active, paused, completed, cancelled"
+        },
+        {
+          "name": "concurrencyConflict",
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "isLocked"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "boolean",
+                "value": false
+              }
+            }
+          },
+          "message": "Workflow instance is locked for concurrent access"
+        },
+        {
+          "name": "severityCritical",
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "isLocked"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            }
+          },
+          "message": "Critical: Workflow instance is locked",
+          "severity": "critical",
+          "overrideable": true
+        },
+        {
+          "name": "severityWarning",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "concurrencyVersion"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 10
+              }
+            }
+          },
+          "message": "Warning: High concurrency version detected",
+          "severity": "warning",
+          "overrideable": true
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "WorkflowInstance",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "WorkflowStarted",
+      "channel": "workflow.started",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "createdBy",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WorkflowPaused",
+      "channel": "workflow.paused",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "previousStatus",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WorkflowResumed",
+      "channel": "workflow.resumed",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "previousStatus",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WorkflowLocked",
+      "channel": "workflow.locked",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "newVersion",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WorkflowUnlocked",
+      "channel": "workflow.unlocked",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "newVersion",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WorkflowCompleted",
+      "channel": "workflow.completed",
+      "payload": [
+        {
+          "name": "workflowId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "finalStatus",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "start",
+      "entity": "WorkflowInstance",
+      "parameters": [
+        {
+          "name": "input",
+          "type": {
+            "kind": "object",
+            "properties": {
+              "name": {
+                "type": {
+                  "name": "string",
+                  "nullable": false
+                },
+                "required": true
+              },
+              "createdBy": {
+                "type": {
+                  "name": "string",
+                  "nullable": false
+                },
+                "required": true
+              }
+            }
+          }
+        }
+      ],
+      "guards": [
+        {
+          "kind": "exists"
+        }
+      ],
+      "constraints": [
+        {
+          "kind": "negate",
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "identifier",
+              "name": "exists"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "name"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "createdBy",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "createdBy"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "createdAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowStarted"
+      ]
+    },
+    {
+      "name": "pause",
+      "entity": "WorkflowInstance",
+      "parameters": [],
+      "guards": [],
+      "constraints": [
+        {
+          "kind": "override",
+          "constraint": "severityWarning"
+        },
+        {
+          "kind": "override",
+          "constraint": "severityCritical"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "paused"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowPaused"
+      ]
+    },
+    {
+      "name": "resume",
+      "entity": "WorkflowInstance",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "active"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowResumed"
+      ]
+    },
+    {
+      "name": "lock",
+      "entity": "WorkflowInstance",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "isLocked",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "concurrencyVersion",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "concurrencyVersion"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowLocked"
+      ]
+    },
+    {
+      "name": "unlock",
+      "entity": "WorkflowInstance",
+      "parameters": [],
+      "guards": [],
+      "constraints": [
+        {
+          "kind": "override",
+          "constraint": "severityCritical"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "isLocked",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": false
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "concurrencyVersion",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "concurrencyVersion"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowUnlocked"
+      ]
+    },
+    {
+      "name": "complete",
+      "entity": "WorkflowInstance",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "updatedAt",
+          "expression": {
+            "kind": "function",
+            "name": "now"
+          }
+        }
+      ],
+      "emits": [
+        "WorkflowCompleted"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "adminCanLock",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      },
+      "message": "Administrators can lock workflows"
+    },
+    {
+      "name": "managerCanPause",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "in",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "array",
+            "elements": [
+              {
+                "kind": "string",
+                "value": "admin"
+              },
+              {
+                "kind": "string",
+                "value": "manager"
+              }
+            ]
+          }
+        }
+      },
+      "message": "Managers and admins can pause workflows"
+    },
+    {
+      "name": "ownerCanModify",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "id"
+        },
+        "right": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "self"
+          },
+          "property": "createdBy"
+        }
+      },
+      "message": "Workflow owner can modify their workflows"
+    }
+  ]
+}
