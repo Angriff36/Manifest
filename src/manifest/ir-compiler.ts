@@ -37,6 +37,7 @@ import {
   PropertyModifier,
   IRProvenance,
 } from './ir';
+import { globalIRCache, type IRCache } from './ir-cache';
 
 /** Compiler version (from package.json) */
 const COMPILER_VERSION = '0.0.0';
@@ -93,9 +94,24 @@ async function computeIRHash(ir: IR): Promise<string> {
 
 export class IRCompiler {
   private diagnostics: IRDiagnostic[] = [];
+  private cache: IRCache;
 
-  async compileToIR(source: string): Promise<CompileToIRResult> {
+  constructor(cache?: IRCache) {
+    this.cache = cache ?? globalIRCache;
+  }
+
+  async compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult> {
     this.diagnostics = [];
+
+    // vNext: Check cache before compilation
+    const useCache = options?.useCache ?? true;
+    if (useCache) {
+      const contentHash = await computeContentHash(source);
+      const cached = this.cache.get(contentHash);
+      if (cached) {
+        return { ir: cached as IR, diagnostics: [] };
+      }
+    }
 
     const parser = new Parser();
     const { program, errors } = parser.parse(source);
@@ -114,6 +130,13 @@ export class IRCompiler {
     }
 
     const ir = await this.transformProgram(program, source);
+
+    // vNext: Cache the compiled IR
+    if (useCache && ir) {
+      const contentHash = await computeContentHash(source);
+      this.cache.set(contentHash, ir);
+    }
+
     return { ir, diagnostics: this.diagnostics };
   }
 
