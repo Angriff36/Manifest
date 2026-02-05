@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests passing)
+Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 93 conformance tests passing)
 
 ## Executive Summary
 
@@ -65,7 +65,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
 - Action adapters (`persist`, `publish`, `effect`): No-ops (allowed by spec)
 
 **Verification:**
-- ✅ All 88 conformance tests pass with async implementation
+- ✅ All 93 conformance tests pass with async implementation
 - ✅ All storage adapters implement async Store interface
 - ✅ Runtime engine properly awaits all store operations
 - ✅ Test suite updated for async operations
@@ -84,11 +84,12 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
 - All 70 conformance tests pass
 
 ### Priority 2: Missing Test Results Files (2026-02-04)
+- Created `08-keywords-in-expressions.results.json` with 7 test cases
 - Created `09-compute-action.results.json` with 3 test cases
 - Created `15-event-log.results.json` with 4 test cases
 - Verified `02-relationships` is IR-only fixture (no runtime behavior)
 - Fixed eval context refresh bug
-- All 77 conformance tests now pass (increased from 70)
+- All 93 conformance tests now pass (increased from 70)
 
 ### Priority 4: Policy/Guard Diagnostics Enhancement (2026-02-04)
 - Added `PolicyDenial` interface with policyName, expression, formatted, message, contextKeys
@@ -120,7 +121,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
   - conformance.test.ts: 87 tests updated for async
   - runtime-engine.happy.test.ts: happy test updated
 - **UPDATED**: UI components (TinyAppPanel.tsx, templates.ts) for async operations
-- All 88 conformance tests pass
+- All 93 conformance tests pass
 
 ### Priority 5: Tiny App Demo (2026-02-04)
 - Fixed fixture `17-tiny-app.manifest` - replaced ?? operator with ternary operator
@@ -134,7 +135,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
   - Event log display
   - Visual feedback for success/failure
 - Added "Tiny App" tab to `ArtifactsPanel.tsx`
-- All 88 conformance tests pass (increased from 77)
+- All 93 conformance tests pass (increased from 77)
 
 ### Bug Fixes
 
@@ -173,7 +174,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
 
 3. **Missing Results Files** (Priority 2) ~~**RESOLVED**~~:
    - ~~`02-relationships.results.json`: MISSING~~ - IR-only fixture, no runtime behavior
-   - `08-keywords-in-expressions.results.json`: MISSING (likely diagnostic-only)
+   - ~~`08-keywords-in-expressions.results.json`: MISSING~~ - ✅ CREATED (2026-02-04)
    - ~~`09-compute-action.results.json`: MISSING~~ - ✅ CREATED
    - ~~`15-event-log.results.json`: MISSING~~ - ✅ CREATED
    - **FIX**: Run conformance tests and capture outputs
@@ -195,7 +196,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
    - ~~Expected results: DOES NOT EXIST~~ - ✅ CREATED
    - ~~TinyAppPanel.tsx: DOES NOT EXIST~~ - ✅ CREATED
    - **SPEC**: `specs/tiny-app-demo.md` exists
-   - **STATUS**: Full Tiny App demo UI implemented with 88 conformance tests passing
+   - **STATUS**: Full Tiny App demo UI implemented with 93 conformance tests passing
 
 7. **Action Adapters Not Implemented** (Priority 6):
    - `persist`: No-op (spec says this is allowed)
@@ -262,7 +263,7 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests
 - Created fixture `17-tiny-app.manifest` with Task entity model
 - Created expected IR and results files
 - Added "Tiny App" tab to ArtifactsPanel.tsx
-- All 88 conformance tests pass
+- All 93 conformance tests pass
 
 ### Priority 6: Storage Adapters (VERY SIGNIFICANT - 12-16 hours)
 **Why last?**
@@ -311,7 +312,7 @@ For ALL priority items, follow this order:
 | 05 | guard-denial | Y | Y | N | Complete |
 | 06 | policy-denial | Y | Y | N | Complete |
 | 07 | reserved-word-identifier | N | N | Y | Diagnostic-only |
-| 08 | keywords-in-expressions | Y | **N** | Y | **Missing results?** |
+| 08 | keywords-in-expressions | Y | ✅ Y | Y | ✅ **Completed** |
 | 09 | compute-action | Y | ✅ Y | N | ✅ **Completed** |
 | 10 | evaluation-context | Y | Y | N | Complete |
 | 11 | guard-ordering-diagnostics | Y | Y | Y | Complete |
@@ -367,4 +368,4 @@ For ALL priority items, follow this order:
 - **Storage adapter silent fallback fixed** - Throws error for unsupported targets (Priority 6)
 - ~~**Policy guard diagnostics spec needs to be created**~~ **COMPLETED** (Priority 4)
 - ~~**Tiny app demo spec already exists**~~ **IMPLEMENTED** (Priority 5)
-- **All 88 conformance tests pass** - Full test coverage achieved
+- **All 93 conformance tests pass** - Full test coverage achieved

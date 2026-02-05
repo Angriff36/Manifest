@@ -1,0 +1,160 @@
+{
+  "testCases": [
+    {
+      "name": "create entity with default values",
+      "setup": {},
+      "createInstance": {
+        "entity": "Item",
+        "data": { "id": "item-1", "name": "Test Item" }
+      },
+      "expectedInstance": {
+        "id": "item-1",
+        "name": "Test Item"
+      }
+    },
+    {
+      "name": "computed property hasEntity with context.entity present",
+      "context": {
+        "entity": { "id": "entity-1" },
+        "command": "allowed",
+        "store": "active"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-2", "name": "Item 2" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-2",
+        "property": "hasEntity"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "computed property hasEntity with context.entity absent",
+      "context": {
+        "entity": null,
+        "command": "allowed",
+        "store": "active"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-3", "name": "Item 3" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Item",
+        "instanceId": "item-3",
+        "property": "hasEntity"
+      },
+      "expectedValue": false
+    },
+    {
+      "name": "command process succeeds when context.command == 'allowed'",
+      "context": {
+        "entity": { "id": "entity-4" },
+        "command": "allowed",
+        "store": "active"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-4", "name": "Initial" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Item",
+        "instanceId": "item-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "processed",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "item-4",
+        "name": "processed"
+      }
+    },
+    {
+      "name": "command process fails when context.command != 'allowed'",
+      "context": {
+        "entity": { "id": "entity-5" },
+        "command": "denied",
+        "store": "active"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-5", "name": "Initial" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Item",
+        "instanceId": "item-5",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'process'",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "item-5",
+        "name": "Initial"
+      }
+    },
+    {
+      "name": "policy canRead allows when context.store == 'active'",
+      "context": {
+        "entity": { "id": "entity-6" },
+        "command": "test",
+        "store": "active"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-6", "name": "Policy Test" }
+        }
+      },
+      "policy": {
+        "name": "canRead",
+        "entityName": "Item",
+        "instanceId": "item-6",
+        "operation": "read"
+      },
+      "expectedResult": {
+        "allowed": true
+      }
+    },
+    {
+      "name": "policy canRead denies when context.store != 'active'",
+      "context": {
+        "entity": { "id": "entity-7" },
+        "command": "test",
+        "store": "inactive"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Item",
+          "data": { "id": "item-7", "name": "Policy Test 2" }
+        }
+      },
+      "policy": {
+        "name": "canRead",
+        "entityName": "Item",
+        "instanceId": "item-7",
+        "operation": "read"
+      },
+      "expectedResult": {
+        "allowed": false
+      }
+    }
+  ]
+}
