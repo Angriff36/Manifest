@@ -401,7 +401,7 @@ describe('Manifest Conformance Tests', () => {
 
               const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-              const failures = engine.checkConstraints(tc.entity, tc.data);
+              const failures = await engine.checkConstraints(tc.entity, tc.data);
 
               expect(failures.length).toBe(tc.expectedConstraintFailures.length);
 

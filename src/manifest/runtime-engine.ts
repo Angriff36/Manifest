@@ -240,12 +240,21 @@ export class RuntimeEngine {
   private stores: Map<string, Store> = new Map();
   private eventListeners: EventListener[] = [];
   private eventLog: EmittedEvent[] = [];
+  /** Index of relationships for efficient lookup during expression evaluation */
+  private relationshipIndex: Map<string, {
+    entityName: string;
+    relationshipName: string;
+    kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
+    targetEntity: string;
+    foreignKey?: string;
+  }> = new Map();
 
   constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
     this.context = context;
     this.options = options;
     this.initializeStores();
+    this.buildRelationshipIndex();
   }
 
   private initializeStores(): void {
@@ -289,6 +298,113 @@ export class RuntimeEngine {
       }
 
       this.stores.set(entity.name, store);
+    }
+  }
+
+  /**
+   * Build an index of all relationships for efficient lookup during expression evaluation.
+   * Maps "EntityName.relationshipName" to relationship metadata.
+   */
+  private buildRelationshipIndex(): void {
+    for (const entity of this.ir.entities) {
+      for (const rel of entity.relationships) {
+        const key = `${entity.name}.${rel.name}`;
+        this.relationshipIndex.set(key, {
+          entityName: entity.name,
+          relationshipName: rel.name,
+          kind: rel.kind,
+          targetEntity: rel.target,
+          foreignKey: rel.foreignKey,
+        });
+      }
+    }
+  }
+
+  /**
+   * Resolve a relationship for a given instance.
+   * @param entityName - The source entity name
+   * @param instance - The source instance (must have an id)
+   * @param relationshipName - The relationship name to resolve
+   * @returns For hasMany: array of related instances; for hasOne/belongsTo/ref: single instance or null
+   */
+  private async resolveRelationship(
+    entityName: string,
+    instance: EntityInstance,
+    relationshipName: string
+  ): Promise<EntityInstance | EntityInstance[] | null> {
+    const key = `${entityName}.${relationshipName}`;
+    const rel = this.relationshipIndex.get(key);
+    if (!rel) {
+      return null;
+    }
+
+    const sourceId = instance.id;
+    if (!sourceId) {
+      return null;
+    }
+
+    switch (rel.kind) {
+      case 'belongsTo':
+      case 'ref': {
+        // For belongsTo/ref: the foreign key on the source instance contains the target ID
+        const fkProperty = rel.foreignKey || `${rel.relationshipName}Id`;
+        const targetId = instance[fkProperty] as string | undefined;
+        if (!targetId) {
+          return null;
+        }
+        return await this.getInstance(rel.targetEntity, targetId) ?? null;
+      }
+
+      case 'hasOne': {
+        // For hasOne: find the target instance where its belongsTo foreign key equals source ID
+        // We need to find the inverse relationship on the target entity
+        const targetEntity = this.getEntity(rel.targetEntity);
+        if (!targetEntity) return null;
+
+        // Find the inverse belongsTo relationship
+        const inverseRel = targetEntity.relationships.find(
+          r => (r.kind === 'belongsTo' || r.kind === 'ref') &&
+               r.target === entityName
+        );
+
+        if (inverseRel) {
+          // Use the inverse relationship's foreign key
+          const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
+          const allTargets = await this.getAllInstances(rel.targetEntity);
+          return allTargets.find(t => t[fkProperty] === sourceId) ?? null;
+        }
+
+        // Fallback: assume the foreign key is named after the source entity
+        const assumedFk = `${entityName.toLowerCase()}Id`;
+        const allTargets = await this.getAllInstances(rel.targetEntity);
+        return allTargets.find(t => t[assumedFk] === sourceId) ?? null;
+      }
+
+      case 'hasMany': {
+        // For hasMany: find all target instances where their belongsTo foreign key equals source ID
+        const targetEntity = this.getEntity(rel.targetEntity);
+        if (!targetEntity) return [];
+
+        // Find the inverse belongsTo relationship
+        const inverseRel = targetEntity.relationships.find(
+          r => (r.kind === 'belongsTo' || r.kind === 'ref') &&
+               r.target === entityName
+        );
+
+        if (inverseRel) {
+          const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
+          const allTargets = await this.getAllInstances(rel.targetEntity);
+          return allTargets.filter(t => t[fkProperty] === sourceId);
+        }
+
+        // Fallback: assume the foreign key is named after the source entity
+        const assumedFk = `${entityName.toLowerCase()}Id`;
+        const allTargets = await this.getAllInstances(rel.targetEntity);
+        return allTargets.filter(t => t[assumedFk] === sourceId);
+      }
+
+      default:
+        return null;
     }
   }
 
@@ -466,10 +582,10 @@ export class RuntimeEngine {
    * Returns array of constraint failures (empty if all pass)
    * Useful for diagnostic purposes without mutating state
    */
-  checkConstraints(entityName: string, data: Record<string, unknown>): ConstraintFailure[] {
+  async checkConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintFailure[]> {
     const entity = this.getEntity(entityName);
     if (!entity) return [];
-    return this.validateConstraints(entity, data);
+    return await this.validateConstraints(entity, data);
   }
 
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -488,7 +604,7 @@ export class RuntimeEngine {
     const mergedData = { ...defaults, ...data };
 
     // Validate entity constraints
-    const constraintFailures = this.validateConstraints(entity, mergedData);
+    const constraintFailures = await this.validateConstraints(entity, mergedData);
     if (constraintFailures.length > 0) {
       // Log constraint failures for diagnostics
       console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
@@ -512,7 +628,7 @@ export class RuntimeEngine {
     const mergedData = { ...existing, ...data };
 
     // Validate entity constraints
-    const constraintFailures = this.validateConstraints(entity, mergedData);
+    const constraintFailures = await this.validateConstraints(entity, mergedData);
     if (constraintFailures.length > 0) {
       // Log constraint failures for diagnostics
       console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
@@ -545,9 +661,9 @@ export class RuntimeEngine {
       ? await this.getInstance(options.entityName, options.instanceId)
       : undefined;
 
-    const evalContext = this.buildEvalContext(input, instance);
+    const evalContext = this.buildEvalContext(input, instance, options.entityName);
 
-    const policyResult = this.checkPolicies(command, evalContext);
+    const policyResult = await this.checkPolicies(command, evalContext);
     if (!policyResult.allowed) {
       return {
         success: false,
@@ -560,7 +676,7 @@ export class RuntimeEngine {
 
     for (let i = 0; i < command.guards.length; i += 1) {
       const guard = command.guards[i];
-      const result = this.evaluateExpression(guard, evalContext);
+      const result = await this.evaluateExpression(guard, evalContext);
       if (!result) {
         return {
           success: false,
@@ -569,7 +685,7 @@ export class RuntimeEngine {
             index: i + 1,
             expression: guard,
             formatted: this.formatExpression(guard),
-            resolved: this.resolveExpressionValues(guard, evalContext),
+            resolved: await this.resolveExpressionValues(guard, evalContext),
           },
           emittedEvents: [],
         };
@@ -621,9 +737,10 @@ export class RuntimeEngine {
 
   private buildEvalContext(
     input: Record<string, unknown>,
-    instance?: EntityInstance
+    instance?: EntityInstance,
+    entityName?: string
   ): Record<string, unknown> {
-    return {
+    const baseContext = {
       ...(instance || {}),
       ...input,
       self: instance ?? null,
@@ -631,12 +748,19 @@ export class RuntimeEngine {
       user: this.context.user ?? null,
       context: this.context ?? {},
     };
+
+    // Add entity name metadata for relationship resolution
+    if (instance && entityName) {
+      (baseContext as Record<string, unknown>)._entity = entityName;
+    }
+
+    return baseContext;
   }
 
-  private checkPolicies(
+  private async checkPolicies(
     command: IRCommand,
     evalContext: Record<string, unknown>
-  ): { allowed: boolean; denial?: PolicyDenial } {
+  ): Promise<{ allowed: boolean; denial?: PolicyDenial }> {
     const relevantPolicies = this.ir.policies.filter(p => {
       if (p.entity && command.entity && p.entity !== command.entity) return false;
       if (p.action !== 'all' && p.action !== 'execute') return false;
@@ -644,12 +768,12 @@ export class RuntimeEngine {
     });
 
     for (const policy of relevantPolicies) {
-      const result = this.evaluateExpression(policy.expression, evalContext);
+      const result = await this.evaluateExpression(policy.expression, evalContext);
       if (!result) {
         // Extract context keys (not values for security)
         const contextKeys = this.extractContextKeys(policy.expression);
         // Resolve expression values for diagnostics
-        const resolved = this.resolveExpressionValues(policy.expression, evalContext);
+        const resolved = await this.resolveExpressionValues(policy.expression, evalContext);
         return {
           allowed: false,
           denial: {
@@ -671,10 +795,10 @@ export class RuntimeEngine {
    * Validate entity constraints against instance data
    * Returns array of constraint failures (empty if all pass)
    */
-  private validateConstraints(
+  private async validateConstraints(
     entity: IREntity,
     instanceData: Record<string, unknown>
-  ): ConstraintFailure[] {
+  ): Promise<ConstraintFailure[]> {
     const failures: ConstraintFailure[] = [];
 
     // Build evaluation context with self/this pointing to the instance
@@ -684,17 +808,18 @@ export class RuntimeEngine {
       this: instanceData,
       user: this.context.user ?? null,
       context: this.context ?? {},
+      _entity: entity.name,
     };
 
     for (const constraint of entity.constraints) {
-      const result = this.evaluateExpression(constraint.expression, evalContext);
+      const result = await this.evaluateExpression(constraint.expression, evalContext);
       if (!result) {
         failures.push({
           constraintName: constraint.name,
           expression: constraint.expression,
           formatted: this.formatExpression(constraint.expression),
           message: constraint.message || `Constraint '${constraint.name}' failed`,
-          resolved: this.resolveExpressionValues(constraint.expression, evalContext),
+          resolved: await this.resolveExpressionValues(constraint.expression, evalContext),
         });
       }
     }
@@ -802,63 +927,69 @@ export class RuntimeEngine {
     }
   }
 
-  private resolveExpressionValues(
+  private async resolveExpressionValues(
     expr: IRExpression,
     evalContext: Record<string, unknown>
-  ): GuardResolvedValue[] {
+  ): Promise<GuardResolvedValue[]> {
     const entries: GuardResolvedValue[] = [];
     const seen = new Set<string>();
 
-    const addEntry = (node: IRExpression) => {
+    const addEntry = async (node: IRExpression) => {
       const formatted = this.formatExpression(node);
       if (seen.has(formatted)) return;
       seen.add(formatted);
       let value: unknown;
       try {
-        value = this.evaluateExpression(node, evalContext);
+        value = await this.evaluateExpression(node, evalContext);
       } catch {
         value = undefined;
       }
       entries.push({ expression: formatted, value });
     };
 
-    const walk = (node: IRExpression): void => {
+    const walk = async (node: IRExpression): Promise<void> => {
       switch (node.kind) {
         case 'literal':
         case 'identifier':
         case 'member':
-          addEntry(node);
+          await addEntry(node);
           return;
         case 'binary':
-          walk(node.left);
-          walk(node.right);
+          await walk(node.left);
+          await walk(node.right);
           return;
         case 'unary':
-          walk(node.operand);
+          await walk(node.operand);
           return;
         case 'call':
-          node.args.forEach(walk);
+          for (const arg of node.args) {
+            await walk(arg);
+          }
           return;
         case 'conditional':
-          walk(node.condition);
-          walk(node.consequent);
-          walk(node.alternate);
+          await walk(node.condition);
+          await walk(node.consequent);
+          await walk(node.alternate);
           return;
         case 'array':
-          node.elements.forEach(walk);
+          for (const el of node.elements) {
+            await walk(el);
+          }
           return;
         case 'object':
-          node.properties.forEach(p => walk(p.value));
+          for (const prop of node.properties) {
+            await walk(prop.value);
+          }
           return;
         case 'lambda':
-          walk(node.body);
+          await walk(node.body);
           return;
         default:
           return;
       }
     };
 
-    walk(expr);
+    await walk(expr);
     return entries;
   }
 
@@ -867,7 +998,7 @@ export class RuntimeEngine {
     evalContext: Record<string, unknown>,
     options: { entityName?: string; instanceId?: string }
   ): Promise<unknown> {
-    const value = this.evaluateExpression(action.expression, evalContext);
+    const value = await this.evaluateExpression(action.expression, evalContext);
 
     switch (action.kind) {
       case 'mutate':
@@ -916,7 +1047,7 @@ export class RuntimeEngine {
     }
   }
 
-  evaluateExpression(expr: IRExpression, context: Record<string, unknown>): unknown {
+  async evaluateExpression(expr: IRExpression, context: Record<string, unknown>): Promise<unknown> {
     switch (expr.kind) {
       case 'literal':
         return this.irValueToJs(expr.value);
@@ -931,8 +1062,26 @@ export class RuntimeEngine {
       }
 
       case 'member': {
-        const obj = this.evaluateExpression(expr.object, context);
+        const obj = await this.evaluateExpression(expr.object, context);
         if (obj && typeof obj === 'object') {
+          // Check if this is a relationship traversal on self/this
+          if (
+            expr.object.kind === 'identifier' &&
+            (expr.object.name === 'self' || expr.object.name === 'this') &&
+            'id' in obj &&
+            typeof obj.id === 'string'
+          ) {
+            // Check if the property is a relationship
+            const entityName = (obj as Record<string, unknown>)._entity as string | undefined;
+            if (entityName) {
+              const relKey = `${entityName}.${expr.property}`;
+              if (this.relationshipIndex.has(relKey)) {
+                // Resolve the relationship
+                return await this.resolveRelationship(entityName, obj as EntityInstance, expr.property);
+              }
+            }
+          }
+
           // Use hasOwnProperty check to prevent prototype pollution
           return Object.prototype.hasOwnProperty.call(obj, expr.property)
             ? (obj as Record<string, unknown>)[expr.property]
@@ -942,13 +1091,13 @@ export class RuntimeEngine {
       }
 
       case 'binary': {
-        const left = this.evaluateExpression(expr.left, context);
-        const right = this.evaluateExpression(expr.right, context);
+        const left = await this.evaluateExpression(expr.left, context);
+        const right = await this.evaluateExpression(expr.right, context);
         return this.evaluateBinaryOp(expr.operator, left, right);
       }
 
       case 'unary': {
-        const operand = this.evaluateExpression(expr.operand, context);
+        const operand = await this.evaluateExpression(expr.operand, context);
         return this.evaluateUnaryOp(expr.operator, operand);
       }
 
@@ -958,14 +1107,14 @@ export class RuntimeEngine {
         if (calleeExpr.kind === 'identifier') {
           const builtins = this.getBuiltins();
           if (calleeExpr.name in builtins) {
-            const args = expr.args.map(a => this.evaluateExpression(a, context));
+            const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
             return builtins[calleeExpr.name](...args);
           }
         }
 
         // Default: evaluate callee and call as function
-        const callee = this.evaluateExpression(expr.callee, context);
-        const args = expr.args.map(a => this.evaluateExpression(a, context));
+        const callee = await this.evaluateExpression(expr.callee, context);
+        const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
         if (typeof callee === 'function') {
           return callee(...args);
         }
@@ -973,19 +1122,19 @@ export class RuntimeEngine {
       }
 
       case 'conditional': {
-        const condition = this.evaluateExpression(expr.condition, context);
+        const condition = await this.evaluateExpression(expr.condition, context);
         return condition
-          ? this.evaluateExpression(expr.consequent, context)
-          : this.evaluateExpression(expr.alternate, context);
+          ? await this.evaluateExpression(expr.consequent, context)
+          : await this.evaluateExpression(expr.alternate, context);
       }
 
       case 'array':
-        return expr.elements.map(e => this.evaluateExpression(e, context));
+        return await Promise.all(expr.elements.map(e => this.evaluateExpression(e, context)));
 
       case 'object': {
         const result: Record<string, unknown> = {};
         for (const prop of expr.properties) {
-          result[prop.key] = this.evaluateExpression(prop.value, context);
+          result[prop.key] = await this.evaluateExpression(prop.value, context);
         }
         return result;
       }
@@ -1088,15 +1237,15 @@ export class RuntimeEngine {
     const instance = await this.getInstance(entityName, instanceId);
     if (!instance) return undefined;
 
-    return this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+    return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
   }
 
-  private evaluateComputedInternal(
+  private async evaluateComputedInternal(
     entity: IREntity,
     instance: EntityInstance,
     propertyName: string,
     visited: Set<string>
-  ): unknown {
+  ): Promise<unknown> {
     if (visited.has(propertyName)) return undefined;
     visited.add(propertyName);
 
@@ -1108,7 +1257,7 @@ export class RuntimeEngine {
       for (const dep of computed.dependencies) {
         const depComputed = entity.computedProperties.find(c => c.name === dep);
         if (depComputed && !visited.has(dep)) {
-          computedValues[dep] = this.evaluateComputedInternal(entity, instance, dep, new Set(visited));
+          computedValues[dep] = await this.evaluateComputedInternal(entity, instance, dep, new Set(visited));
         }
       }
     }
@@ -1120,9 +1269,10 @@ export class RuntimeEngine {
       ...computedValues,
       user: this.context.user ?? null,
       context: this.context ?? {},
+      _entity: entity.name,
     };
 
-    return this.evaluateExpression(computed.expression, context);
+    return await this.evaluateExpression(computed.expression, context);
   }
 
   onEvent(listener: EventListener): () => void {

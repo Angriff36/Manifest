@@ -35,7 +35,29 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 - The runtime MUST prevent infinite recursion. If a dependency cycle is detected, the computed value MUST evaluate to `undefined`.
 
 ### Relationships
-- Relationships are declarative. Runtime behavior is implementation-defined unless the runtime explicitly models relationships.
+- Relationships define connections between entities. A conforming runtime MUST support relationship traversal in expressions.
+- Relationship kinds:
+  - `hasMany`: One-to-many; returns an array of related instances (may be empty)
+  - `hasOne`: One-to-one; returns a single related instance or `null`
+  - `belongsTo`: Many-to-one; returns a single related instance or `null`
+  - `ref`: Simple reference; returns a single related instance or `null`
+
+#### Relationship Traversal in Expressions
+- When a member expression references a relationship (e.g., `self.author` or `post.comments`), the runtime MUST resolve the relationship by:
+  1. Identifying the relationship metadata on the current entity
+  2. Looking up related instance(s) from the store using the foreign key or inverse relationship
+  3. Returning the resolved instance(s) or `null`/`[]` for empty relationships
+
+#### Relationship Resolution Rules
+- For `belongsTo` and `ref`: The foreign key property on the source instance contains the ID of the target instance. The runtime MUST look up the target instance by that ID.
+- For `hasOne`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query the target entity where the foreign key equals the current instance's ID.
+- For `hasMany`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
+
+#### Relationship Constraints
+- Relationship resolution is synchronous within the current store context.
+- Circular relationships MUST be handled gracefully; runtime MAY prevent infinite recursion.
+- Accessing a relationship on a non-existent instance returns `null` for `hasOne`/`belongsTo`/`ref` or `[]` for `hasMany`.
+- If the target entity or instance does not exist, the relationship returns `null` or `[]`.
 
 ### Constraints
 - Constraints are boolean expressions. A runtime MAY enforce them when mutating properties or creating instances.
@@ -103,6 +125,9 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 
 ## Nonconformance
 The following implementation differences are known:
-- **Relationship behavior is not modeled in the IR runtime.** Relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`) compile to IR but the runtime does not traverse them. Cross-entity operations must use foreign key IDs (e.g., `user.id == self.authorId` instead of `self.author.role`). This is a known limitation documented in Priority 4 findings (2026-02-05).
+
+### Generated Artifacts
+- Generated server code does not enforce policies; it checks guards only.
+- Generated client code does not return the last action result for commands (returns void).
 
 These MUST be reconciled by updating the spec and tests first, then implementation.

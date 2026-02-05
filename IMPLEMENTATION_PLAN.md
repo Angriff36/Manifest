@@ -1,11 +1,11 @@
-# Implementation Plan - Loop 2
+# Implementation Plan - Loop 3
 
 <!-- This file is managed by the Ralph loop. Do not edit manually during loop execution. -->
 
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 2 - Priority 5 ✅ COMPLETED
+Phase: Loop 3 - Priority 1 ✅ COMPLETED
 
 ## Mission
 
@@ -13,7 +13,59 @@ Phase: Loop 2 - Priority 5 ✅ COMPLETED
 
 The contract boundary: **The runtime must be able to prove what it is executing is derived from a specific Manifest + toolchain version.**
 
-## Loop 2 Priorities
+## Loop 3 Priorities
+
+### Priority 1: Relationship Traversal ✅ COMPLETED
+Enable cross-entity relationship access in expressions.
+
+- [x] Update semantics.md spec to define relationship traversal behavior
+- [x] Implement relationship index in runtime
+- [x] Implement relationship resolution (belongsTo, hasOne, hasMany, ref)
+- [x] Make evaluateExpression async to support relationship resolution
+- [x] Add entity name metadata to eval context for relationship detection
+- [x] Update all call sites to use async expression evaluation
+
+**Implementation Details (2026-02-05):**
+- Added `relationshipIndex` Map to RuntimeEngine for efficient relationship lookups
+- Added `buildRelationshipIndex()` method to index all relationships at initialization
+- Added `resolveRelationship()` async method that:
+  - Resolves `belongsTo`/`ref` via foreign key lookup
+  - Resolves `hasOne` via inverse belongsTo relationship
+  - Resolves `hasMany` via inverse belongsTo relationship
+- Made `evaluateExpression()` async and added relationship detection in member expressions
+- When `self.relationshipName` is accessed, the runtime:
+  - Checks if the property is a relationship via the index
+  - Resolves the relationship by querying the store
+  - Returns the related instance(s) or null/empty array
+- Updated all expression evaluation call sites to use await:
+  - `checkPolicies()`, `validateConstraints()`, `resolveExpressionValues()`
+  - `executeAction()`, `evaluateComputed()`, `evaluateComputedInternal()`
+  - `runCommand()`, `createInstance()`, `updateInstance()`, `checkConstraints()`
+- Updated conformance test to await `checkConstraints()`
+- All 100 conformance tests passing
+
+**Relationship Resolution Rules (from updated semantics.md):**
+- For `belongsTo`/`ref`: foreign key on source contains target ID
+- For `hasOne`: find target where its belongsTo foreign key equals source ID
+- For `hasMany`: find all targets where their belongsTo foreign key equals source ID
+- Returns `null` for empty belongsTo/hasOne/ref relationships
+- Returns `[]` for empty hasMany relationships
+
+### Priority 2: [PENDING]
+[To be defined based on remaining nonconformances]
+
+### Priority 3: [PENDING]
+[To be defined]
+
+### Priority 4: [PENDING]
+[To be defined]
+
+### Priority 5: [PENDING]
+[To be defined]
+
+---
+
+## Loop 2 Completed Work (Reference)
 
 ### Priority 1: Provenance Metadata ✅ COMPLETED
 Add traceability everywhere so drift becomes visible.
@@ -83,28 +135,34 @@ Find where the choke point leaks by actually using it.
 
 **Choke Point Leaks Documented:**
 
-1. **Cross-Entity Relationship Traversal**: NOT SUPPORTED
-   - Cannot write `self.author.role` to check post author's role in policies
-   - Must use `user.id == self.authorId` pattern with foreign key IDs
-   - Relationships (hasMany, hasOne, belongsTo) compile to IR but runtime doesn't traverse them
-   - This is a known limitation documented in docs/spec/semantics.md
+1. **Cross-Entity Relationship Traversal**: FIXED in Loop 3
+   - Previously: Cannot write `self.author.role` to check post author's role in policies
+   - Previously: Must use `user.id == self.authorId` pattern with foreign key IDs
+   - **Now implemented**: Runtime traverses relationships in expressions
+   - Removed from semantics.md nonconformance section
+   - Can now use `self.author.name` or `post.comments` directly in expressions
 
 2. **Spec Nonconformance Notes are OUTDATED**: FIXED
    - Built-in functions (`now()`, `uuid()`) ARE implemented in runtime-engine.ts:279-284
    - Storage target diagnostics ARE implemented - throws clear errors for unsupported targets
    - Action adapter default behavior (no-ops) is CORRECT per spec
-   - The docs/spec/*.md nonconformance sections need updating
+   - Relationship nonconformance removed via Loop 3 implementation
 
-3. **What Works Well:**
+3. **Remaining Nonconformances**:
+   - Generated server code does not enforce policies; it checks guards only
+   - Generated client code does not return the last action result for commands (returns void)
+
+4. **What Works Well:**
    - Single-entity operations are solid
+   - Relationship traversal now works in computed properties, guards, and policies
    - Guards and policies provide good security boundaries
    - Event emission with provenance works end-to-end
    - Computed properties with dependencies work correctly
 
-4. **Workarounds Used:**
-   - Foreign key IDs instead of relationship traversal
+5. **Workarounds Used** (no longer needed for relationships):
+   - Foreign key IDs instead of relationship traversal (no longer needed!)
    - User context for cross-entity authorization checks
-   - Manual ID references instead of declarative relationships
+   - Manual ID references instead of declarative relationships (no longer needed!)
 
 ### Priority 5: Seal the Output ✅ COMPLETED
 After learning what "real" output needs to look like:
