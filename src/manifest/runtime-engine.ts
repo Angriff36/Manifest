@@ -54,6 +54,31 @@ export interface RuntimeOptions {
    * If not provided, the runtime will verify the IR's self-reported hash.
    */
   expectedIRHash?: string;
+  /**
+   * Optional function to provide custom store implementations for entities.
+   * Called with the entity name and should return a Store instance or undefined.
+   * If undefined is returned, the runtime will use its default store initialization.
+   *
+   * This allows using server-side stores like PostgresStore and SupabaseStore from stores.node.ts.
+   *
+   * @example
+   * ```typescript
+   * import { PostgresStore } from './stores.node.js';
+   *
+   * const runtime = new RuntimeEngine(ir, context, {
+   *   storeProvider: (entityName) => {
+   *     if (entityName === 'User' || entityName === 'Post') {
+   *       return new PostgresStore({
+   *         connectionString: process.env.DATABASE_URL,
+   *         tableName: entityName.toLowerCase()
+   *       });
+   *     }
+   *     return undefined; // Use default store
+   *   }
+   * });
+   * ```
+   */
+  storeProvider?: (entityName: string) => Store | undefined;
 }
 
 export interface EntityInstance {
@@ -259,6 +284,16 @@ export class RuntimeEngine {
 
   private initializeStores(): void {
     for (const entity of this.ir.entities) {
+      // First check if a storeProvider is configured and use it
+      if (this.options.storeProvider) {
+        const customStore = this.options.storeProvider(entity.name);
+        if (customStore) {
+          this.stores.set(entity.name, customStore);
+          continue;
+        }
+      }
+
+      // Fall back to default store initialization
       const storeConfig = this.ir.stores.find(s => s.entity === entity.name);
       let store: Store;
 
@@ -277,12 +312,14 @@ export class RuntimeEngine {
           case 'postgres':
             throw new Error(
               `PostgreSQL storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or run this code server-side with stores.node.ts.`
+              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+              `For server-side use, import PostgresStore from stores.node.ts.`
             );
           case 'supabase':
             throw new Error(
               `Supabase storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or run this code server-side with stores.node.ts.`
+              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+              `For server-side use, import SupabaseStore from stores.node.ts.`
             );
           default: {
             // Exhaustive check for valid IR store targets

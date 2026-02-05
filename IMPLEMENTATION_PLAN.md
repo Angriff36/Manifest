@@ -5,7 +5,7 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 3 - Priority 1 ✅ COMPLETED
+Phase: Loop 3 - Priority 2 ✅ COMPLETED
 
 ## Mission
 
@@ -51,17 +51,97 @@ Enable cross-entity relationship access in expressions.
 - Returns `null` for empty belongsTo/hasOne/ref relationships
 - Returns `[]` for empty hasMany relationships
 
-### Priority 2: [PENDING]
-[To be defined based on remaining nonconformances]
+### Priority 2: Storage Adapters (PostgreSQL, Supabase) ✅ COMPLETED
+Implement real database persistence for production use cases.
 
-### Priority 3: [PENDING]
-[To be defined]
+- [x] PostgreSQL adapter with connection pooling
+- [x] CRUD operations for PostgreSQL
+- [x] Supabase adapter
+- [x] Store injection via `storeProvider` option
+- [x] Error handling and diagnostics
+- [x] Updated documentation
 
-### Priority 4: [PENDING]
-[To be defined]
+**Implementation Details (2026-02-05):**
 
-### Priority 5: [PENDING]
-[To be defined]
+**Discovery:**
+- PostgresStore and SupabaseStore were ALREADY fully implemented in `stores.node.ts`
+- The issue was that browser runtime couldn't use them (security restriction)
+- Documentation incorrectly listed them as "not implemented"
+
+**Solution Implemented:**
+- Added `storeProvider` option to `RuntimeOptions` interface
+- Modified `initializeStores()` to check for custom stores first
+- Updated error messages to guide users to use `storeProvider` for server-side stores
+- Updated `docs/spec/adapters.md` to reflect resolved status
+- Updated `specs/storage-adapters.md` to mark as completed
+
+**Usage Pattern:**
+```typescript
+import { RuntimeEngine } from './runtime-engine.js';
+import { PostgresStore } from './stores.node.js';
+
+const runtime = new RuntimeEngine(ir, context, {
+  storeProvider: (entityName) => {
+    return new PostgresStore({
+      connectionString: process.env.DATABASE_URL,
+      tableName: entityName.toLowerCase()
+    });
+  }
+});
+```
+
+**Key Features of Existing Implementations:**
+- `PostgresStore<T>`: Connection pooling, JSONB storage, automatic table creation, GIN indexing
+- `SupabaseStore<T>`: Full Supabase client integration, proper error handling
+- Both implement the `Store<T>` interface with all required CRUD methods
+- All 100 conformance tests passing
+
+### Priority 3: Generated Code Conformance Fixes [PENDING]
+Align generated server/client code with runtime semantics.
+
+- [ ] Update spec to clarify generated code expectations
+- [ ] Implement policy enforcement in generated server code
+- [ ] Return last action result from generated client commands
+- [ ] Update code generator templates
+- [ ] Add conformance tests for generated artifacts
+
+**Issues (from docs/spec/semantics.md):**
+- Generated server code does not enforce policies; it checks guards only
+- Generated client code does not return the last action result for commands (returns void)
+
+**Approach:**
+1. Update `docs/spec/semantics.md` to reflect what generated code SHOULD do
+2. Create conformance fixtures for generated code expectations
+3. Update `CodeGenerator` to emit policy-enforcing server code
+4. Update client command signatures to return `CommandResult`
+5. Regenerate all expected outputs
+
+### Priority 4: UI Enhancements [PENDING]
+Improve Runtime UI for better observability and diagnostics.
+
+- [ ] Implement Event Log Viewer (specs/event-log-viewer.md)
+- [ ] Implement Policy/Guard Diagnostics UI (specs/policy-guard-diagnostics.md)
+- [ ] Add collapsible sections for complex diagnostics
+- [ ] Display resolved expression values in UI
+- [ ] Add clear log functionality
+
+**Spec References:**
+- `specs/event-log-viewer.md` - Live event log display
+- `specs/policy-guard-diagnostics.md` - Detailed failure diagnostics
+
+### Priority 5: Tiny App Demo [PENDING]
+Complete working demonstration of Manifest capabilities.
+
+- [ ] Create TinyAppPanel component (specs/tiny-app-demo.md)
+- [ ] Implement domain model with entities
+- [ ] Add command execution UI
+- [ ] Integrate event log viewer
+- [ ] Demonstrate policy enforcement
+
+**Status:**
+- `specs/tiny-app-demo.md` has full specification
+- Fixture 17-tiny-app.manifest exists
+- UI panel not yet implemented
 
 ---
 
