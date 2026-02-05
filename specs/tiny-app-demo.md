@@ -4,41 +4,48 @@
 
 As a prospective user of the Manifest language, I want to see a working micro-application that demonstrates the full language capabilities end-to-end, so that I can understand what Manifest can do.
 
-## Acceptance Criteria
+## Status ✅ SUPERSEDED BY PRIORITY 0 (Unify Runtime UI)
 
-1. **Domain Model** (Orders, Customers, or Tickets)
-   - Entity with 3-4 properties (required and optional)
-   - 2 computed properties (one depending on another)
-   - 2-3 commands (create, update, complete/close)
-   - 1 policy checking `user.role`
-   - 1 guard checking command parameters
-   - Store in memory
-   - Events for key actions
+**Resolution Date:** 2026-02-05 (Loop 3, Priority 0)
 
-2. **UI Panel** (`TinyAppPanel.tsx`)
-   - **Entity List**: Display all instances (table or list)
-   - **Entity Detail**: When selected, show all properties including computed
-   - **Command Execution**: Form inputs, context editor, execute button
-   - **Event Log**: Show events emitted
+The unified Runtime UI provides interactive demo capabilities for ANY manifest.
 
-3. **Integration**
-   - "Tiny App" tab in ArtifactsPanel
-   - Load fixture IR, initialize runtime with memory store
-   - Wire UI to runtime engine
+## Implementation Details
 
-4. **Verification**
-   - Create entity instance, view computed properties
-   - Execute command with valid user role -> succeeds
-   - Execute command without required role -> policy denial
-   - Events appear in log
+Instead of a hardcoded `TinyAppPanel`, the unified `RuntimePanel` provides:
+
+1. **Entity selector dropdown** - populated from compiled IR entities
+2. **Instance list** - clickable, shows key properties
+3. **"Create Instance" button** - creates with default values
+4. **Instance detail view** - shows all properties + computed properties
+5. **Command dropdown** - populated from entity's commands
+6. **Parameter hints** - based on command signature
+7. **Event log sidebar** - with clear functionality
+8. **Inline MemoryStore** - for browser demo (allows Supabase/Postgres manifests to work)
+
+This unified approach works for ANY manifest, including:
+- `17-tiny-app.manifest` fixture
+- `20-blog-app.manifest` fixture
+- Any custom manifest
 
 ## Technical Notes
 
-- Builds on Event Log Viewer and Diagnostics features
-- Use conformance fixture `17-tiny-app.manifest`
+**Implementation Location:** `src/artifacts/RuntimePanel.tsx`
+
+- TinyAppPanel.tsx was removed (no longer needed)
+- Runtime UI now provides universal demo capabilities
+- Fixed IRValue extraction bug (was using IRValue object instead of actual value)
+
+## Testing Completed (2026-02-05)
+
+- Created PrepTask instance with correct defaults (status="pending", priority=1)
+- Executed `claim` command successfully
+- Verified properties updated (assignedTo="u1", status="in_progress")
+- Verified event log shows taskClaimed event with correct payload
+- Verified computed property isUrgent updates correctly (priority < 3 = false)
 
 ## Related Files
 
-- `src/artifacts/TinyAppPanel.tsx` (new)
-- `src/artifacts/ArtifactsPanel.tsx` - add tab
+- `src/artifacts/RuntimePanel.tsx` - unified UI component (replaces TinyAppPanel)
 - `src/manifest/runtime-engine.ts` - runtime integration
+- `src/manifest/conformance/fixtures/17-tiny-app.manifest` - test fixture
