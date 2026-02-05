@@ -1,0 +1,6 @@
+// Test: Using a reserved word as an entity name should fail compilation
+// This tests that the reserved word rule is enforced
+
+entity entity {
+  property name: string
+}

@@ -7,8 +7,13 @@
       "properties": [
         {
           "name": "name",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         }
       ],
       "computedProperties": [],
@@ -28,13 +33,24 @@
       "properties": [
         {
           "name": "title",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "year",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 2024 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 2024
+          },
           "modifiers": []
         }
       ],

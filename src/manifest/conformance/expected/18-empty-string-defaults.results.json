@@ -1,0 +1,62 @@
+{
+  "testCases": [
+    {
+      "name": "omitting status field applies default 'pending'",
+      "setup": {
+        "createInstance": {
+          "entity": "PrepTask",
+          "data": { "id": "task-1", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "claim",
+        "entityName": "PrepTask",
+        "instanceId": "task-1",
+        "input": { "employeeId": "emp1" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "TaskClaimed",
+            "channel": "task.claimed",
+            "payload": {
+              "employeeId": "emp1",
+              "result": "in_progress"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-1",
+        "status": "in_progress",
+        "priority": 1
+      }
+    },
+    {
+      "name": "explicit empty string for status keeps empty string",
+      "setup": {
+        "createInstance": {
+          "entity": "PrepTask",
+          "data": { "id": "task-2", "status": "", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "claim",
+        "entityName": "PrepTask",
+        "instanceId": "task-2",
+        "input": { "employeeId": "emp1" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'claim'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 1,
+        "expression": "self.status == \"pending\""
+      }
+    }
+  ]
+}

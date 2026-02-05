@@ -29,7 +29,20 @@ export interface CommandResult {
   result?: unknown;
   error?: string;
   deniedBy?: string;
+  guardFailure?: GuardFailure;
   emittedEvents: EmittedEvent[];
+}
+
+export interface GuardFailure {
+  index: number;
+  expression: IRExpression;
+  formatted: string;
+  resolved?: GuardResolvedValue[];
+}
+
+export interface GuardResolvedValue {
+  expression: string;
+  value: unknown;
 }
 
 export interface EmittedEvent {
@@ -196,6 +209,13 @@ export class RuntimeEngine {
     return this.options.now ? this.options.now() : Date.now();
   }
 
+  private getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
+    return {
+      now: () => this.getNow(),
+      uuid: () => this.options.generateId ? this.options.generateId() : crypto.randomUUID(),
+    };
+  }
+
   getIR(): IR {
     return this.ir;
   }
@@ -208,6 +228,10 @@ export class RuntimeEngine {
     this.context = { ...this.context, ...ctx };
   }
 
+  replaceContext(ctx: RuntimeContext): void {
+    this.context = { ...ctx };
+  }
+
   getEntities(): IREntity[] {
     return this.ir.entities;
   }
@@ -217,17 +241,14 @@ export class RuntimeEngine {
   }
 
   getCommands(): IRCommand[] {
-    const moduleCommands = this.ir.commands;
-    const entityCommands = this.ir.entities.flatMap(e =>
-      e.commands.map(c => ({ ...c, entity: e.name }))
-    );
-    return [...moduleCommands, ...entityCommands];
+    return this.ir.commands;
   }
 
   getCommand(name: string, entityName?: string): IRCommand | undefined {
     if (entityName) {
       const entity = this.getEntity(entityName);
-      return entity?.commands.find(c => c.name === name);
+      if (!entity || !entity.commands.includes(name)) return undefined;
+      return this.ir.commands.find(c => c.name === name && c.entity === entityName);
     }
     return this.ir.commands.find(c => c.name === name);
   }
@@ -309,12 +330,19 @@ export class RuntimeEngine {
       };
     }
 
-    for (const guard of command.guards) {
+    for (let i = 0; i < command.guards.length; i += 1) {
+      const guard = command.guards[i];
       const result = this.evaluateExpression(guard, evalContext);
       if (!result) {
         return {
           success: false,
           error: `Guard condition failed for command '${commandName}'`,
+          guardFailure: {
+            index: i + 1,
+            expression: guard,
+            formatted: this.formatExpression(guard),
+            resolved: this.resolveExpressionValues(guard, evalContext),
+          },
           emittedEvents: [],
         };
       }
@@ -325,7 +353,7 @@ export class RuntimeEngine {
 
     for (const action of command.actions) {
       const actionResult = this.executeAction(action, evalContext, options);
-      if (action.kind === 'mutate' && options.instanceId && options.entityName) {
+      if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
         const currentInstance = this.getInstance(options.entityName, options.instanceId);
         evalContext.self = currentInstance;
         evalContext.this = currentInstance;
@@ -360,10 +388,10 @@ export class RuntimeEngine {
     return {
       ...(instance || {}),
       ...input,
-      self: instance,
-      this: instance,
-      user: this.context.user,
-      context: this.context,
+      self: instance ?? null,
+      this: instance ?? null,
+      user: this.context.user ?? null,
+      context: this.context ?? {},
     };
   }
 
@@ -389,6 +417,114 @@ export class RuntimeEngine {
     }
 
     return { allowed: true };
+  }
+
+  private formatExpression(expr: IRExpression): string {
+    switch (expr.kind) {
+      case 'literal':
+        return this.formatValue(expr.value);
+      case 'identifier':
+        return expr.name;
+      case 'member':
+        return `${this.formatExpression(expr.object)}.${expr.property}`;
+      case 'binary':
+        return `${this.formatExpression(expr.left)} ${expr.operator} ${this.formatExpression(expr.right)}`;
+      case 'unary':
+        return expr.operator === 'not'
+          ? `not ${this.formatExpression(expr.operand)}`
+          : `${expr.operator}${this.formatExpression(expr.operand)}`;
+      case 'call':
+        return `${this.formatExpression(expr.callee)}(${expr.args.map(arg => this.formatExpression(arg)).join(', ')})`;
+      case 'conditional':
+        return `${this.formatExpression(expr.condition)} ? ${this.formatExpression(expr.consequent)} : ${this.formatExpression(expr.alternate)}`;
+      case 'array':
+        return `[${expr.elements.map(el => this.formatExpression(el)).join(', ')}]`;
+      case 'object':
+        return `{ ${expr.properties.map(p => `${p.key}: ${this.formatExpression(p.value)}`).join(', ')} }`;
+      case 'lambda':
+        return `(${expr.params.join(', ')}) => ${this.formatExpression(expr.body)}`;
+      default:
+        return '<expr>';
+    }
+  }
+
+  private formatValue(value: IRValue): string {
+    switch (value.kind) {
+      case 'string':
+        return JSON.stringify(value.value);
+      case 'number':
+        return String(value.value);
+      case 'boolean':
+        return String(value.value);
+      case 'null':
+        return 'null';
+      case 'array':
+        return `[${value.elements.map(el => this.formatValue(el)).join(', ')}]`;
+      case 'object':
+        return `{ ${Object.entries(value.properties).map(([k, v]) => `${k}: ${this.formatValue(v)}`).join(', ')} }`;
+      default:
+        return 'null';
+    }
+  }
+
+  private resolveExpressionValues(
+    expr: IRExpression,
+    evalContext: Record<string, unknown>
+  ): GuardResolvedValue[] {
+    const entries: GuardResolvedValue[] = [];
+    const seen = new Set<string>();
+
+    const addEntry = (node: IRExpression) => {
+      const formatted = this.formatExpression(node);
+      if (seen.has(formatted)) return;
+      seen.add(formatted);
+      let value: unknown;
+      try {
+        value = this.evaluateExpression(node, evalContext);
+      } catch {
+        value = undefined;
+      }
+      entries.push({ expression: formatted, value });
+    };
+
+    const walk = (node: IRExpression): void => {
+      switch (node.kind) {
+        case 'literal':
+        case 'identifier':
+        case 'member':
+          addEntry(node);
+          return;
+        case 'binary':
+          walk(node.left);
+          walk(node.right);
+          return;
+        case 'unary':
+          walk(node.operand);
+          return;
+        case 'call':
+          node.args.forEach(walk);
+          return;
+        case 'conditional':
+          walk(node.condition);
+          walk(node.consequent);
+          walk(node.alternate);
+          return;
+        case 'array':
+          node.elements.forEach(walk);
+          return;
+        case 'object':
+          node.properties.forEach(p => walk(p.value));
+          return;
+        case 'lambda':
+          walk(node.body);
+          return;
+        default:
+          return;
+      }
+    };
+
+    walk(expr);
+    return entries;
   }
 
   private executeAction(
@@ -424,6 +560,13 @@ export class RuntimeEngine {
         return value;
 
       case 'compute':
+        if (action.target && options.instanceId && options.entityName) {
+          this.updateInstance(options.entityName, options.instanceId, {
+            [action.target]: value,
+          });
+        }
+        return value;
+
       case 'effect':
       default:
         return value;
@@ -464,6 +607,17 @@ export class RuntimeEngine {
       }
 
       case 'call': {
+        // Check if callee is a built-in function identifier
+        const calleeExpr = expr.callee;
+        if (calleeExpr.kind === 'identifier') {
+          const builtins = this.getBuiltins();
+          if (calleeExpr.name in builtins) {
+            const args = expr.args.map(a => this.evaluateExpression(a, context));
+            return builtins[calleeExpr.name](...args);
+          }
+        }
+
+        // Default: evaluate callee and call as function
         const callee = this.evaluateExpression(expr.callee, context);
         const args = expr.args.map(a => this.evaluateExpression(a, context));
         if (typeof callee === 'function') {
@@ -517,8 +671,8 @@ export class RuntimeEngine {
       case '/': return (left as number) / (right as number);
       case '%': return (left as number) % (right as number);
       case '==':
-      case 'is': return left === right;
-      case '!=': return left !== right;
+      case 'is': return left == right; // Loose equality: undefined == null is true
+      case '!=': return left != right; // Loose inequality: undefined != null is false
       case '<': return (left as number) < (right as number);
       case '>': return (left as number) > (right as number);
       case '<=': return (left as number) <= (right as number);
@@ -618,8 +772,8 @@ export class RuntimeEngine {
       this: instance,
       ...instance,
       ...computedValues,
-      user: this.context.user,
-      context: this.context,
+      user: this.context.user ?? null,
+      context: this.context ?? {},
     };
 
     return this.evaluateExpression(computed.expression, context);

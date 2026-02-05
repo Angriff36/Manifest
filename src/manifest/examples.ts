@@ -20,7 +20,7 @@ module kitchen {
 
     // Commands - explicit business operations
     command claim(employeeId: string) {
-      guard status == "pending"
+      guard self.status == "pending"
       guard user.role == "cook" or user.role == "chef"
       mutate assignedTo = employeeId
       mutate status = "in_progress"
@@ -28,8 +28,8 @@ module kitchen {
     }
 
     command complete() {
-      guard status == "in_progress"
-      guard assignedTo == user.id
+      guard self.status == "in_progress"
+      guard self.assignedTo == user.id
       mutate status = "completed"
       emit taskCompleted
     }
@@ -113,15 +113,15 @@ entity Order {
   computed total: number = subtotal + tax
 
   command addItem(productId: string, name: string, price: number, quantity: number) {
-    guard status == "draft"
+    guard self.status == "draft"
     compute newItem = { id: uuid(), productId: productId, name: name, price: price, quantity: quantity }
     mutate items = items.concat([newItem])
     emit itemAdded
   }
 
   command submit() {
-    guard status == "draft"
-    guard items.length > 0
+    guard self.status == "draft"
+    guard self.items.length > 0
     mutate status = "submitted"
     emit orderSubmitted
   }
@@ -156,7 +156,7 @@ expose Order as function`
   policy canDeactivate execute: user.id == self.id or user.role == "admin"
 
   command deactivate() {
-    guard active == true
+    guard self.active == true
     mutate active = false
     emit userDeactivated
   }
@@ -244,7 +244,7 @@ entity Product {
   computed isLowStock: boolean = stock <= lowStockThreshold
 
   command reduceStock(amount: number) {
-    guard stock >= amount
+    guard self.stock >= amount
     mutate stock = stock - amount
     // Alert when stock is low
     compute checkLowStock()
@@ -300,7 +300,7 @@ entity ShoppingCart {
   }
 
   command checkout() {
-    guard items.length > 0
+    guard self.items.length > 0
     emit checkoutStarted
   }
 
@@ -344,13 +344,13 @@ entity Order {
   belongsTo customer: Customer
 
   command process() {
-    guard status == "pending"
+    guard self.status == "pending"
     mutate status = "processing"
     emit orderProcessing
   }
 
   command ship() {
-    guard status == "processing"
+    guard self.status == "processing"
     mutate status = "shipped"
     emit orderShipped
   }
@@ -406,13 +406,13 @@ entity Counter {
 
   // Commands instead of behaviors
   command increment() {
-    guard not isAtMax
+    guard not self.isAtMax
     mutate value = value + step
     emit incremented
   }
 
   command decrement() {
-    guard not isAtMin
+    guard not self.isAtMin
     mutate value = value - step
     emit decremented
   }

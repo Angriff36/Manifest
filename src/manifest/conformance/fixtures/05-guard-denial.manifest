@@ -4,7 +4,7 @@ entity Task {
   property priority: number = 1
 
   command complete() {
-    guard not completed
+    guard not self.completed
     mutate completed = true
     emit TaskCompleted
   }
@@ -15,7 +15,7 @@ entity Task {
   }
 
   command archive() {
-    guard completed
+    guard self.completed
     emit TaskArchived
   }
 }

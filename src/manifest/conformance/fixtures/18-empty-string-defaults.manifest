@@ -1,0 +1,18 @@
+entity PrepTask {
+  property required id: string
+  property status: string = "pending"
+  property priority: number = 1
+
+  command claim(employeeId: string) {
+    guard self.status == "pending"
+    mutate status = "in_progress"
+    emit TaskClaimed
+  }
+}
+
+store PrepTask in memory
+
+event TaskClaimed: "task.claimed" {
+  taskId: string
+  employeeId: string
+}

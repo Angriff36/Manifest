@@ -1,0 +1,69 @@
+{
+  "testCases": [
+    {
+      "name": "round-trip: addItem command",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-1", "total": 0, "status": "pending" }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-1",
+        "input": { "amount": 50 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 50,
+        "emittedEvents": [
+          {
+            "name": "OrderUpdated",
+            "channel": "order.updated",
+            "payload": { "amount": 50, "result": 50 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-1",
+        "total": 50,
+        "status": "pending",
+        "customerId": ""
+      }
+    },
+    {
+      "name": "round-trip: complete command",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-2", "total": 100, "status": "pending" }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Order",
+        "instanceId": "order-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "OrderCompleted",
+            "channel": "order.completed",
+            "payload": { "result": null },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-2",
+        "total": 100,
+        "status": "completed",
+        "customerId": ""
+      }
+    }
+  ]
+}

@@ -23,7 +23,7 @@ export interface IREntity {
   properties: IRProperty[];
   computedProperties: IRComputedProperty[];
   relationships: IRRelationship[];
-  commands: IRCommand[];
+  commands: string[];
   constraints: IRConstraint[];
   policies: string[];
 }

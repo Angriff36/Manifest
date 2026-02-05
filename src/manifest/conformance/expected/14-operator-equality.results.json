@@ -1,0 +1,122 @@
+{
+  "testCases": [
+    {
+      "name": "undefined == null (loose equality)",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e1", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e1",
+        "property": "undefinedEqualsNull"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "undefined != null (loose inequality)",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e2", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e2",
+        "property": "undefinedNotEqualsNull"
+      },
+      "expectedValue": false
+    },
+    {
+      "name": "null == undefined (reverse direction)",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e3", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e3",
+        "property": "nullEqualsUndefined"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "string == number (type coercion)",
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e4", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e4",
+        "property": "stringEqualsNumber"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "zero == false (type coercion)",
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e5", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e5",
+        "property": "zeroEqualsFalse"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "is operator (alias for ==)",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e6", "value": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "EqualityTest",
+        "instanceId": "e6",
+        "property": "isOperator"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "guard with type coercion",
+      "setup": {
+        "createInstance": {
+          "entity": "EqualityTest",
+          "data": { "id": "e7", "value": 0 }
+        }
+      },
+      "command": {
+        "name": "testCoercion",
+        "entityName": "EqualityTest",
+        "instanceId": "e7",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "e7",
+        "value": 1
+      }
+    }
+  ]
+}

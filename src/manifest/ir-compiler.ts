@@ -80,6 +80,8 @@ export class IRCompiler {
     const commands: IRCommand[] = [
       ...program.commands.map(c => this.transformCommand(c)),
       ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
+      ...program.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, undefined, e.name))),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, m.name, e.name)))),
     ];
     const policies: IRPolicy[] = [
       ...program.policies.map(p => this.transformPolicy(p)),
@@ -115,7 +117,7 @@ export class IRCompiler {
       properties: e.properties.map(p => this.transformProperty(p)),
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
-      commands: e.commands.map(c => this.transformCommand(c, moduleName, e.name)),
+      commands: e.commands.map(c => c.name),
       constraints: e.constraints.map(c => this.transformConstraint(c)),
       policies: e.policies.map(p => p.name),
     };

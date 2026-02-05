@@ -1,0 +1,145 @@
+{
+  "testCases": [
+    {
+      "name": "self binding in computed property",
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e1", "ownerId": "user1" }
+        }
+      },
+      "computedProperty": {
+        "entity": "TestEntity",
+        "instanceId": "e1",
+        "property": "isOwned"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "this binding (alias of self) in computed property",
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e2", "ownerId": "user2" }
+        }
+      },
+      "computedProperty": {
+        "entity": "TestEntity",
+        "instanceId": "e2",
+        "property": "isOwnedAlias"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "params binding in guard",
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e3", "value": 0 }
+        }
+      },
+      "command": {
+        "name": "setValue",
+        "entityName": "TestEntity",
+        "instanceId": "e3",
+        "input": { "newValue": 42 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 42,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "e3",
+        "value": 42,
+        "ownerId": ""
+      }
+    },
+    {
+      "name": "user binding present in guard",
+      "context": {
+        "user": { "id": "user1", "role": "admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e4", "ownerId": "" }
+        }
+      },
+      "command": {
+        "name": "claim",
+        "entityName": "TestEntity",
+        "instanceId": "e4",
+        "input": { "userId": "user1" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "e4",
+        "value": 0,
+        "ownerId": "user1"
+      }
+    },
+    {
+      "name": "user binding absent (null) in guard",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e5", "ownerId": "" }
+        }
+      },
+      "command": {
+        "name": "publicClaim",
+        "entityName": "TestEntity",
+        "instanceId": "e5",
+        "input": { "userId": "anyone" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "e5",
+        "value": 0,
+        "ownerId": "anyone"
+      }
+    },
+    {
+      "name": "context binding in computed property",
+      "context": {
+        "testValue": 100
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e6" }
+        }
+      },
+      "computedProperty": {
+        "entity": "TestEntity",
+        "instanceId": "e6",
+        "property": "contextValue"
+      },
+      "expectedValue": 100
+    },
+    {
+      "name": "context binding absent (empty object) in computed property",
+      "context": {},
+      "setup": {
+        "createInstance": {
+          "entity": "TestEntity",
+          "data": { "id": "e7" }
+        }
+      },
+      "computedProperty": {
+        "entity": "TestEntity",
+        "instanceId": "e7",
+        "property": "contextValue"
+      },
+      "expectedValue": 0
+    }
+  ]
+}

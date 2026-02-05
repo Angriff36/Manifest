@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { compileToIR } from '../ir-compiler';
 import { RuntimeEngine, RuntimeOptions, CommandResult, EntityInstance } from '../runtime-engine';
-import type { IR } from '../ir';
+import type { IR, IRDiagnostic } from '../ir';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,14 +27,31 @@ function loadFixture(name: string): string {
   return readFileSync(join(FIXTURES_DIR, name), 'utf-8');
 }
 
-function loadExpectedIR(name: string): IR {
+function loadExpectedIR(name: string): IR | null {
   const irPath = join(EXPECTED_DIR, name.replace('.manifest', '.ir.json'));
+  if (!existsSync(irPath)) return null;
   return JSON.parse(readFileSync(irPath, 'utf-8'));
+}
+
+interface ExpectedDiagnostics {
+  shouldFail: boolean;
+  diagnostics: Array<{
+    severity: 'error' | 'warning';
+    message: string;
+    line?: number;
+    column?: number;
+  }>;
+}
+
+function loadExpectedDiagnostics(name: string): ExpectedDiagnostics | null {
+  const diagnosticsPath = join(EXPECTED_DIR, name.replace('.manifest', '.diagnostics.json'));
+  if (!existsSync(diagnosticsPath)) return null;
+  return JSON.parse(readFileSync(diagnosticsPath, 'utf-8'));
 }
 
 interface CommandTestCase {
   name: string;
-  context?: { user?: { id: string; role?: string } };
+  context?: { user?: { id: string; role?: string }; [key: string]: unknown };
   setup?: {
     createInstance?: {
       entity: string;
@@ -60,6 +77,10 @@ interface CommandTestCase {
     }>;
   };
   expectedInstanceState?: Record<string, unknown>;
+  expectedGuardFailure?: {
+    index: number;
+    expression: string;
+  };
 }
 
 interface ComputedTestCase {
@@ -122,6 +143,14 @@ function normalizeResult(result: CommandResult): Partial<CommandResult> {
   if (result.result !== undefined) normalized.result = result.result;
   if (result.error !== undefined) normalized.error = result.error;
   if (result.deniedBy !== undefined) normalized.deniedBy = result.deniedBy;
+  if (result.guardFailure !== undefined) {
+    normalized.guardFailure = {
+      index: result.guardFailure.index,
+      formatted: result.guardFailure.formatted,
+      expression: result.guardFailure.expression,
+      resolved: result.guardFailure.resolved,
+    };
+  }
   return normalized;
 }
 
@@ -130,19 +159,53 @@ describe('Manifest Conformance Tests', () => {
 
   describe('IR Compilation', () => {
     fixtures.forEach(fixtureName => {
-      it(`compiles ${fixtureName} to expected IR`, () => {
-        const source = loadFixture(fixtureName);
-        const { ir, diagnostics } = compileToIR(source);
+      const expectedDiagnostics = loadExpectedDiagnostics(fixtureName);
 
-        expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
-        expect(ir).not.toBeNull();
+      // If this fixture has a diagnostics file, it's a diagnostic test (expected to fail)
+      if (expectedDiagnostics) {
+        it(`${fixtureName} produces expected diagnostics`, () => {
+          const source = loadFixture(fixtureName);
+          const { ir, diagnostics } = compileToIR(source);
 
-        const expectedIR = loadExpectedIR(fixtureName);
-        const normalizedActual = normalizeIR(ir!);
-        const normalizedExpected = normalizeIR(expectedIR);
+          if (expectedDiagnostics.shouldFail) {
+            // Compilation should fail
+            expect(ir).toBeNull();
+            expect(diagnostics.filter(d => d.severity === 'error').length).toBeGreaterThan(0);
+          }
 
-        expect(normalizedActual).toEqual(normalizedExpected);
-      });
+          // Verify each expected diagnostic is present with exact matching
+          expect(diagnostics.length).toBe(expectedDiagnostics.diagnostics.length);
+
+          expectedDiagnostics.diagnostics.forEach((expectedDiag, index) => {
+            const actualDiag = diagnostics[index];
+            expect(actualDiag.severity).toBe(expectedDiag.severity);
+            expect(actualDiag.message).toBe(expectedDiag.message);
+            if (expectedDiag.line !== undefined) {
+              expect(actualDiag.line).toBe(expectedDiag.line);
+            }
+            if (expectedDiag.column !== undefined) {
+              expect(actualDiag.column).toBe(expectedDiag.column);
+            }
+          });
+        });
+      } else {
+        // Standard compilation test - should succeed
+        it(`compiles ${fixtureName} to expected IR`, () => {
+          const source = loadFixture(fixtureName);
+          const { ir, diagnostics } = compileToIR(source);
+
+          expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+          expect(ir).not.toBeNull();
+
+          const expectedIR = loadExpectedIR(fixtureName);
+          expect(expectedIR).not.toBeNull();
+
+          const normalizedActual = normalizeIR(ir!);
+          const normalizedExpected = normalizeIR(expectedIR!);
+
+          expect(normalizedActual).toEqual(normalizedExpected);
+        });
+      }
     });
   });
 
@@ -190,6 +253,13 @@ describe('Manifest Conformance Tests', () => {
                 expect(normalizedResult.deniedBy).toBe(tc.expectedResult.deniedBy);
               }
 
+              if (tc.expectedGuardFailure) {
+                expect(normalizedResult.guardFailure).toBeDefined();
+                expect(normalizedResult.guardFailure?.index).toBe(tc.expectedGuardFailure.index);
+                // Check that the formatted expression contains the expected expression
+                expect(normalizedResult.guardFailure?.formatted).toContain(tc.expectedGuardFailure.expression);
+              }
+
               if (tc.expectedResult.result !== undefined) {
                 expect(normalizedResult.result).toBe(tc.expectedResult.result);
               }
@@ -217,7 +287,8 @@ describe('Manifest Conformance Tests', () => {
               const { ir } = compileToIR(source);
               expect(ir).not.toBeNull();
 
-              const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
+              const context = (testCase as any).context ?? {};
+              const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
               engine.createInstance(
                 tc.setup.createInstance.entity,

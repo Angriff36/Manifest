@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Unexpected: \n",
+      "line": 22,
+      "column": 64
+    }
+  ]
+}

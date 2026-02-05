@@ -7,25 +7,48 @@
       "properties": [
         {
           "name": "name",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "price",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 0 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
           "modifiers": []
         },
         {
           "name": "inStock",
-          "type": { "name": "boolean", "nullable": false },
-          "defaultValue": { "kind": "boolean", "value": true },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": true
+          },
           "modifiers": []
         },
         {
           "name": "description",
-          "type": { "name": "string", "nullable": false },
-          "defaultValue": { "kind": "string", "value": "" },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
           "modifiers": []
         }
       ],

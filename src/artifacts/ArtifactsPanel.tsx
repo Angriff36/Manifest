@@ -3,6 +3,7 @@ import { Download, Copy, Check, Package, FolderTree, Rocket } from 'lucide-react
 import { FileTree } from './FileTree';
 import { FileViewer } from './FileViewer';
 import { SmokeTestPanel } from './SmokeTestPanel';
+import { RuntimePanel } from './RuntimePanel';
 import { buildFileMap, exportZip, exportRunnableZip, copyAllFiles, generateProjectName } from './zipExporter';
 import { ProjectFiles } from './types';
 
@@ -14,6 +15,8 @@ interface ArtifactsPanelProps {
   ast: object | null;
   hasErrors: boolean;
 }
+
+type PanelMode = 'files' | 'runtime';
 
 export function ArtifactsPanel({
   source,
@@ -27,6 +30,7 @@ export function ArtifactsPanel({
   const [copiedAll, setCopiedAll] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingRunnable, setExportingRunnable] = useState(false);
+  const [panelMode, setPanelMode] = useState<PanelMode>('files');
 
   const files: ProjectFiles = {
     source,
@@ -134,24 +138,57 @@ export function ArtifactsPanel({
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-48 flex-shrink-0 border-r border-gray-800 overflow-auto">
-          <div className="px-2 py-2 text-xs text-gray-500 uppercase tracking-wider flex items-center gap-1">
+          <div className="px-2 py-2 text-xs text-gray-500 uppercase tracking-wider flex items-center gap-1 border-b border-gray-800">
             <FolderTree size={12} />
-            Files
+            Panels
           </div>
-          <FileTree
-            files={fileMap}
-            selectedFile={selectedFile}
-            onSelectFile={setSelectedFile}
-          />
+          <button
+            onClick={() => setPanelMode('files')}
+            className={`w-full px-2 py-2 text-left text-sm transition-colors ${
+              panelMode === 'files'
+                ? 'bg-gray-800 text-sky-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-900/50'
+            }`}
+          >
+            Files
+          </button>
+          <button
+            onClick={() => setPanelMode('runtime')}
+            className={`w-full px-2 py-2 text-left text-sm transition-colors ${
+              panelMode === 'runtime'
+                ? 'bg-gray-800 text-sky-400'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-900/50'
+            }`}
+          >
+            Runtime
+          </button>
+          
+          {panelMode === 'files' && (
+            <>
+              <div className="px-2 py-2 text-xs text-gray-500 uppercase tracking-wider flex items-center gap-1 border-t border-gray-800 mt-2">
+                <FolderTree size={12} />
+                Files
+              </div>
+              <FileTree
+                files={fileMap}
+                selectedFile={selectedFile}
+                onSelectFile={setSelectedFile}
+              />
+            </>
+          )}
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedFile && fileMap[selectedFile] ? (
-            <FileViewer path={selectedFile} content={fileMap[selectedFile]} />
+          {panelMode === 'files' ? (
+            selectedFile && fileMap[selectedFile] ? (
+              <FileViewer path={selectedFile} content={fileMap[selectedFile]} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+                Select a file to view
+              </div>
+            )
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-              Select a file to view
-            </div>
+            <RuntimePanel source={source} disabled={hasErrors} />
           )}
         </div>
       </div>

@@ -1,0 +1,21 @@
+// Test: Compute action parsing in commands
+// Verifies both assignment form (compute x = expr) and expression form (compute expr)
+
+entity Inventory {
+  property required id: string
+  property quantity: number = 0
+  property lowStock: boolean = false
+
+  command addItem(amount: number) {
+    // Assignment form: compute <identifier> = <expr>
+    compute newQuantity = quantity + amount
+    mutate quantity = newQuantity
+  }
+
+  command checkStock() {
+    // Expression form: compute <expr>
+    compute updateLowStockFlag()
+  }
+}
+
+store Inventory in memory

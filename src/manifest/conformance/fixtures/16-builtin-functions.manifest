@@ -1,0 +1,30 @@
+entity TimestampedEntity {
+  property required id: string
+  property baseTime: number = 0
+
+  computed currentTime: number = now()
+  computed elapsed: number = now() - self.baseTime
+}
+
+entity ItemContainer {
+  property required id: string
+  property itemId: string = ""
+  property verifyId: string = ""
+
+  command generateItemId() {
+    guard uuid() != ""
+    compute itemId = uuid()
+    emit ItemGenerated
+  }
+
+  command verifyUuid(testId: string) {
+    guard testId != "" and uuid() != ""
+    compute verifyId = testId
+  }
+}
+
+event ItemGenerated: "item.generated" {
+}
+
+store TimestampedEntity in memory
+store ItemContainer in memory

@@ -7,47 +7,44 @@
       "properties": [
         {
           "name": "title",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "content",
-          "type": { "name": "string", "nullable": false },
-          "defaultValue": { "kind": "string", "value": "" },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
           "modifiers": []
         },
         {
           "name": "isPublic",
-          "type": { "name": "boolean", "nullable": false },
-          "defaultValue": { "kind": "boolean", "value": false },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
           "modifiers": []
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [
-        {
-          "name": "makePublic",
-          "entity": "Document",
-          "parameters": [],
-          "guards": [],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "isPublic",
-              "expression": { "kind": "literal", "value": { "kind": "boolean", "value": true } }
-            }
-          ],
-          "emits": ["DocumentPublished"]
-        },
-        {
-          "name": "remove",
-          "entity": "Document",
-          "parameters": [],
-          "guards": [],
-          "actions": [],
-          "emits": ["DocumentDeleted"]
-        }
+        "makePublic",
+        "remove"
       ],
       "constraints": [],
       "policies": []
@@ -67,7 +64,10 @@
       "payload": [
         {
           "name": "documentId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
@@ -78,13 +78,49 @@
       "payload": [
         {
           "name": "documentId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
     }
   ],
-  "commands": [],
+  "commands": [
+    {
+      "name": "makePublic",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "isPublic",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": [
+        "DocumentPublished"
+      ]
+    },
+    {
+      "name": "remove",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "actions": [],
+      "emits": [
+        "DocumentDeleted"
+      ]
+    }
+  ],
   "policies": [
     {
       "name": "adminOnly",
@@ -94,10 +130,19 @@
         "operator": "==",
         "left": {
           "kind": "member",
-          "object": { "kind": "identifier", "name": "user" },
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
           "property": "role"
         },
-        "right": { "kind": "literal", "value": { "kind": "string", "value": "admin" } }
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
       },
       "message": "Only administrators can execute commands"
     }

@@ -1,0 +1,23 @@
+// This fixture intentionally contains errors to test compiler diagnostics
+
+entity ValidEntity {
+  property required id: string
+}
+
+// Error: unknown entity reference
+entity InvalidEntity {
+  property required id: string
+  belongsTo missing: UnknownEntity
+}
+
+// Error: invalid property type
+entity BadTypeEntity {
+  property required id: string
+  property bad: invalidType
+}
+
+// Error: invalid expression syntax
+entity BadExpressionEntity {
+  property required id: string
+  computed bad: boolean = self.id ==  // Missing right operand
+}
