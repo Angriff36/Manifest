@@ -100,6 +100,7 @@
       "entity": "Document",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -122,6 +123,7 @@
       "entity": "Document",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [],
       "emits": [
         "DocumentDeleted"

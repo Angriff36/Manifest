@@ -80,6 +80,7 @@
         }
       ],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "compute",
@@ -113,6 +114,7 @@
       "entity": "Inventory",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "compute",

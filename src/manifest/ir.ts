@@ -41,6 +41,10 @@ export interface IREntity {
   commands: string[];
   constraints: IRConstraint[];
   policies: string[];
+  /** Name of version field for optimistic concurrency control */
+  versionProperty?: string;
+  /** Name of timestamp field for version tracking */
+  versionAtProperty?: string;
 }
 
 export interface IRProperty {
@@ -69,8 +73,20 @@ export interface IRRelationship {
 
 export interface IRConstraint {
   name: string;
+  /** Stable identifier for overrides/auditing (defaults to name) */
+  code: string;
   expression: IRExpression;
+  /** Constraint severity level (default: block) */
+  severity?: 'ok' | 'warn' | 'block';
   message?: string;
+  /** Template for error messages with interpolation */
+  messageTemplate?: string;
+  /** Structured details for UI (key-value pairs with expression values) */
+  detailsMapping?: Record<string, IRExpression>;
+  /** Can this constraint be overridden? */
+  overrideable?: boolean;
+  /** Policy that authorizes overrides */
+  overridePolicyRef?: string;
 }
 
 export interface IRStore {
@@ -97,6 +113,8 @@ export interface IRCommand {
   entity?: string;
   parameters: IRParameter[];
   guards: IRExpression[];
+  /** Command-level constraints (pre-execution validation) */
+  constraints?: IRConstraint[];
   actions: IRAction[];
   emits: string[];
   returns?: IRType;
@@ -155,6 +173,62 @@ export interface IRDiagnostic {
   message: string;
   line?: number;
   column?: number;
+}
+
+/**
+ * Constraint evaluation outcome with severity and override info
+ */
+export interface ConstraintOutcome {
+  /** Stable constraint identifier */
+  code: string;
+  /** Constraint name for reference */
+  constraintName: string;
+  /** Severity level of the constraint */
+  severity: 'ok' | 'warn' | 'block';
+  /** Formatted expression string */
+  formatted: string;
+  /** Optional message from constraint */
+  message?: string;
+  /** Structured details for UI (resolved values) */
+  details?: Record<string, unknown>;
+  /** Whether the constraint passed */
+  passed: boolean;
+  /** Whether the constraint was overridden */
+  overridden?: boolean;
+  /** User who authorized the override */
+  overriddenBy?: string;
+  /** Resolved expression values for debugging */
+  resolved?: Array<{ expression: string; value: unknown }>;
+}
+
+/**
+ * Override request payload for command execution
+ */
+export interface OverrideRequest {
+  /** Constraint code to override */
+  constraintCode: string;
+  /** Reason for the override */
+  reason: string;
+  /** User authorizing the override */
+  authorizedBy: string;
+  /** Timestamp of override request */
+  timestamp: number;
+}
+
+/**
+ * Concurrency conflict details for optimistic locking
+ */
+export interface ConcurrencyConflict {
+  /** Type of entity that conflicted */
+  entityType: string;
+  /** ID of the entity instance */
+  entityId: string;
+  /** Expected version number */
+  expectedVersion: number;
+  /** Actual version in storage */
+  actualVersion: number;
+  /** Conflict code for categorization */
+  conflictCode: string;
 }
 
 export interface CompileToIRResult {

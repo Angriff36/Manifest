@@ -113,6 +113,7 @@
       "entity": "Counter",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -143,6 +144,7 @@
       "entity": "Counter",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -174,6 +176,7 @@
         }
       ],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",

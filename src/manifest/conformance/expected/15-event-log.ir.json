@@ -113,6 +113,7 @@
         }
       ],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -144,6 +145,7 @@
       "entity": "Order",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",

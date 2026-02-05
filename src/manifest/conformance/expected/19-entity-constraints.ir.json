@@ -41,6 +41,7 @@
       "constraints": [
         {
           "name": "pricePositive",
+          "code": "pricePositive",
           "expression": {
             "kind": "binary",
             "operator": ">",
@@ -60,10 +61,12 @@
               }
             }
           },
+          "severity": "block",
           "message": "Price must be positive"
         },
         {
           "name": "nameNotEmpty",
+          "code": "nameNotEmpty",
           "expression": {
             "kind": "binary",
             "operator": "!=",
@@ -83,6 +86,7 @@
               }
             }
           },
+          "severity": "block",
           "message": "Name cannot be empty"
         }
       ],

@@ -8,6 +8,9 @@ import {
   IRValue,
   IRAction,
   IRType,
+  ConstraintOutcome,
+  OverrideRequest,
+  ConcurrencyConflict,
 } from './ir';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
@@ -83,6 +86,10 @@ export interface RuntimeOptions {
 
 export interface EntityInstance {
   id: string;
+  /** For optimistic concurrency control (optional) */
+  version?: number;
+  /** Timestamp of last version change (optional) */
+  versionAt?: number;
   [key: string]: unknown;
 }
 
@@ -93,6 +100,12 @@ export interface CommandResult {
   deniedBy?: string;
   guardFailure?: GuardFailure;
   policyDenial?: PolicyDenial;
+  /** All constraint evaluation outcomes (vNext) */
+  constraintOutcomes?: ConstraintOutcome[];
+  /** Pending override requests (vNext) */
+  overrideRequests?: OverrideRequest[];
+  /** Concurrency conflict details (vNext) */
+  concurrencyConflict?: ConcurrencyConflict;
   emittedEvents: EmittedEvent[];
 }
 

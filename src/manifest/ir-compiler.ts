@@ -217,8 +217,18 @@ export class IRCompiler {
   private transformConstraint(c: ConstraintNode): IRConstraint {
     return {
       name: c.name,
+      code: c.code || c.name, // Default to name if code not specified
       expression: this.transformExpression(c.expression),
+      severity: c.severity || 'block', // Default to block
       message: c.message,
+      messageTemplate: c.messageTemplate,
+      detailsMapping: c.detailsMapping
+        ? Object.fromEntries(
+            Object.entries(c.detailsMapping).map(([k, v]) => [k, this.transformExpression(v)])
+          )
+        : undefined,
+      overrideable: c.overrideable,
+      overridePolicyRef: c.overridePolicyRef,
     };
   }
 
@@ -263,6 +273,7 @@ export class IRCompiler {
       entity: entityName,
       parameters: c.parameters.map(p => this.transformParameter(p)),
       guards: (c.guards || []).map(g => this.transformExpression(g)),
+      constraints: (c.constraints || []).map(c => this.transformConstraint(c)), // vNext
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,

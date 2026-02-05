@@ -114,6 +114,7 @@
           }
         }
       ],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -180,6 +181,7 @@
           }
         }
       ],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -206,6 +208,7 @@
           "property": "completed"
         }
       ],
+      "constraints": [],
       "actions": [],
       "emits": [
         "TaskArchived"

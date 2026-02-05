@@ -478,6 +478,7 @@
           }
         }
       ],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -582,6 +583,7 @@
           }
         }
       ],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -601,6 +603,7 @@
       "entity": "Task",
       "parameters": [],
       "guards": [],
+      "constraints": [],
       "actions": [
         {
           "kind": "compute",
