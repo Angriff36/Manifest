@@ -5,7 +5,9 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 3 - Priority 3 ✅ COMPLETED (Generated Code Conformance Fixes)
+Phase: Loop 3 - Priority 4 ✅ COMPLETED (UI Enhancements)
+
+**ALL LOOP 3 PRIORITIES COMPLETE!**
 
 ## Mission
 
@@ -237,18 +239,58 @@ app.post("/commands/claim", async (c) => {
 });
 ```
 
-### Priority 4: UI Enhancements [PENDING]
+### Priority 4: UI Enhancements ✅ COMPLETED
 Improve Runtime UI for better observability and diagnostics.
 
-- [ ] Implement Event Log Viewer (specs/event-log-viewer.md)
-- [ ] Implement Policy/Guard Diagnostics UI (specs/policy-guard-diagnostics.md)
-- [ ] Add collapsible sections for complex diagnostics
-- [ ] Display resolved expression values in UI
-- [ ] Add clear log functionality
+- [x] Implement Event Log Viewer (specs/event-log-viewer.md)
+- [x] Implement Policy/Guard Diagnostics UI (specs/policy-guard-diagnostics.md)
+- [x] Add collapsible sections for complex diagnostics
+- [x] Display resolved expression values in UI
+- [x] Add clear log functionality
+
+**Implementation Details (2026-02-05):**
+
+All UI enhancements specified in `specs/event-log-viewer.md` and `specs/policy-guard-diagnostics.md`
+were already fully implemented in `src/artifacts/RuntimePanel.tsx`.
+
+**Event Log Viewer (lines 845-895):**
+- Event log sidebar showing all emitted events
+- Each event displays: name, channel, formatted JSON payload, timestamp
+- Events persist across command executions (append to log)
+- "Clear Log" button (trash icon) to reset the event log
+- Event count badge
+- Reverse chronological display (newest first)
+
+**Policy/Guard Diagnostics:**
+
+1. **Guard Failure Display (`formatGuardFailure`, lines 362-415):**
+   - Collapsible section with expand/collapse toggle
+   - Shows guard index as "Guard #N failed" (1-based)
+   - Shows formatted guard expression
+   - Shows resolved values in readable format
+   - Red/rose color scheme for visual distinction
+
+2. **Policy Denial Display (`formatPolicyDenial`, lines 417-485):**
+   - Collapsible section with expand/collapse toggle
+   - Shows policy name
+   - Shows formatted policy expression
+   - Shows evaluation context keys (not values, for security)
+   - Shows resolved values from policy evaluation
+   - Amber/yellow color scheme for visual distinction from guard failures
+
+**Additional UI Features:**
+- Entity selector with property/computed property counts
+- Instance list with key property previews
+- Create/Delete instance buttons
+- Runtime context editor (JSON) for user context
+- Command execution with parameter hints
+- Computed properties display
+- Command result display with success/failure status
+- Emitted events listed in command results
 
 **Spec References:**
-- `specs/event-log-viewer.md` - Live event log display
-- `specs/policy-guard-diagnostics.md` - Detailed failure diagnostics
+- `specs/event-log-viewer.md` - ✅ Fully implemented
+- `specs/policy-guard-diagnostics.md` - ✅ Fully implemented
 
 ### Priority 5: Tiny App Demo [SUPERSEDED BY PRIORITY 0]
 ~~Complete working demonstration of Manifest capabilities.~~
