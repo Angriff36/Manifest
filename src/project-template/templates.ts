@@ -475,15 +475,23 @@ function EntityPanel({
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const loadItems = useCallback(() => {
-    setItems(engine.getAllInstances(entity.name));
+  const loadItems = useCallback(async () => {
+    setItems(await engine.getAllInstances(entity.name));
   }, [engine, entity.name]);
 
   useEffect(() => {
-    loadItems();
-    const interval = setInterval(loadItems, 500);
-    return () => clearInterval(interval);
-  }, [loadItems]);
+    let cancelled = false;
+    const load = async () => {
+      const result = await engine.getAllInstances(entity.name);
+      if (!cancelled) setItems(result);
+    };
+    load();
+    const interval = setInterval(load, 500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [engine, entity.name]);
 
   useEffect(() => {
     const initial: Record<string, unknown> = {};
@@ -493,10 +501,10 @@ function EntityPanel({
     setFormData(initial);
   }, [entity]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const payload = omitEmptyStrings(formData);
-    engine.createInstance(entity.name, payload);
-    loadItems();
+    await engine.createInstance(entity.name, payload);
+    await loadItems();
     const initial: Record<string, unknown> = {};
     entity.properties.forEach(p => {
       initial[p.name] = getDefaultValue(p.type);
@@ -504,16 +512,16 @@ function EntityPanel({
     setFormData(initial);
   };
 
-  const handleDelete = (id: string) => {
-    engine.deleteInstance(entity.name, id);
-    loadItems();
+  const handleDelete = async (id: string) => {
+    await engine.deleteInstance(entity.name, id);
+    await loadItems();
   };
 
-  const handleUpdate = (id: string) => {
+  const handleUpdate = async (id: string) => {
     const payload = omitEmptyStrings(formData);
-    engine.updateInstance(entity.name, id, payload);
+    await engine.updateInstance(entity.name, id, payload);
     setEditingId(null);
-    loadItems();
+    await loadItems();
   };
 
   const startEdit = (item: EntityInstance) => {
@@ -615,6 +623,7 @@ function CommandsPanel({
   const [targetInstance, setTargetInstance] = useState<string>('');
   const [result, setResult] = useState<{ success: boolean; message: string; events: EmittedEvent[]; guardFailure?: { index: number; formatted: string; resolved?: { expression: string; value: string }[] } } | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [instances, setInstances] = useState<EntityInstance[]>([]);
 
   const commands = engine.getCommands();
   const entityCommands = commands.filter(c => c.entity);
@@ -721,7 +730,16 @@ function CommandsPanel({
     );
   };
 
-  const instances = selectedCommand?.entity ? engine.getAllInstances(selectedCommand.entity) : [];
+  // Load instances when selectedCommand changes
+  useEffect(() => {
+    let cancelled = false;
+    const loadInstances = async () => {
+      const result = selectedCommand?.entity ? await engine.getAllInstances(selectedCommand.entity) : [];
+      if (!cancelled) setInstances(result);
+    };
+    loadInstances();
+    return () => { cancelled = true; };
+  }, [selectedCommand, engine]);
 
   return (
     <div className="commands-panel">
@@ -940,7 +958,7 @@ export default function App() {
     setIsCompiling(true);
     const start = performance.now();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const { ir, diagnostics } = compileToIR(src);
       const compileTime = Math.round(performance.now() - start);
       const success = ir !== null;
@@ -952,8 +970,8 @@ export default function App() {
 
         if (runtimeState.engine) {
           try {
-            const data = runtimeState.engine.serialize();
-            newEngine.restore({ stores: data.stores });
+            const data = await runtimeState.engine.serialize();
+            await newEngine.restore({ stores: data.stores });
           } catch {}
         }
 
@@ -1945,33 +1963,33 @@ export interface EmittedEvent {
 }
 
 interface Store<T extends EntityInstance = EntityInstance> {
-  getAll(): T[];
-  getById(id: string): T | undefined;
-  create(data: Partial<T>): T;
-  update(id: string, data: Partial<T>): T | undefined;
-  delete(id: string): boolean;
-  clear(): void;
+  getAll(): Promise<T[]>;
+  getById(id: string): Promise<T | undefined>;
+  create(data: Partial<T>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T | undefined>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
 }
 
 class MemoryStore<T extends EntityInstance> implements Store<T> {
   private items: Map<string, T> = new Map();
-  getAll(): T[] { return Array.from(this.items.values()); }
-  getById(id: string): T | undefined { return this.items.get(id); }
-  create(data: Partial<T>): T {
+  async getAll(): Promise<T[]> { return Array.from(this.items.values()); }
+  async getById(id: string): Promise<T | undefined> { return this.items.get(id); }
+  async create(data: Partial<T>): Promise<T> {
     const id = data.id || crypto.randomUUID();
     const item = { ...data, id } as T;
     this.items.set(id, item);
     return item;
   }
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const existing = this.items.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...data, id };
     this.items.set(id, updated);
     return updated;
   }
-  delete(id: string): boolean { return this.items.delete(id); }
-  clear(): void { this.items.clear(); }
+  async delete(id: string): Promise<boolean> { return this.items.delete(id); }
+  async clear(): Promise<void> { this.items.clear(); }
 }
 
 class LocalStorageStore<T extends EntityInstance> implements Store<T> {
@@ -1981,9 +1999,9 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     catch { return []; }
   }
   private save(items: T[]): void { localStorage.setItem(this.key, JSON.stringify(items)); }
-  getAll(): T[] { return this.load(); }
-  getById(id: string): T | undefined { return this.load().find(i => i.id === id); }
-  create(data: Partial<T>): T {
+  async getAll(): Promise<T[]> { return this.load(); }
+  async getById(id: string): Promise<T | undefined> { return this.load().find(i => i.id === id); }
+  async create(data: Partial<T>): Promise<T> {
     const items = this.load();
     const id = data.id || crypto.randomUUID();
     const item = { ...data, id } as T;
@@ -1991,7 +2009,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return item;
   }
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const items = this.load();
     const idx = items.findIndex(i => i.id === id);
     if (idx === -1) return undefined;
@@ -1999,7 +2017,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return items[idx];
   }
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const items = this.load();
     const idx = items.findIndex(i => i.id === id);
     if (idx === -1) return false;
@@ -2007,7 +2025,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return true;
   }
-  clear(): void { localStorage.removeItem(this.key); }
+  async clear(): Promise<void> { localStorage.removeItem(this.key); }
 }
 
 type EventListener = (event: EmittedEvent) => void;
@@ -2061,10 +2079,10 @@ export class RuntimeEngine {
 
   getPolicies(): IRPolicy[] { return this.ir.policies; }
   getStore(entityName: string): Store | undefined { return this.stores.get(entityName); }
-  getAllInstances(entityName: string): EntityInstance[] { return this.stores.get(entityName)?.getAll() || []; }
-  getInstance(entityName: string, id: string): EntityInstance | undefined { return this.stores.get(entityName)?.getById(id); }
+  async getAllInstances(entityName: string): Promise<EntityInstance[]> { return this.stores.get(entityName)?.getAll() || []; }
+  async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> { return this.stores.get(entityName)?.getById(id); }
 
-  createInstance(entityName: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
     const defaults: Record<string, unknown> = {};
@@ -2074,11 +2092,11 @@ export class RuntimeEngine {
     return this.stores.get(entityName)?.create({ ...defaults, ...data });
   }
 
-  updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     return this.stores.get(entityName)?.update(id, data);
   }
 
-  deleteInstance(entityName: string, id: string): boolean {
+  async deleteInstance(entityName: string, id: string): Promise<boolean> {
     return this.stores.get(entityName)?.delete(id) ?? false;
   }
 
@@ -2091,7 +2109,7 @@ export class RuntimeEngine {
     if (!cmd) return { success: false, error: \`Command '\${commandName}' not found\`, emittedEvents: [] };
 
     const instance = options.instanceId && options.entityName
-      ? this.getInstance(options.entityName, options.instanceId) : undefined;
+      ? await this.getInstance(options.entityName, options.instanceId) : undefined;
     const ctx = this.buildCtx(input, instance);
 
     const policyResult = this.checkPolicies(cmd, ctx);
@@ -2120,9 +2138,9 @@ export class RuntimeEngine {
     let result: unknown;
 
     for (const action of cmd.actions) {
-      result = this.execAction(action, ctx, options);
+      result = await this.execAction(action, ctx, options);
       if (action.kind === 'mutate' && options.instanceId && options.entityName) {
-        const updated = this.getInstance(options.entityName, options.instanceId);
+        const updated = await this.getInstance(options.entityName, options.instanceId);
         ctx.self = updated;
         ctx.this = updated;
       }
@@ -2162,10 +2180,10 @@ export class RuntimeEngine {
     return { ok: true };
   }
 
-  private execAction(action: IRAction, ctx: Record<string, unknown>, opts: { entityName?: string; instanceId?: string }): unknown {
+  private async execAction(action: IRAction, ctx: Record<string, unknown>, opts: { entityName?: string; instanceId?: string }): Promise<unknown> {
     const val = this.evalExpr(action.expression, ctx);
     if (action.kind === 'mutate' && action.target && opts.instanceId && opts.entityName) {
-      this.updateInstance(opts.entityName, opts.instanceId, { [action.target]: val });
+      await this.updateInstance(opts.entityName, opts.instanceId, { [action.target]: val });
     }
     if (action.kind === 'emit' || action.kind === 'publish') {
       const ev: EmittedEvent = { name: 'action_event', channel: 'default', payload: val, timestamp: Date.now() };

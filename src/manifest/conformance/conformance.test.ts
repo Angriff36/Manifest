@@ -227,7 +227,7 @@ describe('Manifest Conformance Tests', () => {
               const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
               if (tc.setup?.createInstance) {
-                engine.createInstance(
+                await engine.createInstance(
                   tc.setup.createInstance.entity,
                   tc.setup.createInstance.data as EntityInstance
                 );
@@ -274,7 +274,7 @@ describe('Manifest Conformance Tests', () => {
               });
 
               if (tc.expectedInstanceState && tc.command.entityName && tc.command.instanceId) {
-                const instance = engine.getInstance(tc.command.entityName, tc.command.instanceId);
+                const instance = await engine.getInstance(tc.command.entityName, tc.command.instanceId);
                 expect(instance).toEqual(tc.expectedInstanceState);
               }
             });
@@ -282,7 +282,7 @@ describe('Manifest Conformance Tests', () => {
 
           if ('computedProperty' in testCase) {
             const tc = testCase as ComputedTestCase;
-            it(tc.name, () => {
+            it(tc.name, async () => {
               const source = loadFixture(fixtureName);
               const { ir } = compileToIR(source);
               expect(ir).not.toBeNull();
@@ -290,12 +290,12 @@ describe('Manifest Conformance Tests', () => {
               const context = (testCase as any).context ?? {};
               const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
-              engine.createInstance(
+              await engine.createInstance(
                 tc.setup.createInstance.entity,
                 tc.setup.createInstance.data as EntityInstance
               );
 
-              const value = engine.evaluateComputed(
+              const value = await engine.evaluateComputed(
                 tc.computedProperty.entity,
                 tc.computedProperty.instanceId,
                 tc.computedProperty.property
@@ -307,14 +307,14 @@ describe('Manifest Conformance Tests', () => {
 
           if ('createInstance' in testCase && !('command' in testCase) && !('computedProperty' in testCase) && !('persistenceTest' in testCase)) {
             const tc = testCase as CreateTestCase;
-            it(tc.name, () => {
+            it(tc.name, async () => {
               const source = loadFixture(fixtureName);
               const { ir } = compileToIR(source);
               expect(ir).not.toBeNull();
 
               const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-              const instance = engine.createInstance(
+              const instance = await engine.createInstance(
                 tc.createInstance.entity,
                 tc.createInstance.data as EntityInstance
               );
@@ -325,23 +325,23 @@ describe('Manifest Conformance Tests', () => {
 
           if ('persistenceTest' in testCase) {
             const tc = testCase as PersistenceTestCase;
-            it(tc.name, () => {
+            it(tc.name, async () => {
               const source = loadFixture(fixtureName);
               const { ir } = compileToIR(source);
               expect(ir).not.toBeNull();
 
               const engine1 = new RuntimeEngine(ir!, {}, createDeterministicOptions());
-              engine1.createInstance(
+              await engine1.createInstance(
                 tc.persistenceTest.entity,
                 tc.persistenceTest.createData as EntityInstance
               );
 
-              const serialized = engine1.serialize();
+              const serialized = await engine1.serialize();
 
               const engine2 = new RuntimeEngine(ir!, {}, createDeterministicOptions());
-              engine2.restore({ stores: serialized.stores });
+              await engine2.restore({ stores: serialized.stores });
 
-              const restored = engine2.getInstance(
+              const restored = await engine2.getInstance(
                 tc.persistenceTest.entity,
                 tc.persistenceTest.createData.id as string
               );
@@ -360,7 +360,7 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      engine.createInstance('Task', { id: 'task-1', title: 'Test', completed: true } as EntityInstance);
+      await engine.createInstance('Task', { id: 'task-1', title: 'Test', completed: true } as EntityInstance);
 
       const result = await engine.runCommand('complete', {}, {
         entityName: 'Task',
@@ -376,7 +376,7 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = compileToIR(source);
       const engine = new RuntimeEngine(ir!, { user: { id: 'user-1', role: 'user' } }, createDeterministicOptions());
 
-      engine.createInstance('Document', { id: 'doc-1', title: 'Test' } as EntityInstance);
+      await engine.createInstance('Document', { id: 'doc-1', title: 'Test' } as EntityInstance);
 
       const result = await engine.runCommand('makePublic', {}, {
         entityName: 'Document',
@@ -406,7 +406,7 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      engine.createInstance('Counter', { id: 'counter-1', value: 0 } as EntityInstance);
+      await engine.createInstance('Counter', { id: 'counter-1', value: 0 } as EntityInstance);
 
       const result = await engine.runCommand('increment', {}, {
         entityName: 'Counter',
@@ -416,13 +416,13 @@ describe('Manifest Conformance Tests', () => {
       expect(result.emittedEvents[0].timestamp).toBe(DETERMINISTIC_TIMESTAMP);
     });
 
-    it('uses deterministic IDs when options provided', () => {
+    it('uses deterministic IDs when options provided', async () => {
       const source = loadFixture('01-entity-properties.manifest');
       const { ir } = compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      const instance1 = engine.createInstance('Product', { id: '', name: 'Product 1' } as unknown as EntityInstance);
-      const instance2 = engine.createInstance('Product', { id: '', name: 'Product 2' } as unknown as EntityInstance);
+      const instance1 = await engine.createInstance('Product', { id: '', name: 'Product 1' } as unknown as EntityInstance);
+      const instance2 = await engine.createInstance('Product', { id: '', name: 'Product 2' } as unknown as EntityInstance);
 
       expect(instance1?.id).toBe('test-id-1');
       expect(instance2?.id).toBe('test-id-2');

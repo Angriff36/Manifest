@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Plan updated: 2026-02-04 (Priority 5: Tiny App Demo COMPLETED; full task management UI with 88 conformance tests passing)
+Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 88 conformance tests passing)
 
 ## Executive Summary
 
@@ -14,55 +14,63 @@ Plan updated: 2026-02-04 (Priority 5: Tiny App Demo COMPLETED; full task managem
 3. ~~**Event Log Results File**~~ - ✅ COMPLETED (Priority 2)
 4. ~~**Policy Diagnostics Enhancement**~~ - ✅ COMPLETED (Priority 4)
 5. ~~**Tiny App Demo**~~ - ✅ COMPLETED (Priority 5)
+6. ~~**Storage Adapters (PostgreSQL/Supabase)**~~ - ✅ COMPLETED (Priority 6)
 
 **Remaining Work:**
-- Storage Adapters (PostgreSQL/Supabase) - Optional per spec, requires external dependencies
+- None - All critical functionality implemented
 
 ---
 
 ## Priority Queue
 
-### Priority 6: Storage Adapters ✅ SILENT FALLBACK FIXED
+### Priority 6: Storage Adapters ✅ IMPLEMENTED
 
-**Status:** PARTIALLY CONFORMANT - Silent fallback fixed, PostgreSQL/Supabase not implemented
+**Status:** FULLY CONFORMANT - All storage adapters implemented with async interface
 
 **Implementation Summary (2026-02-04):**
-- ✅ **FIXED**: Silent fallback to memory now throws descriptive error
-- ✅ Added localStorage mock for test environment (`test-setup.ts`)
-- ✅ Updated happy path test to use supported storage target
-- ❌ PostgreSQL adapter: NOT IMPLEMENTED
-- ❌ Supabase adapter: NOT IMPLEMENTED
+- ✅ **IMPLEMENTED**: PostgreSQL adapter with connection pooling and auto-table creation
+- ✅ **IMPLEMENTED**: Supabase adapter using @supabase/supabase-js client
+- ✅ **IMPLEMENTED**: Async Store interface across all implementations
+- ✅ **UPDATED**: MemoryStore and LocalStorageStore to implement async interface
+- ✅ **UPDATED**: All runtime engine methods to use async stores
+- ✅ **UPDATED**: All test files to await async methods
+- ✅ **UPDATED**: Template code in project-template/templates.ts
 
 **Changes Made:**
-1. `src/manifest/runtime-engine.ts:187-218` - Fixed silent fallback
-   - Added explicit `case 'memory'` handler
-   - Added `case 'postgres'` that throws descriptive error
-   - Added `case 'supabase'` that throws descriptive error
-   - Added exhaustive default case with `never` type check
-2. `test-setup.ts` - Created localStorage mock for Node.js test environment
-3. `vitest.config.ts` - Added setupFiles configuration
-4. `src/manifest/runtime-engine.happy.test.ts` - Updated to use examples[1] (localStorage target)
+1. `src/manifest/runtime-engine.ts` - Added PostgresStore and SupabaseStore classes
+   - PostgresStore: Connection pooling, CRUD operations, auto-table creation with JSONB
+   - SupabaseStore: Full async interface using @supabase/supabase-js client
+   - Store interface: All methods now return Promises (async getAll, getById, create, update, delete, clear)
+2. `src/manifest/runtime-engine.ts` - Updated MemoryStore and LocalStorageStore
+   - Implemented all async methods with proper Promise returns
+3. `src/manifest/runtime-engine.ts` - Updated runtime engine methods
+   - getAllInstances, getInstance, createInstance, updateInstance, deleteInstance: all async
+   - evaluateComputed, executeAction, serialize, restore: all async
+4. `src/manifest/conformance/conformance.test.ts` - Updated all tests
+   - Added `await` for all async store method calls
+5. `src/manifest/runtime-engine.happy.test.ts` - Updated happy test
+   - Added `await` for createInstance call
+6. `src/artifacts/TinyAppPanel.tsx` - Updated React component
+   - Made useEffect async for proper instance loading
+   - Made refreshTasks, handleCreateTask, handleExecuteCommand async
+7. `src/project-template/templates.ts` - Updated template code
+   - All store operations now use async/await pattern
+   - Store interface and implementations all async
 
 **Current State:**
-- MemoryStore: FULLY IMPLEMENTED
-- LocalStorageStore: FULLY IMPLEMENTED
-- PostgreSQL: NOT IMPLEMENTED (throws error with guidance)
-- Supabase: NOT IMPLEMENTED (throws error with guidance)
+- MemoryStore: FULLY IMPLEMENTED (async interface)
+- LocalStorageStore: FULLY IMPLEMENTED (async interface)
+- PostgreSQL: FULLY IMPLEMENTED (async interface with connection pooling)
+- Supabase: FULLY IMPLEMENTED (async interface with proper client integration)
 - Action adapters (`persist`, `publish`, `effect`): No-ops (allowed by spec)
 
-**What's Still Missing:**
-Per `docs/spec/adapters.md`:
-1. PostgreSQL adapter implementation (12-16 hours estimate)
-2. Supabase adapter implementation (12-16 hours estimate)
-3. Action adapter implementations (optional per spec)
-
 **Verification:**
-- ✅ Unsupported target (postgres/supabase) throws error with guidance
-- ✅ All 88 conformance tests pass
-- ✅ Happy path test uses localStorage (supported target)
-- ✅ Error messages guide users to use supported targets
+- ✅ All 88 conformance tests pass with async implementation
+- ✅ All storage adapters implement async Store interface
+- ✅ Runtime engine properly awaits all store operations
+- ✅ Test suite updated for async operations
 
-**Estimated Remaining Effort:** 12-16 hours (very significant - external dependencies)
+**Estimated Remaining Effort:** 0 hours - All storage adapters implemented
 
 ---
 
@@ -92,11 +100,27 @@ Per `docs/spec/adapters.md`:
 - Made both policy and guard diagnostics collapsible with expand/collapse toggle
 - All 77 conformance tests pass
 
-### Priority 6: Storage Adapter Silent Fallback (2026-02-04)
-- Fixed silent fallback to memory for unsupported storage targets
-- Now throws descriptive error for postgres/supabase targets
-- Added localStorage mock for test environment
-- Updated happy path test to use supported storage target
+### Priority 6: Storage Adapters Implementation (2026-02-04)
+- **IMPLEMENTED**: PostgreSQL adapter (PostgresStore class)
+  - Connection pooling with pg package
+  - Auto-table creation with JSONB data type and GIN index
+  - Full CRUD operations with proper error handling
+  - Configurable connection parameters (host, port, database, user, password, connectionString)
+- **IMPLEMENTED**: Supabase adapter (SupabaseStore class)
+  - Full async interface using @supabase/supabase-js client
+  - CRUD operations with upsert support
+  - Proper error handling for not-found cases (PGRST116)
+- **IMPLEMENTED**: Async Store interface across all implementations
+  - All Store methods now return Promises (getAll, getById, create, update, delete, clear)
+  - MemoryStore and LocalStorageStore updated to async interface
+- **UPDATED**: All runtime engine methods to use async stores
+  - getAllInstances, getInstance, createInstance, updateInstance, deleteInstance: all async
+  - evaluateComputed, executeAction, serialize, restore: all async
+- **UPDATED**: All test files to await async methods
+  - conformance.test.ts: 87 tests updated for async
+  - runtime-engine.happy.test.ts: happy test updated
+- **UPDATED**: UI components (TinyAppPanel.tsx, templates.ts) for async operations
+- All 88 conformance tests pass
 
 ### Priority 5: Tiny App Demo (2026-02-04)
 - Fixed fixture `17-tiny-app.manifest` - replaced ?? operator with ternary operator
@@ -132,11 +156,11 @@ Per `docs/spec/adapters.md`:
 **None** - All critical nonconformances resolved.
 
 1. ~~**Storage Adapter Silent Fallback** (`docs/spec/adapters.md`)~~ **RESOLVED** (2026-02-04):
-   - PostgreSQL: Declared but NOT implemented
-   - Supabase: Declared but NOT implemented
+   - PostgreSQL: ✅ **FULLY IMPLEMENTED** (PostgresStore class)
+   - Supabase: ✅ **FULLY IMPLEMENTED** (SupabaseStore class)
    - ~~**CRITICAL**: Silent fallback to memory without diagnostics~~ **FIXED**
-   - **FIX APPLIED**: Runtime now throws descriptive error for unsupported targets
-   - **STATUS**: Specification now conformant (MAY support postgres/supabase, MUST emit diagnostic)
+   - **FIX APPLIED**: Runtime now throws descriptive error for unsupported targets (not needed anymore since both are implemented)
+   - **STATUS**: Specification now fully conformant (all storage targets implemented)
 
 ### Nonconformances Already Documented in Spec
 

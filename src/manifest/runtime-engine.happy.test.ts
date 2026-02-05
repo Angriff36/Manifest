@@ -20,7 +20,7 @@ test('order addItem succeeds with localStorage target', async () => {
   });
 
   // Create an Order with default status "draft"
-  const instance = engine.createInstance('Order', {
+  const instance = await engine.createInstance('Order', {
     id: 'order-1',
     customerId: 'cust-1'
   });

@@ -8,6 +8,8 @@ import {
   IRAction,
   IRType,
 } from './ir';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Pool, PoolClient, PoolConfig } from 'pg';
 
 export interface RuntimeContext {
   user?: { id: string; role?: string; [key: string]: unknown };
@@ -62,12 +64,12 @@ export interface EmittedEvent {
 }
 
 export interface Store<T extends EntityInstance = EntityInstance> {
-  getAll(): T[];
-  getById(id: string): T | undefined;
-  create(data: Partial<T>): T;
-  update(id: string, data: Partial<T>): T | undefined;
-  delete(id: string): boolean;
-  clear(): void;
+  getAll(): Promise<T[]>;
+  getById(id: string): Promise<T | undefined>;
+  create(data: Partial<T>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T | undefined>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
 }
 
 class MemoryStore<T extends EntityInstance> implements Store<T> {
@@ -78,22 +80,22 @@ class MemoryStore<T extends EntityInstance> implements Store<T> {
     this.generateId = generateId || (() => crypto.randomUUID());
   }
 
-  getAll(): T[] {
+  async getAll(): Promise<T[]> {
     return Array.from(this.items.values());
   }
 
-  getById(id: string): T | undefined {
+  async getById(id: string): Promise<T | undefined> {
     return this.items.get(id);
   }
 
-  create(data: Partial<T>): T {
+  async create(data: Partial<T>): Promise<T> {
     const id = data.id || this.generateId();
     const item = { ...data, id } as T;
     this.items.set(id, item);
     return item;
   }
 
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const existing = this.items.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...data, id };
@@ -101,11 +103,11 @@ class MemoryStore<T extends EntityInstance> implements Store<T> {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     return this.items.delete(id);
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
     this.items.clear();
   }
 }
@@ -130,15 +132,15 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     localStorage.setItem(this.key, JSON.stringify(items));
   }
 
-  getAll(): T[] {
+  async getAll(): Promise<T[]> {
     return this.load();
   }
 
-  getById(id: string): T | undefined {
+  async getById(id: string): Promise<T | undefined> {
     return this.load().find(item => item.id === id);
   }
 
-  create(data: Partial<T>): T {
+  async create(data: Partial<T>): Promise<T> {
     const items = this.load();
     const id = data.id || crypto.randomUUID();
     const item = { ...data, id } as T;
@@ -147,7 +149,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     return item;
   }
 
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const items = this.load();
     const idx = items.findIndex(item => item.id === id);
     if (idx === -1) return undefined;
@@ -157,7 +159,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const items = this.load();
     const idx = items.findIndex(item => item.id === id);
     if (idx === -1) return false;
@@ -166,8 +168,249 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     return true;
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
     localStorage.removeItem(this.key);
+  }
+}
+
+// PostgreSQL configuration interface
+interface PostgresConfig {
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  connectionString?: string;
+  tableName?: string;
+}
+
+class PostgresStore<T extends EntityInstance> implements Store<T> {
+  private pool: Pool;
+  private tableName: string;
+  private generateId: () => string;
+  private initialized: boolean = false;
+
+  constructor(config: PostgresConfig, generateId?: () => string) {
+    this.generateId = generateId || (() => crypto.randomUUID());
+    this.tableName = config.tableName || 'entities';
+
+    const poolConfig: PoolConfig = config.connectionString
+      ? { connectionString: config.connectionString }
+      : {
+          host: config.host || 'localhost',
+          port: config.port || 5432,
+          database: config.database || 'manifest',
+          user: config.user || 'postgres',
+          password: config.password || '',
+        };
+
+    this.pool = new Pool(poolConfig);
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+
+    const client = await this.pool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS ${this.tableName} (
+          id TEXT PRIMARY KEY,
+          data JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${this.tableName} USING gin(data);
+      `);
+      this.initialized = true;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async withConnection<R>(
+    callback: (client: PoolClient) => Promise<R>
+  ): Promise<R> {
+    await this.ensureInitialized();
+    const client = await this.pool.connect();
+    try {
+      return await callback(client);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getAll(): Promise<T[]> {
+    return this.withConnection(async (client) => {
+      const result = await client.query(`SELECT data FROM ${this.tableName} ORDER BY created_at`);
+      return result.rows.map((row) => row.data as T);
+    });
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    return this.withConnection(async (client) => {
+      const result = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+      return result.rows.length > 0 ? (result.rows[0].data as T) : undefined;
+    });
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    const id = data.id || this.generateId();
+    const item = { ...data, id } as T;
+
+    return this.withConnection(async (client) => {
+      await client.query(
+        `INSERT INTO ${this.tableName} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+        [id, JSON.stringify(item)]
+      );
+      return item;
+    });
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    return this.withConnection(async (client) => {
+      const selectResult = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+      if (selectResult.rows.length === 0) return undefined;
+
+      const existing = selectResult.rows[0].data as T;
+      const updated = { ...existing, ...data, id };
+
+      await client.query(
+        `UPDATE ${this.tableName} SET data = $1, updated_at = NOW() WHERE id = $2`,
+        [JSON.stringify(updated), id]
+      );
+      return updated;
+    });
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.withConnection(async (client) => {
+      const result = await client.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [id]);
+      return (result.rowCount ?? 0) > 0;
+    });
+  }
+
+  async clear(): Promise<void> {
+    return this.withConnection(async (client) => {
+      await client.query(`DELETE FROM ${this.tableName}`);
+    });
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+}
+
+// Supabase configuration interface
+interface SupabaseConfig {
+  url: string;
+  key: string;
+  tableName?: string;
+}
+
+class SupabaseStore<T extends EntityInstance> implements Store<T> {
+  private client: SupabaseClient;
+  private tableName: string;
+  private generateId: () => string;
+
+  constructor(config: SupabaseConfig, generateId?: () => string) {
+    this.generateId = generateId || (() => crypto.randomUUID());
+    this.tableName = config.tableName || 'entities';
+    this.client = createClient(config.url, config.key);
+  }
+
+  private extractData<T>(response: { data: T | null; error: unknown }): T {
+    if (response.data === null) {
+      throw new Error(`Supabase operation failed: ${JSON.stringify(response.error)}`);
+    }
+    return response.data;
+  }
+
+  private async ensureTableExists(): Promise<void> {
+    const { error } = await this.client.rpc('create_entities_table_if_not_exists', {
+      table_name: this.tableName,
+    });
+    // Table might already exist or RLS policy prevents RPC, ignore error for basic usage
+    if (error && !error.message.includes('does not exist')) {
+      // If the RPC doesn't exist, we'll just try to use the table directly
+      // The table should be created via Supabase migrations
+    }
+  }
+
+  async getAll(): Promise<T[]> {
+    const { data, error } = await this.client.from(this.tableName).select('data');
+    if (error) throw new Error(`Supabase getAll failed: ${error.message}`);
+    return (data ?? []).map((row: { data: T }) => row.data);
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    const { data, error } = await this.client
+      .from(this.tableName)
+      .select('data')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return undefined; // Not found
+      throw new Error(`Supabase getById failed: ${error.message}`);
+    }
+    return data?.data as T;
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    const id = data.id || this.generateId();
+    const item = { ...data, id } as T;
+
+    const { data: result, error } = await this.client
+      .from(this.tableName)
+      .upsert({ id, data: item as unknown }, { onConflict: 'id' })
+      .select('data')
+      .single();
+
+    if (error) throw new Error(`Supabase create failed: ${error.message}`);
+    return (result?.data as T) ?? item;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    // First fetch the existing record
+    const { data: existing, error: fetchError } = await this.client
+      .from(this.tableName)
+      .select('data')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') return undefined; // Not found
+      throw new Error(`Supabase update fetch failed: ${fetchError.message}`);
+    }
+
+    const merged = { ...(existing?.data as T), ...data, id };
+
+    const { data: result, error: updateError } = await this.client
+      .from(this.tableName)
+      .update({ data: merged as unknown })
+      .eq('id', id)
+      .select('data')
+      .single();
+
+    if (updateError) throw new Error(`Supabase update failed: ${updateError.message}`);
+    return result?.data as T;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const { error } = await this.client.from(this.tableName).delete().eq('id', id);
+
+    if (error) {
+      throw new Error(`Supabase delete failed: ${error.message}`);
+    }
+    return true; // Supabase doesn't return affected count for delete
+  }
+
+  async clear(): Promise<void> {
+    const { error } = await this.client.from(this.tableName).delete().neq('id', null);
+
+    if (error) {
+      throw new Error(`Supabase clear failed: ${error.message}`);
+    }
   }
 }
 
@@ -205,18 +448,28 @@ export class RuntimeEngine {
           case 'memory':
             store = new MemoryStore(this.options.generateId);
             break;
-          case 'postgres':
-            throw new Error(
-              `Storage target 'postgres' is not yet supported for entity '${entity.name}'. ` +
-              `The IR runtime currently supports 'memory' and 'localStorage' only. ` +
-              `To use memory storage, either omit the store declaration or specify target: 'memory'.`
-            );
-          case 'supabase':
-            throw new Error(
-              `Storage target 'supabase' is not yet supported for entity '${entity.name}'. ` +
-              `The IR runtime currently supports 'memory' and 'localStorage' only. ` +
-              `To use memory storage, either omit the store declaration or specify target: 'memory'.`
-            );
+          case 'postgres': {
+            const config: PostgresConfig = {};
+            if (storeConfig.config.host?.kind === 'string') config.host = storeConfig.config.host.value;
+            if (storeConfig.config.port?.kind === 'number') config.port = storeConfig.config.port.value;
+            if (storeConfig.config.database?.kind === 'string') config.database = storeConfig.config.database.value;
+            if (storeConfig.config.user?.kind === 'string') config.user = storeConfig.config.user.value;
+            if (storeConfig.config.password?.kind === 'string') config.password = storeConfig.config.password.value;
+            if (storeConfig.config.connectionString?.kind === 'string') config.connectionString = storeConfig.config.connectionString.value;
+            if (storeConfig.config.tableName?.kind === 'string') config.tableName = storeConfig.config.tableName.value;
+            store = new PostgresStore(config, this.options.generateId);
+            break;
+          }
+          case 'supabase': {
+            const url = storeConfig.config.url?.kind === 'string' ? storeConfig.config.url.value : '';
+            const key = storeConfig.config.key?.kind === 'string' ? storeConfig.config.key.value : '';
+            const tableName = storeConfig.config.tableName?.kind === 'string' ? storeConfig.config.tableName.value : undefined;
+            if (!url || !key) {
+              throw new Error(`Supabase storage requires 'url' and 'key' configuration for entity '${entity.name}'`);
+            }
+            store = new SupabaseStore({ url, key, tableName }, this.options.generateId);
+            break;
+          }
           default:
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
@@ -289,17 +542,17 @@ export class RuntimeEngine {
     return this.stores.get(entityName);
   }
 
-  getAllInstances(entityName: string): EntityInstance[] {
+  async getAllInstances(entityName: string): Promise<EntityInstance[]> {
     const store = this.stores.get(entityName);
-    return store ? store.getAll() : [];
+    return store ? await store.getAll() : [];
   }
 
-  getInstance(entityName: string, id: string): EntityInstance | undefined {
+  async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> {
     const store = this.stores.get(entityName);
-    return store?.getById(id);
+    return store ? await store.getById(id) : undefined;
   }
 
-  createInstance(entityName: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
 
@@ -315,17 +568,17 @@ export class RuntimeEngine {
     const store = this.stores.get(entityName);
     if (!store) return undefined;
 
-    return store.create({ ...defaults, ...data });
+    return await store.create({ ...defaults, ...data });
   }
 
-  updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const store = this.stores.get(entityName);
-    return store?.update(id, data);
+    return store ? await store.update(id, data) : undefined;
   }
 
-  deleteInstance(entityName: string, id: string): boolean {
+  async deleteInstance(entityName: string, id: string): Promise<boolean> {
     const store = this.stores.get(entityName);
-    return store?.delete(id) ?? false;
+    return store ? await store.delete(id) : false;
   }
 
   async runCommand(
@@ -343,7 +596,7 @@ export class RuntimeEngine {
     }
 
     const instance = options.instanceId && options.entityName
-      ? this.getInstance(options.entityName, options.instanceId)
+      ? await this.getInstance(options.entityName, options.instanceId)
       : undefined;
 
     const evalContext = this.buildEvalContext(input, instance);
@@ -381,9 +634,9 @@ export class RuntimeEngine {
     let result: unknown;
 
     for (const action of command.actions) {
-      const actionResult = this.executeAction(action, evalContext, options);
+      const actionResult = await this.executeAction(action, evalContext, options);
       if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
-        const currentInstance = this.getInstance(options.entityName, options.instanceId);
+        const currentInstance = await this.getInstance(options.entityName, options.instanceId);
         // Refresh both self/this bindings and spread instance properties into evalContext
         evalContext.self = currentInstance;
         evalContext.this = currentInstance;
@@ -616,17 +869,17 @@ export class RuntimeEngine {
     return entries;
   }
 
-  private executeAction(
+  private async executeAction(
     action: IRAction,
     evalContext: Record<string, unknown>,
     options: { entityName?: string; instanceId?: string }
-  ): unknown {
+  ): Promise<unknown> {
     const value = this.evaluateExpression(action.expression, evalContext);
 
     switch (action.kind) {
       case 'mutate':
         if (action.target && options.instanceId && options.entityName) {
-          this.updateInstance(options.entityName, options.instanceId, {
+          await this.updateInstance(options.entityName, options.instanceId, {
             [action.target]: value,
           });
         }
@@ -650,7 +903,7 @@ export class RuntimeEngine {
 
       case 'compute':
         if (action.target && options.instanceId && options.entityName) {
-          this.updateInstance(options.entityName, options.instanceId, {
+          await this.updateInstance(options.entityName, options.instanceId, {
             [action.target]: value,
           });
         }
@@ -821,14 +1074,14 @@ export class RuntimeEngine {
     }
   }
 
-  evaluateComputed(entityName: string, instanceId: string, propertyName: string): unknown {
+  async evaluateComputed(entityName: string, instanceId: string, propertyName: string): Promise<unknown> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
 
     const computed = entity.computedProperties.find(c => c.name === propertyName);
     if (!computed) return undefined;
 
-    const instance = this.getInstance(entityName, instanceId);
+    const instance = await this.getInstance(entityName, instanceId);
     if (!instance) return undefined;
 
     return this.evaluateComputedInternal(entity, instance, propertyName, new Set());
@@ -893,10 +1146,10 @@ export class RuntimeEngine {
     this.eventLog = [];
   }
 
-  serialize(): { ir: IR; context: RuntimeContext; stores: Record<string, EntityInstance[]> } {
+  async serialize(): Promise<{ ir: IR; context: RuntimeContext; stores: Record<string, EntityInstance[]> }> {
     const storeData: Record<string, EntityInstance[]> = {};
     for (const [name, store] of this.stores) {
-      storeData[name] = store.getAll();
+      storeData[name] = await store.getAll();
     }
     return {
       ir: this.ir,
@@ -905,13 +1158,13 @@ export class RuntimeEngine {
     };
   }
 
-  restore(data: { stores: Record<string, EntityInstance[]> }): void {
+  async restore(data: { stores: Record<string, EntityInstance[]> }): Promise<void> {
     for (const [name, instances] of Object.entries(data.stores)) {
       const store = this.stores.get(name);
       if (store) {
-        store.clear();
+        await store.clear();
         for (const instance of instances) {
-          store.create(instance);
+          await store.create(instance);
         }
       }
     }

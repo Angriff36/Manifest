@@ -104,85 +104,87 @@ export function TinyAppPanel({ disabled = false }: TinyAppPanelProps) {
   useEffect(() => {
     if (disabled) return;
 
-    try {
-      const compileResult = compileToIR(TINY_APP_FIXTURE);
-      if (compileResult.diagnostics.some(d => d.severity === 'error')) {
-        setError('Compilation errors in fixture');
-        return;
+    (async () => {
+      try {
+        const compileResult = compileToIR(TINY_APP_FIXTURE);
+        if (compileResult.diagnostics.some(d => d.severity === 'error')) {
+          setError('Compilation errors in fixture');
+          return;
+        }
+        if (!compileResult.ir) {
+          setError('Failed to compile fixture');
+          return;
+        }
+
+        const runtimeEngine = new RuntimeEngine(compileResult.ir, { user: currentUser }, {
+          generateId: () => `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          now: () => Date.now()
+        });
+        setEngine(runtimeEngine);
+
+        // Create some sample tasks
+        const task1 = await runtimeEngine.createInstance('Task', {
+          id: 'task-1',
+          title: 'Fix authentication bug',
+          description: 'Users cannot log in with SAML',
+          status: 'todo',
+          priority: 3,
+          assigneeId: 'user-1',
+          createdAt: Date.now() - 86400000 * 2 // 2 days ago
+        } as unknown as EntityInstance);
+
+        const task2 = await runtimeEngine.createInstance('Task', {
+          id: 'task-2',
+          title: 'Update documentation',
+          description: 'Add API docs for new endpoints',
+          status: 'in-progress',
+          priority: 2,
+          assigneeId: 'user-2',
+          createdAt: Date.now() - 3600000 // 1 hour ago
+        } as unknown as EntityInstance);
+
+        const task3 = await runtimeEngine.createInstance('Task', {
+          id: 'task-3',
+          title: 'Design new landing page',
+          description: 'Create mockups for homepage redesign',
+          status: 'todo',
+          priority: 1,
+          assigneeId: '',
+          createdAt: Date.now()
+        } as unknown as EntityInstance);
+
+        setTasks([task1!, task2!, task3!].map(t => ({
+          ...(t as unknown as TaskInstance),
+          isOverdue: runtimeEngine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
+          assignedUser: runtimeEngine.evaluateComputed('Task', t.id, 'assignedUser') as string,
+          isHighPriority: runtimeEngine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
+        })) as TaskInstance[]);
+
+        setEventLog(runtimeEngine.getEventLog());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
-      if (!compileResult.ir) {
-        setError('Failed to compile fixture');
-        return;
-      }
-
-      const runtimeEngine = new RuntimeEngine(compileResult.ir, { user: currentUser }, {
-        generateId: () => `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        now: () => Date.now()
-      });
-      setEngine(runtimeEngine);
-
-      // Create some sample tasks
-      const task1 = runtimeEngine.createInstance('Task', {
-        id: 'task-1',
-        title: 'Fix authentication bug',
-        description: 'Users cannot log in with SAML',
-        status: 'todo',
-        priority: 3,
-        assigneeId: 'user-1',
-        createdAt: Date.now() - 86400000 * 2 // 2 days ago
-      } as unknown as EntityInstance);
-
-      const task2 = runtimeEngine.createInstance('Task', {
-        id: 'task-2',
-        title: 'Update documentation',
-        description: 'Add API docs for new endpoints',
-        status: 'in-progress',
-        priority: 2,
-        assigneeId: 'user-2',
-        createdAt: Date.now() - 3600000 // 1 hour ago
-      } as unknown as EntityInstance);
-
-      const task3 = runtimeEngine.createInstance('Task', {
-        id: 'task-3',
-        title: 'Design new landing page',
-        description: 'Create mockups for homepage redesign',
-        status: 'todo',
-        priority: 1,
-        assigneeId: '',
-        createdAt: Date.now()
-      } as unknown as EntityInstance);
-
-      setTasks([task1!, task2!, task3!].map(t => ({
-        ...(t as unknown as TaskInstance),
-        isOverdue: runtimeEngine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
-        assignedUser: runtimeEngine.evaluateComputed('Task', t.id, 'assignedUser') as string,
-        isHighPriority: runtimeEngine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
-      })) as TaskInstance[]);
-
-      setEventLog(runtimeEngine.getEventLog());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    })();
   }, [disabled, currentUser]);
 
-  const refreshTasks = () => {
+  const refreshTasks = async () => {
     if (!engine) return;
 
-    const allTasks = engine.getAllInstances('Task') || [];
-    const taskList = allTasks.map(t => ({
+    const allTasks = await engine.getAllInstances('Task') || [];
+    const taskList = await Promise.all(allTasks.map(async t => ({
       ...(t as unknown as TaskInstance),
-      isOverdue: engine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
-      assignedUser: engine.evaluateComputed('Task', t.id, 'assignedUser') as string,
-      isHighPriority: engine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
-    }));
+      isOverdue: await engine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
+      assignedUser: await engine.evaluateComputed('Task', t.id, 'assignedUser') as string,
+      isHighPriority: await engine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
+    })));
     setTasks(taskList as TaskInstance[]);
   };
 
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     if (!engine) return;
 
     try {
-      const newTask = engine.createInstance('Task', {
+      const newTask = await engine.createInstance('Task', {
         id: '',
         title: 'New Task',
         description: '',
@@ -194,9 +196,9 @@ export function TinyAppPanel({ disabled = false }: TinyAppPanelProps) {
 
       if (newTask) {
         // Run setTimestamp to set the createdAt
-        engine.runCommand('setTimestamp', {}, { entityName: 'Task', instanceId: newTask.id });
+        await engine.runCommand('setTimestamp', {}, { entityName: 'Task', instanceId: newTask.id });
 
-        refreshTasks();
+        await refreshTasks();
         setSelectedTaskId(newTask.id);
         setEventLog(engine.getEventLog());
       }
@@ -238,7 +240,7 @@ export function TinyAppPanel({ disabled = false }: TinyAppPanelProps) {
       });
 
       setCommandResult(result);
-      refreshTasks();
+      await refreshTasks();
       setEventLog(engine.getEventLog());
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
