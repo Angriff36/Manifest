@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { compileToIR } from '../ir-compiler';
 import { RuntimeEngine, RuntimeOptions, CommandResult, EntityInstance } from '../runtime-engine';
-import type { IR, IRDiagnostic } from '../ir';
+import type { IR } from '../ir';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -421,8 +421,8 @@ describe('Manifest Conformance Tests', () => {
       const { ir } = compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
-      const instance1 = engine.createInstance('Product', { name: 'Product 1' } as EntityInstance);
-      const instance2 = engine.createInstance('Product', { name: 'Product 2' } as EntityInstance);
+      const instance1 = engine.createInstance('Product', { id: '', name: 'Product 1' } as unknown as EntityInstance);
+      const instance2 = engine.createInstance('Product', { id: '', name: 'Product 2' } as unknown as EntityInstance);
 
       expect(instance1?.id).toBe('test-id-1');
       expect(instance2?.id).toBe('test-id-2');

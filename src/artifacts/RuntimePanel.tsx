@@ -20,30 +20,30 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const [eventLog, setEventLog] = useState<EmittedEvent[]>([]);
   const [expandedDiagnostics, setExpandedDiagnostics] = useState<Set<string>>(new Set());
 
-  const { ir, engine } = useMemo(() => {
+  const { engine } = useMemo(() => {
     if (disabled || !source.trim()) {
-      return { ir: null, engine: null };
+      return { engine: null };
     }
     try {
       const compileResult = compileToIR(source);
       if (compileResult.diagnostics.some(d => d.severity === 'error')) {
-        return { ir: null, engine: null };
+        return { engine: null };
       }
       if (!compileResult.ir) {
-        return { ir: null, engine: null };
+        return { engine: null };
       }
-      
+
       let context = {};
       try {
         context = JSON.parse(runtimeContextJson);
       } catch {
         // Invalid JSON, will be caught when executing
       }
-      
+
       const runtimeEngine = new RuntimeEngine(compileResult.ir, context);
-      return { ir: compileResult.ir, engine: runtimeEngine };
+      return { engine: runtimeEngine };
     } catch {
-      return { ir: null, engine: null };
+      return { engine: null };
     }
   }, [source, runtimeContextJson, disabled]);
 
