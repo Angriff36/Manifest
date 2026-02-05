@@ -1,6 +1,8 @@
 export interface IRProvenance {
   /** Content hash of the source manifest (SHA-256) */
   contentHash: string;
+  /** Hash of the IR itself for runtime integrity verification (SHA-256) */
+  irHash?: string;
   /** Compiler version that generated this IR */
   compilerVersion: string;
   /** IR schema version */

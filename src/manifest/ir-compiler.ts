@@ -57,13 +57,37 @@ async function computeContentHash(source: string): Promise<string> {
 /**
  * Create provenance metadata for the IR
  */
-async function createProvenance(source: string): Promise<IRProvenance> {
+async function createProvenance(source: string, irHash?: string): Promise<IRProvenance> {
   return {
     contentHash: await computeContentHash(source),
+    irHash,
     compilerVersion: COMPILER_VERSION,
     schemaVersion: SCHEMA_VERSION,
     compiledAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Compute SHA-256 hash of the IR for runtime integrity verification
+ * This creates a canonical representation by sorting keys and excluding the irHash itself
+ */
+async function computeIRHash(ir: IR): Promise<string> {
+  // Create a copy of the IR without the irHash for hashing
+  const { provenance, ...irWithoutProvenance } = ir as IR & { provenance: IRProvenance };
+  const { irHash: _irHash, ...provenanceWithoutIrHash } = provenance;
+
+  const canonical = {
+    ...irWithoutProvenance,
+    provenance: provenanceWithoutIrHash,
+  };
+
+  // Use deterministic JSON serialization
+  const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export class IRCompiler {
@@ -117,7 +141,8 @@ export class IRCompiler {
       ...program.modules.flatMap(m => m.policies.map(p => this.transformPolicy(p, m.name))),
     ];
 
-    return {
+    // Create IR without irHash first, then compute hash and add to provenance
+    const irWithoutHash: IR = {
       version: '1.0',
       provenance: await createProvenance(source),
       modules,
@@ -126,6 +151,13 @@ export class IRCompiler {
       events,
       commands,
       policies,
+    };
+
+    // Compute the IR hash and create final IR with hash in provenance
+    const irHash = await computeIRHash(irWithoutHash);
+    return {
+      ...irWithoutHash,
+      provenance: await createProvenance(source, irHash),
     };
   }
 

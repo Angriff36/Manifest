@@ -21,6 +21,19 @@ export interface RuntimeContext {
 export interface RuntimeOptions {
   generateId?: () => string;
   now?: () => number;
+  /**
+   * If true, runtime will verify IR integrity hash before execution.
+   * When an IR hash doesn't match, the runtime will throw an error.
+   * Set to false for development/debugging mode.
+   * @default false in development, should be true in production
+   */
+  requireValidProvenance?: boolean;
+  /**
+   * Optional: expected IR hash for verification. If provided and requireValidProvenance is true,
+   * the runtime will verify the IR's hash matches this value.
+   * If not provided, the runtime will verify the IR's self-reported hash.
+   */
+  expectedIRHash?: string;
 }
 
 export interface EntityInstance {
@@ -193,6 +206,13 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
 
 type EventListener = (event: EmittedEvent) => void;
 
+export interface ProvenanceVerificationResult {
+  valid: boolean;
+  expectedHash?: string;
+  computedHash?: string;
+  error?: string;
+}
+
 export class RuntimeEngine {
   private ir: IR;
   private context: RuntimeContext;
@@ -286,10 +306,87 @@ export class RuntimeEngine {
     }
     console.group('[Manifest Runtime] Provenance Information');
     console.log(`Content Hash: ${prov.contentHash}`);
+    console.log(`IR Hash: ${prov.irHash || 'not set'}`);
     console.log(`Compiler Version: ${prov.compilerVersion}`);
     console.log(`Schema Version: ${prov.schemaVersion}`);
     console.log(`Compiled At: ${prov.compiledAt}`);
     console.groupEnd();
+  }
+
+  /**
+   * Verify the IR integrity by checking that the computed hash matches the expected hash.
+   * Returns true if verification passes, false otherwise.
+   *
+   * @param expectedHash - Optional expected hash. If not provided, uses the IR's self-reported irHash
+   * @returns true if hash matches or if no hash is available to verify
+   */
+  async verifyIRHash(expectedHash?: string): Promise<boolean> {
+    const prov = this.ir.provenance;
+    if (!prov) {
+      console.warn('[Manifest Runtime] No provenance information found, cannot verify IR hash.');
+      return false;
+    }
+
+    const targetHash = expectedHash || prov.irHash;
+    if (!targetHash) {
+      console.warn('[Manifest Runtime] No IR hash available for verification.');
+      return false;
+    }
+
+    try {
+      // Compute hash of the current IR (excluding the irHash field itself)
+      const { irHash: _irHash, ...provenanceWithoutIrHash } = prov;
+      const canonical = {
+        ...this.ir,
+        provenance: provenanceWithoutIrHash,
+      };
+
+      // Use deterministic JSON serialization (same as compiler)
+      const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+      const encoder = new TextEncoder();
+      const data = encoder.encode(json);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const computedHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const isValid = computedHash === targetHash;
+
+      if (!isValid) {
+        console.error(
+          `[Manifest Runtime] IR hash verification failed!\n` +
+          `  Expected: ${targetHash}\n` +
+          `  Computed: ${computedHash}\n` +
+          `  The IR may have been tampered with or modified since compilation.`
+        );
+      }
+
+      return isValid;
+    } catch (error) {
+      console.error('[Manifest Runtime] Error during IR hash verification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Verify IR and throw if invalid. Use this when requireValidProvenance is true.
+   * @throws Error if IR hash verification fails
+   */
+  async assertValidProvenance(): Promise<void> {
+    if (this.options.requireValidProvenance) {
+      const isValid = await this.verifyIRHash(this.options.expectedIRHash);
+      if (!isValid) {
+        throw new Error(
+          'IR provenance verification failed. The IR may have been modified since compilation. ' +
+          'This runtime requires valid provenance for execution.'
+        );
+      }
+      console.log('[Manifest Runtime] IR provenance verified successfully.');
+    } else {
+      console.log(
+        '[Manifest Runtime] IR provenance verification is disabled. ' +
+        'Enable requireValidProvenance in production for security.'
+      );
+    }
   }
 
   getContext(): RuntimeContext {
@@ -1055,5 +1152,45 @@ export class RuntimeEngine {
         }
       }
     }
+  }
+
+  /**
+   * Static factory method to create a RuntimeEngine with optional provenance verification.
+   * This is useful when you want to verify IR integrity before execution.
+   *
+   * @param ir - The IR to execute
+   * @param context - Runtime context (user, etc.)
+   * @param options - Runtime options including requireValidProvenance
+   * @returns A tuple of [runtime, verificationResult]
+   *
+   * @example
+   * ```ts
+   * const [runtime, result] = await RuntimeEngine.create(ir, context, { requireValidProvenance: true });
+   * if (!result.valid) {
+   *   throw new Error(`Invalid IR: ${result.error}`);
+   * }
+   * ```
+   */
+  static async create(
+    ir: IR,
+    context: RuntimeContext = {},
+    options: RuntimeOptions = {}
+  ): Promise<[RuntimeEngine, ProvenanceVerificationResult]> {
+    const runtime = new RuntimeEngine(ir, context, options);
+    let result: ProvenanceVerificationResult = { valid: true };
+
+    if (options.requireValidProvenance) {
+      const isValid = await runtime.verifyIRHash(options.expectedIRHash);
+      result = {
+        valid: isValid,
+        expectedHash: options.expectedIRHash || ir.provenance?.irHash,
+      };
+
+      if (!isValid) {
+        result.error = 'IR hash verification failed';
+      }
+    }
+
+    return [runtime, result];
   }
 }

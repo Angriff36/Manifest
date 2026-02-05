@@ -152,6 +152,7 @@ function normalizeIR(ir: IR): IR {
   if (normalized.provenance) {
     normalized.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
     normalized.provenance.contentHash = 'normalized-content-hash';
+    normalized.provenance.irHash = 'normalized-ir-hash';
   }
   return normalized;
 }

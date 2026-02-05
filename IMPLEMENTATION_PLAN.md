@@ -43,12 +43,29 @@ Make the system hostile to weaseling. When constraints block something, explain 
 - Conformance tests verify policy denial diagnostics with resolved values
 - New fixture 19-entity-constraints.manifold tests entity constraint diagnostics
 
-### Priority 3: IR-First Runtime
+### Priority 3: IR-First Runtime ✅ COMPLETED
 TS output is a view, not authority. IR is the executable contract.
 
 - [x] Runtime loads IR directly (already does this)
-- [ ] Document that generated TS is derivative, not source of truth
-- [ ] Consider: runtime refuses to execute if IR hash doesn't match expected
+- [x] Document that generated TS is derivative, not source of truth
+- [x] Runtime refuses to execute if IR hash doesn't match expected (via requireValidProvenance option)
+
+**Implementation Details:**
+- Added `irHash` field to `IRProvenance` interface (SHA-256 hash of the IR itself)
+- Updated IR schema (`docs/spec/ir/ir-v1.schema.json`) to include optional `irHash` field
+- Modified `IRCompiler` to compute IR hash during compilation (canonical JSON representation)
+- Added `verifyIRHash()` method to `RuntimeEngine` for runtime integrity verification
+- Added `assertValidProvenance()` method for throwing on verification failure
+- Added `RuntimeEngine.create()` static factory method for automatic verification
+- Added `requireValidProvenance` and `expectedIRHash` options to `RuntimeOptions`
+- Added "IR-First Architecture" section to `docs/spec/README.md` documenting:
+  - IR as single source of truth
+  - Generated code as derivative view
+  - Provenance verification requirements
+  - The choke point concept
+- Updated `normalizeIR()` in conformance tests to normalize `irHash`
+- Regenerated all 19 expected IR files with `irHash` field
+- All 99 conformance tests passing
 
 ### Priority 4: Build Something Real
 Find where the choke point leaks by actually using it.

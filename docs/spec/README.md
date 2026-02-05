@@ -4,9 +4,42 @@ If behavior changes, the specification MUST be updated before tests and implemen
 
 ## Purpose
 
-This directory defines the authoritative language specification for Manifest.  
-The specification freezes meaning, not tooling.  
+This directory defines the authoritative language specification for Manifest.
+The specification freezes meaning, not tooling.
 The IR schema is the anchor of the language.
+
+## IR-First Architecture
+
+Manifest is an **IR-first language**. The Intermediate Representation (IR) is the single source of truth for program semantics.
+
+### Key Principles
+
+1. **IR is Authority**: The IR (defined by `ir-v1.schema.json`) is the executable contract. All runtime behavior derives from the IR.
+
+2. **Generated Code is Derivative**: Any TypeScript, React components, or other code generated from the IR is a *view* or *projection*—not the source of truth. Generated code MUST NOT diverge from IR semantics.
+
+3. **Provenance is Mandatory**: IR includes provenance metadata (`contentHash`, `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt`) for traceability. Runtimes MAY verify IR integrity via the `irHash` before execution.
+
+4. **No Silent Drift**: Changes to IR schema or semantics MUST be reflected in:
+   - The IR schema version
+   - The specification documents
+   - The conformance fixtures
+   - Any generated code templates
+
+### What This Means
+
+- **Compilers** produce IR, not executable code. The IR is the deliverable.
+- **Runtimes** execute IR directly. Generated TypeScript is for debugging or IDE integration only.
+- **Generated Code** (e.g., TypeScript definitions, React components) is a convenience layer that MUST stay in sync with IR.
+- **Verification**: Production deployments SHOULD enable `requireValidProvenance` to ensure IR integrity.
+
+### The Choke Point
+
+The IR is the "choke point" that prevents semantic drift:
+- Source manifest → Compiler → **IR** (choke point) → Runtime
+- Generated code → IR (verified) → Execution
+
+If you cannot prove your code came from a specific IR + toolchain version, it is not Manifest.
 
 ## Normative Language
 

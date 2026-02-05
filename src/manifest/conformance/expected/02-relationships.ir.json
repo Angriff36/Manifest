@@ -2,6 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
+    "irHash": "00f1bead4aab2c8c4700193365edbb27841e082613c7b21613e336a02e4686c3",
     "compilerVersion": "0.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
