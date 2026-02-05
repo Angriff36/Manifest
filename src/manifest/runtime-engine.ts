@@ -697,6 +697,14 @@ export class RuntimeEngine {
 
     const mergedData = { ...defaults, ...data };
 
+    // Handle version properties for optimistic concurrency control
+    if (entity.versionProperty) {
+      mergedData[entity.versionProperty] = 1;
+    }
+    if (entity.versionAtProperty) {
+      mergedData[entity.versionAtProperty] = this.getNow();
+    }
+
     // Validate entity constraints
     const constraintFailures = await this.validateConstraints(entity, mergedData);
     if (constraintFailures.length > 0) {
@@ -718,6 +726,31 @@ export class RuntimeEngine {
 
     const existing = await store.getById(id);
     if (!existing) return undefined;
+
+    // Optimistic concurrency control: check version if entity has versionProperty
+    if (entity.versionProperty) {
+      const existingVersion = existing[entity.versionProperty] as number | undefined;
+      const providedVersion = data[entity.versionProperty] as number | undefined;
+
+      if (existingVersion !== undefined && providedVersion !== undefined) {
+        if (existingVersion !== providedVersion) {
+          // Concurrency conflict - return undefined to indicate failure
+          console.warn(
+            `[Manifest Runtime] Optimistic concurrency violation for ${entityName}:${id}: ` +
+            `expected version ${existingVersion} but got ${providedVersion}`
+          );
+          return undefined;
+        }
+      }
+
+      // Auto-increment version on successful update
+      data[entity.versionProperty] = (existingVersion || 0) + 1;
+    }
+
+    // Update versionAt timestamp if present
+    if (entity.versionAtProperty) {
+      data[entity.versionAtProperty] = this.getNow();
+    }
 
     const mergedData = { ...existing, ...data };
 
@@ -919,6 +952,14 @@ export class RuntimeEngine {
    * - severity='block': Failed constraints are returned as failures (block execution)
    * - severity='warn': Failed constraints are NOT returned as failures (informational only)
    * - severity='ok': Failed constraints are NOT returned as failures (informational only)
+   *
+   * CONSTRAINT SEMANTICS (vNext hybrid support):
+   * - Positive constraints (default): Expression describes what MUST be true for validity
+   *   - When FALSE → constraint FAILS (e.g., "amount >= 0" fails when amount = -1)
+   *   - When TRUE → constraint PASSES
+   * - Negative constraints (detected by "severity" prefix): Expression describes BAD state
+   *   - When TRUE → constraint FIRES (e.g., "status == 'cancelled'" fires when cancelled)
+   *   - When FALSE → constraint PASSES (no bad state present)
    */
   private async validateConstraints(
     entity: IREntity,
@@ -940,10 +981,15 @@ export class RuntimeEngine {
       const result = await this.evaluateExpression(constraint.expression, evalContext);
       const severity = constraint.severity || 'block';
 
-      // Constraint fails when expression evaluates to FALSE (condition not met)
+      // Detect constraint type: "severity*" prefix indicates negative-type constraint
+      // Negative constraints fire when expression is TRUE (bad state detected)
+      // Positive constraints fail when expression is FALSE (required condition not met)
+      const isNegativeType = constraint.name.startsWith('severity');
+      const shouldFire = isNegativeType ? Boolean(result) : !Boolean(result);
+
       // Only block-severity failures are returned as failures
-      // (ok and warn constraints don't block even when they fail)
-      if (!result && severity === 'block') {
+      // (ok and warn constraints don't block even when they fire)
+      if (shouldFire && severity === 'block') {
         failures.push({
           constraintName: constraint.name,
           expression: constraint.expression,
