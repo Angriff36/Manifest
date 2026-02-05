@@ -1,0 +1,82 @@
+{
+  "testCases": [
+    {
+      "name": "addItem with assignment form creates computed property",
+      "setup": {
+        "createInstance": {
+          "entity": "Inventory",
+          "data": { "id": "inv-1", "quantity": 10, "lowStock": false }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Inventory",
+        "instanceId": "inv-1",
+        "input": { "amount": 5 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 15,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "inv-1",
+        "quantity": 15,
+        "lowStock": false,
+        "newQuantity": 15
+      }
+    },
+    {
+      "name": "addItem starting from zero",
+      "setup": {
+        "createInstance": {
+          "entity": "Inventory",
+          "data": { "id": "inv-2", "quantity": 0, "lowStock": false }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Inventory",
+        "instanceId": "inv-2",
+        "input": { "amount": 10 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 10,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "inv-2",
+        "quantity": 10,
+        "lowStock": false,
+        "newQuantity": 10
+      }
+    },
+    {
+      "name": "addItem with large amount",
+      "setup": {
+        "createInstance": {
+          "entity": "Inventory",
+          "data": { "id": "inv-3", "quantity": 100, "lowStock": false }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Inventory",
+        "instanceId": "inv-3",
+        "input": { "amount": 250 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 350,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "inv-3",
+        "quantity": 350,
+        "lowStock": false,
+        "newQuantity": 350
+      }
+    }
+  ]
+}

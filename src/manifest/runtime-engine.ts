@@ -355,8 +355,10 @@ export class RuntimeEngine {
       const actionResult = this.executeAction(action, evalContext, options);
       if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
         const currentInstance = this.getInstance(options.entityName, options.instanceId);
+        // Refresh both self/this bindings and spread instance properties into evalContext
         evalContext.self = currentInstance;
         evalContext.this = currentInstance;
+        Object.assign(evalContext, currentInstance);
       }
       result = actionResult;
     }
