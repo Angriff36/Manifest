@@ -916,7 +916,10 @@ export class RuntimeEngine {
       case 'member': {
         const obj = this.evaluateExpression(expr.object, context);
         if (obj && typeof obj === 'object') {
-          return (obj as Record<string, unknown>)[expr.property];
+          // Use hasOwnProperty check to prevent prototype pollution
+          return Object.prototype.hasOwnProperty.call(obj, expr.property)
+            ? (obj as Record<string, unknown>)[expr.property]
+            : undefined;
         }
         return undefined;
       }
