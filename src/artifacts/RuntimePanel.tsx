@@ -3,7 +3,7 @@ import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock, ChevronDown,
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
 import type { CommandResult, EmittedEvent, PolicyDenial, EntityInstance, Store } from '../manifest/runtime-engine';
-import type { IREntity, IRValue } from '../manifest/ir';
+import type { IREntity, IRValue, IRProvenance } from '../manifest/ir';
 
 // Inline MemoryStore for browser demo (copied from runtime-engine)
 class MemoryStore<T extends EntityInstance> implements Store<T> {
@@ -70,6 +70,9 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   // Event log and diagnostics
   const [eventLog, setEventLog] = useState<EmittedEvent[]>([]);
   const [expandedDiagnostics, setExpandedDiagnostics] = useState<Set<string>>(new Set());
+
+  // Provenance display state
+  const [showProvenance, setShowProvenance] = useState(false);
 
   // Computed property values for the selected instance
   const [computedValues, setComputedValues] = useState<Record<string, unknown>>({});
@@ -521,6 +524,49 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
             </span>
           )}
         </div>
+
+        {/* Provenance Info */}
+        {(() => {
+          const provenance: IRProvenance | undefined = engine?.getProvenance();
+          if (!provenance) return null;
+          return (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowProvenance(!showProvenance)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                {showProvenance ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                <Shield size={12} className="text-emerald-400" />
+                <span className="font-medium">IR Provenance</span>
+                <span className="text-gray-600">
+                  v{provenance.compilerVersion}
+                </span>
+              </button>
+              {showProvenance && (
+                <div className="mt-2 ml-4 p-2 bg-gray-900/50 rounded border border-gray-800 space-y-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">Compiler:</span>
+                    <span className="font-mono text-gray-300">{provenance.compilerVersion}</span>
+                  </div>
+                  {provenance.schemaVersion && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">Schema:</span>
+                      <span className="font-mono text-gray-300">{provenance.schemaVersion}</span>
+                    </div>
+                  )}
+                  {provenance.irHash && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">IR Hash:</span>
+                      <span className="font-mono text-gray-300 text-xs" title={provenance.irHash}>
+                        {provenance.irHash.slice(0, 16)}...
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="space-y-3">
           <div>

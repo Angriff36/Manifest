@@ -5,9 +5,10 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 3 - Priority 4 ✅ COMPLETED (UI Enhancements)
+Phase: Loop 3 - ALL PRIORITIES COMPLETE + Loop 2 Provenance UI ✅
 
 **ALL LOOP 3 PRIORITIES COMPLETE!**
+**ALL LOOP 2 PRIORITIES COMPLETE!** (including Provenance UI display)
 
 ## Mission
 
@@ -313,8 +314,16 @@ Add traceability everywhere so drift becomes visible.
 - [x] IR includes: manifest content hash, compiler version, schema version
 - [x] Runtime prints provenance at startup (via `getProvenance()` and `logProvenance()` methods)
 - [x] Event logs include provenance
-- [ ] UI displays provenance info (future enhancement)
+- [x] UI displays provenance info (implemented 2026-02-05)
 - [x] Conformance tests verify provenance is preserved
+
+**UI Provenance Display Implementation (2026-02-05):**
+- Added collapsible "IR Provenance" section to Runtime UI header
+- Shows compiler version, schema version (if available), and IR hash (truncated)
+- Uses Shield icon with emerald color to indicate integrity/trust
+- Collapsed by default to avoid clutter; users can expand to view details
+- IR hash shows first 16 characters with full hash in tooltip
+- All 100 conformance tests passing
 
 ### Priority 2: Diagnostic Hardening ✅ COMPLETED
 Make the system hostile to weaseling. When constraints block something, explain exactly why.
