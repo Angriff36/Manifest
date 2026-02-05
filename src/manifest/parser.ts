@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lexer } from './lexer';
 import {
   Token, ManifestProgram, EntityNode, PropertyNode, TypeNode, BehaviorNode,
@@ -125,16 +124,47 @@ export class Parser {
 
   private extractDependencies(expr: ExpressionNode): string[] {
     const deps = new Set<string>();
+    const RESERVED = ['self', 'this', 'user', 'context'];
+
     const walk = (e: ExpressionNode) => {
-      if ((e as any).type === 'Identifier' && 'name' in e && !['self', 'this', 'user', 'context'].includes((e as any).name)) deps.add((e as any).name);
-      if ((e as any).type === 'MemberAccess') { walk((e as any).object); }
-      if ((e as any).type === 'BinaryOp') { walk((e as any).left); walk((e as any).right); }
-      if ((e as any).type === 'UnaryOp') walk((e as any).operand);
-      if ((e as any).type === 'Call') { walk((e as any).callee); (e as any).arguments.forEach(walk); }
-      if ((e as any).type === 'Conditional') { walk((e as any).condition); walk((e as any).consequent); walk((e as any).alternate); }
-      if ((e as any).type === 'Array') (e as any).elements.forEach(walk);
-      if ((e as any).type === 'Object') (e as any).properties.forEach((p: any) => walk(p.value));
-      if ((e as any).type === 'Lambda') walk((e as any).body);
+      switch (e.type) {
+        case 'Identifier':
+          if (!RESERVED.includes(e.name)) {
+            deps.add(e.name);
+          }
+          break;
+        case 'MemberAccess':
+          walk(e.object);
+          break;
+        case 'BinaryOp':
+          walk(e.left);
+          walk(e.right);
+          break;
+        case 'UnaryOp':
+          walk(e.operand);
+          break;
+        case 'Call':
+          walk(e.callee);
+          e.arguments.forEach(walk);
+          break;
+        case 'Conditional':
+          walk(e.condition);
+          walk(e.consequent);
+          walk(e.alternate);
+          break;
+        case 'Array':
+          e.elements.forEach(walk);
+          break;
+        case 'Object':
+          e.properties.forEach((p) => walk(p.value));
+          break;
+        case 'Lambda':
+          walk(e.body);
+          break;
+        case 'Literal':
+          // No dependencies in literals
+          break;
+      }
     };
     walk(expr);
     return Array.from(deps);

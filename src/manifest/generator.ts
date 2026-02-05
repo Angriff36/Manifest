@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
+import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode } from './types';
 
 export class CodeGenerator {
   private out: string[] = [];
@@ -245,7 +244,7 @@ export class CodeGenerator {
     }
 
     this.line();
-    this.line(`subscribe(prop: keyof ${iface}, fn: (v: unknown) => void) { return (this as any)[\`_\${prop}\`]?.subscribe?.(fn); }`);
+    this.line(`subscribe(prop: keyof ${iface}, fn: (v: unknown) => void) { return (this as Record<string, unknown>)[\`_\${prop}\`]?.subscribe?.(fn); }`);
 
     this.line();
     this.line('toJSON() {');
@@ -335,14 +334,15 @@ export class CodeGenerator {
 
   private genOutboxEvent(ev: OutboxEventNode) {
     if ('fields' in ev.payload && Array.isArray(ev.payload.fields)) {
-      const payloadType = `{ ${ev.payload.fields.map((f: { name: string; dataType: { name: string; generic?: unknown; nullable: boolean } }) => `${f.name}: ${this.tsType(f.dataType)}`).join('; ')} }`;
+      const payloadType = `{ ${ev.payload.fields.map((f) => `${f.name}: ${this.tsType(f.dataType)}`).join('; ')} }`;
       this.line(`interface ${ev.name}Event ${payloadType}`);
       this.line();
       this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
       this.in(); this.line(`EventBus.publish('${ev.channel}', data);`); this.de(); this.line('};');
       return;
     }
-    const payloadType = this.tsType(ev.payload as { name: string; generic?: unknown; nullable: boolean });
+    // At this point, ev.payload must be TypeNode (not { fields }) since we returned above
+    const payloadType = this.tsType(ev.payload as ASTTypeNode);
     this.line(`interface ${ev.name}Event ${payloadType}`);
     this.line();
     this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
@@ -552,7 +552,10 @@ export class CodeGenerator {
 
       for (const constraint of entity.constraints) {
         this.testOut.push(`  describe("constraint: ${constraint.name}", () => {`);
-        this.testOut.push(`    it("should enforce: ${constraint.message || constraint.name}", () => {`);
+        // Escape constraint message for safe embedding in double-quoted string in generated code
+        const message = constraint.message || constraint.name;
+        const safeMessage = message.replace(/"/g, '\\"').replace(/\\/g, '\\\\');
+        this.testOut.push(`    it("should enforce: ${safeMessage}", () => {`);
         this.testOut.push(`      const instance = new ${entity.name}();`);
         this.testOut.push(`      // Test valid case`);
         this.testOut.push(`      expect(() => {`);
@@ -621,33 +624,46 @@ export class CodeGenerator {
 
   private genExpr(e: ExpressionNode): string {
     switch (e.type) {
-      case 'Literal': return e.dataType === 'string' ? JSON.stringify(e.value) : String(e.value);
+      case 'Literal':
+        return e.dataType === 'string' ? JSON.stringify(e.value) : String(e.value);
       case 'Identifier': {
-        if ('name' in e) {
-          const name = e.name;
-          if (name === 'self') return 'this';
-          if (name === 'user') return 'getContext().user';
-          if (name === 'context') return 'getContext()';
-          return name;
-        }
-        return 'unknown';
+        const name = e.name;
+        if (name === 'self') return 'this';
+        if (name === 'user') return 'getContext().user';
+        if (name === 'context') return 'getContext()';
+        return name;
       }
-      case 'BinaryOp': { const op = (e as any).operator; const l = this.genExpr((e as any).left); const r = this.genExpr((e as any).right); const m: Record<string, string> = { 'and': '&&', 'or': '||', 'is': '===', 'contains': '.includes' }; if (op === 'contains') return `${l}.includes(${r})`; return `(${l} ${m[op] || op} ${r})`; }
-      case 'UnaryOp': return `${(e as any).operator === 'not' ? '!' : (e as any).operator}${this.genExpr((e as any).operand)}`;
-      case 'Call': return `${this.genExpr((e as any).callee)}(${(e as any).arguments.map((a: any) => this.genExpr(a)).join(', ')})`;
-      case 'MemberAccess': return `${this.genExpr((e as any).object)}.${(e as any).property}`;
-      case 'Conditional': return `(${this.genExpr((e as any).condition)} ? ${this.genExpr((e as any).consequent)} : ${this.genExpr((e as any).alternate)})`;
-      case 'Array': return `[${(e as any).elements.map((x: any) => this.genExpr(x)).join(', ')}]`;
-      case 'Object': return `{ ${(e as any).properties.map((p: any) => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
-      case 'Lambda': return `(${(e as any).parameters.join(', ')}) => ${this.genExpr((e as any).body)}`;
-      default: return '/* ? */';
+      case 'BinaryOp': {
+        const op = e.operator;
+        const l = this.genExpr(e.left);
+        const r = this.genExpr(e.right);
+        const m: Record<string, string> = { 'and': '&&', 'or': '||', 'is': '===', 'contains': '.includes' };
+        if (op === 'contains') return `${l}.includes(${r})`;
+        return `(${l} ${m[op] || op} ${r})`;
+      }
+      case 'UnaryOp':
+        return `${e.operator === 'not' ? '!' : e.operator}${this.genExpr(e.operand)}`;
+      case 'Call':
+        return `${this.genExpr(e.callee)}(${e.arguments.map((a) => this.genExpr(a)).join(', ')})`;
+      case 'MemberAccess':
+        return `${this.genExpr(e.object)}.${e.property}`;
+      case 'Conditional':
+        return `(${this.genExpr(e.condition)} ? ${this.genExpr(e.consequent)} : ${this.genExpr(e.alternate)})`;
+      case 'Array':
+        return `[${e.elements.map((x) => this.genExpr(x)).join(', ')}]`;
+      case 'Object':
+        return `{ ${e.properties.map((p) => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
+      case 'Lambda':
+        return `(${e.parameters.join(', ')}) => ${this.genExpr(e.body)}`;
+      default:
+        return '/* ? */';
     }
   }
 
-  private tsType(t: { name: string; generic?: unknown; nullable: boolean }): string {
+  private tsType(t: ASTTypeNode): string {
     const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'any', void: 'void', list: 'Array', map: 'Map' };
     let r = m[t.name] || t.name;
-    if (t.generic && typeof t.generic === 'object' && 'name' in t.generic) r += `<${this.tsType(t.generic as any)}>`;
+    if (t.generic) r += `<${this.tsType(t.generic)}>`;
     if (t.nullable) r += ' | null';
     return r;
   }
