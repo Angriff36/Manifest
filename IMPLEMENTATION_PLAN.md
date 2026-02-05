@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Plan updated: 2026-02-04 (Priority 6: Storage Adapter Silent Fallback FIXED; emits error for unsupported targets)
+Plan updated: 2026-02-04 (Priority 4: Policy/Guard Diagnostics Enhancement COMPLETED; full policy denial display with collapsible sections)
 
 ## Executive Summary
 
@@ -13,8 +13,8 @@ Plan updated: 2026-02-04 (Priority 6: Storage Adapter Silent Fallback FIXED; emi
 2. ~~**Storage Adapter Silent Fallback** - Spec violation: postgres/supabase silently fall back to memory~~ **FIXED**
 
 **High-Completion Items (Quick Wins):**
-1. **Event Log Results File** - 95% complete, only missing test artifact
-2. **Policy Diagnostics Enhancement** - Guard diagnostics complete, Policy diagnostics partial
+1. ~~**Event Log Results File**~~ - ✅ COMPLETED (Priority 2)
+2. ~~**Policy Diagnostics Enhancement**~~ - ✅ COMPLETED (Priority 4)
 
 **Significant New Features:**
 1. **Tiny App Demo** - Requires new panel component and fixture
@@ -112,45 +112,43 @@ Plan updated: 2026-02-04 (Priority 6: Storage Adapter Silent Fallback FIXED; emi
 
 ---
 
-### Priority 4: Policy/Guard Diagnostics Enhancement
-**Status:** PARTIALLY COMPLETE - Guard diagnostics done, Policy diagnostics minimal
+### Priority 4: Policy/Guard Diagnostics Enhancement ✅ COMPLETED
 
-**Current State:**
-- Guard Failure: FULLY IMPLEMENTED in RuntimePanel
-  - `formatGuardFailure()` function (lines 111-136)
-  - Shows guard index, formatted expression, resolved values
-- Policy Denial: BASIC IMPLEMENTATION (lines 261-265)
-  - Shows deniedBy policy name only
-  - MISSING: formatted expression, evaluation context keys, collapsible section
-- Fixture `11-guard-ordering-diagnostics`: EXISTS with IR, results, diagnostics
+**Status:** COMPLETED - Full policy denial diagnostics with collapsible sections
 
-**What's Missing:**
-Per policy guard diagnostics (spec file may not exist, requirements inferred):
-1. Policy denial formatted expression display
-2. Policy denial evaluation context keys (not values)
-3. Collapsible/expandable sections for policy/guard details
+**Implementation Summary (2026-02-04):**
+- ✅ Added `PolicyDenial` interface to runtime-engine.ts
+- ✅ Modified `checkPolicies()` to return detailed denial information (expression, formatted, message, contextKeys)
+- ✅ Added `extractContextKeys()` helper to extract context keys (not values for security)
+- ✅ Added `policyDenial` field to `CommandResult`
+- ✅ Updated `runCommand()` to populate `policyDenial` field
+- ✅ Created `formatPolicyDenial()` function in RuntimePanel.tsx
+- ✅ Made both policy and guard diagnostics collapsible with expand/collapse toggle
+- ✅ Enhanced visual distinction:
+  - Policy denials: amber theme with Shield icon
+  - Guard failures: rose theme with Ban icon
+  - Distinct collapsible sections for each diagnostic type
 
-**Work Items (Constitutional Order: Spec → Tests → Implementation):**
-1. [ ] **Spec**: Create `docs/spec/policy-guard-diagnostics.md` if it doesn't exist
-   - Document exact requirements for policy denial display
-   - Specify what context keys to show (not values for security)
-2. [ ] **Implementation**: Enhance `src/artifacts/RuntimePanel.tsx` policy denial display
-   - Add formatted policy expression (reuse expression formatting from guard)
-   - Add evaluation context keys (list available keys, don't show values per security)
-   - Make collapsible with expand/collapse toggle
-   - Ensure visual distinction from guard failures (different styling)
-3. [ ] **Tests**: Verify fixture 11 diagnostic output matches enhanced display
-4. [ ] **Tests**: Add UI snapshot test if needed
+**Changes Made:**
+1. `src/manifest/runtime-engine.ts:44-50` - Added `PolicyDenial` interface with policyName, expression, formatted, message, contextKeys
+2. `src/manifest/runtime-engine.ts:428-457` - Modified `checkPolicies()` to return `PolicyDenial` details
+3. `src/manifest/runtime-engine.ts:459-508` - Added `extractContextKeys()` helper method
+4. `src/manifest/runtime-engine.ts:351-360` - Updated `runCommand()` to populate `policyDenial` field
+5. `src/artifacts/RuntimePanel.tsx:1-5` - Added imports (Shield, Ban, ChevronDown, ChevronRight icons, PolicyDenial type)
+6. `src/artifacts/RuntimePanel.tsx:21` - Added `expandedDiagnostics` state for collapsible sections
+7. `src/artifacts/RuntimePanel.tsx:112-220` - Enhanced `formatGuardFailure()` and added `formatPolicyDenial()` functions
+8. `src/artifacts/RuntimePanel.tsx:345` - Replaced simple policy denial text with `formatPolicyDenial()` call
 
 **Verification:**
-- Policy denial shows policy name (already working)
-- Policy denial shows formatted expression
-- Policy denial shows evaluation context keys
-- Collapsible section works (expand/collapse)
-- Visual distinction: Policy denials vs Guard failures
-- Conformance test 11 still passes
+- ✅ Policy denial shows policy name
+- ✅ Policy denial shows formatted expression
+- ✅ Policy denial shows evaluation context keys (not values for security)
+- ✅ Collapsible sections work (expand/collapse) for both policy and guard
+- ✅ Visual distinction: Policy denials (amber/Shield) vs Guard failures (rose/Ban)
+- ✅ All 77 conformance tests pass
+- ✅ Spec file `specs/policy-guard-diagnostics.md` exists and requirements are met
 
-**Estimated Effort:** 2-3 hours (moderate - UI work, plus spec creation)
+**Estimated Effort:** 2-3 hours (moderate - UI work) → COMPLETED
 
 ---
 
@@ -263,6 +261,16 @@ Per `docs/spec/adapters.md`:
 - Fixed eval context refresh bug
 - All 77 conformance tests now pass (increased from 70)
 
+### Priority 4: Policy/Guard Diagnostics Enhancement (2026-02-04)
+- Added `PolicyDenial` interface with policyName, expression, formatted, message, contextKeys
+- Modified `checkPolicies()` to return detailed policy denial information
+- Added `extractContextKeys()` helper to extract context keys (not values for security)
+- Added `policyDenial` field to `CommandResult`
+- Created `formatPolicyDenial()` function in RuntimePanel.tsx with collapsible sections
+- Enhanced visual distinction: Policy denials (amber/Shield) vs Guard failures (rose/Ban)
+- Made both policy and guard diagnostics collapsible with expand/collapse toggle
+- All 77 conformance tests pass
+
 ### Priority 6: Storage Adapter Silent Fallback (2026-02-04)
 - Fixed silent fallback to memory for unsupported storage targets
 - Now throws descriptive error for postgres/supabase targets
@@ -329,13 +337,7 @@ Per `docs/spec/adapters.md`:
    - TinyAppPanel.tsx: DOES NOT EXIST
    - **SPEC**: `specs/tiny-app-demo.md` exists
 
-7. **Policy Diagnostics Incomplete** (Priority 4):
-   - Guard diagnostics: FULLY IMPLEMENTED (formatGuardFailure, RuntimePanel.tsx:111-136)
-   - Policy diagnostics: MINIMAL IMPLEMENTATION (RuntimePanel.tsx:261-265)
-   - **MISSING**: Formatted policy expression, evaluation context keys, collapsible section
-   - **SPEC**: `docs/spec/policy-guard-diagnostics.md` does NOT exist - needs to be created
-
-8. **Action Adapters Not Implemented** (Priority 6):
+7. **Action Adapters Not Implemented** (Priority 6):
    - `persist`: No-op (spec says this is allowed)
    - `publish`: No-op (spec says this is allowed)
    - `effect`: No-op (spec says this is allowed)
@@ -376,17 +378,17 @@ Per `docs/spec/adapters.md`:
 
 **Priority Adjustment**: Already covered in Priority 2
 
-### Priority 4: Policy/Guard Diagnostics Enhancement (MODERATE - 2-3 hours)
+### Priority 4: Policy/Guard Diagnostics Enhancement (COMPLETED 2026-02-04)
 **Why fourth?**
 - Guard diagnostics: DONE (formatGuardFailure implemented)
-- Policy diagnostics: Partial (needs expression display, context keys, collapsible)
+- Policy diagnostics: Partial (needed expression display, context keys, collapsible)
 - Moderate effort, improves debugging experience
-- Spec file needs to be created first
+- Spec file exists (`specs/policy-guard-diagnostics.md`)
 
-**Priority Adjustment**: MODERATE
-- Important but not blocking other features
-- Implementation exists for guards, just need to complete policies
-- Spec needs to be written before implementation
+**Priority Adjustment**: COMPLETED
+- Enhanced both policy and guard diagnostics with collapsible sections
+- Added context keys extraction (not values for security)
+- Visual distinction: Policy denials (amber/Shield) vs Guard failures (rose/Ban)
 
 ### Priority 5: Tiny App Demo (SIGNIFICANT - 6-8 hours)
 **Why fifth?**

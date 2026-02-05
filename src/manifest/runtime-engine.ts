@@ -30,6 +30,7 @@ export interface CommandResult {
   error?: string;
   deniedBy?: string;
   guardFailure?: GuardFailure;
+  policyDenial?: PolicyDenial;
   emittedEvents: EmittedEvent[];
 }
 
@@ -38,6 +39,14 @@ export interface GuardFailure {
   expression: IRExpression;
   formatted: string;
   resolved?: GuardResolvedValue[];
+}
+
+export interface PolicyDenial {
+  policyName: string;
+  expression: IRExpression;
+  formatted: string;
+  message?: string;
+  contextKeys: string[];
 }
 
 export interface GuardResolvedValue {
@@ -343,8 +352,9 @@ export class RuntimeEngine {
     if (!policyResult.allowed) {
       return {
         success: false,
-        error: policyResult.message,
-        deniedBy: policyResult.policyName,
+        error: policyResult.denial?.message,
+        deniedBy: policyResult.denial?.policyName,
+        policyDenial: policyResult.denial,
         emittedEvents: [],
       };
     }
@@ -419,7 +429,7 @@ export class RuntimeEngine {
   private checkPolicies(
     command: IRCommand,
     evalContext: Record<string, unknown>
-  ): { allowed: boolean; policyName?: string; message?: string } {
+  ): { allowed: boolean; denial?: PolicyDenial } {
     const relevantPolicies = this.ir.policies.filter(p => {
       if (p.entity && command.entity && p.entity !== command.entity) return false;
       if (p.action !== 'all' && p.action !== 'execute') return false;
@@ -429,15 +439,73 @@ export class RuntimeEngine {
     for (const policy of relevantPolicies) {
       const result = this.evaluateExpression(policy.expression, evalContext);
       if (!result) {
+        // Extract context keys (not values for security)
+        const contextKeys = this.extractContextKeys(policy.expression);
         return {
           allowed: false,
-          policyName: policy.name,
-          message: policy.message || `Denied by policy '${policy.name}'`,
+          denial: {
+            policyName: policy.name,
+            expression: policy.expression,
+            formatted: this.formatExpression(policy.expression),
+            message: policy.message || `Denied by policy '${policy.name}'`,
+            contextKeys,
+          },
         };
       }
     }
 
     return { allowed: true };
+  }
+
+  private extractContextKeys(expr: IRExpression): string[] {
+    const keys = new Set<string>();
+
+    const walk = (node: IRExpression): void => {
+      switch (node.kind) {
+        case 'identifier':
+          // Add built-in identifiers and any user-defined identifiers
+          if (node.name === 'self' || node.name === 'this' || node.name === 'user' || node.name === 'context') {
+            keys.add(node.name);
+          }
+          return;
+        case 'member':
+          // Add the base identifier (e.g., 'user' from 'user.role')
+          walk(node.object);
+          // Also add the full path as a key
+          const base = this.formatExpression(node.object);
+          keys.add(`${base}.${node.property}`);
+          return;
+        case 'binary':
+          walk(node.left);
+          walk(node.right);
+          return;
+        case 'unary':
+          walk(node.operand);
+          return;
+        case 'call':
+          node.args.forEach(walk);
+          return;
+        case 'conditional':
+          walk(node.condition);
+          walk(node.consequent);
+          walk(node.alternate);
+          return;
+        case 'array':
+          node.elements.forEach(walk);
+          return;
+        case 'object':
+          node.properties.forEach(p => walk(p.value));
+          return;
+        case 'lambda':
+          walk(node.body);
+          return;
+        default:
+          return;
+      }
+    };
+
+    walk(expr);
+    return Array.from(keys).sort();
   }
 
   private formatExpression(expr: IRExpression): string {

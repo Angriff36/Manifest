@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock } from 'lucide-react';
+import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock, ChevronDown, ChevronRight, Shield, Ban } from 'lucide-react';
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
-import type { CommandResult, EmittedEvent } from '../manifest/runtime-engine';
+import type { CommandResult, EmittedEvent, PolicyDenial } from '../manifest/runtime-engine';
 
 interface RuntimePanelProps {
   source: string;
@@ -18,6 +18,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const [commandResult, setCommandResult] = useState<CommandResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [eventLog, setEventLog] = useState<EmittedEvent[]>([]);
+  const [expandedDiagnostics, setExpandedDiagnostics] = useState<Set<string>>(new Set());
 
   const { ir, engine } = useMemo(() => {
     if (disabled || !source.trim()) {
@@ -110,25 +111,108 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
   const formatGuardFailure = (failure: CommandResult['guardFailure']) => {
     if (!failure) return null;
-    
+
+    const guardKey = `guard-${failure.index}`;
+    const isExpanded = expandedDiagnostics.has(guardKey);
+    const toggleExpanded = () => {
+      setExpandedDiagnostics(prev => {
+        const next = new Set(prev);
+        if (next.has(guardKey)) {
+          next.delete(guardKey);
+        } else {
+          next.add(guardKey);
+        }
+        return next;
+      });
+    };
+
     const resolvedValues = failure.resolved || [];
     const resolvedText = resolvedValues
       .map(rv => {
-        const valueStr = typeof rv.value === 'string' 
-          ? `"${rv.value}"` 
+        const valueStr = typeof rv.value === 'string'
+          ? `"${rv.value}"`
           : String(rv.value ?? 'undefined');
         return `${rv.expression} = ${valueStr}`;
       })
       .join(', ');
 
     return (
-      <div className="mt-2 p-3 bg-rose-900/20 rounded border border-rose-800/50">
-        <div className="text-sm font-medium text-rose-300 mb-1">
-          Guard #{failure.index} failed: {failure.formatted}
-        </div>
-        {resolvedText && (
-          <div className="text-xs text-rose-400 font-mono mt-1">
-            Resolved: {resolvedText}
+      <div className="mt-2 bg-rose-900/20 rounded border border-rose-800/50">
+        <button
+          onClick={toggleExpanded}
+          className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-rose-900/30 transition-colors rounded"
+        >
+          {isExpanded ? <ChevronDown size={14} className="text-rose-400" /> : <ChevronRight size={14} className="text-rose-400" />}
+          <Ban size={14} className="text-rose-400" />
+          <span className="text-sm font-medium text-rose-300">
+            Guard #{failure.index} failed
+          </span>
+        </button>
+        {isExpanded && (
+          <div className="px-3 pb-3">
+            <div className="text-xs text-rose-400 font-mono mb-2 bg-rose-950/30 px-2 py-1 rounded">
+              {failure.formatted}
+            </div>
+            {resolvedText && (
+              <div className="text-xs text-rose-400">
+                <span className="font-medium">Resolved:</span> {resolvedText}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const formatPolicyDenial = (denial: PolicyDenial) => {
+    const policyKey = `policy-${denial.policyName}`;
+    const isExpanded = expandedDiagnostics.has(policyKey);
+    const toggleExpanded = () => {
+      setExpandedDiagnostics(prev => {
+        const next = new Set(prev);
+        if (next.has(policyKey)) {
+          next.delete(policyKey);
+        } else {
+          next.add(policyKey);
+        }
+        return next;
+      });
+    };
+
+    const contextKeysText = denial.contextKeys.length > 0
+      ? denial.contextKeys.join(', ')
+      : 'none';
+
+    return (
+      <div className="mt-2 bg-amber-900/20 rounded border border-amber-800/50">
+        <button
+          onClick={toggleExpanded}
+          className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-amber-900/30 transition-colors rounded"
+        >
+          {isExpanded ? <ChevronDown size={14} className="text-amber-400" /> : <ChevronRight size={14} className="text-amber-400" />}
+          <Shield size={14} className="text-amber-400" />
+          <span className="text-sm font-medium text-amber-300">
+            Policy Denial: <code className="text-amber-400">{denial.policyName}</code>
+          </span>
+        </button>
+        {isExpanded && (
+          <div className="px-3 pb-3 space-y-2">
+            {denial.formatted && (
+              <div>
+                <div className="text-xs text-amber-500 mb-1">Policy Expression:</div>
+                <div className="text-xs text-amber-400 font-mono bg-amber-950/30 px-2 py-1 rounded">
+                  {denial.formatted}
+                </div>
+              </div>
+            )}
+            {denial.message && (
+              <div className="text-xs text-amber-400">
+                <span className="font-medium">Message:</span> {denial.message}
+              </div>
+            )}
+            <div className="text-xs text-amber-400">
+              <span className="font-medium">Context Keys:</span> <span className="font-mono">{contextKeysText}</span>
+            </div>
           </div>
         )}
       </div>
@@ -258,11 +342,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
               {commandResult.guardFailure && formatGuardFailure(commandResult.guardFailure)}
 
-              {commandResult.deniedBy && (
-                <div className="text-sm text-amber-300 mt-2">
-                  Denied by policy: <code className="text-amber-400">{commandResult.deniedBy}</code>
-                </div>
-              )}
+              {commandResult.policyDenial && formatPolicyDenial(commandResult.policyDenial)}
 
               {commandResult.emittedEvents.length > 0 && (
                 <div className="mt-3">
