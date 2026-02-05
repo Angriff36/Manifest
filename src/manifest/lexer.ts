@@ -27,7 +27,9 @@ export const KEYWORDS = new Set([
   'memory', 'postgres', 'supabase', 'localStorage',
   'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny',
   'and', 'or', 'not', 'is', 'in', 'contains',
-  'user', 'self', 'context'
+  'user', 'self', 'context',
+  // vNext constraint keywords
+  'overrideable', 'ok', 'warn' // 'block' is already a word
 ]);
 
 const OPERATORS = new Set([

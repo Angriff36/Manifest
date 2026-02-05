@@ -202,7 +202,7 @@ export class Parser {
     let returns: TypeNode | undefined;
     if (this.check('KEYWORD', 'returns')) { this.advance(); returns = this.parseType(); }
 
-    const guards: ExpressionNode[] = [], actions: ActionNode[] = [], emits: string[] = [];
+    const guards: ExpressionNode[] = [], constraints: ConstraintNode[] = [], actions: ActionNode[] = [], emits: string[] = [];
 
     if (this.check('PUNCTUATION', '{')) {
       this.advance(); this.skipNL();
@@ -210,6 +210,7 @@ export class Parser {
         this.skipNL();
         if (this.check('PUNCTUATION', '}')) break;
         if (this.check('KEYWORD', 'guard') || this.check('KEYWORD', 'when')) { this.advance(); guards.push(this.parseExpr()); }
+        else if (this.check('KEYWORD', 'constraint')) { constraints.push(this.parseConstraint()); }
         else if (this.check('KEYWORD', 'emit')) { this.advance(); emits.push(this.consumeIdentifier().value); }
         else actions.push(this.parseAction());
         this.skipNL();
@@ -220,7 +221,16 @@ export class Parser {
       actions.push(this.parseAction());
     }
 
-    return { type: 'Command', name, parameters, guards: guards.length ? guards : undefined, actions, emits: emits.length ? emits : undefined, returns };
+    return {
+      type: 'Command',
+      name,
+      parameters,
+      guards: guards.length ? guards : undefined,
+      constraints: constraints.length ? constraints : undefined,
+      actions,
+      emits: emits.length ? emits : undefined,
+      returns
+    };
   }
 
   private parsePolicy(): PolicyNode {
@@ -339,11 +349,126 @@ export class Parser {
 
   private parseConstraint(): ConstraintNode {
     this.consume('KEYWORD', 'constraint');
+
+    // Check for overrideable modifier
+    let overrideable = false;
+    if (this.check('KEYWORD', 'overrideable')) {
+      this.advance();
+      overrideable = true;
+    }
+
     const name = this.consumeIdentifier().value;
+
+    // Declare variables that may be used in both paths
+    let code: string | undefined;
+    let severity: 'ok' | 'warn' | 'block' | undefined;
+    let message: string | undefined;
+    let messageTemplate: string | undefined;
+    let detailsMapping: Record<string, ExpressionNode> | undefined;
+    let overridePolicyRef: string | undefined;
+
+    // Check for block syntax: constraint <name> { ... }
+    if (this.check('PUNCTUATION', '{')) {
+      this.advance();
+      this.skipNL();
+
+      let expression: ExpressionNode | undefined;
+
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', '}')) break;
+
+        const field = this.consumeIdentifierOrKeyword().value;
+        this.consume('OPERATOR', ':');
+
+        switch (field) {
+          case 'code':
+            code = this.consumeIdentifier().value;
+            break;
+          case 'severity':
+            const sev = this.consumeIdentifier().value;
+            if (sev === 'ok' || sev === 'warn' || sev === 'block') {
+              severity = sev;
+            }
+            break;
+          case 'expression':
+            expression = this.parseExpr();
+            break;
+          case 'message':
+            message = this.check('STRING') ? this.advance().value : undefined;
+            break;
+          case 'messageTemplate':
+            messageTemplate = this.check('STRING') ? this.advance().value : undefined;
+            break;
+          case 'overridePolicy':
+            overridePolicyRef = this.consumeIdentifier().value;
+            break;
+          case 'details':
+            detailsMapping = {};
+            if (this.check('PUNCTUATION', '{')) {
+              this.advance();
+              this.skipNL();
+              while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+                this.skipNL();
+                if (this.check('PUNCTUATION', '}')) break;
+                const key = this.consumeIdentifierOrKeyword().value;
+                this.consume('OPERATOR', ':');
+                detailsMapping![key] = this.parseExpr();
+                this.skipNL();
+                if (this.check('PUNCTUATION', ',')) this.advance();
+              }
+              this.consume('PUNCTUATION', '}');
+            }
+            break;
+          default:
+            // Unknown field, skip the expression
+            this.parseExpr();
+        }
+        this.skipNL();
+        if (this.check('PUNCTUATION', ',')) this.advance();
+      }
+
+      this.consume('PUNCTUATION', '}');
+
+      if (!expression) {
+        throw new Error('Constraint block must include an expression');
+      }
+
+      return {
+        type: 'Constraint',
+        name,
+        code,
+        expression,
+        severity: severity || 'block',
+        message,
+        messageTemplate,
+        detailsMapping,
+        overrideable,
+        overridePolicyRef,
+      };
+    }
+
+    // Inline syntax: constraint <name>[:severity] <expression> ["<message>"]
     this.consume('OPERATOR', ':');
+
+    // Check for severity suffix (name:ok, name:warn, name:block)
+    if (this.check('KEYWORD', 'ok') || this.check('KEYWORD', 'warn') || this.check('KEYWORD', 'block')) {
+      const sev = this.advance().value;
+      severity = sev as 'ok' | 'warn' | 'block';
+    }
+
     const expression = this.parseExpr();
-    const message = this.check('STRING') ? this.advance().value : undefined;
-    return { type: 'Constraint', name, expression, message };
+    message = this.check('STRING') ? this.advance().value : undefined;
+
+    return {
+      type: 'Constraint',
+      name,
+      code,
+      expression,
+      severity: severity || 'block',
+      message,
+      overrideable,
+    };
   }
 
   private parseFlow(): FlowNode {
