@@ -4,13 +4,13 @@
 
 ## Current Status
 
-Plan updated: 2026-02-04 (Priority 2 COMPLETED: All missing test results files created; eval context refresh bug fixed)
+Plan updated: 2026-02-04 (Priority 6: Storage Adapter Silent Fallback FIXED; emits error for unsupported targets)
 
 ## Executive Summary
 
 **Critical Blocking Issues:**
 1. ~~**Built-in Functions NOT IMPLEMENTED** - `now()` and `uuid()` cause RUNTIME FAILURES in examples.ts~~ **COMPLETED**
-2. **Storage Adapter Silent Fallback** - Spec violation: postgres/supabase silently fall back to memory
+2. ~~**Storage Adapter Silent Fallback** - Spec violation: postgres/supabase silently fall back to memory~~ **FIXED**
 
 **High-Completion Items (Quick Wins):**
 1. **Event Log Results File** - 95% complete, only missing test artifact
@@ -203,54 +203,47 @@ Per `specs/tiny-app-demo.md`:
 
 ---
 
-### Priority 6: Storage Adapters
-**Status:** NONCONFORMANT - Silent fallback to memory
+### Priority 6: Storage Adapters ✅ SILENT FALLBACK FIXED
+
+**Status:** PARTIALLY CONFORMANT - Silent fallback fixed, PostgreSQL/Supabase not implemented
+
+**Implementation Summary (2026-02-04):**
+- ✅ **FIXED**: Silent fallback to memory now throws descriptive error
+- ✅ Added localStorage mock for test environment (`test-setup.ts`)
+- ✅ Updated happy path test to use supported storage target
+- ❌ PostgreSQL adapter: NOT IMPLEMENTED
+- ❌ Supabase adapter: NOT IMPLEMENTED
+
+**Changes Made:**
+1. `src/manifest/runtime-engine.ts:187-218` - Fixed silent fallback
+   - Added explicit `case 'memory'` handler
+   - Added `case 'postgres'` that throws descriptive error
+   - Added `case 'supabase'` that throws descriptive error
+   - Added exhaustive default case with `never` type check
+2. `test-setup.ts` - Created localStorage mock for Node.js test environment
+3. `vitest.config.ts` - Added setupFiles configuration
+4. `src/manifest/runtime-engine.happy.test.ts` - Updated to use examples[1] (localStorage target)
 
 **Current State:**
-- MemoryStore: FULLY IMPLEMENTED (lines 64-102)
-- LocalStorageStore: FULLY IMPLEMENTED (lines 104-163)
-- PostgreSQL: NOT IMPLEMENTED
-- Supabase: NOT IMPLEMENTED
-- **CRITICAL NONCONFORMANCE**: Silent fallback to memory (lines 196-199) without diagnostics
-- Spec: `docs/spec/adapters.md` explicitly requires diagnostics, not silent fallback
+- MemoryStore: FULLY IMPLEMENTED
+- LocalStorageStore: FULLY IMPLEMENTED
+- PostgreSQL: NOT IMPLEMENTED (throws error with guidance)
+- Supabase: NOT IMPLEMENTED (throws error with guidance)
+- Action adapters (`persist`, `publish`, `effect`): No-ops (allowed by spec)
 
-**What's Missing:**
+**What's Still Missing:**
 Per `docs/spec/adapters.md`:
-1. PostgreSQL adapter implementation
-2. Supabase adapter implementation
-3. Diagnostic emission for unsupported targets (MUST emit, MUST NOT silently fall back)
-4. Action adapters (`persist`, `publish`, `effect`) - currently no-ops
-
-**Work Items (Constitutional Order: Spec → Tests → Implementation):**
-1. [ ] **Spec**: Review `docs/spec/adapters.md` for exact requirements
-2. [ ] **Implementation**: Fix silent fallback in `src/manifest/runtime-engine.ts`
-   - Emit diagnostic when target is not supported (lines 196-199)
-   - Either throw error OR make fallback explicit with warning
-3. [ ] **Implementation**: Implement PostgreSQL adapter
-   - Connection config via store declaration (connection string or params)
-   - CRUD operations (create, read, update, delete, query)
-   - Transaction support for command execution
-   - Connection pooling/reuse
-   - Error handling and mapping
-4. [ ] **Implementation**: Implement Supabase adapter
-   - Supabase client config (URL + anon key)
-   - CRUD operations using @supabase/supabase-js
-   - RLS (Row Level Security) integration
-   - Error handling
-5. [ ] **Tests**: Add conformance tests for adapter operations
-   - Test basic CRUD with each adapter
-   - Test transaction rollback on failure
-   - Test error handling
-   - Test diagnostic emission for unsupported targets
+1. PostgreSQL adapter implementation (12-16 hours estimate)
+2. Supabase adapter implementation (12-16 hours estimate)
+3. Action adapter implementations (optional per spec)
 
 **Verification:**
-- PostgreSQL adapter works with real database (integration test)
-- Supabase adapter works with Supabase project (integration test)
-- Unsupported target → diagnostic emitted, runtime error or explicit fallback
-- No silent failures
-- All conformance tests pass
+- ✅ Unsupported target (postgres/supabase) throws error with guidance
+- ✅ All 77 conformance tests pass
+- ✅ Happy path test uses localStorage (supported target)
+- ✅ Error messages guide users to use supported targets
 
-**Estimated Effort:** 12-16 hours (very significant - external dependencies)
+**Estimated Remaining Effort:** 12-16 hours (very significant - external dependencies)
 
 ---
 
@@ -270,6 +263,12 @@ Per `docs/spec/adapters.md`:
 - Fixed eval context refresh bug
 - All 77 conformance tests now pass (increased from 70)
 
+### Priority 6: Storage Adapter Silent Fallback (2026-02-04)
+- Fixed silent fallback to memory for unsupported storage targets
+- Now throws descriptive error for postgres/supabase targets
+- Added localStorage mock for test environment
+- Updated happy path test to use supported storage target
+
 ### Bug Fixes
 
 ### Compute Action Fix (2026-02-04)
@@ -287,17 +286,18 @@ Per `docs/spec/adapters.md`:
 
 ### Critical Nonconformances (Blocking)
 
-1. **Storage Adapter Silent Fallback** (`docs/spec/adapters.md`):
+**None** - All critical nonconformances resolved.
+
+1. ~~**Storage Adapter Silent Fallback** (`docs/spec/adapters.md`)~~ **RESOLVED** (2026-02-04):
    - PostgreSQL: Declared but NOT implemented
    - Supabase: Declared but NOT implemented
-   - **CRITICAL**: Silent fallback to memory (runtime-engine.ts:196-199) without diagnostics
-   - **SPEC REQUIREMENT**: MUST emit diagnostic, MUST NOT silently fall back
-   - **RESULT**: Specification violation
-   - **FIX**: Emit diagnostic or throw error when unsupported target is specified
+   - ~~**CRITICAL**: Silent fallback to memory without diagnostics~~ **FIXED**
+   - **FIX APPLIED**: Runtime now throws descriptive error for unsupported targets
+   - **STATUS**: Specification now conformant (MAY support postgres/supabase, MUST emit diagnostic)
 
 ### Nonconformances Already Documented in Spec
 
-2. **Generated Artifacts** (`docs/spec/semantics.md`):
+1. **Generated Artifacts** (`docs/spec/semantics.md`):
    - Generated server code does not enforce policies
    - Generated client code does not return last action result
    - (These are known limitations, documented in spec)
@@ -497,8 +497,9 @@ For ALL priority items, follow this order:
 - **Conformance tests are the source of truth for semantics**
 - **Use deterministic time/ID generation in conformance tests** (via RuntimeOptions)
 - **Fixtures must use explicit empty strings `""` to avoid default value application**
-- **Silent fallback on storage adapters is a spec violation** (must emit diagnostic)
+- ~~**Silent fallback on storage adapters is a spec violation**~~ **FIXED** (Priority 6)
 - **Examples.ts now works** - Built-in functions implemented (Priority 1 completed)
 - **All missing test results files created** - Priority 2 completed (77 conformance tests pass)
+- **Storage adapter silent fallback fixed** - Throws error for unsupported targets (Priority 6)
 - **Policy guard diagnostics spec needs to be created** (Priority 4)
 - **Tiny app demo spec already exists** at `specs/tiny-app-demo.md` (Priority 5)

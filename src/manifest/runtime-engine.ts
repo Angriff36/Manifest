@@ -194,8 +194,27 @@ export class RuntimeEngine {
             break;
           }
           case 'memory':
-          default:
             store = new MemoryStore(this.options.generateId);
+            break;
+          case 'postgres':
+            throw new Error(
+              `Storage target 'postgres' is not yet supported for entity '${entity.name}'. ` +
+              `The IR runtime currently supports 'memory' and 'localStorage' only. ` +
+              `To use memory storage, either omit the store declaration or specify target: 'memory'.`
+            );
+          case 'supabase':
+            throw new Error(
+              `Storage target 'supabase' is not yet supported for entity '${entity.name}'. ` +
+              `The IR runtime currently supports 'memory' and 'localStorage' only. ` +
+              `To use memory storage, either omit the store declaration or specify target: 'memory'.`
+            );
+          default:
+            // Exhaustive check for valid IR store targets
+            const _unsupportedTarget: never = storeConfig.target;
+            throw new Error(
+              `Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
+              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.`
+            );
         }
       } else {
         store = new MemoryStore(this.options.generateId);
