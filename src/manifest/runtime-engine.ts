@@ -696,7 +696,7 @@ export class RuntimeEngine {
   async runCommand(
     commandName: string,
     input: Record<string, unknown>,
-    options: { entityName?: string; instanceId?: string } = {}
+    options: { entityName?: string; instanceId?: string; overrideRequests?: OverrideRequest[] } = {}
   ): Promise<CommandResult> {
     const command = this.getCommand(commandName, options.entityName);
     if (!command) {
@@ -724,6 +724,20 @@ export class RuntimeEngine {
       };
     }
 
+    // vNext: Evaluate command constraints (after policies, before guards)
+    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests);
+    if (!constraintResult.allowed) {
+      // Find the blocking constraint for the error message
+      const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
+      return {
+        success: false,
+        error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
+        constraintOutcomes: constraintResult.outcomes,
+        overrideRequests: options.overrideRequests,
+        emittedEvents: [],
+      };
+    }
+
     for (let i = 0; i < command.guards.length; i += 1) {
       const guard = command.guards[i];
       const result = await this.evaluateExpression(guard, evalContext);
@@ -737,6 +751,8 @@ export class RuntimeEngine {
             formatted: this.formatExpression(guard),
             resolved: await this.resolveExpressionValues(guard, evalContext),
           },
+          // Include constraint outcomes even if guards fail
+          constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
           emittedEvents: [],
         };
       }
@@ -781,6 +797,8 @@ export class RuntimeEngine {
     return {
       success: true,
       result,
+      // Include constraint outcomes in successful result
+      constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
       emittedEvents,
     };
   }
@@ -1323,6 +1341,179 @@ export class RuntimeEngine {
     };
 
     return await this.evaluateExpression(computed.expression, context);
+  }
+
+  /**
+   * vNext: Evaluate a single constraint and return detailed outcome
+   */
+  private async evaluateConstraint(
+    constraint: IRConstraint,
+    evalContext: Record<string, unknown>
+  ): Promise<ConstraintOutcome> {
+    const result = await this.evaluateExpression(constraint.expression, evalContext);
+    const passed = Boolean(result);
+
+    // Build details mapping if specified
+    let details: Record<string, unknown> | undefined = undefined;
+    if (constraint.detailsMapping) {
+      details = {};
+      for (const [key, expr] of Object.entries(constraint.detailsMapping)) {
+        details[key] = await this.evaluateExpression(expr, evalContext);
+      }
+    }
+
+    // Resolve expression values for debugging
+    const resolved = await this.resolveExpressionValues(constraint.expression, evalContext);
+
+    return {
+      code: constraint.code,
+      constraintName: constraint.name,
+      severity: constraint.severity || 'block',
+      formatted: this.formatExpression(constraint.expression),
+      message: constraint.message || constraint.messageTemplate,
+      details,
+      passed,
+      resolved: resolved.map(r => ({ expression: r.expression, value: r.value })),
+    };
+  }
+
+  /**
+   * vNext: Evaluate command constraints with override support
+   * Returns allowed flag and all constraint outcomes
+   */
+  private async evaluateCommandConstraints(
+    command: IRCommand,
+    evalContext: Record<string, unknown>,
+    overrideRequests?: OverrideRequest[]
+  ): Promise<{ allowed: boolean; outcomes: ConstraintOutcome[] }> {
+    const outcomes: ConstraintOutcome[] = [];
+
+    for (const constraint of command.constraints || []) {
+      let outcome = await this.evaluateConstraint(constraint, evalContext);
+
+      // Check for override request if constraint failed
+      if (!outcome.passed && overrideRequests) {
+        const overrideReq = overrideRequests.find(o => o.constraintCode === constraint.code);
+        if (overrideReq && constraint.overrideable) {
+          // Validate override authorization
+          const authorized = await this.validateOverrideAuthorization(constraint, overrideReq, evalContext);
+          if (authorized) {
+            outcome.overridden = true;
+            outcome.overriddenBy = overrideReq.authorizedBy;
+            await this.emitOverrideAppliedEvent(constraint, overrideReq, outcome);
+          }
+        }
+      }
+
+      outcomes.push(outcome);
+
+      // Block execution if non-passing constraint is not overridden
+      if (!outcome.passed && !outcome.overridden && outcome.severity === 'block') {
+        return { allowed: false, outcomes };
+      }
+    }
+
+    return { allowed: true, outcomes };
+  }
+
+  /**
+   * vNext: Validate override authorization via policy or default admin check
+   */
+  private async validateOverrideAuthorization(
+    constraint: IRConstraint,
+    overrideReq: OverrideRequest,
+    evalContext: Record<string, unknown>
+  ): Promise<boolean> {
+    // If constraint has overridePolicyRef, check that policy
+    if (constraint.overridePolicyRef) {
+      const policy = this.ir.policies.find(p => p.name === constraint.overridePolicyRef);
+      if (policy) {
+        const overrideContext = {
+          ...evalContext,
+          _override: {
+            constraintCode: constraint.code,
+            constraintName: constraint.name,
+            reason: overrideReq.reason,
+            authorizedBy: overrideReq.authorizedBy,
+          },
+        };
+
+        const result = await this.evaluateExpression(policy.expression, overrideContext);
+        return Boolean(result);
+      }
+    }
+
+    // Default: check if user has admin-like role
+    const user = this.context.user as { role?: string } | undefined;
+    return user?.role === 'admin' || false;
+  }
+
+  /**
+   * vNext: Emit OverrideApplied event for auditing
+   */
+  private async emitOverrideAppliedEvent(
+    constraint: IRConstraint,
+    overrideReq: OverrideRequest,
+    outcome: ConstraintOutcome
+  ): Promise<void> {
+    const event: EmittedEvent = {
+      name: 'OverrideApplied',
+      channel: 'system',
+      payload: {
+        constraintCode: constraint.code,
+        constraintName: constraint.name,
+        originalSeverity: outcome.severity,
+        reason: overrideReq.reason,
+        authorizedBy: overrideReq.authorizedBy,
+        timestamp: this.getNow(),
+      },
+      timestamp: this.getNow(),
+      provenance: this.getProvenanceInfo(),
+    };
+
+    this.eventLog.push(event);
+    this.notifyListeners(event);
+  }
+
+  /**
+   * vNext: Emit ConcurrencyConflict event
+   */
+  private async emitConcurrencyConflictEvent(
+    entityName: string,
+    entityId: string,
+    expectedVersion: number,
+    actualVersion: number
+  ): Promise<void> {
+    const event: EmittedEvent = {
+      name: 'ConcurrencyConflict',
+      channel: 'system',
+      payload: {
+        entityType: entityName,
+        entityId,
+        expectedVersion,
+        actualVersion,
+        conflictCode: 'VERSION_MISMATCH',
+        timestamp: this.getNow(),
+      },
+      timestamp: this.getNow(),
+      provenance: this.getProvenanceInfo(),
+    };
+
+    this.eventLog.push(event);
+    this.notifyListeners(event);
+  }
+
+  /**
+   * vNext: Get provenance info for events
+   */
+  private getProvenanceInfo(): { contentHash: string; compilerVersion: string; schemaVersion: string } | undefined {
+    const prov = this.ir.provenance;
+    if (!prov) return undefined;
+    return {
+      contentHash: prov.contentHash,
+      compilerVersion: prov.compilerVersion,
+      schemaVersion: prov.schemaVersion,
+    };
   }
 
   onEvent(listener: EventListener): () => void {
