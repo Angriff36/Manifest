@@ -1,140 +1,112 @@
-# Implementation Plan
+# Implementation Plan - Loop 2
 
 <!-- This file is managed by the Ralph loop. Do not edit manually during loop execution. -->
 
 ## Current Status
 
-Plan updated: 2026-02-04 (All critical functionality implemented; 93 conformance tests passing, TypeScript and ESLint checks passing, type safety improvements completed)
+Plan updated: 2026-02-05
+Phase: Loop 2 - Strengthen the Choke Point
 
-## Executive Summary
+## Mission
 
-**All Critical Issues Resolved:**
-1. Built-in Functions (`now()`, `uuid()`) - ✅ COMPLETED
-2. Storage Adapter Silent Fallback - ✅ FIXED
-3. Event Log Results File - ✅ COMPLETED
-4. Policy Diagnostics Enhancement - ✅ COMPLETED
-5. Tiny App Demo - ✅ COMPLETED
-6. Storage Adapters (PostgreSQL/Supabase) - ✅ COMPLETED
+**Manifest is not a code generator. It's a behavioral contract that AI cannot weasel out of.**
 
-**Remaining Work:**
-- None - All critical functionality implemented
+The contract boundary: **The runtime must be able to prove what it is executing is derived from a specific Manifest + toolchain version.**
 
----
+## Loop 2 Priorities
 
-## Conformance Test Coverage Matrix
+### Priority 1: Provenance Metadata ✅ COMPLETED
+Add traceability everywhere so drift becomes visible.
 
-| # | Fixture Name | IR | Results | Diagnostics | Status |
-|---|--------------|----|----|----|---------|
-| 01 | entity-properties | Y | Y | N | Complete |
-| 02 | relationships | Y | N/A | N | IR-only fixture |
-| 03 | computed-properties | Y | Y | N | Complete |
-| 04 | command-mutate-emit | Y | Y | N | Complete |
-| 05 | guard-denial | Y | Y | N | Complete |
-| 06 | policy-denial | Y | Y | N | Complete |
-| 07 | reserved-word-identifier | N | N | Y | Diagnostic-only |
-| 08 | keywords-in-expressions | Y | Y | Y | Complete |
-| 09 | compute-action | Y | Y | N | Complete |
-| 10 | evaluation-context | Y | Y | N | Complete |
-| 11 | guard-ordering-diagnostics | Y | Y | Y | Complete |
-| 12 | negative-compilation | N | N | Y | Diagnostic-only |
-| 13 | round-trip-stability | Y | Y | N | Complete |
-| 14 | operator-equality | Y | Y | N | Complete |
-| 15 | event-log | Y | Y | N | Complete |
-| 16 | builtin-functions | Y | Y | N | Complete |
-| 17 | tiny-app | Y | Y | N | Complete |
-| 18 | empty-string-defaults | Y | Y | N | Complete |
+- [x] IR includes: manifest content hash, compiler version, schema version
+- [x] Runtime prints provenance at startup (via `getProvenance()` and `logProvenance()` methods)
+- [x] Event logs include provenance
+- [ ] UI displays provenance info (future enhancement)
+- [x] Conformance tests verify provenance is preserved
 
-**Legend:**
-- **Y** = File exists
-- **N** = File missing
-- **N/A** = Not applicable (IR-only fixture)
+### Priority 2: Diagnostic Hardening
+Make the system hostile to weaseling. When constraints block something, explain exactly why.
 
----
+- [ ] Policy denials: include "what you tried" + "which rule blocked" + resolved context values
+- [ ] Type mismatches: show expected vs actual with path to violation
+- [ ] Guard failures: already done, extend pattern to all constraint types
+- [ ] Add diagnostic conformance tests for each failure mode
 
-## Storage Adapters
+### Priority 3: IR-First Runtime
+TS output is a view, not authority. IR is the executable contract.
 
-**Status:** FULLY CONFORMANT - All storage adapters implemented with async interface
+- [x] Runtime loads IR directly (already does this)
+- [ ] Document that generated TS is derivative, not source of truth
+- [ ] Consider: runtime refuses to execute if IR hash doesn't match expected
 
-**Current State:**
-- MemoryStore: FULLY IMPLEMENTED (async interface)
-- LocalStorageStore: FULLY IMPLEMENTED (async interface)
-- PostgreSQL: FULLY IMPLEMENTED (PostgresStore with connection pooling, auto-table creation)
-- Supabase: FULLY IMPLEMENTED (SupabaseStore with proper client integration)
-- Action adapters (`persist`, `publish`, `effect`): No-ops (allowed by spec)
+### Priority 4: Build Something Real
+Find where the choke point leaks by actually using it.
 
-**Verification:**
-- ✅ All 93 conformance tests pass
-- ✅ All storage adapters implement async Store interface
-- ✅ Runtime engine properly awaits all store operations
+- [ ] Pick a small but real use case
+- [ ] Build it entirely through Manifest
+- [ ] Document every place we're tempted to bypass the spec
+- [ ] Those temptations become Priority 5 items
+
+### Priority 5: Seal the Output (LATER)
+After learning what "real" output needs to look like:
+
+- [ ] Checksum/signature over (Manifest + compiler + templates)
+- [ ] Runtime refuses unprovenanced artifacts by default
+- [ ] Explicit dev override flag for debugging
 
 ---
 
-## Code Quality Findings
+## Loop 1 Completed Work (Reference)
 
-**Identified Issues (2026-02-04):**
+All passing: 93 conformance tests
 
-### High Priority
-1. **Event Listener Error Handling** (`src/manifest/runtime-engine.ts:1121-1122`)
-   - Errors in event listeners are silently ignored
-   - This is by design (prevents one failing listener from blocking others)
-   - Consider adding optional error callback mechanism for debugging
-
-2. **Type Safety** (`src/manifest/parser.ts`, `src/manifest/generator.ts`) ✅ FIXED
-   - Removed `/* eslint-disable @typescript-eslint/no-explicit-any */` comments
-   - Implemented proper discriminated union pattern matching
-   - All `any` types replaced with specific TypeScript types
-
-### Medium Priority
-3. **Member Access Validation** (`src/manifest/runtime-engine.ts:916-925`)
-   - ~~Property access could potentially access prototype properties~~ ✅ FIXED
-   - Added `hasOwnProperty` check using `Object.prototype.hasOwnProperty.call()`
-
-4. **Error Messages in Generated Code** (`src/manifest/generator.ts:492-498`) ✅ FIXED
-   - Implemented proper escaping for double quotes and backslashes in constraint messages
-   - Error messages now properly escaped when embedded in test descriptions
-
-### Low Priority
-5. **Code Style** ✅ IMPROVED
-   - Fixed TypeScript and ESLint errors
-   - Resolved code quality issues
-   - Remaining: Some long lines (135+ characters) - optional improvement
+- ✅ Built-in Functions (`now()`, `uuid()`)
+- ✅ Storage Adapters (Memory, LocalStorage, PostgreSQL, Supabase)
+- ✅ Policy Diagnostics Enhancement
+- ✅ Tiny App Demo
+- ✅ Type safety improvements
+- ✅ Prototype pollution fix
 
 ---
 
-## Reference Information
+## Loop 2 Completed Work (2026-02-05)
 
-### Constitutional Order: Spec → Tests → Implementation
+### Priority 1: Provenance Metadata - ✅ COMPLETE
 
-For ALL future work, follow this order:
+**IR Schema & Compiler Changes:**
+- Added `IRProvenance` interface with: `contentHash`, `compilerVersion`, `schemaVersion`, `compiledAt`
+- Updated IR schema (`docs/spec/ir/ir-v1.schema.json`) to include provenance field
+- Modified `IRCompiler` to compute SHA-256 content hash and inject provenance metadata
+- Made `compileToIR()` async to support cryptographic hash computation
 
-1. **Spec First**: Confirm/refine the specification document
-   - Ensure requirements are clear and unambiguous
-   - Create spec files if they don't exist
-   - Resolve ambiguities before writing tests
+**Runtime Changes:**
+- Added `getProvenance()` method to `RuntimeEngine` for accessing IR provenance
+- Added `logProvenance()` method to display provenance at startup
+- Updated `EmittedEvent` interface to include optional `provenance` field
+- Event emission now includes provenance (contentHash, compilerVersion, schemaVersion)
 
-2. **Tests Second**: Write conformance tests BEFORE implementation
-   - Create fixture manifest
-   - Create expected IR output
-   - Create expected runtime results
-   - This defines the "contract" implementation must satisfy
+**Test Infrastructure:**
+- Updated all test files to use `await compileToIR()` (async API change)
+- Updated `scripts/regen-conformance.ts` to handle async compilation
+- Modified `normalizeIR()` to normalize timestamp/contentHash for test comparison
+- Regenerated all 18 expected IR files with provenance metadata
+- All 93 conformance tests passing
 
-3. **Implementation Third**: Write code to pass the tests
-   - Implementation is "done" when all conformance tests pass
-   - No ambiguity about correctness
+---
 
-### Key Implementation Patterns
+## Constitutional Order
 
-- **Storage Adapters**: Use async interface with Promise-based methods
-- **Error Handling**: Throw descriptive errors for unsupported features
-- **Testing**: Use deterministic time/ID generation in conformance tests (via RuntimeOptions)
-- **Fixtures**: Use explicit empty strings `""` to avoid default value application
+**Spec → Tests → Implementation**
 
-### Known Limitations (Documented in Spec)
+1. Spec First: requirements clear and unambiguous
+2. Tests Second: conformance tests BEFORE implementation
+3. Implementation Third: done when tests pass
 
-1. **Generated Artifacts** (`docs/spec/semantics.md`):
-   - Generated server code does not enforce policies
-   - Generated client code does not return last action result
-   - (These are known limitations, documented in spec)
+---
 
-2. **Relationships** (`docs/spec/semantics.md`):
-   - Relationship behavior is not modeled in the IR runtime
+## Design Principles
+
+- **IR is truth**: Generated code is projection, not source
+- **Failures are loud**: Silent bypasses are bugs
+- **Provenance is mandatory**: If you can't prove where it came from, don't trust it
+- **Constraints are features**: The point is to prevent creativity in the wrong dimension

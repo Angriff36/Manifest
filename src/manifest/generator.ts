@@ -437,8 +437,11 @@ export class CodeGenerator {
 
   private genExpose(x: ExposeNode) {
     if (x.protocol === 'rest') {
-      this.line(`const ${x.name}API = {`);
-      this.in(); this.line(`basePath: '/${x.name}',`);
+      // Use entity name for variable (always valid identifier), path for basePath
+      const apiName = x.entity;
+      const basePath = x.name.startsWith('/') ? x.name : `/${x.name}`;
+      this.line(`const ${apiName}API = {`);
+      this.in(); this.line(`basePath: '${basePath}',`);
       this.line(`entity: ${x.entity},`);
       const ops = x.operations.length ? x.operations : ['list', 'get', 'create', 'update', 'delete'];
       if (ops.includes('list')) this.line(`async list(q?: Record<string, unknown>) { return ${x.entity}Store.getAll(); },`);
@@ -617,7 +620,7 @@ export class CodeGenerator {
     for (const f of p.flows) exports.push(f.name);
     for (const e of p.effects) exports.push(`${e.name}Effect`);
     for (const ev of p.events) { exports.push(`publish${ev.name}`); exports.push(`subscribe${ev.name}`); }
-    for (const x of p.exposures) exports.push(x.protocol === 'rest' ? `${x.name}API` : `create${x.entity}`);
+    for (const x of p.exposures) exports.push(x.protocol === 'rest' ? `${x.entity}API` : `create${x.entity}`);
     for (const c of p.compositions) exports.push(c.name);
     if (exports.length) { this.line(); this.line(`export { ${exports.join(', ')} };`); }
   }

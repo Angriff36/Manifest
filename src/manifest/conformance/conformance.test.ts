@@ -132,7 +132,14 @@ function loadExpectedResults(name: string): ResultsFile | null {
 }
 
 function normalizeIR(ir: IR): IR {
-  return JSON.parse(JSON.stringify(ir));
+  // Deep clone the IR
+  const normalized = JSON.parse(JSON.stringify(ir));
+  // Normalize provenance fields that vary between compilations
+  if (normalized.provenance) {
+    normalized.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
+    normalized.provenance.contentHash = 'normalized-content-hash';
+  }
+  return normalized;
 }
 
 function normalizeResult(result: CommandResult): Partial<CommandResult> {
@@ -163,9 +170,9 @@ describe('Manifest Conformance Tests', () => {
 
       // If this fixture has a diagnostics file, it's a diagnostic test (expected to fail)
       if (expectedDiagnostics) {
-        it(`${fixtureName} produces expected diagnostics`, () => {
+        it(`${fixtureName} produces expected diagnostics`, async () => {
           const source = loadFixture(fixtureName);
-          const { ir, diagnostics } = compileToIR(source);
+          const { ir, diagnostics } = await compileToIR(source);
 
           if (expectedDiagnostics.shouldFail) {
             // Compilation should fail
@@ -190,9 +197,9 @@ describe('Manifest Conformance Tests', () => {
         });
       } else {
         // Standard compilation test - should succeed
-        it(`compiles ${fixtureName} to expected IR`, () => {
+        it(`compiles ${fixtureName} to expected IR`, async () => {
           const source = loadFixture(fixtureName);
-          const { ir, diagnostics } = compileToIR(source);
+          const { ir, diagnostics } = await compileToIR(source);
 
           expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
           expect(ir).not.toBeNull();
@@ -220,7 +227,7 @@ describe('Manifest Conformance Tests', () => {
             const tc = testCase as CommandTestCase;
             it(tc.name, async () => {
               const source = loadFixture(fixtureName);
-              const { ir } = compileToIR(source);
+              const { ir } = await compileToIR(source);
               expect(ir).not.toBeNull();
 
               const context = tc.context || {};
@@ -284,7 +291,7 @@ describe('Manifest Conformance Tests', () => {
             const tc = testCase as ComputedTestCase;
             it(tc.name, async () => {
               const source = loadFixture(fixtureName);
-              const { ir } = compileToIR(source);
+              const { ir } = await compileToIR(source);
               expect(ir).not.toBeNull();
 
               const context = (testCase as unknown as { context?: Record<string, unknown> }).context ?? {};
@@ -309,7 +316,7 @@ describe('Manifest Conformance Tests', () => {
             const tc = testCase as CreateTestCase;
             it(tc.name, async () => {
               const source = loadFixture(fixtureName);
-              const { ir } = compileToIR(source);
+              const { ir } = await compileToIR(source);
               expect(ir).not.toBeNull();
 
               const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
@@ -327,7 +334,7 @@ describe('Manifest Conformance Tests', () => {
             const tc = testCase as PersistenceTestCase;
             it(tc.name, async () => {
               const source = loadFixture(fixtureName);
-              const { ir } = compileToIR(source);
+              const { ir } = await compileToIR(source);
               expect(ir).not.toBeNull();
 
               const engine1 = new RuntimeEngine(ir!, {}, createDeterministicOptions());
@@ -357,7 +364,7 @@ describe('Manifest Conformance Tests', () => {
   describe('Denial Reason Stability', () => {
     it('guard denial message is stable', async () => {
       const source = loadFixture('05-guard-denial.manifest');
-      const { ir } = compileToIR(source);
+      const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
       await engine.createInstance('Task', { id: 'task-1', title: 'Test', completed: true } as EntityInstance);
@@ -373,7 +380,7 @@ describe('Manifest Conformance Tests', () => {
 
     it('policy denial message is stable', async () => {
       const source = loadFixture('06-policy-denial.manifest');
-      const { ir } = compileToIR(source);
+      const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, { user: { id: 'user-1', role: 'user' } }, createDeterministicOptions());
 
       await engine.createInstance('Document', { id: 'doc-1', title: 'Test' } as EntityInstance);
@@ -390,12 +397,12 @@ describe('Manifest Conformance Tests', () => {
   });
 
   describe('Determinism', () => {
-    it('produces identical IR across multiple compilations', () => {
+    it('produces identical IR across multiple compilations', async () => {
       const source = loadFixture('04-command-mutate-emit.manifest');
 
-      const result1 = compileToIR(source);
-      const result2 = compileToIR(source);
-      const result3 = compileToIR(source);
+      const result1 = await compileToIR(source);
+      const result2 = await compileToIR(source);
+      const result3 = await compileToIR(source);
 
       expect(normalizeIR(result1.ir!)).toEqual(normalizeIR(result2.ir!));
       expect(normalizeIR(result2.ir!)).toEqual(normalizeIR(result3.ir!));
@@ -403,7 +410,7 @@ describe('Manifest Conformance Tests', () => {
 
     it('uses deterministic timestamps when options provided', async () => {
       const source = loadFixture('04-command-mutate-emit.manifest');
-      const { ir } = compileToIR(source);
+      const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
       await engine.createInstance('Counter', { id: 'counter-1', value: 0 } as EntityInstance);
@@ -418,7 +425,7 @@ describe('Manifest Conformance Tests', () => {
 
     it('uses deterministic IDs when options provided', async () => {
       const source = loadFixture('01-entity-properties.manifest');
-      const { ir } = compileToIR(source);
+      const { ir } = await compileToIR(source);
       const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
 
       const instance1 = await engine.createInstance('Product', { id: '', name: 'Product 1' } as unknown as EntityInstance);

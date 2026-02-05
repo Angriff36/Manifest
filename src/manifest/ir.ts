@@ -1,5 +1,18 @@
+export interface IRProvenance {
+  /** Content hash of the source manifest (SHA-256) */
+  contentHash: string;
+  /** Compiler version that generated this IR */
+  compilerVersion: string;
+  /** IR schema version */
+  schemaVersion: string;
+  /** ISO timestamp of compilation */
+  compiledAt: string;
+}
+
 export interface IR {
   version: '1.0';
+  /** Provenance metadata for traceability */
+  provenance: IRProvenance;
   modules: IRModule[];
   entities: IREntity[];
   stores: IRStore[];

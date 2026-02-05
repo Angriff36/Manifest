@@ -31,7 +31,7 @@ function normalizeDiagnostics(result: unknown): NormalizedDiagnostics {
   // Be tolerant: different compilers name these differently.
   const errors = Array.isArray(result?.errors) ? result.errors : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
-  
+
   // If diagnostics array exists, extract errors/warnings from it
   if (Array.isArray(result?.diagnostics)) {
     const diagnostics = result.diagnostics as Array<{ severity: string }>;
@@ -40,7 +40,7 @@ function normalizeDiagnostics(result: unknown): NormalizedDiagnostics {
       warnings: diagnostics.filter(d => d.severity === 'warning'),
     };
   }
-  
+
   return { errors, warnings };
 }
 
@@ -60,31 +60,32 @@ const fixtures = readdirSync(fixturesDir)
 
 const problems: string[] = [];
 
-for (const fixtureFile of fixtures) {
-  const fixtureName = basename(fixtureFile, '.manifest');
+async function regen() {
+  for (const fixtureFile of fixtures) {
+    const fixtureName = basename(fixtureFile, '.manifest');
 
-  const fixturePath = join(fixturesDir, fixtureFile);
-  const irPath = join(expectedDir, `${fixtureName}.ir.json`);
-  const diagnosticsPath = join(expectedDir, `${fixtureName}.diagnostics.json`);
+    const fixturePath = join(fixturesDir, fixtureFile);
+    const irPath = join(expectedDir, `${fixtureName}.ir.json`);
+    const diagnosticsPath = join(expectedDir, `${fixtureName}.diagnostics.json`);
 
-  const source = readFileSync(fixturePath, 'utf-8');
+    const source = readFileSync(fixturePath, 'utf-8');
 
-  // Compile
-  const compiled = compileToIR(source);
+    // Compile
+    const compiled = await compileToIR(source);
 
-  const { errors, warnings } = normalizeDiagnostics(compiled);
+    const { errors, warnings } = normalizeDiagnostics(compiled);
 
-  // Read expected diagnostics (if any) to see if this fixture is supposed to fail.
-  const expectedDiag = safeReadJson<ExpectedDiagnosticsFile>(diagnosticsPath);
-  const expectedShouldFail = expectedDiag?.shouldFail === true;
+    // Read expected diagnostics (if any) to see if this fixture is supposed to fail.
+    const expectedDiag = safeReadJson<ExpectedDiagnosticsFile>(diagnosticsPath);
+    const expectedShouldFail = expectedDiag?.shouldFail === true;
 
-  const didFail = errors.length > 0;
+    const didFail = errors.length > 0;
 
-  // Enforce "shouldFail": if fixture declares shouldFail, compilation must fail.
-  if (expectedShouldFail && !didFail) {
-    problems.push(`${fixtureFile}: Expected to fail but compiled successfully`);
-    continue;
-  }
+    // Enforce "shouldFail": if fixture declares shouldFail, compilation must fail.
+    if (expectedShouldFail && !didFail) {
+      problems.push(`${fixtureFile}: Expected to fail but compiled successfully`);
+      continue;
+    }
 
   // If compilation succeeded, write IR output (derived, never hand-edited).
   if (!didFail) {
@@ -92,7 +93,13 @@ for (const fixtureFile of fixtures) {
       problems.push(`${fixtureFile}: Compile succeeded but no IR was produced`);
       continue;
     }
-    writeJson(irPath, compiled.ir);
+    // Normalize provenance fields for consistent test output
+    const irForOutput = { ...compiled.ir };
+    if (irForOutput.provenance) {
+      irForOutput.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
+      irForOutput.provenance.contentHash = 'normalized-content-hash';
+    }
+    writeJson(irPath, irForOutput);
   }
 
   // Write diagnostics when:
@@ -118,12 +125,15 @@ for (const fixtureFile of fixtures) {
 
     writeJson(diagnosticsPath, diagOut);
   }
+  }
+
+  if (problems.length) {
+    // Print all problems and exit non-zero
+    console.error(problems.join('\n'));
+    process.exit(1);
+  }
+
+  console.log(`Regenerated conformance outputs for ${fixtures.length} fixture(s).`);
 }
 
-if (problems.length) {
-  // Print all problems and exit non-zero
-  console.error(problems.join('\n'));
-  process.exit(1);
-}
-
-console.log(`Regenerated conformance outputs for ${fixtures.length} fixture(s).`);
+regen();

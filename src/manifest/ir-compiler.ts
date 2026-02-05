@@ -35,12 +35,41 @@ import {
   IRDiagnostic,
   CompileToIRResult,
   PropertyModifier,
+  IRProvenance,
 } from './ir';
+
+/** Compiler version (from package.json) */
+const COMPILER_VERSION = '0.0.0';
+/** IR schema version */
+const SCHEMA_VERSION = '1.0';
+
+/**
+ * Compute SHA-256 hash of the source manifest
+ */
+async function computeContentHash(source: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(source);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Create provenance metadata for the IR
+ */
+async function createProvenance(source: string): Promise<IRProvenance> {
+  return {
+    contentHash: await computeContentHash(source),
+    compilerVersion: COMPILER_VERSION,
+    schemaVersion: SCHEMA_VERSION,
+    compiledAt: new Date().toISOString(),
+  };
+}
 
 export class IRCompiler {
   private diagnostics: IRDiagnostic[] = [];
 
-  compileToIR(source: string): CompileToIRResult {
+  async compileToIR(source: string): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
     const parser = new Parser();
@@ -59,11 +88,11 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = this.transformProgram(program);
+    const ir = await this.transformProgram(program, source);
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private transformProgram(program: ManifestProgram): IR {
+  private async transformProgram(program: ManifestProgram, source: string): Promise<IR> {
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const entities: IREntity[] = [
       ...program.entities.map(e => this.transformEntity(e)),
@@ -90,6 +119,7 @@ export class IRCompiler {
 
     return {
       version: '1.0',
+      provenance: await createProvenance(source),
       modules,
       entities,
       stores,
@@ -356,7 +386,7 @@ export class IRCompiler {
   }
 }
 
-export function compileToIR(source: string): CompileToIRResult {
+export async function compileToIR(source: string): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();
   return compiler.compileToIR(source);
 }

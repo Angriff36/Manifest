@@ -106,7 +106,7 @@ export function TinyAppPanel({ disabled = false }: TinyAppPanelProps) {
 
     (async () => {
       try {
-        const compileResult = compileToIR(TINY_APP_FIXTURE);
+        const compileResult = await compileToIR(TINY_APP_FIXTURE);
         if (compileResult.diagnostics.some(d => d.severity === 'error')) {
           setError('Compilation errors in fixture');
           return;

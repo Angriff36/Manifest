@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock, ChevronDown, ChevronRight, Shield, Ban } from 'lucide-react';
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
@@ -10,6 +10,7 @@ interface RuntimePanelProps {
 }
 
 export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
+  const [engine, setEngine] = useState<RuntimeEngine | null>(null);
   const [runtimeContextJson, setRuntimeContextJson] = useState('{\n  "user": {\n    "id": "u1",\n    "role": "cook"\n  }\n}');
   const [commandName, setCommandName] = useState('claim');
   const [commandParams, setCommandParams] = useState('{\n  "employeeId": "e1"\n}');
@@ -20,32 +21,41 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const [eventLog, setEventLog] = useState<EmittedEvent[]>([]);
   const [expandedDiagnostics, setExpandedDiagnostics] = useState<Set<string>>(new Set());
 
-  const { engine } = useMemo(() => {
+  // Async compilation effect
+  // Note: Intentionally omit runtimeContextJson from dependencies - we don't want to recompile IR when context changes
+  useEffect(() => {
     if (disabled || !source.trim()) {
-      return { engine: null };
+      setEngine(null);
+      return;
     }
-    try {
-      const compileResult = compileToIR(source);
-      if (compileResult.diagnostics.some(d => d.severity === 'error')) {
-        return { engine: null };
-      }
-      if (!compileResult.ir) {
-        return { engine: null };
-      }
 
-      let context = {};
+    (async () => {
       try {
-        context = JSON.parse(runtimeContextJson);
-      } catch {
-        // Invalid JSON, will be caught when executing
-      }
+        const compileResult = await compileToIR(source);
+        if (compileResult.diagnostics.some(d => d.severity === 'error')) {
+          setEngine(null);
+          return;
+        }
+        if (!compileResult.ir) {
+          setEngine(null);
+          return;
+        }
 
-      const runtimeEngine = new RuntimeEngine(compileResult.ir, context);
-      return { engine: runtimeEngine };
-    } catch {
-      return { engine: null };
-    }
-  }, [source, runtimeContextJson, disabled]);
+        let context = {};
+        try {
+          context = JSON.parse(runtimeContextJson);
+        } catch {
+          // Invalid JSON, will be caught when executing
+        }
+
+        const runtimeEngine = new RuntimeEngine(compileResult.ir, context);
+        setEngine(runtimeEngine);
+      } catch {
+        setEngine(null);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, disabled]);
 
   // Update event log when engine changes or after command execution
   useEffect(() => {

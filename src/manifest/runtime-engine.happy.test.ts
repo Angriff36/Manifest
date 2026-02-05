@@ -7,7 +7,7 @@ test('order addItem succeeds with localStorage target', async () => {
   // Use examples[1] which uses localStorage (a supported storage target)
   // examples[0] uses supabase which is not yet implemented
   const source = examples[1].code;
-  const { ir, diagnostics } = compileToIR(source);
+  const { ir, diagnostics } = await compileToIR(source);
 
   expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
   expect(ir).not.toBeNull();

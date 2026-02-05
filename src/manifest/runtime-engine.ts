@@ -1,5 +1,6 @@
 import {
   IR,
+  IRProvenance,
   IREntity,
   IRCommand,
   IRPolicy,
@@ -8,8 +9,9 @@ import {
   IRAction,
   IRType,
 } from './ir';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Pool, PoolClient, PoolConfig } from 'pg';
+
+// Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
+// This file is browser-safe and only includes MemoryStore and LocalStorageStore.
 
 export interface RuntimeContext {
   user?: { id: string; role?: string; [key: string]: unknown };
@@ -61,6 +63,12 @@ export interface EmittedEvent {
   channel: string;
   payload: unknown;
   timestamp: number;
+  /** Provenance information from the IR at the time of event emission */
+  provenance?: {
+    contentHash: string;
+    compilerVersion: string;
+    schemaVersion: string;
+  };
 }
 
 export interface Store<T extends EntityInstance = EntityInstance> {
@@ -173,229 +181,6 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
   }
 }
 
-// PostgreSQL configuration interface
-interface PostgresConfig {
-  host?: string;
-  port?: number;
-  database?: string;
-  user?: string;
-  password?: string;
-  connectionString?: string;
-  tableName?: string;
-}
-
-class PostgresStore<T extends EntityInstance> implements Store<T> {
-  private pool: Pool;
-  private tableName: string;
-  private generateId: () => string;
-  private initialized: boolean = false;
-
-  constructor(config: PostgresConfig, generateId?: () => string) {
-    this.generateId = generateId || (() => crypto.randomUUID());
-    this.tableName = config.tableName || 'entities';
-
-    const poolConfig: PoolConfig = config.connectionString
-      ? { connectionString: config.connectionString }
-      : {
-          host: config.host || 'localhost',
-          port: config.port || 5432,
-          database: config.database || 'manifest',
-          user: config.user || 'postgres',
-          password: config.password || '',
-        };
-
-    this.pool = new Pool(poolConfig);
-  }
-
-  private async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
-
-    const client = await this.pool.connect();
-    try {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS ${this.tableName} (
-          id TEXT PRIMARY KEY,
-          data JSONB NOT NULL,
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${this.tableName} USING gin(data);
-      `);
-      this.initialized = true;
-    } finally {
-      client.release();
-    }
-  }
-
-  private async withConnection<R>(
-    callback: (client: PoolClient) => Promise<R>
-  ): Promise<R> {
-    await this.ensureInitialized();
-    const client = await this.pool.connect();
-    try {
-      return await callback(client);
-    } finally {
-      client.release();
-    }
-  }
-
-  async getAll(): Promise<T[]> {
-    return this.withConnection(async (client) => {
-      const result = await client.query(`SELECT data FROM ${this.tableName} ORDER BY created_at`);
-      return result.rows.map((row) => row.data as T);
-    });
-  }
-
-  async getById(id: string): Promise<T | undefined> {
-    return this.withConnection(async (client) => {
-      const result = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
-      return result.rows.length > 0 ? (result.rows[0].data as T) : undefined;
-    });
-  }
-
-  async create(data: Partial<T>): Promise<T> {
-    const id = data.id || this.generateId();
-    const item = { ...data, id } as T;
-
-    return this.withConnection(async (client) => {
-      await client.query(
-        `INSERT INTO ${this.tableName} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
-        [id, JSON.stringify(item)]
-      );
-      return item;
-    });
-  }
-
-  async update(id: string, data: Partial<T>): Promise<T | undefined> {
-    return this.withConnection(async (client) => {
-      const selectResult = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
-      if (selectResult.rows.length === 0) return undefined;
-
-      const existing = selectResult.rows[0].data as T;
-      const updated = { ...existing, ...data, id };
-
-      await client.query(
-        `UPDATE ${this.tableName} SET data = $1, updated_at = NOW() WHERE id = $2`,
-        [JSON.stringify(updated), id]
-      );
-      return updated;
-    });
-  }
-
-  async delete(id: string): Promise<boolean> {
-    return this.withConnection(async (client) => {
-      const result = await client.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [id]);
-      return (result.rowCount ?? 0) > 0;
-    });
-  }
-
-  async clear(): Promise<void> {
-    return this.withConnection(async (client) => {
-      await client.query(`DELETE FROM ${this.tableName}`);
-    });
-  }
-
-  async close(): Promise<void> {
-    await this.pool.end();
-  }
-}
-
-// Supabase configuration interface
-interface SupabaseConfig {
-  url: string;
-  key: string;
-  tableName?: string;
-}
-
-class SupabaseStore<T extends EntityInstance> implements Store<T> {
-  private client: SupabaseClient;
-  private tableName: string;
-  private generateId: () => string;
-
-  constructor(config: SupabaseConfig, generateId?: () => string) {
-    this.generateId = generateId || (() => crypto.randomUUID());
-    this.tableName = config.tableName || 'entities';
-    this.client = createClient(config.url, config.key);
-  }
-
-  async getAll(): Promise<T[]> {
-    const { data, error } = await this.client.from(this.tableName).select('data');
-    if (error) throw new Error(`Supabase getAll failed: ${error.message}`);
-    return (data ?? []).map((row: { data: T }) => row.data);
-  }
-
-  async getById(id: string): Promise<T | undefined> {
-    const { data, error } = await this.client
-      .from(this.tableName)
-      .select('data')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return undefined; // Not found
-      throw new Error(`Supabase getById failed: ${error.message}`);
-    }
-    return data?.data as T;
-  }
-
-  async create(data: Partial<T>): Promise<T> {
-    const id = data.id || this.generateId();
-    const item = { ...data, id } as T;
-
-    const { data: result, error } = await this.client
-      .from(this.tableName)
-      .upsert({ id, data: item as unknown }, { onConflict: 'id' })
-      .select('data')
-      .single();
-
-    if (error) throw new Error(`Supabase create failed: ${error.message}`);
-    return (result?.data as T) ?? item;
-  }
-
-  async update(id: string, data: Partial<T>): Promise<T | undefined> {
-    // First fetch the existing record
-    const { data: existing, error: fetchError } = await this.client
-      .from(this.tableName)
-      .select('data')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') return undefined; // Not found
-      throw new Error(`Supabase update fetch failed: ${fetchError.message}`);
-    }
-
-    const merged = { ...(existing?.data as T), ...data, id };
-
-    const { data: result, error: updateError } = await this.client
-      .from(this.tableName)
-      .update({ data: merged as unknown })
-      .eq('id', id)
-      .select('data')
-      .single();
-
-    if (updateError) throw new Error(`Supabase update failed: ${updateError.message}`);
-    return result?.data as T;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const { error } = await this.client.from(this.tableName).delete().eq('id', id);
-
-    if (error) {
-      throw new Error(`Supabase delete failed: ${error.message}`);
-    }
-    return true; // Supabase doesn't return affected count for delete
-  }
-
-  async clear(): Promise<void> {
-    const { error } = await this.client.from(this.tableName).delete().neq('id', null);
-
-    if (error) {
-      throw new Error(`Supabase clear failed: ${error.message}`);
-    }
-  }
-}
-
 type EventListener = (event: EmittedEvent) => void;
 
 export class RuntimeEngine {
@@ -430,28 +215,16 @@ export class RuntimeEngine {
           case 'memory':
             store = new MemoryStore(this.options.generateId);
             break;
-          case 'postgres': {
-            const config: PostgresConfig = {};
-            if (storeConfig.config.host?.kind === 'string') config.host = storeConfig.config.host.value;
-            if (storeConfig.config.port?.kind === 'number') config.port = storeConfig.config.port.value;
-            if (storeConfig.config.database?.kind === 'string') config.database = storeConfig.config.database.value;
-            if (storeConfig.config.user?.kind === 'string') config.user = storeConfig.config.user.value;
-            if (storeConfig.config.password?.kind === 'string') config.password = storeConfig.config.password.value;
-            if (storeConfig.config.connectionString?.kind === 'string') config.connectionString = storeConfig.config.connectionString.value;
-            if (storeConfig.config.tableName?.kind === 'string') config.tableName = storeConfig.config.tableName.value;
-            store = new PostgresStore(config, this.options.generateId);
-            break;
-          }
-          case 'supabase': {
-            const url = storeConfig.config.url?.kind === 'string' ? storeConfig.config.url.value : '';
-            const key = storeConfig.config.key?.kind === 'string' ? storeConfig.config.key.value : '';
-            const tableName = storeConfig.config.tableName?.kind === 'string' ? storeConfig.config.tableName.value : undefined;
-            if (!url || !key) {
-              throw new Error(`Supabase storage requires 'url' and 'key' configuration for entity '${entity.name}'`);
-            }
-            store = new SupabaseStore({ url, key, tableName }, this.options.generateId);
-            break;
-          }
+          case 'postgres':
+            throw new Error(
+              `PostgreSQL storage for entity '${entity.name}' is not available in browser environments. ` +
+              `Use 'memory' or 'localStorage' for browser, or run this code server-side with stores.node.ts.`
+            );
+          case 'supabase':
+            throw new Error(
+              `Supabase storage for entity '${entity.name}' is not available in browser environments. ` +
+              `Use 'memory' or 'localStorage' for browser, or run this code server-side with stores.node.ts.`
+            );
           default: {
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
@@ -482,6 +255,31 @@ export class RuntimeEngine {
 
   getIR(): IR {
     return this.ir;
+  }
+
+  /**
+   * Get the provenance metadata from the IR
+   */
+  getProvenance(): IRProvenance | undefined {
+    return this.ir.provenance;
+  }
+
+  /**
+   * Log provenance information at startup
+   * This can be called by UI code to display provenance
+   */
+  logProvenance(): void {
+    const prov = this.getProvenance();
+    if (!prov) {
+      console.warn('[Manifest Runtime] No provenance information found in IR.');
+      return;
+    }
+    console.group('[Manifest Runtime] Provenance Information');
+    console.log(`Content Hash: ${prov.contentHash}`);
+    console.log(`Compiler Version: ${prov.compilerVersion}`);
+    console.log(`Schema Version: ${prov.schemaVersion}`);
+    console.log(`Compiled At: ${prov.compiledAt}`);
+    console.groupEnd();
   }
 
   getContext(): RuntimeContext {
@@ -630,11 +428,19 @@ export class RuntimeEngine {
 
     for (const eventName of command.emits) {
       const event = this.ir.events.find(e => e.name === eventName);
+      const prov = this.ir.provenance;
       const emitted: EmittedEvent = {
         name: eventName,
         channel: event?.channel || eventName,
         payload: { ...input, result },
         timestamp: this.getNow(),
+        ...(prov ? {
+          provenance: {
+            contentHash: prov.contentHash,
+            compilerVersion: prov.compilerVersion,
+            schemaVersion: prov.schemaVersion,
+          },
+        } : {}),
       };
       emittedEvents.push(emitted);
       this.eventLog.push(emitted);
@@ -871,11 +677,19 @@ export class RuntimeEngine {
 
       case 'emit':
       case 'publish': {
+        const prov = this.ir.provenance;
         const event: EmittedEvent = {
           name: 'action_event',
           channel: 'default',
           payload: value,
           timestamp: this.getNow(),
+          ...(prov ? {
+            provenance: {
+              contentHash: prov.contentHash,
+              compilerVersion: prov.compilerVersion,
+              schemaVersion: prov.schemaVersion,
+            },
+          } : {}),
         };
         this.eventLog.push(event);
         this.notifyListeners(event);
