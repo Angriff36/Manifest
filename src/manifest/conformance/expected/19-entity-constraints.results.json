@@ -1,0 +1,58 @@
+{
+  "testCases": [
+    {
+      "name": "valid instance passes all constraints",
+      "entity": "Product",
+      "data": { "id": "p1", "name": "Widget", "price": 10 },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "zero price fails pricePositive constraint",
+      "entity": "Product",
+      "data": { "id": "p2", "name": "Free Widget", "price": 0 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "pricePositive",
+          "expression": "self.price > 0"
+        }
+      ]
+    },
+    {
+      "name": "negative price fails pricePositive constraint",
+      "entity": "Product",
+      "data": { "id": "p3", "name": "Bad Widget", "price": -5 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "pricePositive",
+          "expression": "self.price > 0"
+        }
+      ]
+    },
+    {
+      "name": "empty name fails nameNotEmpty constraint",
+      "entity": "Product",
+      "data": { "id": "p4", "name": "", "price": 10 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "nameNotEmpty",
+          "expression": "self.name != \"\""
+        }
+      ]
+    },
+    {
+      "name": "multiple constraints fail simultaneously",
+      "entity": "Product",
+      "data": { "id": "p5", "name": "", "price": -10 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "pricePositive",
+          "expression": "self.price > 0"
+        },
+        {
+          "constraintName": "nameNotEmpty",
+          "expression": "self.name != \"\""
+        }
+      ]
+    }
+  ]
+}

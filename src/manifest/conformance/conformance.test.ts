@@ -81,6 +81,10 @@ interface CommandTestCase {
     index: number;
     expression: string;
   };
+  expectedPolicyDenial?: {
+    policyName: string;
+    expression: string;
+  };
 }
 
 interface ComputedTestCase {
@@ -118,8 +122,18 @@ interface PersistenceTestCase {
   };
 }
 
+interface ConstraintTestCase {
+  name: string;
+  entity: string;
+  data: Record<string, unknown>;
+  expectedConstraintFailures: Array<{
+    constraintName: string;
+    expression: string;
+  }>;
+}
+
 interface ResultsFile {
-  testCases: Array<CommandTestCase | ComputedTestCase | CreateTestCase | PersistenceTestCase>;
+  testCases: Array<CommandTestCase | ComputedTestCase | CreateTestCase | PersistenceTestCase | ConstraintTestCase>;
 }
 
 function loadExpectedResults(name: string): ResultsFile | null {
@@ -156,6 +170,16 @@ function normalizeResult(result: CommandResult): Partial<CommandResult> {
       formatted: result.guardFailure.formatted,
       expression: result.guardFailure.expression,
       resolved: result.guardFailure.resolved,
+    };
+  }
+  if (result.policyDenial !== undefined) {
+    normalized.policyDenial = {
+      policyName: result.policyDenial.policyName,
+      formatted: result.policyDenial.formatted,
+      expression: result.policyDenial.expression,
+      message: result.policyDenial.message,
+      contextKeys: result.policyDenial.contextKeys,
+      resolved: result.policyDenial.resolved,
     };
   }
   return normalized;
@@ -267,6 +291,16 @@ describe('Manifest Conformance Tests', () => {
                 expect(normalizedResult.guardFailure?.formatted).toContain(tc.expectedGuardFailure.expression);
               }
 
+              if (tc.expectedPolicyDenial) {
+                expect(normalizedResult.policyDenial).toBeDefined();
+                expect(normalizedResult.policyDenial?.policyName).toBe(tc.expectedPolicyDenial.policyName);
+                // Check that the formatted expression contains the expected expression
+                expect(normalizedResult.policyDenial?.formatted).toContain(tc.expectedPolicyDenial.expression);
+                // Verify resolved values are present for diagnostics
+                expect(normalizedResult.policyDenial?.resolved).toBeDefined();
+                expect(Array.isArray(normalizedResult.policyDenial?.resolved)).toBe(true);
+              }
+
               if (tc.expectedResult.result !== undefined) {
                 expect(normalizedResult.result).toBe(tc.expectedResult.result);
               }
@@ -354,6 +388,30 @@ describe('Manifest Conformance Tests', () => {
               );
 
               expect(restored).toEqual(tc.persistenceTest.expectedAfterRestore);
+            });
+          }
+
+          if ('expectedConstraintFailures' in testCase) {
+            const tc = testCase as ConstraintTestCase;
+            it(tc.name, async () => {
+              const source = loadFixture(fixtureName);
+              const { ir } = await compileToIR(source);
+              expect(ir).not.toBeNull();
+
+              const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
+
+              const failures = engine.checkConstraints(tc.entity, tc.data);
+
+              expect(failures.length).toBe(tc.expectedConstraintFailures.length);
+
+              tc.expectedConstraintFailures.forEach((expected, index) => {
+                const actual = failures[index];
+                expect(actual.constraintName).toBe(expected.constraintName);
+                expect(actual.formatted).toContain(expected.expression);
+                // Verify resolved values are present for diagnostics
+                expect(actual.resolved).toBeDefined();
+                expect(Array.isArray(actual.resolved)).toBe(true);
+              });
             });
           }
         });

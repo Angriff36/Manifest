@@ -193,6 +193,16 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
       ? denial.contextKeys.join(', ')
       : 'none';
 
+    const resolvedValues = denial.resolved || [];
+    const resolvedText = resolvedValues
+      .map(rv => {
+        const valueStr = typeof rv.value === 'string'
+          ? `"${rv.value}"`
+          : String(rv.value ?? 'undefined');
+        return `${rv.expression} = ${valueStr}`;
+      })
+      .join(', ');
+
     return (
       <div className="mt-2 bg-amber-900/20 rounded border border-amber-800/50">
         <button
@@ -218,6 +228,11 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
             {denial.message && (
               <div className="text-xs text-amber-400">
                 <span className="font-medium">Message:</span> {denial.message}
+              </div>
+            )}
+            {resolvedText && (
+              <div className="text-xs text-amber-400">
+                <span className="font-medium">Resolved:</span> {resolvedText}
               </div>
             )}
             <div className="text-xs text-amber-400">

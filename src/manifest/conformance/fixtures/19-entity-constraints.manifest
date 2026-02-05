@@ -1,0 +1,9 @@
+entity Product {
+  property required name: string
+  property price: number = 0
+
+  constraint pricePositive: self.price > 0 "Price must be positive"
+  constraint nameNotEmpty: self.name != "" "Name cannot be empty"
+}
+
+store Product in memory

@@ -24,13 +24,24 @@ Add traceability everywhere so drift becomes visible.
 - [ ] UI displays provenance info (future enhancement)
 - [x] Conformance tests verify provenance is preserved
 
-### Priority 2: Diagnostic Hardening
+### Priority 2: Diagnostic Hardening ✅ COMPLETED
 Make the system hostile to weaseling. When constraints block something, explain exactly why.
 
-- [ ] Policy denials: include "what you tried" + "which rule blocked" + resolved context values
-- [ ] Type mismatches: show expected vs actual with path to violation
-- [ ] Guard failures: already done, extend pattern to all constraint types
-- [ ] Add diagnostic conformance tests for each failure mode
+- [x] Policy denials: include "what you tried" + "which rule blocked" + resolved context values
+- [ ] Type mismatches: show expected vs actual with path to violation (deferred - type checking is primarily compile-time)
+- [x] Guard failures: already done, extended pattern to all constraint types
+- [x] Add diagnostic conformance tests for each failure mode
+
+**Implementation Details:**
+- Added `resolved?: GuardResolvedValue[]` field to `PolicyDenial` interface
+- Policy denials now include resolved expression values showing what was evaluated
+- Added `ConstraintFailure` interface for entity constraint diagnostics
+- Created `validateConstraints()` method that validates constraints with full diagnostics
+- Added `checkConstraints()` public method for diagnostic queries without state mutation
+- Entity `createInstance()` and `updateInstance()` now validate constraints before mutating
+- Runtime UI displays resolved values for policy denials
+- Conformance tests verify policy denial diagnostics with resolved values
+- New fixture 19-entity-constraints.manifold tests entity constraint diagnostics
 
 ### Priority 3: IR-First Runtime
 TS output is a view, not authority. IR is the executable contract.
@@ -70,6 +81,30 @@ All passing: 93 conformance tests
 ---
 
 ## Loop 2 Completed Work (2026-02-05)
+
+### Priority 2: Diagnostic Hardening - ✅ COMPLETE
+
+**Policy Denial Enhancement:**
+- Added `resolved?: GuardResolvedValue[]` field to `PolicyDenial` interface
+- Policy denials now include resolved expression values (e.g., `user.role = "user"`)
+- Updated `checkPolicies()` to call `resolveExpressionValues()` for diagnostics
+- Runtime UI displays resolved values in policy denial sections
+
+**Entity Constraint Diagnostics:**
+- Added `ConstraintFailure` interface matching guard/policy diagnostic pattern
+- Created `validateConstraints()` private method with full diagnostics
+- Added `checkConstraints()` public method for external diagnostic queries
+- Entity `createInstance()` and `updateInstance()` validate constraints before mutating
+- Constraint failures include: constraintName, expression, formatted, message, resolved values
+
+**Conformance Test Infrastructure:**
+- Added `expectedPolicyDenial` test case support to verify policy denial diagnostics
+- Added `ConstraintTestCase` interface and handler for constraint testing
+- Updated `normalizeResult()` to include `policyDenial` with resolved values
+- New fixture: 19-entity-constraints.manifest with 5 constraint test cases
+- All 99 conformance tests passing
+
+**Test Count:** 99 conformance tests (was 93, added 6 constraint tests)
 
 ### Priority 1: Provenance Metadata - ✅ COMPLETE
 

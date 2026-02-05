@@ -51,11 +51,21 @@ export interface PolicyDenial {
   formatted: string;
   message?: string;
   contextKeys: string[];
+  /** Resolved values from the policy expression evaluation */
+  resolved?: GuardResolvedValue[];
 }
 
 export interface GuardResolvedValue {
   expression: string;
   value: unknown;
+}
+
+export interface ConstraintFailure {
+  constraintName: string;
+  expression: IRExpression;
+  formatted: string;
+  message?: string;
+  resolved?: GuardResolvedValue[];
 }
 
 export interface EmittedEvent {
@@ -333,6 +343,17 @@ export class RuntimeEngine {
     return store ? await store.getById(id) : undefined;
   }
 
+  /**
+   * Check entity constraints against instance data
+   * Returns array of constraint failures (empty if all pass)
+   * Useful for diagnostic purposes without mutating state
+   */
+  checkConstraints(entityName: string, data: Record<string, unknown>): ConstraintFailure[] {
+    const entity = this.getEntity(entityName);
+    if (!entity) return [];
+    return this.validateConstraints(entity, data);
+  }
+
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
@@ -346,15 +367,41 @@ export class RuntimeEngine {
       }
     }
 
+    const mergedData = { ...defaults, ...data };
+
+    // Validate entity constraints
+    const constraintFailures = this.validateConstraints(entity, mergedData);
+    if (constraintFailures.length > 0) {
+      // Log constraint failures for diagnostics
+      console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
+      return undefined;
+    }
+
     const store = this.stores.get(entityName);
     if (!store) return undefined;
 
-    return await store.create({ ...defaults, ...data });
+    return await store.create(mergedData);
   }
 
   async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
+    const entity = this.getEntity(entityName);
     const store = this.stores.get(entityName);
-    return store ? await store.update(id, data) : undefined;
+    if (!store || !entity) return undefined;
+
+    const existing = await store.getById(id);
+    if (!existing) return undefined;
+
+    const mergedData = { ...existing, ...data };
+
+    // Validate entity constraints
+    const constraintFailures = this.validateConstraints(entity, mergedData);
+    if (constraintFailures.length > 0) {
+      // Log constraint failures for diagnostics
+      console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
+      return undefined;
+    }
+
+    return await store.update(id, data);
   }
 
   async deleteInstance(entityName: string, id: string): Promise<boolean> {
@@ -483,6 +530,8 @@ export class RuntimeEngine {
       if (!result) {
         // Extract context keys (not values for security)
         const contextKeys = this.extractContextKeys(policy.expression);
+        // Resolve expression values for diagnostics
+        const resolved = this.resolveExpressionValues(policy.expression, evalContext);
         return {
           allowed: false,
           denial: {
@@ -491,12 +540,48 @@ export class RuntimeEngine {
             formatted: this.formatExpression(policy.expression),
             message: policy.message || `Denied by policy '${policy.name}'`,
             contextKeys,
+            resolved,
           },
         };
       }
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Validate entity constraints against instance data
+   * Returns array of constraint failures (empty if all pass)
+   */
+  private validateConstraints(
+    entity: IREntity,
+    instanceData: Record<string, unknown>
+  ): ConstraintFailure[] {
+    const failures: ConstraintFailure[] = [];
+
+    // Build evaluation context with self/this pointing to the instance
+    const evalContext = {
+      ...instanceData,
+      self: instanceData,
+      this: instanceData,
+      user: this.context.user ?? null,
+      context: this.context ?? {},
+    };
+
+    for (const constraint of entity.constraints) {
+      const result = this.evaluateExpression(constraint.expression, evalContext);
+      if (!result) {
+        failures.push({
+          constraintName: constraint.name,
+          expression: constraint.expression,
+          formatted: this.formatExpression(constraint.expression),
+          message: constraint.message || `Constraint '${constraint.name}' failed`,
+          resolved: this.resolveExpressionValues(constraint.expression, evalContext),
+        });
+      }
+    }
+
+    return failures;
   }
 
   private extractContextKeys(expr: IRExpression): string[] {
