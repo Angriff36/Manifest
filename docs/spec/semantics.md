@@ -91,9 +91,24 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
   5) Emit declared events in order.
   6) Return a CommandResult with success status, emitted events, and the last action result.
 
-### Nonconformance (Generated Artifacts)
-- Generated server code does not enforce policies; it checks guards only.
-- Generated client code does not return the last action result for commands (returns void).
+### Generated Artifacts
+Generated code MUST conform to the same semantics as the IR runtime:
+
+- **Server code**: MUST enforce policies (action `execute` or `all`) before executing commands
+- **Client code**: Commands MUST return the last action result (not void)
+
+Generated server endpoints SHALL:
+1. Check applicable policies for the entity/command
+2. Check guards in order
+3. Execute the command
+4. Return the result with success status
+
+Generated client command methods SHALL:
+1. Check applicable policies (if entity has policies)
+2. Check guards in order
+3. Execute actions in order
+4. Emit declared events
+5. Return the last action result
 
 ## Actions
 - `mutate`: Evaluate expression and, if a current instance is bound, assign the result to the target field and return the value. If no instance is bound, the action has no storage effect and returns the value.
@@ -124,10 +139,4 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
   - `contains` checks membership where the left side is array or string.
 
 ## Nonconformance
-The following implementation differences are known:
-
-### Generated Artifacts
-- Generated server code does not enforce policies; it checks guards only.
-- Generated client code does not return the last action result for commands (returns void).
-
-These MUST be reconciled by updating the spec and tests first, then implementation.
+There are no known nonconformances. All implementations conform to this specification.

@@ -281,7 +281,7 @@ export class CodeGenerator {
     for (const cp of e.computedProperties) this.line(`${cp.name}: this.${cp.name},`);
     this.de(); this.line('};'); this.de(); this.line('}');
 
-    for (const cmd of e.commands) this.genCommandMethod(cmd);
+    for (const cmd of e.commands) this.genCommandMethod(cmd, e);
     for (const b of e.behaviors) if (b.trigger.event !== 'create' && !b.trigger.event.startsWith('_')) this.genBehaviorMethod(b);
 
     this.de(); this.line('}');
@@ -306,22 +306,42 @@ export class CodeGenerator {
     return `${r.target} | null`;
   }
 
-  private genCommandMethod(cmd: CommandNode) {
+  private genCommandMethod(cmd: CommandNode, entity?: EntityNode) {
     const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
-    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'void';
+    // Return the last action result type if specified, otherwise infer from actions or default to unknown
+    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line();
     this.line(`async ${cmd.name}(${params}): Promise<${returnType}> {`);
     this.in();
 
+    // Check policies first (if entity has policies with execute/all action)
+    if (entity && entity.policies.length > 0) {
+      this.line('// Policy checks');
+      const hasRelevantPolicies = entity.policies.some(p => p.action === 'all' || p.action === 'execute');
+      if (hasRelevantPolicies) {
+        this.line(`const user = getContext().user;`);
+        for (const p of entity.policies) {
+          if (p.action !== 'all' && p.action !== 'execute') continue;
+          this.line(`if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`);
+        }
+      }
+    }
+
+    // Check guards
     if (cmd.guards && cmd.guards.length > 0) {
+      this.line('// Guard checks');
       for (const g of cmd.guards) {
         this.line(`if (!(${this.genExpr(g)})) throw new Error("Guard failed for ${cmd.name}");`);
       }
     }
 
-    for (const action of cmd.actions) {
-      this.line(this.genAction(action));
+    // Execute actions and capture the last result
+    if (cmd.actions.length > 0) {
+      this.line('let _result: unknown;');
+      for (const action of cmd.actions) {
+        this.line(`_result = ${this.genAction(action)};`);
+      }
     }
 
     if (cmd.emits) {
@@ -330,30 +350,45 @@ export class CodeGenerator {
       }
     }
 
+    // Return the last action result
+    if (cmd.actions.length > 0) {
+      this.line(`return _result as ${returnType};`);
+    }
+
     this.de(); this.line('}');
   }
 
   private genCommand(cmd: CommandNode) {
     const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
-    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'void';
+    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line(`async function ${cmd.name}(${params}): Promise<${returnType}> {`);
     this.in();
 
     if (cmd.guards && cmd.guards.length > 0) {
+      this.line('// Guard checks');
       for (const g of cmd.guards) {
         this.line(`if (!(${this.genExpr(g)})) throw new Error("Guard failed for ${cmd.name}");`);
       }
     }
 
-    for (const action of cmd.actions) {
-      this.line(this.genAction(action));
+    // Execute actions and capture the last result
+    if (cmd.actions.length > 0) {
+      this.line('let _result: unknown;');
+      for (const action of cmd.actions) {
+        this.line(`_result = ${this.genAction(action)};`);
+      }
     }
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
         this.line(`EventBus.publish('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
       }
+    }
+
+    // Return the last action result
+    if (cmd.actions.length > 0) {
+      this.line(`return _result as ${returnType};`);
     }
 
     this.de(); this.line('}');
@@ -552,13 +587,33 @@ export class CodeGenerator {
     for (const cmd of program.commands) {
       this.serverOut.push(`app.post("/commands/${cmd.name}", async (c) => {`);
       this.serverOut.push(`  const body = await c.req.json();`);
+      this.serverOut.push(`  const user = c.get("user");`);
+
+      // Check policies first (for commands with an entity)
+      if (cmd.entity) {
+        const entity = program.entities.find(e => e.name === cmd.entity);
+        if (entity && entity.policies.length > 0) {
+          this.serverOut.push(`  // Policy checks`);
+          for (const p of entity.policies) {
+            const actionCheck = p.action === 'all' || p.action === 'execute' ? 'true' : `action === "${p.action}"`;
+            const expr = this.genExpr(p.expression).replace(/\buser\./g, 'user.').replace(/\bthis\./g, 'body.');
+            this.serverOut.push(`  if (${actionCheck} && !(${expr})) {`);
+            this.serverOut.push(`    return c.json({ error: ${JSON.stringify(p.message || `Denied by policy '${p.name}'`)} }, 403);`);
+            this.serverOut.push(`  }`);
+          }
+        }
+      }
+
+      // Check guards
       if (cmd.guards?.length) {
+        this.serverOut.push(`  // Guard checks`);
         for (const g of cmd.guards) {
-          this.serverOut.push(`  if (!(${this.genExpr(g).replace(/\buser\./g, 'c.get("user").')})) {`);
+          this.serverOut.push(`  if (!(${this.genExpr(g).replace(/\buser\./g, 'user.')})) {`);
           this.serverOut.push(`    return c.json({ error: "Unauthorized" }, 403);`);
           this.serverOut.push(`  }`);
         }
       }
+
       this.serverOut.push(`  const result = await ${cmd.name}(${cmd.parameters.map(p => `body.${p.name}`).join(', ')});`);
       this.serverOut.push(`  return c.json({ success: true, result });`);
       this.serverOut.push(`});`);

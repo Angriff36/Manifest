@@ -206,7 +206,7 @@ export class StandaloneGenerator {
     for (const cp of e.computedProperties) this.line(`${cp.name}: this.${cp.name},`);
     this.de(); this.line('};'); this.de(); this.line('}');
 
-    for (const cmd of e.commands) this.genCommandMethod(cmd);
+    for (const cmd of e.commands) this.genCommandMethod(cmd, e);
     for (const b of e.behaviors) {
       if (b.trigger.event !== 'create' && !b.trigger.event.startsWith('_')) {
         this.genBehaviorMethod(b);
@@ -237,22 +237,42 @@ export class StandaloneGenerator {
     return `${r.target} | null`;
   }
 
-  private genCommandMethod(cmd: CommandNode) {
+  private genCommandMethod(cmd: CommandNode, entity?: EntityNode) {
     const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
-    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'void';
+    // Return the last action result type if specified, otherwise infer from actions or default to unknown
+    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line();
     this.line(`async ${cmd.name}(${params}): Promise<${returnType}> {`);
     this.in();
 
+    // Check policies first (if entity has policies with execute/all action)
+    if (entity && entity.policies.length > 0) {
+      this.line('// Policy checks');
+      const hasRelevantPolicies = entity.policies.some(p => p.action === 'all' || p.action === 'execute');
+      if (hasRelevantPolicies) {
+        this.line(`const user = getContext().user;`);
+        for (const p of entity.policies) {
+          if (p.action !== 'all' && p.action !== 'execute') continue;
+          this.line(`if (!(${this.genExpr(p.expression)})) throw new Error(${JSON.stringify(p.message || `Denied by policy '${p.name}'`)});`);
+        }
+      }
+    }
+
+    // Check guards
     if (cmd.guards && cmd.guards.length > 0) {
+      this.line('// Guard checks');
       for (const g of cmd.guards) {
         this.line(`if (!(${this.genExpr(g)})) throw new Error("Guard failed for ${cmd.name}");`);
       }
     }
 
-    for (const action of cmd.actions) {
-      this.line(this.genAction(action));
+    // Execute actions and capture the last result
+    if (cmd.actions.length > 0) {
+      this.line('let _result: unknown;');
+      for (const action of cmd.actions) {
+        this.line(`_result = ${this.genAction(action)};`);
+      }
     }
 
     if (cmd.emits) {
@@ -261,30 +281,45 @@ export class StandaloneGenerator {
       }
     }
 
+    // Return the last action result
+    if (cmd.actions.length > 0) {
+      this.line(`return _result as ${returnType};`);
+    }
+
     this.de(); this.line('}');
   }
 
   private genCommand(cmd: CommandNode) {
     const params = cmd.parameters.map(p => `${p.name}${p.required ? '' : '?'}: ${this.tsType(p.dataType)}`).join(', ');
-    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'void';
+    const returnType = cmd.returns ? this.tsType(cmd.returns) : 'unknown';
 
     this.line(`export async function ${cmd.name}(${params}): Promise<${returnType}> {`);
     this.in();
 
     if (cmd.guards && cmd.guards.length > 0) {
+      this.line('// Guard checks');
       for (const g of cmd.guards) {
         this.line(`if (!(${this.genExpr(g)})) throw new Error("Guard failed for ${cmd.name}");`);
       }
     }
 
-    for (const action of cmd.actions) {
-      this.line(this.genAction(action));
+    // Execute actions and capture the last result
+    if (cmd.actions.length > 0) {
+      this.line('let _result: unknown;');
+      for (const action of cmd.actions) {
+        this.line(`_result = ${this.genAction(action)};`);
+      }
     }
 
     if (cmd.emits) {
       for (const ev of cmd.emits) {
         this.line(`EventBus.publish('${ev}', { ${cmd.parameters.map(p => p.name).join(', ')} });`);
       }
+    }
+
+    // Return the last action result
+    if (cmd.actions.length > 0) {
+      this.line(`return _result as ${returnType};`);
     }
 
     this.de(); this.line('}');

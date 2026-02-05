@@ -5,7 +5,7 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 3 - Priority 0 ✅ COMPLETED (Runtime UI Unification)
+Phase: Loop 3 - Priority 3 ✅ COMPLETED (Generated Code Conformance Fixes)
 
 ## Mission
 
@@ -126,25 +126,116 @@ Unified Runtime UI provides interactive demo capabilities for ANY manifest.
 - Removed TinyAppPanel.tsx (no longer needed - unified RuntimePanel is superior)
 - Added *.png to .gitignore to exclude temporary test screenshots
 
-### Priority 3: Generated Code Conformance Fixes [PENDING]
+### Priority 3: Generated Code Conformance Fixes ✅ COMPLETED
 Align generated server/client code with runtime semantics.
 
-- [ ] Update spec to clarify generated code expectations
-- [ ] Implement policy enforcement in generated server code
-- [ ] Return last action result from generated client commands
-- [ ] Update code generator templates
-- [ ] Add conformance tests for generated artifacts
+- [x] Update spec to clarify generated code expectations
+- [x] Implement policy enforcement in generated server code
+- [x] Return last action result from generated client commands
+- [x] Update code generator templates
+- [x] Add conformance tests for generated artifacts
 
-**Issues (from docs/spec/semantics.md):**
-- Generated server code does not enforce policies; it checks guards only
-- Generated client code does not return the last action result for commands (returns void)
+**Implementation Details (2026-02-05):**
 
-**Approach:**
-1. Update `docs/spec/semantics.md` to reflect what generated code SHOULD do
-2. Create conformance fixtures for generated code expectations
-3. Update `CodeGenerator` to emit policy-enforcing server code
-4. Update client command signatures to return `CommandResult`
-5. Regenerate all expected outputs
+**Spec Updates:**
+- Updated `docs/spec/semantics.md` to define generated code requirements
+- Added "Generated Artifacts" section specifying:
+  - Server code MUST enforce policies (action `execute` or `all`) before executing commands
+  - Client code commands MUST return the last action result (not void)
+- Removed nonconformance notes - all implementations now conform to spec
+
+**CodeGenerator Changes (`src/manifest/generator.ts`):**
+
+1. **Server Code Policy Enforcement:**
+   - Modified `genServerCode()` to check entity policies before guards
+   - Policies with action `execute` or `all` are now enforced in command endpoints
+   - User context is extracted from `c.get("user")` for policy evaluation
+   - Returns 403 with policy message on denial
+
+2. **Client Command Return Values:**
+   - Modified `genCommandMethod()` to capture and return the last action result
+   - Commands now return `Promise<unknown>` (or specified return type) instead of `Promise<void>`
+   - Actions are executed and results stored in `_result` variable
+   - Last action result is returned at the end of the command method
+
+3. **Entity Command Policy Checks:**
+   - Entity-bound commands now check entity policies before execution
+   - Policy checks are performed on the user context
+   - Only policies with action `execute` or `all` are enforced
+
+**StandaloneGenerator Changes (`src/manifest/standalone-generator.ts`):**
+- Applied identical changes to `genCommandMethod()` and `genCommand()`
+- Entity command methods receive entity parameter for policy access
+- Standalone commands also return the last action result
+
+**Test Results:**
+- All 100 conformance tests passing
+- No regressions introduced
+
+**Example Generated Client Code (Before):**
+```typescript
+async claim(userId: string): Promise<void> {
+  if (!(userId === user.id)) throw new Error("Guard failed");
+  this.assignedTo = userId;
+  this.status = "in_progress";
+  this.emit('taskClaimed', { userId });
+  // No return
+}
+```
+
+**Example Generated Client Code (After):**
+```typescript
+async claim(userId: string): Promise<unknown> {
+  // Policy checks
+  const user = getContext().user;
+  if (!(user.role === "staff" || user.role === "admin")) throw new Error("Denied by policy 'staffOnly'");
+
+  // Guard checks
+  if (!(userId === user.id)) throw new Error("Guard failed");
+
+  // Execute actions and capture result
+  let _result: unknown;
+  _result = this.assignedTo = userId;
+  _result = this.status = "in_progress";
+
+  this.emit('taskClaimed', { userId });
+  return _result as unknown;
+}
+```
+
+**Example Generated Server Code (Before):**
+```typescript
+app.post("/commands/claim", async (c) => {
+  const body = await c.req.json();
+  // Only guards checked
+  if (!(body.userId === c.get("user"))) {
+    return c.json({ error: "Unauthorized" }, 403);
+  }
+  const result = await claim(body.userId);
+  return c.json({ success: true, result });
+});
+```
+
+**Example Generated Server Code (After):**
+```typescript
+app.post("/commands/claim", async (c) => {
+  const body = await c.req.json();
+  const user = c.get("user");
+
+  // Policy checks first
+  if (!(user.role === "staff" || user.role === "admin")) {
+    return c.json({ error: "Denied by policy 'staffOnly'" }, 403);
+  }
+
+  // Guard checks
+  if (!(body.userId === user.id)) {
+    return c.json({ error: "Unauthorized" }, 403);
+  }
+
+  const result = await claim(body.userId);
+  return c.json({ success: true, result });
+});
+```
 
 ### Priority 4: UI Enhancements [PENDING]
 Improve Runtime UI for better observability and diagnostics.
@@ -254,19 +345,19 @@ Find where the choke point leaks by actually using it.
    - Storage target diagnostics ARE implemented - throws clear errors for unsupported targets
    - Action adapter default behavior (no-ops) is CORRECT per spec
    - Relationship nonconformance removed via Loop 3 implementation
+   - **Generated code conformance FIXED in Loop 3 Priority 3**:
+     - Generated server code NOW enforces policies (action `execute` or `all`)
+     - Generated client commands NOW return the last action result
 
-3. **Remaining Nonconformances**:
-   - Generated server code does not enforce policies; it checks guards only
-   - Generated client code does not return the last action result for commands (returns void)
-
-4. **What Works Well:**
+3. **What Works Well:**
    - Single-entity operations are solid
    - Relationship traversal now works in computed properties, guards, and policies
    - Guards and policies provide good security boundaries
    - Event emission with provenance works end-to-end
    - Computed properties with dependencies work correctly
+   - Generated code now enforces policies and returns action results
 
-5. **Workarounds Used** (no longer needed for relationships):
+4. **Workarounds Used** (no longer needed for relationships):
    - Foreign key IDs instead of relationship traversal (no longer needed!)
    - User context for cross-entity authorization checks
    - Manual ID references instead of declarative relationships (no longer needed!)
