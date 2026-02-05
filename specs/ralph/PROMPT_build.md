@@ -2,7 +2,7 @@
 <!--0b. Study @IMPLEMENTATION_PLAN.md.
 <!--0c. For reference, the application source code is in `src/*`.
 <!--
-<!--1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 10 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
+<!--1. Your task is to implement functionality per the specifications using parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address. Before making changes, search the codebase (don't assume not implemented) using Sonnet subagents. You may use up to 500 parallel Sonnet subagents for searches/reads and only 1 Sonnet subagent for build/tests. Use Opus subagents when complex reasoning is needed (debugging, architectural decisions).
 <!--2. After implementing functionality or resolving problems, run the tests for that unit of code that was improved. If functionality is missing then it's your job to add it as per the application specifications. Ultrathink.
 <!--3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings using a subagent. When resolved, update and remove the item.
 <!--4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`.
@@ -27,14 +27,7 @@ THE COMMENTED OUT TEXT IS A TEMPLATE, USE IT TO CREATE A BUILD PROMPT SPECIFIC T
 1. Your task is to implement the Manifest vNext enhancements using the Task tool with parallel subagents. Follow @IMPLEMENTATION_PLAN.md and choose the most important item to address from constraint evaluation outcomes, override semantics, workflow conventions, concurrency controls, runtime performance, diagnostics, or conformance tests. Before making changes, search the codebase (don't assume not implemented) using Task tool with subagent_type='Explore' (up to 500 parallel subagents). Use Task tool with subagent_type='general-purpose' or model='sonnet' for build/tests (only 1 subagent). Use Task tool with subagent_type='Opus' or model='opus' when complex reasoning is needed (debugging, architectural decisions). IMPORTANT: Always use the Task tool for file operations, searches, and analysis - never use Read/Grep directly unless it's a single quick lookup.
 2. After implementing functionality or resolving problems, run the tests for that unit of code that was improved. If functionality is missing then it's your job to add it as per the Manifest vNext spec. Ultrathink.
 3. When you discover issues, immediately update @IMPLEMENTATION_PLAN.md with your findings. When resolved, update and remove the item.
-4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. 
-5. Reconcile IMPLEMENTATION_PLAN.md:
-   - Mark completed items
-   - Remove obsolete sections
-   - Resolve contradictions between status blocks
-   - Diff-check repo vs plan claims
-   - Fail iteration if inconsistencies remain
-6. After the commit, `git push`.
+4. When the tests pass, update @IMPLEMENTATION_PLAN.md, then `git add -A` then `git commit` with a message describing the changes. After the commit, `git push`.
 
 99999. Important: When authoring documentation, capture the why — tests and implementation importance.
 999999. Important: Single sources of truth, no migrations/adapters. If tests unrelated to your work fail, resolve them as part of the increment.

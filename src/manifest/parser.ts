@@ -241,6 +241,7 @@ export class Parser {
       action = this.advance().value as PolicyNode['action'];
     }
     this.consume('OPERATOR', ':');
+    this.skipNL();
     const expression = this.parseExpr();
     const message = this.check('STRING') ? this.advance().value : undefined;
     return { type: 'Policy', name, action, expression, message };

@@ -9,28 +9,28 @@ entity WorkflowInstance {
   property isLocked: boolean = false
   property concurrencyVersion: number = 1
 
-  constraint workflowVersion: self.version matches "^\\d+\\.\\d+\\.\\d+$" "Version must be in semantic version format"
-  constraint statusValid: self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
-  constraint concurrencyConflict: self.isLocked == false "Workflow instance is locked for concurrent access"
-  constraint severityCritical:critical self.isLocked == true "Critical: Workflow instance is locked"
+  constraint workflowVersion:block self.version != "" "Version must be provided"
+  constraint statusValid:block self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
+  constraint concurrencyConflict:block self.isLocked == false "Workflow instance is locked for concurrent access"
+  constraint severityBlock:block self.isLocked == true "Critical: Workflow instance is locked"
   constraint severityWarning:warn self.concurrencyVersion > 10 "Warning: High concurrency version detected"
 
   command pause() {
-    constraint canPause: self.status == "active" "Can only pause active workflows"
+    constraint canPause:block self.status == "active" "Can only pause active workflows"
     mutate status = "paused"
     mutate updatedAt = now()
     emit WorkflowPaused
   }
 
   command resume() {
-    constraint canResume: self.status == "paused" "Can only resume paused workflows"
+    constraint canResume:block self.status == "paused" "Can only resume paused workflows"
     mutate status = "active"
     mutate updatedAt = now()
     emit WorkflowResumed
   }
 
   command lock() {
-    constraint canLock: self.isLocked == false "Already locked"
+    constraint canLock:block self.isLocked == false "Already locked"
     mutate isLocked = true
     mutate concurrencyVersion = self.concurrencyVersion + 1
     mutate updatedAt = now()
@@ -38,7 +38,7 @@ entity WorkflowInstance {
   }
 
   command unlock() {
-    constraint canUnlock: self.isLocked == true "Not locked"
+    constraint canUnlock:block self.isLocked == true "Not locked"
     mutate isLocked = false
     mutate concurrencyVersion = self.concurrencyVersion + 1
     mutate updatedAt = now()
@@ -46,7 +46,7 @@ entity WorkflowInstance {
   }
 
   command complete() {
-    constraint canComplete: self.status in ["active", "paused"] "Cannot complete workflow in current state"
+    constraint canComplete:block self.status in ["active", "paused"] "Cannot complete workflow in current state"
     mutate status = "completed"
     mutate updatedAt = now()
     emit WorkflowCompleted

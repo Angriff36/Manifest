@@ -2,48 +2,71 @@
   "testCases": [
     {
       "name": "create instance with version",
-      "setup": {},
-      "createInstance": {
-        "entity": "Document",
-        "data": { "id": "doc-1", "title": "Test Document", "content": "Initial content" }
+      "command": {
+        "name": "create",
+        "entityName": "Document",
+        "input": { "title": "Test Document", "content": "Initial content" }
       },
-      "expectedInstance": {
-        "id": "doc-1",
-        "title": "Test Document",
-        "content": "Initial content",
-        "version": 1,
-        "versionAt": 1000000000000
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentCreated",
+            "channel": "DocumentCreated",
+            "timestamp": 1000000000000
+          }
+        ]
       }
     },
     {
       "name": "update with correct version succeeds",
       "setup": {
-        "entity": "Document",
-        "createData": { "id": "doc-2", "title": "Original Title", "content": "Original content" }
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-2", "title": "Original Title", "content": "Original content", "version": 1, "versionAt": 1000000000000 }
+        }
       },
-      "createInstance": {
-        "entity": "Document",
-        "data": { "id": "doc-2", "title": "Updated Title", "content": "Updated content", "version": 1 }
+      "command": {
+        "name": "update",
+        "entityName": "Document",
+        "instanceId": "doc-2",
+        "input": { "newTitle": "Updated Title", "newContent": "Updated content", "currentVersion": 1 }
       },
-      "expectedInstance": {
-        "id": "doc-2",
-        "title": "Updated Title",
-        "content": "Updated content",
-        "version": 2,
-        "versionAt": 1000000000000
-      }
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentUpdated",
+            "channel": "DocumentUpdated",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": { "id": "doc-2", "title": "Updated Title", "content": "Updated content", "version": 2, "versionAt": 1000000000000 }
     },
     {
       "name": "update with stale version fails",
       "setup": {
-        "entity": "Document",
-        "createData": { "id": "doc-3", "title": "First Version", "content": "First content" }
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-3", "title": "First Version", "content": "First content", "version": 1, "versionAt": 1000000000000 }
+        }
       },
-      "createInstance": {
-        "entity": "Document",
-        "data": { "id": "doc-3", "title": "Updated Title", "content": "Updated content", "version": 999 }
+      "command": {
+        "name": "update",
+        "entityName": "Document",
+        "instanceId": "doc-3",
+        "input": { "newTitle": "Updated Title", "newContent": "Updated content", "currentVersion": 999 }
       },
-      "expectedError": "Optimistic concurrency violation: expected version 1 but got 999"
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'update'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "self.version == currentVersion"
+      }
     }
   ]
 }

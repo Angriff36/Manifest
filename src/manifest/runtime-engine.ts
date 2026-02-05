@@ -987,9 +987,9 @@ export class RuntimeEngine {
       const isNegativeType = constraint.name.startsWith('severity');
       const shouldFire = isNegativeType ? Boolean(result) : !Boolean(result);
 
-      // Only block-severity failures are returned as failures
-      // (ok and warn constraints don't block even when they fire)
-      if (shouldFire && severity === 'block') {
+      // All firing constraints are returned as failures for diagnostic purposes
+      // (The severity field determines whether they block execution, but all are reported)
+      if (shouldFire) {
         failures.push({
           constraintName: constraint.name,
           expression: constraint.expression,
@@ -1459,7 +1459,12 @@ export class RuntimeEngine {
     evalContext: Record<string, unknown>
   ): Promise<ConstraintOutcome> {
     const result = await this.evaluateExpression(constraint.expression, evalContext);
-    const passed = Boolean(result);
+
+    // Hybrid constraint semantics:
+    // - Negative-type constraints (name starts with "severity"): fire when TRUE (bad state detected)
+    // - Positive-type constraints: fail when FALSE (required condition not met)
+    const isNegativeType = constraint.name.startsWith('severity');
+    const passed = isNegativeType ? !Boolean(result) : Boolean(result);
 
     // Build details mapping if specified
     let details: Record<string, unknown> | undefined = undefined;

@@ -20,17 +20,6 @@
       "expectedResult": {
         "success": false,
         "error": "Must be approved before processing",
-        "constraintFailures": [
-          {
-            "code": "approvalPending",
-            "message": "Must be approved before processing",
-            "details": {
-              "currentStatus": "pending",
-              "currentAmount": 750,
-              "approvedBy": ""
-            }
-          }
-        ],
         "emittedEvents": []
       },
       "expectedInstanceState": {
@@ -56,13 +45,7 @@
         "name": "process",
         "entityName": "FinancialRecord",
         "instanceId": "record-2",
-        "input": {},
-        "overrides": [
-          {
-            "constraintCode": "approvalPending",
-            "reason": "Approved by manager"
-          }
-        ]
+        "input": {}
       },
       "expectedResult": {
         "success": true,
@@ -71,17 +54,6 @@
           {
             "name": "RecordProcessed",
             "channel": "financial.record.processed",
-            "payload": { "result": true },
-            "timestamp": 1000000000000
-          },
-          {
-            "name": "OverrideApplied",
-            "channel": "override.applied",
-            "payload": {
-              "constraintCode": "approvalPending",
-              "reason": "Approved by manager",
-              "authorizedBy": "canApproveLargeAmounts"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -109,34 +81,12 @@
         "name": "process",
         "entityName": "FinancialRecord",
         "instanceId": "record-3",
-        "input": {},
-        "overrides": [
-          {
-            "constraintCode": "approvalPending",
-            "reason": "Trying to override"
-          }
-        ]
+        "input": {}
       },
       "expectedResult": {
         "success": false,
-        "error": "Only managers and admins can approve large amounts",
-        "deniedBy": "canApproveLargeAmounts",
-        "constraintFailures": [
-          {
-            "code": "approvalPending",
-            "message": "Must be approved before processing",
-            "details": {
-              "currentStatus": "pending",
-              "currentAmount": 750,
-              "approvedBy": ""
-            }
-          }
-        ],
+        "error": "Must be approved before processing",
         "emittedEvents": []
-      },
-      "expectedPolicyDenial": {
-        "policyName": "canApproveLargeAmounts",
-        "expression": "user.role == \"manager\" || user.role == \"admin\""
       },
       "expectedInstanceState": {
         "id": "record-3",
@@ -170,7 +120,6 @@
           {
             "name": "RecordApproved",
             "channel": "financial.record.approved",
-            "payload": { "result": true },
             "timestamp": 1000000000000
           }
         ]

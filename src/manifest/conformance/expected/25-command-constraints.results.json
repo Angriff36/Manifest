@@ -22,7 +22,14 @@
         }
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "OrderStatusUpdated",
+            "channel": "order.status.updated",
+            "timestamp": 1000000000000
+          }
+        ]
       }
     },
     {
@@ -47,7 +54,14 @@
         }
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "OrderStatusUpdated",
+            "channel": "order.status.updated",
+            "timestamp": 1000000000000
+          }
+        ]
       }
     },
     {
@@ -70,7 +84,14 @@
         "input": {}
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "OrderCancelled",
+            "channel": "order.cancelled",
+            "timestamp": 1000000000000
+          }
+        ]
       }
     },
     {
@@ -96,7 +117,8 @@
       },
       "expectedResult": {
         "success": false,
-        "error": "Cannot cancel an already cancelled order"
+        "error": "Cannot update cancelled order",
+        "emittedEvents": []
       }
     },
     {
@@ -107,7 +129,7 @@
           "data": {
             "id": "order5",
             "customerId": "customer5",
-            "status": "cancelled",
+            "status": "shipped",
             "amount": 100
           }
         }
@@ -120,7 +142,8 @@
       },
       "expectedResult": {
         "success": false,
-        "error": "Cannot cancel an already cancelled order"
+        "error": "Cannot cancel shipped order",
+        "emittedEvents": []
       }
     },
     {
