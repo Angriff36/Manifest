@@ -1,6 +1,6 @@
 # Manifest vNext Implementation Plan
 
-**Status**: Phases 1-5 Complete - IR Schema, Parser, Compiler, Runtime, Caching Done
+**Status**: Phases 1-5 Complete - plus Relationship Memoization Done
 
 **Last Updated**: 2026-02-05
 
@@ -49,7 +49,7 @@ The following features are FULLY IMPLEMENTED and VERIFIED:
 | emitOverrideAppliedEvent method | ✅ DONE | `runtime-engine.ts` |
 | emitConcurrencyConflictEvent method | ✅ DONE | `runtime-engine.ts` |
 | IR cache module | ✅ DONE | `ir-cache.ts` |
-| Relationship memoization | ❌ PENDING | Not implemented |
+| Relationship memoization | ✅ DONE | `runtime-engine.ts` |
 | Conformance fixtures 21-27 | ❌ PENDING | Files do not exist |
 | vNext documentation | ❌ PENDING | Not written |
 
@@ -78,7 +78,6 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 - ✅ New event types (OverrideApplied, ConcurrencyConflict)
 
 **Remaining Work:**
-- ❌ Relationship memoization performance optimization
 - ❌ Conformance fixtures 21-27 for testing vNext features
 - ❌ Documentation updates for all new features
 
@@ -88,7 +87,7 @@ This plan implements the Manifest vNext enhancements for ops-scale rules, overri
 3. **Parser/Lexer**: ✅ COMPLETE - 3 keywords added, command constraint parsing, severity syntax
 4. **Runtime**: ✅ COMPLETE - Constraint outcome tracking, override logic, concurrency event emission
 5. **Caching**: ✅ COMPLETE - IR compilation cache implemented
-6. **PENDING**: Relationship memoization, conformance fixtures 21-27, documentation
+6. **PENDING**: Conformance fixtures 21-27, documentation
 
 ---
 
@@ -353,11 +352,11 @@ Multiple files have hardcoded `const COMPILER_VERSION = '0.0.0'`:
    - Update createInstance to initialize version/versionAt
    - Update updateInstance to check version on mutation
    - Implement emitConcurrencyConflictEvent method
-7. [ ] Task 4.7: Implement relationship memoization
-   - Add relationshipMemoCache map to RuntimeEngine
-   - Add clearMemoCache method
-   - Update resolveRelationship to use cache
-   - Call clearMemoCache at start of each command
+7. [x] Task 4.7: Implement relationship memoization
+   - ✅ Add relationshipMemoCache map to RuntimeEngine
+   - ✅ Add clearMemoCache method
+   - ✅ Update resolveRelationship to use cache
+   - ✅ Call clearMemoCache at start of command execution
 
 ### Phase 5: IR Caching (2-3 hours) [CAN RUN IN PARALLEL]
 
@@ -1021,34 +1020,11 @@ private async emitConcurrencyConflictEvent(
 }
 ```
 
-#### Task 4.7: Implement Performance Optimizations
-
-**Add Memoization Cache** (after line 277):
-```typescript
-export class RuntimeEngine {
-  private ir: IR;
-  private context: RuntimeContext;
-  private options: RuntimeOptions;
-  private stores: Map<string, Store> = new Map();
-  private eventListeners: EventListener[] = [];
-  private eventLog: EmittedEvent[] = [];
-  private relationshipIndex: Map<string, ...> = new Map();
-
-  // NEW: Memoization cache for relationship lookups
-  private relationshipMemoCache: Map<string, EntityInstance | EntityInstance[] | null> = new Map();
-
-  private clearMemoCache(): void {
-    this.relationshipMemoCache.clear();
-  }
-```
-
-**Update resolveRelationship Method** (line 367):
-1. Check cache before resolving
-2. Cache result after resolution
-3. Return cached result if available
-
-**Update runCommand Method**:
-1. Call `this.clearMemoCache()` at start of each command execution
+#### Task 4.7: ✅ Relationship Memoization COMPLETED
+- ✅ Added relationshipMemoCache map to RuntimeEngine
+- ✅ Added clearMemoCache method
+- ✅ Updated resolveRelationship to use cache
+- ✅ Call clearMemoCache at start of command execution
 
 ---
 
@@ -1558,5 +1534,5 @@ IREntity (Task 1.3)
 - **OverridePolicy**: Policy that authorizes constraint overrides
 - **Concurrency Control**: Optimistic locking using version fields
 - **Idempotency**: Operation can be applied multiple times safely
-- **Memoization**: Caching computed values for performance
+- **Memoization**: Caching computed values for performance (✅ IMPLEMENTED)
 - **Provenance**: IR metadata (hash, versions, timestamps)

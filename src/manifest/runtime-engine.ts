@@ -287,6 +287,12 @@ export class RuntimeEngine {
     foreignKey?: string;
   }> = new Map();
 
+  /** Memoization cache for resolved relationships to avoid repeated store queries */
+  private relationshipMemoCache: Map<string, {
+    result: EntityInstance | EntityInstance[] | null;
+    timestamp: number;
+  }> = new Map();
+
   constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
     this.context = context;
@@ -371,7 +377,16 @@ export class RuntimeEngine {
   }
 
   /**
+   * Clear the relationship memoization cache.
+   * Called at the start of each command execution to ensure fresh data.
+   */
+  private clearMemoCache(): void {
+    this.relationshipMemoCache.clear();
+  }
+
+  /**
    * Resolve a relationship for a given instance.
+   * Uses memoization cache to avoid repeated store queries within a single command execution.
    * @param entityName - The source entity name
    * @param instance - The source instance (must have an id)
    * @param relationshipName - The relationship name to resolve
@@ -393,6 +408,17 @@ export class RuntimeEngine {
       return null;
     }
 
+    // Build cache key including instance ID for accurate memoization
+    const cacheKey = `${entityName}.${sourceId}.${relationshipName}`;
+
+    // Check cache first
+    const cached = this.relationshipMemoCache.get(cacheKey);
+    if (cached) {
+      return cached.result;
+    }
+
+    let result: EntityInstance | EntityInstance[] | null = null;
+
     switch (rel.kind) {
       case 'belongsTo':
       case 'ref': {
@@ -400,16 +426,21 @@ export class RuntimeEngine {
         const fkProperty = rel.foreignKey || `${rel.relationshipName}Id`;
         const targetId = instance[fkProperty] as string | undefined;
         if (!targetId) {
-          return null;
+          result = null;
+        } else {
+          result = await this.getInstance(rel.targetEntity, targetId) ?? null;
         }
-        return await this.getInstance(rel.targetEntity, targetId) ?? null;
+        break;
       }
 
       case 'hasOne': {
         // For hasOne: find the target instance where its belongsTo foreign key equals source ID
         // We need to find the inverse relationship on the target entity
         const targetEntity = this.getEntity(rel.targetEntity);
-        if (!targetEntity) return null;
+        if (!targetEntity) {
+          result = null;
+          break;
+        }
 
         // Find the inverse belongsTo relationship
         const inverseRel = targetEntity.relationships.find(
@@ -421,19 +452,23 @@ export class RuntimeEngine {
           // Use the inverse relationship's foreign key
           const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstances(rel.targetEntity);
-          return allTargets.find(t => t[fkProperty] === sourceId) ?? null;
+          result = allTargets.find(t => t[fkProperty] === sourceId) ?? null;
+        } else {
+          // Fallback: assume the foreign key is named after the source entity
+          const assumedFk = `${entityName.toLowerCase()}Id`;
+          const allTargets = await this.getAllInstances(rel.targetEntity);
+          result = allTargets.find(t => t[assumedFk] === sourceId) ?? null;
         }
-
-        // Fallback: assume the foreign key is named after the source entity
-        const assumedFk = `${entityName.toLowerCase()}Id`;
-        const allTargets = await this.getAllInstances(rel.targetEntity);
-        return allTargets.find(t => t[assumedFk] === sourceId) ?? null;
+        break;
       }
 
       case 'hasMany': {
         // For hasMany: find all target instances where their belongsTo foreign key equals source ID
         const targetEntity = this.getEntity(rel.targetEntity);
-        if (!targetEntity) return [];
+        if (!targetEntity) {
+          result = [];
+          break;
+        }
 
         // Find the inverse belongsTo relationship
         const inverseRel = targetEntity.relationships.find(
@@ -444,18 +479,27 @@ export class RuntimeEngine {
         if (inverseRel) {
           const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstances(rel.targetEntity);
-          return allTargets.filter(t => t[fkProperty] === sourceId);
+          result = allTargets.filter(t => t[fkProperty] === sourceId);
+        } else {
+          // Fallback: assume the foreign key is named after the source entity
+          const assumedFk = `${entityName.toLowerCase()}Id`;
+          const allTargets = await this.getAllInstances(rel.targetEntity);
+          result = allTargets.filter(t => t[assumedFk] === sourceId);
         }
-
-        // Fallback: assume the foreign key is named after the source entity
-        const assumedFk = `${entityName.toLowerCase()}Id`;
-        const allTargets = await this.getAllInstances(rel.targetEntity);
-        return allTargets.filter(t => t[assumedFk] === sourceId);
+        break;
       }
 
       default:
-        return null;
+        result = null;
     }
+
+    // Cache the result
+    this.relationshipMemoCache.set(cacheKey, {
+      result,
+      timestamp: this.getNow(),
+    });
+
+    return result;
   }
 
   private getNow(): number {
@@ -698,6 +742,10 @@ export class RuntimeEngine {
     input: Record<string, unknown>,
     options: { entityName?: string; instanceId?: string; overrideRequests?: OverrideRequest[] } = {}
   ): Promise<CommandResult> {
+    // Clear relationship memoization cache at the start of each command execution
+    // to ensure fresh data after any mutations
+    this.clearMemoCache();
+
     const command = this.getCommand(commandName, options.entityName);
     if (!command) {
       return {
