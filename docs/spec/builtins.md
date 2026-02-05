@@ -24,4 +24,5 @@ A conforming runtime MUST provide:
 - `uuid(): string` - returns a globally unique identifier.
 
 ### Nonconformance
-- The IR runtime does not provide `now()` or `uuid()` built-ins.
+- ~~The IR runtime does not provide `now()` or `uuid()` built-ins.~~
+- **RESOLVED (2026-02-05)**: Both functions are implemented in runtime-engine.ts:279-284. `now()` uses `Date.now()` (or custom override), `uuid()` uses `crypto.randomUUID()` (or custom override).

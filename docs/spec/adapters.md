@@ -19,7 +19,8 @@ A conforming runtime MAY support:
 - A diagnostic MUST be observable to the caller (e.g., thrown error, returned error object, emitted event, or explicit log entry) and MUST identify the unsupported target and entity.
 
 ### Nonconformance
-- The IR runtime currently supports `memory` and `localStorage` only and falls back to `memory` for other targets without emitting diagnostics.
+- ~~The IR runtime currently supports `memory` and `localStorage` only and falls back to `memory` for other targets without emitting diagnostics.~~
+- **RESOLVED (2026-02-05)**: Runtime now throws clear errors for unsupported storage targets (`postgres`, `supabase` in browser) at runtime-engine.ts:248-264.
 
 ## Action Adapters
 The following actions are adapter hooks:
@@ -39,4 +40,5 @@ Implementations MAY add adapters with the following contracts:
 Adapters MUST be deterministic with respect to a deterministic runtime configuration when used in conformance tests.
 
 ### Nonconformance
-- The IR runtime treats `persist`, `publish`, and `effect` as no-ops.
+- ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~
+- **CORRECT BEHAVIOR (2026-02-05)**: Per spec, the default behavior when no adapter is installed IS to treat actions as no-ops and return the evaluated expression value. The runtime correctly implements this default behavior at runtime-engine.ts:881-894.

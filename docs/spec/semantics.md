@@ -103,6 +103,6 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 
 ## Nonconformance
 The following implementation differences are known:
-- Relationship behavior is not modeled in the IR runtime.
+- **Relationship behavior is not modeled in the IR runtime.** Relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`) compile to IR but the runtime does not traverse them. Cross-entity operations must use foreign key IDs (e.g., `user.id == self.authorId` instead of `self.author.role`). This is a known limitation documented in Priority 4 findings (2026-02-05).
 
 These MUST be reconciled by updating the spec and tests first, then implementation.

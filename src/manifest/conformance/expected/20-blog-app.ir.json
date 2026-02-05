@@ -1,0 +1,2163 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "1e4ad71dd5825f25121390e05e47cb4d3325855f6e6d5058ef3388e88dde6e08",
+    "compilerVersion": "0.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "User",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "username",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "email",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "role",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "author"
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "isAuthor",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "author"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isEditor",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "editor"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isAdmin",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "admin"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "canPublish",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "or",
+            "left": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "editor"
+                }
+              }
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "admin"
+                }
+              }
+            }
+          },
+          "dependencies": []
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "register",
+        "promoteRole"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Post",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "authorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "publishedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "viewCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "isPublished",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "published"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isDraft",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "draft"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "ageInDays",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "/",
+            "left": {
+              "kind": "binary",
+              "operator": "-",
+              "left": {
+                "kind": "call",
+                "callee": {
+                  "kind": "identifier",
+                  "name": "now"
+                },
+                "args": []
+              },
+              "right": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "createdAt"
+              }
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 86400000
+              }
+            }
+          },
+          "dependencies": [
+            "now"
+          ]
+        },
+        {
+          "name": "recentlyPublished",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "and",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "isPublished"
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "<",
+              "left": {
+                "kind": "binary",
+                "operator": "-",
+                "left": {
+                  "kind": "call",
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "now"
+                  },
+                  "args": []
+                },
+                "right": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "self"
+                  },
+                  "property": "publishedAt"
+                }
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 604800000
+                }
+              }
+            }
+          },
+          "dependencies": [
+            "now"
+          ]
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "createPost",
+        "publishPost",
+        "incrementViews",
+        "archivePost"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Comment",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "authorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "visible"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "isVisible",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "visible"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "isHidden",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "hidden"
+              }
+            }
+          },
+          "dependencies": []
+        },
+        {
+          "name": "ageInHours",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "/",
+            "left": {
+              "kind": "binary",
+              "operator": "-",
+              "left": {
+                "kind": "call",
+                "callee": {
+                  "kind": "identifier",
+                  "name": "now"
+                },
+                "args": []
+              },
+              "right": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "createdAt"
+              }
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 3600000
+              }
+            }
+          },
+          "dependencies": [
+            "now"
+          ]
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "addComment",
+        "hideComment",
+        "removeComment"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [],
+  "events": [
+    {
+      "name": "UserRegistered",
+      "channel": "user.registered",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "username",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "registeredAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "RolePromoted",
+      "channel": "user.promoted",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "oldRole",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "newRole",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "promotedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "PostCreated",
+      "channel": "post.created",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "authorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "PostPublished",
+      "channel": "post.published",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "authorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "publishedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "PostArchived",
+      "channel": "post.archived",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "archivedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CommentAdded",
+      "channel": "comment.added",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "authorId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CommentHidden",
+      "channel": "comment.hidden",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "hiddenAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "CommentDeleted",
+      "channel": "comment.deleted",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "deletedAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "register",
+      "entity": "User",
+      "parameters": [
+        {
+          "name": "userId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "emailAddr",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "userId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "userId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "name"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "name"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "emailAddr"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "emailAddr"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "identifier",
+            "name": "userId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "username",
+          "expression": {
+            "kind": "identifier",
+            "name": "name"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "email",
+          "expression": {
+            "kind": "identifier",
+            "name": "emailAddr"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "createdAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "UserRegistered"
+      ]
+    },
+    {
+      "name": "promoteRole",
+      "entity": "User",
+      "parameters": [
+        {
+          "name": "newRole",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "identifier",
+              "name": "newRole"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "editor"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "identifier",
+              "name": "newRole"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "admin"
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "admin"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "role",
+          "expression": {
+            "kind": "identifier",
+            "name": "newRole"
+          }
+        }
+      ],
+      "emits": [
+        "RolePromoted"
+      ]
+    },
+    {
+      "name": "createPost",
+      "entity": "Post",
+      "parameters": [
+        {
+          "name": "postId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "titleText",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "contentText",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "author",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "postId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "postId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "titleText"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "titleText"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "contentText"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "contentText"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "identifier",
+            "name": "postId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "titleText"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "content",
+          "expression": {
+            "kind": "identifier",
+            "name": "contentText"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "authorId",
+          "expression": {
+            "kind": "identifier",
+            "name": "author"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "createdAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "PostCreated"
+      ]
+    },
+    {
+      "name": "publishPost",
+      "entity": "Post",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "or",
+            "left": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "user"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "editor"
+                }
+              }
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "user"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "admin"
+                }
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "id"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "authorId"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "published"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "publishedAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": [
+        "PostPublished"
+      ]
+    },
+    {
+      "name": "incrementViews",
+      "entity": "Post",
+      "parameters": [],
+      "guards": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "viewCount",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "viewCount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "archivePost",
+      "entity": "Post",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "archived"
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "editor"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "admin"
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "archived"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "PostArchived"
+      ]
+    },
+    {
+      "name": "addComment",
+      "entity": "Comment",
+      "parameters": [
+        {
+          "name": "commentId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "post",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "author",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "commentId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "commentId"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "post"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "post"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "author"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "author"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "text"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "null"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "identifier",
+              "name": "text"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "identifier",
+            "name": "commentId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "postId",
+          "expression": {
+            "kind": "identifier",
+            "name": "post"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "authorId",
+          "expression": {
+            "kind": "identifier",
+            "name": "author"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "content",
+          "expression": {
+            "kind": "identifier",
+            "name": "text"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "createdAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "visible"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CommentAdded"
+      ]
+    },
+    {
+      "name": "hideComment",
+      "entity": "Comment",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "visible"
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "or",
+            "left": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "user"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "editor"
+                }
+              }
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "user"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "admin"
+                }
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "id"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "authorId"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "hidden"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CommentHidden"
+      ]
+    },
+    {
+      "name": "removeComment",
+      "entity": "Comment",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "deleted"
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "admin"
+            }
+          }
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "deleted"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CommentDeleted"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "CanPublishPost",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "or",
+        "left": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "editor"
+            }
+          }
+        },
+        "right": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "admin"
+            }
+          }
+        }
+      },
+      "message": "Only editors and admins can publish posts"
+    },
+    {
+      "name": "CanModerateComments",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "or",
+        "left": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "editor"
+            }
+          }
+        },
+        "right": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "admin"
+            }
+          }
+        }
+      },
+      "message": "Only editors and admins can moderate comments"
+    }
+  ]
+}
