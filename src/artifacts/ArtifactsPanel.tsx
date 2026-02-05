@@ -4,7 +4,6 @@ import { FileTree } from './FileTree';
 import { FileViewer } from './FileViewer';
 import { SmokeTestPanel } from './SmokeTestPanel';
 import { RuntimePanel } from './RuntimePanel';
-import { TinyAppPanel } from './TinyAppPanel';
 import { buildFileMap, exportZip, exportRunnableZip, copyAllFiles, generateProjectName } from './zipExporter';
 import { ProjectFiles } from './types';
 
@@ -17,7 +16,7 @@ interface ArtifactsPanelProps {
   hasErrors: boolean;
 }
 
-type PanelMode = 'files' | 'runtime' | 'tinyapp';
+type PanelMode = 'files' | 'runtime';
 
 export function ArtifactsPanel({
   source,
@@ -163,16 +162,6 @@ export function ArtifactsPanel({
           >
             Runtime
           </button>
-          <button
-            onClick={() => setPanelMode('tinyapp')}
-            className={`w-full px-2 py-2 text-left text-sm transition-colors ${
-              panelMode === 'tinyapp'
-                ? 'bg-gray-800 text-sky-400'
-                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-900/50'
-            }`}
-          >
-            Tiny App
-          </button>
 
           {panelMode === 'files' && (
             <>
@@ -198,10 +187,8 @@ export function ArtifactsPanel({
                 Select a file to view
               </div>
             )
-          ) : panelMode === 'runtime' ? (
-            <RuntimePanel source={source} disabled={hasErrors} />
           ) : (
-            <TinyAppPanel disabled={hasErrors} />
+            <RuntimePanel source={source} disabled={hasErrors} />
           )}
         </div>
       </div>

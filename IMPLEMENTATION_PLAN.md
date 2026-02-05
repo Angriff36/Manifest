@@ -5,7 +5,7 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 3 - Priority 2 ✅ COMPLETED
+Phase: Loop 3 - Priority 0 ✅ COMPLETED (Runtime UI Unification)
 
 ## Mission
 
@@ -96,6 +96,36 @@ const runtime = new RuntimeEngine(ir, context, {
 - Both implement the `Store<T>` interface with all required CRUD methods
 - All 100 conformance tests passing
 
+### Priority 0: Unify Runtime UI ✅ COMPLETED
+
+Unified Runtime UI provides interactive demo capabilities for ANY manifest.
+
+**Implementation (2026-02-05):**
+- Entity selector dropdown (populated from compiled IR entities)
+- Instance list for selected entity (clickable, shows key properties)
+- "Create Instance" button that creates with default values
+- When instance selected: show all properties + computed properties
+- Command dropdown (populated from entity's commands)
+- Parameter hints based on command signature
+- Event log sidebar with clear functionality
+- Inline MemoryStore for browser demo (allows Supabase/Postgres manifests to work in browser)
+- Fixed IRValue extraction bug (was using IRValue object instead of actual value)
+
+**Bug Fixed:**
+- `extractIRValue()` helper properly extracts JavaScript values from IRValue objects
+- Handles string, number, boolean, null, array, and object types
+
+**Testing Completed:**
+- Created PrepTask instance with correct defaults (status="pending", priority=1)
+- Executed `claim` command successfully
+- Verified properties updated (assignedTo="u1", status="in_progress")
+- Verified event log shows taskClaimed event with correct payload
+- Verified computed property isUrgent updates correctly (priority < 3 = false)
+
+**Cleanup:**
+- Removed TinyAppPanel.tsx (no longer needed - unified RuntimePanel is superior)
+- Added *.png to .gitignore to exclude temporary test screenshots
+
 ### Priority 3: Generated Code Conformance Fixes [PENDING]
 Align generated server/client code with runtime semantics.
 
@@ -129,19 +159,16 @@ Improve Runtime UI for better observability and diagnostics.
 - `specs/event-log-viewer.md` - Live event log display
 - `specs/policy-guard-diagnostics.md` - Detailed failure diagnostics
 
-### Priority 5: Tiny App Demo [PENDING]
-Complete working demonstration of Manifest capabilities.
+### Priority 5: Tiny App Demo [SUPERSEDED BY PRIORITY 0]
+~~Complete working demonstration of Manifest capabilities.~~
 
-- [ ] Create TinyAppPanel component (specs/tiny-app-demo.md)
-- [ ] Implement domain model with entities
-- [ ] Add command execution UI
-- [ ] Integrate event log viewer
-- [ ] Demonstrate policy enforcement
+**Status:** Superseded by Priority 0 (Unify Runtime UI).
 
-**Status:**
-- `specs/tiny-app-demo.md` has full specification
-- Fixture 17-tiny-app.manifest exists
-- UI panel not yet implemented
+Instead of a hardcoded TinyAppPanel, the unified RuntimePanel will provide interactive
+demo capabilities for ANY manifest - including the 17-tiny-app.manifest fixture.
+
+The fixture remains useful for conformance testing, but the separate UI component
+is being removed in favor of the unified approach.
 
 ---
 

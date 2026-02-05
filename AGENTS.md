@@ -1,5 +1,26 @@
 # Agents Guide (Manifest)
 
+## Loop Discipline (Anti-Context-Rot)
+
+**One iteration = one committable unit.** If you can't commit within ~15 mins, scope is too big.
+
+Signs you're drifting:
+- Reading the same file twice → you forgot, context is rotting
+- "Let me also..." → stop, commit what you have first
+- Large uncommitted diff → commit now, continue in next iteration
+- Screenshots piling up → delete them or gitignore, don't leave debris
+
+Backpressure rules:
+- **Commit early.** Partial progress committed > perfect progress lost
+- **One priority per iteration.** Don't start Priority 0 while finishing Priority 2
+- **If stuck 10+ mins, write what you learned** to IMPLEMENTATION_PLAN.md and commit that
+- **Don't remove safety checks** (like pre-flight tests) without explicit user approval
+
+Red flags that mean STOP and COMMIT:
+- You've touched 5+ files without committing
+- You're debugging the same issue for the 3rd time
+- You added a "Priority 0 URGENT" but haven't finished current work
+
 ## Validation Commands (Backpressure)
 
 Run these after implementing to get immediate feedback:
@@ -216,10 +237,31 @@ Required behavior:
   function)
 - if still unclear, document the uncertainty and stop before modifying meaning
 
-## Definition of “Done”
+## User-Visible Validation (Required)
+
+When a loop includes UI components or demo features:
+
+1. **Actually test the UI flow** - Don't just run `npm run dev` and see it loads.
+   Click through the actual user journey:
+   - Can you create an entity?
+   - Can you execute a command?
+   - Does the event log update?
+   - Are errors displayed correctly?
+
+2. **Definition of "Done" for demos** includes:
+   - User can complete the primary flow end-to-end without errors
+   - No layout bugs that block interaction (overlapping elements, unclickable buttons)
+   - Console has no uncaught errors during normal use
+
+3. **If you built it, prove it works** - A fixture (conformance test) is not a demo.
+   A demo is something a human can interact with. If you can't click through the
+   flow successfully, it's not done.
+
+## Definition of "Done"
 
 A change is only done when:
 
 - `npm test` is green
 - spec/test/impl are aligned (no undocumented nonconformance)
 - any UI change has a minimal manual verification path described
+- **UI demos are actually functional** (buttons clickable, flows completable)
