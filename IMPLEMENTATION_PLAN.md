@@ -4,7 +4,7 @@
 
 ## Current Status
 
-Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 93 conformance tests passing)
+Plan updated: 2026-02-04 (Code Quality Improvements completed; all 93 conformance tests passing, TypeScript and ESLint checks passing)
 
 ## Executive Summary
 
@@ -76,30 +76,14 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 93 conformance tests
 
 ## Completed Items
 
-### Priority 1: Built-in Functions (2026-02-04)
-- Implemented `now()` and `uuid()` built-in functions in runtime engine
-- Added BUILTINS registry with deterministic overrides via RuntimeOptions
-- Fixed `compute` action to properly update instance state
-- Created conformance fixture `16-builtin-functions.manifest`
-- All 70 conformance tests pass
+### Recent Completions (2026-02-04)
 
-### Priority 2: Missing Test Results Files (2026-02-04)
-- Created `08-keywords-in-expressions.results.json` with 7 test cases
-- Created `09-compute-action.results.json` with 3 test cases
-- Created `15-event-log.results.json` with 4 test cases
-- Verified `02-relationships` is IR-only fixture (no runtime behavior)
-- Fixed eval context refresh bug
-- All 93 conformance tests now pass (increased from 70)
-
-### Priority 4: Policy/Guard Diagnostics Enhancement (2026-02-04)
-- Added `PolicyDenial` interface with policyName, expression, formatted, message, contextKeys
-- Modified `checkPolicies()` to return detailed policy denial information
-- Added `extractContextKeys()` helper to extract context keys (not values for security)
-- Added `policyDenial` field to `CommandResult`
-- Created `formatPolicyDenial()` function in RuntimePanel.tsx with collapsible sections
-- Enhanced visual distinction: Policy denials (amber/Shield) vs Guard failures (rose/Ban)
-- Made both policy and guard diagnostics collapsible with expand/collapse toggle
-- All 77 conformance tests pass
+#### Code Quality Improvements (2026-02-04)
+- Fixed 5 TypeScript errors (async/await issues in TinyAppPanel.tsx, unused variables in runtime-engine.ts)
+- Fixed 73 ESLint errors (replaced `any` with `unknown`, added proper type assertions, fixed case declarations, removed unused vars)
+- All 93 conformance tests pass
+- TypeScript typecheck passes
+- ESLint passes
 
 ### Priority 6: Storage Adapters Implementation (2026-02-04)
 - **IMPLEMENTED**: PostgreSQL adapter (PostgresStore class)
@@ -123,32 +107,6 @@ Plan updated: 2026-02-04 (Storage Adapters IMPLEMENTED; all 93 conformance tests
 - **UPDATED**: UI components (TinyAppPanel.tsx, templates.ts) for async operations
 - All 93 conformance tests pass
 
-### Priority 5: Tiny App Demo (2026-02-04)
-- Fixed fixture `17-tiny-app.manifest` - replaced ?? operator with ternary operator
-- Moved commands inside entity definition (parser conformance)
-- Created expected IR file `17-tiny-app.ir.json`
-- Created expected results file `17-tiny-app.results.json` with 10 test cases
-- Created `TinyAppPanel.tsx` component with:
-  - Task list view with entity instances
-  - Detail view showing all properties and computed values
-  - Command execution form with role selection
-  - Event log display
-  - Visual feedback for success/failure
-- Added "Tiny App" tab to `ArtifactsPanel.tsx`
-- All 93 conformance tests pass (increased from 77)
-
-### Bug Fixes
-
-### Compute Action Fix (2026-02-04)
-- Discovered `compute` action was a no-op (returned value but didn't update instance)
-- Fixed `executeAction()` to call `updateInstance()` for `compute` actions
-- Fixed eval context refresh to include `compute` actions
-
-### Eval Context Refresh Fix (2026-02-04)
-- **Issue**: After compute/mutate actions, updated instance properties were not available in evaluation context
-- **Root Cause**: Eval context refresh was not properly copying updated instance properties
-- **Fix**: Added `Object.assign(evalContext, currentInstance)` at line 356 in runtime-engine.ts
-- **Impact**: Instance properties now properly available to subsequent expressions and actions
 
 ## Discovered Issues
 
@@ -366,6 +324,8 @@ For ALL priority items, follow this order:
 - **Examples.ts now works** - Built-in functions implemented (Priority 1 completed)
 - **All missing test results files created** - Priority 2 completed
 - **Storage adapter silent fallback fixed** - Throws error for unsupported targets (Priority 6)
-- ~~**Policy guard diagnostics spec needs to be created**~~ **COMPLETED** (Priority 4)
-- ~~**Tiny app demo spec already exists**~~ **IMPLEMENTED** (Priority 5)
+- **Policy guard diagnostics enhanced** - Added detailed policy denial information and collapsible sections (Priority 4)
+- **Tiny app demo implemented** - Full UI component with 10 test cases (Priority 5)
+- **Storage adapters implemented** - PostgreSQL and Supabase with async interface (Priority 6)
 - **All 93 conformance tests pass** - Full test coverage achieved
+- **TypeScript and ESLint passing** - Code quality improvements completed

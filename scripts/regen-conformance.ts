@@ -27,7 +27,7 @@ function writeJson(path: string, value: unknown) {
   writeFileSync(path, json, 'utf-8');
 }
 
-function normalizeDiagnostics(result: any): NormalizedDiagnostics {
+function normalizeDiagnostics(result: unknown): NormalizedDiagnostics {
   // Be tolerant: different compilers name these differently.
   const errors = Array.isArray(result?.errors) ? result.errors : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
@@ -103,12 +103,17 @@ for (const fixtureFile of fixtures) {
     const diagnostics = compiled?.diagnostics || [];
     const diagOut = {
       shouldFail: expectedShouldFail || didFail,
-      diagnostics: diagnostics.map((d: any) => ({
-        severity: d.severity,
-        message: d.message,
-        line: d.line,
-        column: d.column,
-      })),
+      diagnostics: diagnostics.map((d: unknown) => {
+        if (d && typeof d === 'object' && 'severity' in d && 'message' in d && 'line' in d && 'column' in d) {
+          return {
+            severity: d.severity,
+            message: d.message,
+            line: d.line as number,
+            column: d.column as number,
+          };
+        }
+        return { severity: 'error', message: 'Unknown diagnostic', line: 0, column: 0 };
+      }),
     };
 
     writeJson(diagnosticsPath, diagOut);

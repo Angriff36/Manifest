@@ -153,14 +153,25 @@ export function TinyAppPanel({ disabled = false }: TinyAppPanelProps) {
           createdAt: Date.now()
         } as unknown as EntityInstance);
 
+        // Set initial tasks with placeholder computed values
         setTasks([task1!, task2!, task3!].map(t => ({
           ...(t as unknown as TaskInstance),
-          isOverdue: runtimeEngine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
-          assignedUser: runtimeEngine.evaluateComputed('Task', t.id, 'assignedUser') as string,
-          isHighPriority: runtimeEngine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
+          isOverdue: false,
+          assignedUser: '',
+          isHighPriority: false
         })) as TaskInstance[]);
 
         setEventLog(runtimeEngine.getEventLog());
+
+        // Refresh tasks to get proper computed values
+        const allTasks = await runtimeEngine.getAllInstances('Task') || [];
+        const taskList = await Promise.all(allTasks.map(async t => ({
+          ...(t as unknown as TaskInstance),
+          isOverdue: await runtimeEngine.evaluateComputed('Task', t.id, 'isOverdue') as boolean,
+          assignedUser: await runtimeEngine.evaluateComputed('Task', t.id, 'assignedUser') as string,
+          isHighPriority: await runtimeEngine.evaluateComputed('Task', t.id, 'isHighPriority') as boolean
+        })));
+        setTasks(taskList as TaskInstance[]);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }

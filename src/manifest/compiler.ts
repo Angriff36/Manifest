@@ -17,7 +17,7 @@ export class ManifestCompiler {
     }
   }
 
-  parse(source: string): { program: ManifestProgram; errors: any[] } {
+  parse(source: string): { program: ManifestProgram; errors: unknown[] } {
     return this.parser.parse(source);
   }
 }

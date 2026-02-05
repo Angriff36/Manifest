@@ -20,7 +20,7 @@ export function SmokeTestPanel({ clientCode, ast, disabled }: SmokeTestPanelProp
     try {
       const result = await runSmokeTests(clientCode, ast);
       setReport(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setReport({
         total: 1,
         passed: 0,
@@ -28,7 +28,7 @@ export function SmokeTestPanel({ clientCode, ast, disabled }: SmokeTestPanelProp
         results: [{
           name: 'Test Runner',
           passed: false,
-          error: err.message || String(err),
+          error: (err as Error).message || String(err),
           duration: 0
         }],
         duration: 0

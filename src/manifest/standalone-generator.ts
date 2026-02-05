@@ -17,7 +17,7 @@ export class StandaloneGenerator {
     for (const f of program.flows) { this.genFlow(f); this.line(); }
     for (const e of program.effects) { this.genEffect(e); this.line(); }
     for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
-    for (const x of program.exposures) { this.genExpose(x, program); this.line(); }
+    for (const x of program.exposures) { this.genExpose(x); this.line(); }
     for (const c of program.compositions) { this.genComposition(c); this.line(); }
 
     this.emitExports(program);
@@ -47,10 +47,11 @@ export class StandaloneGenerator {
       case 'memory':
         this.line(`const ${storeName}: Store<I${store.entity}> = new MemoryStore();`);
         break;
-      case 'localStorage':
+      case 'localStorage': {
         const key = store.config?.['key'] ? this.genExpr(store.config['key']) : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new LocalStorageStore(${key});`);
         break;
+      }
       default:
         this.line(`const ${storeName}: Store<I${store.entity}> = new MemoryStore();`);
     }
@@ -376,7 +377,7 @@ export class StandaloneGenerator {
     this.de(); this.line('};');
   }
 
-  private genExpose(x: ExposeNode, _program: ManifestProgram) {
+  private genExpose(x: ExposeNode) {
     if (x.protocol === 'rest') {
       this.line(`export const ${x.name}API = {`);
       this.in(); this.line(`basePath: '/${x.name}',`);

@@ -318,24 +318,6 @@ class SupabaseStore<T extends EntityInstance> implements Store<T> {
     this.client = createClient(config.url, config.key);
   }
 
-  private extractData<T>(response: { data: T | null; error: unknown }): T {
-    if (response.data === null) {
-      throw new Error(`Supabase operation failed: ${JSON.stringify(response.error)}`);
-    }
-    return response.data;
-  }
-
-  private async ensureTableExists(): Promise<void> {
-    const { error } = await this.client.rpc('create_entities_table_if_not_exists', {
-      table_name: this.tableName,
-    });
-    // Table might already exist or RLS policy prevents RPC, ignore error for basic usage
-    if (error && !error.message.includes('does not exist')) {
-      // If the RPC doesn't exist, we'll just try to use the table directly
-      // The table should be created via Supabase migrations
-    }
-  }
-
   async getAll(): Promise<T[]> {
     const { data, error } = await this.client.from(this.tableName).select('data');
     if (error) throw new Error(`Supabase getAll failed: ${error.message}`);
@@ -470,13 +452,14 @@ export class RuntimeEngine {
             store = new SupabaseStore({ url, key, tableName }, this.options.generateId);
             break;
           }
-          default:
+          default: {
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
             throw new Error(
               `Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
               `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.`
             );
+          }
         }
       } else {
         store = new MemoryStore(this.options.generateId);
@@ -721,13 +704,14 @@ export class RuntimeEngine {
             keys.add(node.name);
           }
           return;
-        case 'member':
+        case 'member': {
           // Add the base identifier (e.g., 'user' from 'user.role')
           walk(node.object);
           // Also add the full path as a key
           const base = this.formatExpression(node.object);
           keys.add(`${base}.${node.property}`);
           return;
+        }
         case 'binary':
           walk(node.left);
           walk(node.right);
@@ -1134,6 +1118,7 @@ export class RuntimeEngine {
       try {
         listener(event);
       } catch {
+        // Ignore errors in event listeners
       }
     }
   }

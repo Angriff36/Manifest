@@ -287,7 +287,7 @@ describe('Manifest Conformance Tests', () => {
               const { ir } = compileToIR(source);
               expect(ir).not.toBeNull();
 
-              const context = (testCase as any).context ?? {};
+              const context = (testCase as unknown as { context?: Record<string, unknown> }).context ?? {};
               const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
               await engine.createInstance(

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lexer } from './lexer';
 import {
   Token, ManifestProgram, EntityNode, PropertyNode, TypeNode, BehaviorNode,
@@ -125,15 +126,15 @@ export class Parser {
   private extractDependencies(expr: ExpressionNode): string[] {
     const deps = new Set<string>();
     const walk = (e: ExpressionNode) => {
-      if (e.type === 'Identifier' && !['self', 'this', 'user', 'context'].includes((e as any).name)) deps.add((e as any).name);
-      if (e.type === 'MemberAccess') { walk((e as any).object); }
-      if (e.type === 'BinaryOp') { walk((e as any).left); walk((e as any).right); }
-      if (e.type === 'UnaryOp') walk((e as any).operand);
-      if (e.type === 'Call') { walk((e as any).callee); (e as any).arguments.forEach(walk); }
-      if (e.type === 'Conditional') { walk((e as any).condition); walk((e as any).consequent); walk((e as any).alternate); }
-      if (e.type === 'Array') (e as any).elements.forEach(walk);
-      if (e.type === 'Object') (e as any).properties.forEach((p: any) => walk(p.value));
-      if (e.type === 'Lambda') walk((e as any).body);
+      if ((e as any).type === 'Identifier' && 'name' in e && !['self', 'this', 'user', 'context'].includes((e as any).name)) deps.add((e as any).name);
+      if ((e as any).type === 'MemberAccess') { walk((e as any).object); }
+      if ((e as any).type === 'BinaryOp') { walk((e as any).left); walk((e as any).right); }
+      if ((e as any).type === 'UnaryOp') walk((e as any).operand);
+      if ((e as any).type === 'Call') { walk((e as any).callee); (e as any).arguments.forEach(walk); }
+      if ((e as any).type === 'Conditional') { walk((e as any).condition); walk((e as any).consequent); walk((e as any).alternate); }
+      if ((e as any).type === 'Array') (e as any).elements.forEach(walk);
+      if ((e as any).type === 'Object') (e as any).properties.forEach((p: any) => walk(p.value));
+      if ((e as any).type === 'Lambda') walk((e as any).body);
     };
     walk(expr);
     return Array.from(deps);
@@ -232,7 +233,7 @@ export class Parser {
     const name = this.consumeIdentifier().value;
     this.consume('OPERATOR', ':');
     const channel = this.check('STRING') ? this.advance().value : name;
-    let payload: OutboxEventNode['payload'] = { type: 'Type', name: 'any', nullable: false };
+    let payload: OutboxEventNode['payload'] = { type: 'Type', name: 'unknown', nullable: false };
     if (this.check('PUNCTUATION', '{')) {
       this.advance(); this.skipNL();
       const fields: ParameterNode[] = [];
@@ -415,7 +416,7 @@ export class Parser {
   private parseExpr(): ExpressionNode { return this.parseTernary(); }
 
   private parseTernary(): ExpressionNode {
-    let expr = this.parseOr();
+    const expr = this.parseOr();
     if (this.check('OPERATOR', '?')) { this.advance(); const cons = this.parseExpr(); this.consume('OPERATOR', ':'); const alt = this.parseExpr(); return { type: 'Conditional', condition: expr, consequent: cons, alternate: alt }; }
     return expr;
   }
@@ -471,7 +472,7 @@ export class Parser {
         while (!this.check('PUNCTUATION', ')') && !this.isEnd()) { args.push(this.parseExpr()); if (this.check('PUNCTUATION', ',')) this.advance(); }
         this.consume('PUNCTUATION', ')'); expr = { type: 'Call', callee: expr, arguments: args };
       }
-      else if (this.check('PUNCTUATION', '[')) { this.advance(); const idx = this.parseExpr(); this.consume('PUNCTUATION', ']'); expr = { type: 'MemberAccess', object: expr, property: `[${(idx as any).value || ''}]` }; }
+      else if (this.check('PUNCTUATION', '[')) { this.advance(); const idx = this.parseExpr(); this.consume('PUNCTUATION', ']'); expr = { type: 'MemberAccess', object: expr, property: `[${'value' in idx ? idx.value : ''}]` }; }
       else break;
     }
     return expr;

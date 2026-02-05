@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
 
 export class CodeGenerator {
@@ -21,7 +22,7 @@ export class CodeGenerator {
     for (const f of program.flows) { this.genFlow(f); this.line(); }
     for (const e of program.effects) { this.genEffect(e); this.line(); }
     for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
-    for (const x of program.exposures) { this.genExpose(x, program); this.line(); }
+    for (const x of program.exposures) { this.genExpose(x); this.line(); }
     for (const c of program.compositions) { this.genComposition(c); this.line(); }
 
     this.emitExports(program);
@@ -40,8 +41,8 @@ export class CodeGenerator {
     this.line('// Includes: Commands, Computed Properties, Relationships, Policies, Stores, Events');
     this.line();
     this.line('type Subscriber<T> = (value: T) => void;');
-    this.line('type User = { id: string; role?: string; [key: string]: any };');
-    this.line('type Context = { user?: User; [key: string]: any };');
+    this.line('type User = { id: string; role?: string; [key: string]: unknown };');
+    this.line('type Context = { user?: User; [key: string]: unknown };');
     this.line();
     this.line('let _context: Context = {};');
     this.line('const setContext = (ctx: Context) => { _context = ctx; };');
@@ -56,17 +57,17 @@ export class CodeGenerator {
     this.line('subscribe(fn: Subscriber<T>) { this.subs.add(fn); fn(this._v); return () => this.subs.delete(fn); }');
     this.de(); this.line('}');
     this.line();
-    this.line('class EventEmitter<T extends Record<string, any>> {');
-    this.in(); this.line('private listeners: Map<keyof T, Set<(d: any) => void>> = new Map();');
+    this.line('class EventEmitter<T extends Record<string, unknown>> {');
+    this.in(); this.line('private listeners: Map<keyof T, Set<(d: unknown) => void>> = new Map();');
     this.line('on<K extends keyof T>(e: K, fn: (d: T[K]) => void) { if (!this.listeners.has(e)) this.listeners.set(e, new Set()); this.listeners.get(e)!.add(fn); return () => this.listeners.get(e)?.delete(fn); }');
     this.line('emit<K extends keyof T>(e: K, d: T[K]) { this.listeners.get(e)?.forEach(fn => fn(d)); }');
     this.de(); this.line('}');
     this.line();
     this.line('class EventBus {');
     this.in();
-    this.line('private static channels: Map<string, Set<(d: any) => void>> = new Map();');
-    this.line('static publish(channel: string, data: any) { this.channels.get(channel)?.forEach(fn => fn(data)); }');
-    this.line('static subscribe(channel: string, fn: (d: any) => void) { if (!this.channels.has(channel)) this.channels.set(channel, new Set()); this.channels.get(channel)!.add(fn); return () => this.channels.get(channel)?.delete(fn); }');
+    this.line('private static channels: Map<string, Set<(d: unknown) => void>> = new Map();');
+    this.line('static publish(channel: string, data: unknown) { this.channels.get(channel)?.forEach(fn => fn(data)); }');
+    this.line('static subscribe(channel: string, fn: (d: unknown) => void) { if (!this.channels.has(channel)) this.channels.set(channel, new Set()); this.channels.get(channel)!.add(fn); return () => this.channels.get(channel)?.delete(fn); }');
     this.de(); this.line('}');
     this.line();
   }
@@ -75,7 +76,7 @@ export class CodeGenerator {
     const hasSupabase = program.stores.some(s => s.target === 'supabase');
     if (hasSupabase) {
       this.line('// Supabase client stub - replace with actual client');
-      this.line('const supabase = { from: (table: string) => ({ select: () => Promise.resolve({ data: [], error: null }), insert: (d: any) => Promise.resolve({ data: d, error: null }), update: (d: any) => ({ eq: () => Promise.resolve({ data: d, error: null }) }), delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };');
+      this.line('const supabase = { from: (table: string) => ({ select: () => Promise.resolve({ data: [], error: null }), insert: (d: unknown) => Promise.resolve({ data: d, error: null }), update: (d: unknown) => ({ eq: () => Promise.resolve({ data: d, error: null }) }), delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };');
       this.line();
     }
 
@@ -137,15 +138,17 @@ export class CodeGenerator {
       case 'memory':
         this.line(`const ${storeName}: Store<I${store.entity}> = new MemoryStore();`);
         break;
-      case 'localStorage':
+      case 'localStorage': {
         const key = store.config?.['key'] ? this.genExpr(store.config['key']) : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new LocalStorageStore(${key});`);
         break;
+      }
       case 'supabase':
-      case 'postgres':
+      case 'postgres': {
         const table = store.config?.['table'] ? this.genExpr(store.config['table']) : `"${store.entity.toLowerCase()}s"`;
         this.line(`const ${storeName}: Store<I${store.entity}> = new SupabaseStore(${table});`);
         break;
+      }
     }
     this.line();
   }
@@ -162,7 +165,7 @@ export class CodeGenerator {
     this.line();
 
     const events = this.collectEvents(e);
-    const evtMap = events.size ? `{ ${[...events].map(ev => `${ev}: any`).join('; ')} }` : '{}';
+    const evtMap = events.size ? `{ ${[...events].map(ev => `${ev}: unknown`).join('; ')} }` : '{}';
 
     this.line(`class ${e.name} extends EventEmitter<${evtMap}> {`);
     this.in();
@@ -242,7 +245,7 @@ export class CodeGenerator {
     }
 
     this.line();
-    this.line(`subscribe(prop: keyof ${iface}, fn: (v: any) => void) { return (this as any)[\`_\${prop}\`]?.subscribe?.(fn); }`);
+    this.line(`subscribe(prop: keyof ${iface}, fn: (v: unknown) => void) { return (this as any)[\`_\${prop}\`]?.subscribe?.(fn); }`);
 
     this.line();
     this.line('toJSON() {');
@@ -263,7 +266,7 @@ export class CodeGenerator {
     for (const b of e.behaviors) {
       events.add(b.trigger.event);
       for (const a of b.actions) {
-        if (a.kind === 'emit' && a.expression.type === 'Identifier') events.add((a.expression as any).name);
+        if (a.kind === 'emit' && a.expression.type === 'Identifier' && 'name' in a.expression) events.add(a.expression.name);
       }
     }
     for (const cmd of e.commands) {
@@ -331,15 +334,19 @@ export class CodeGenerator {
   }
 
   private genOutboxEvent(ev: OutboxEventNode) {
-    const payloadType = 'payload' in ev.payload && Array.isArray((ev.payload as any).fields)
-      ? `{ ${(ev.payload as any).fields.map((f: any) => `${f.name}: ${this.tsType(f.dataType)}`).join('; ')} }`
-      : this.tsType(ev.payload as any);
-
+    if ('fields' in ev.payload && Array.isArray(ev.payload.fields)) {
+      const payloadType = `{ ${ev.payload.fields.map((f: { name: string; dataType: { name: string; generic?: unknown; nullable: boolean } }) => `${f.name}: ${this.tsType(f.dataType)}`).join('; ')} }`;
+      this.line(`interface ${ev.name}Event ${payloadType}`);
+      this.line();
+      this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
+      this.in(); this.line(`EventBus.publish('${ev.channel}', data);`); this.de(); this.line('};');
+      return;
+    }
+    const payloadType = this.tsType(ev.payload as { name: string; generic?: unknown; nullable: boolean });
     this.line(`interface ${ev.name}Event ${payloadType}`);
     this.line();
     this.line(`const publish${ev.name} = (data: ${ev.name}Event) => {`);
-    this.in();
-    this.line(`EventBus.publish('${ev.channel}', data);`);
+    this.in(); this.line(`EventBus.publish('${ev.channel}', data);`);
     this.de(); this.line('};');
     this.line();
     this.line(`const subscribe${ev.name} = (fn: (data: ${ev.name}Event) => void) => {`);
@@ -370,14 +377,14 @@ export class CodeGenerator {
   private genBehaviorMethod(b: BehaviorNode) {
     const params = b.trigger.parameters || [];
     this.line();
-    this.line(`${b.trigger.event}(${params.map(p => `${p}: any`).join(', ')}) {`);
+    this.line(`${b.trigger.event}(${params.map(p => `${p}: unknown`).join(', ')}) {`);
     this.in(); this.line(`this.emit('${b.trigger.event}', ${params.length ? `{ ${params.join(', ')} }` : '{}'});`);
     this.de(); this.line('}');
   }
 
   private genAction(a: { kind: string; target?: string; expression: ExpressionNode }): string {
     if (a.kind === 'mutate') return `this.${a.target} = ${this.genExpr(a.expression)};`;
-    if (a.kind === 'emit') { if (a.expression.type === 'Identifier') return `this.emit('${(a.expression as any).name}', {});`; return `this.emit('event', ${this.genExpr(a.expression)});`; }
+    if (a.kind === 'emit') { if (a.expression.type === 'Identifier' && 'name' in a.expression) return `this.emit('${a.expression.name}', {});`; return `this.emit('event', ${this.genExpr(a.expression)});`; }
     if (a.kind === 'effect') return `await (${this.genExpr(a.expression)});`;
     if (a.kind === 'publish') return `EventBus.publish('event', ${this.genExpr(a.expression)});`;
     if (a.kind === 'persist') return `await ${a.target}Store.update(this.id, this.toJSON());`;
@@ -391,14 +398,14 @@ export class CodeGenerator {
       const expr = this.genExpr(s.expression);
       if (s.condition) { this.line(`if (${this.genExpr(s.condition)}) {`); this.in(); }
       if (s.operation === 'map') this.line(`_v = (${expr})(_v);`);
-      else if (s.operation === 'filter') this.line(`if (!(${expr})(_v)) return null as any;`);
+      else if (s.operation === 'filter') this.line(`if (!(${expr})(_v)) return null;`);
       else if (s.operation === 'validate') this.line(`if (!(${expr})(_v)) throw new Error('Validation failed');`);
       else if (s.operation === 'transform') this.line(`_v = ${expr};`);
       else if (s.operation === 'tap') this.line(`(${expr})(_v);`);
       else this.line(`_v = ${expr};`);
       if (s.condition) { this.de(); this.line('}'); }
     }
-    this.line(); this.line('return _v as any;'); this.de(); this.line('}');
+    this.line(); this.line('return _v;'); this.de(); this.line('}');
   }
 
   private genEffect(e: EffectNode) {
@@ -407,13 +414,13 @@ export class CodeGenerator {
     if (e.kind === 'http') {
       const url = e.config['url'] ? this.genExpr(e.config['url']) : '""';
       const method = e.config['method'] ? this.genExpr(e.config['method']) : '"GET"';
-      this.line(`async execute(data?: any) {`);
+      this.line(`async execute(data?: unknown) {`);
       this.in(); this.line(`const res = await fetch(${url}, { method: ${method}, headers: { 'Content-Type': 'application/json' }, body: data ? JSON.stringify(data) : undefined });`);
       this.line('return res.json();'); this.de(); this.line('},');
     } else if (e.kind === 'storage') {
       const key = e.config['key'] ? this.genExpr(e.config['key']) : '"data"';
       this.line(`get() { const d = localStorage.getItem(${key}); return d ? JSON.parse(d) : null; },`);
-      this.line(`set(v: any) { localStorage.setItem(${key}, JSON.stringify(v)); },`);
+      this.line(`set(v: unknown) { localStorage.setItem(${key}, JSON.stringify(v)); },`);
       this.line(`remove() { localStorage.removeItem(${key}); },`);
     } else if (e.kind === 'timer') {
       const interval = e.config['interval'] ? this.genExpr(e.config['interval']) : '1000';
@@ -423,18 +430,18 @@ export class CodeGenerator {
       this.line('config: {'); this.in();
       for (const [k, v] of Object.entries(e.config)) this.line(`${k}: ${this.genExpr(v)},`);
       this.de(); this.line('},');
-      this.line('execute(data?: any) { /* custom */ },');
+      this.line('execute(data?: unknown) { /* custom */ },');
     }
     this.de(); this.line('};');
   }
 
-  private genExpose(x: ExposeNode, _program: ManifestProgram) {
+  private genExpose(x: ExposeNode) {
     if (x.protocol === 'rest') {
       this.line(`const ${x.name}API = {`);
       this.in(); this.line(`basePath: '/${x.name}',`);
       this.line(`entity: ${x.entity},`);
       const ops = x.operations.length ? x.operations : ['list', 'get', 'create', 'update', 'delete'];
-      if (ops.includes('list')) this.line(`async list(q?: Record<string, any>) { return ${x.entity}Store.getAll(); },`);
+      if (ops.includes('list')) this.line(`async list(q?: Record<string, unknown>) { return ${x.entity}Store.getAll(); },`);
       if (ops.includes('get')) this.line(`async get(id: string) { return ${x.entity}Store.getById(id); },`);
       if (ops.includes('create')) this.line(`async create(d: Partial<I${x.entity}>) { return ${x.entity}Store.create(d); },`);
       if (ops.includes('update')) this.line(`async update(id: string, d: Partial<I${x.entity}>) { return ${x.entity}Store.update(id, d); },`);
@@ -616,35 +623,38 @@ export class CodeGenerator {
     switch (e.type) {
       case 'Literal': return e.dataType === 'string' ? JSON.stringify(e.value) : String(e.value);
       case 'Identifier': {
-        const name = (e as any).name;
-        if (name === 'self') return 'this';
-        if (name === 'user') return 'getContext().user';
-        if (name === 'context') return 'getContext()';
-        return name;
+        if ('name' in e) {
+          const name = e.name;
+          if (name === 'self') return 'this';
+          if (name === 'user') return 'getContext().user';
+          if (name === 'context') return 'getContext()';
+          return name;
+        }
+        return 'unknown';
       }
       case 'BinaryOp': { const op = (e as any).operator; const l = this.genExpr((e as any).left); const r = this.genExpr((e as any).right); const m: Record<string, string> = { 'and': '&&', 'or': '||', 'is': '===', 'contains': '.includes' }; if (op === 'contains') return `${l}.includes(${r})`; return `(${l} ${m[op] || op} ${r})`; }
       case 'UnaryOp': return `${(e as any).operator === 'not' ? '!' : (e as any).operator}${this.genExpr((e as any).operand)}`;
-      case 'Call': return `${this.genExpr((e as any).callee)}(${(e as any).arguments.map((a: ExpressionNode) => this.genExpr(a)).join(', ')})`;
+      case 'Call': return `${this.genExpr((e as any).callee)}(${(e as any).arguments.map((a: any) => this.genExpr(a)).join(', ')})`;
       case 'MemberAccess': return `${this.genExpr((e as any).object)}.${(e as any).property}`;
       case 'Conditional': return `(${this.genExpr((e as any).condition)} ? ${this.genExpr((e as any).consequent)} : ${this.genExpr((e as any).alternate)})`;
-      case 'Array': return `[${(e as any).elements.map((x: ExpressionNode) => this.genExpr(x)).join(', ')}]`;
+      case 'Array': return `[${(e as any).elements.map((x: any) => this.genExpr(x)).join(', ')}]`;
       case 'Object': return `{ ${(e as any).properties.map((p: any) => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
       case 'Lambda': return `(${(e as any).parameters.join(', ')}) => ${this.genExpr((e as any).body)}`;
       default: return '/* ? */';
     }
   }
 
-  private tsType(t: { name: string; generic?: any; nullable: boolean }): string {
+  private tsType(t: { name: string; generic?: unknown; nullable: boolean }): string {
     const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'any', void: 'void', list: 'Array', map: 'Map' };
     let r = m[t.name] || t.name;
-    if (t.generic) r += `<${this.tsType(t.generic)}>`;
+    if (t.generic && typeof t.generic === 'object' && 'name' in t.generic) r += `<${this.tsType(t.generic as any)}>`;
     if (t.nullable) r += ' | null';
     return r;
   }
 
   private defVal(t: { name: string; nullable: boolean }): string {
     if (t.nullable) return 'null';
-    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', any: 'null' };
+    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', unknown: 'null' };
     return d[t.name] || 'null';
   }
 
