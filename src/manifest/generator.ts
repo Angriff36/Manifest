@@ -589,22 +589,7 @@ export class CodeGenerator {
       this.serverOut.push(`  const body = await c.req.json();`);
       this.serverOut.push(`  const user = c.get("user");`);
 
-      // Check policies first (for commands with an entity)
-      if (cmd.entity) {
-        const entity = program.entities.find(e => e.name === cmd.entity);
-        if (entity && entity.policies.length > 0) {
-          this.serverOut.push(`  // Policy checks`);
-          for (const p of entity.policies) {
-            const actionCheck = p.action === 'all' || p.action === 'execute' ? 'true' : `action === "${p.action}"`;
-            const expr = this.genExpr(p.expression).replace(/\buser\./g, 'user.').replace(/\bthis\./g, 'body.');
-            this.serverOut.push(`  if (${actionCheck} && !(${expr})) {`);
-            this.serverOut.push(`    return c.json({ error: ${JSON.stringify(p.message || `Denied by policy '${p.name}'`)} }, 403);`);
-            this.serverOut.push(`  }`);
-          }
-        }
-      }
-
-      // Check guards
+      // Check guards (standalone commands don't have entity policies)
       if (cmd.guards?.length) {
         this.serverOut.push(`  // Guard checks`);
         for (const g of cmd.guards) {

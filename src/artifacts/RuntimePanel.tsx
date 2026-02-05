@@ -3,7 +3,7 @@ import { Play, AlertCircle, CheckCircle, Code, User, Trash2, Clock, ChevronDown,
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
 import type { CommandResult, EmittedEvent, PolicyDenial, EntityInstance, Store } from '../manifest/runtime-engine';
-import type { IREntity } from '../manifest/ir';
+import type { IREntity, IRValue } from '../manifest/ir';
 
 // Inline MemoryStore for browser demo (copied from runtime-engine)
 class MemoryStore<T extends EntityInstance> implements Store<T> {
@@ -18,21 +18,21 @@ class MemoryStore<T extends EntityInstance> implements Store<T> {
     return Array.from(this.items.values());
   }
 
-  async getById(id: string): Promise<T | null> {
-    return this.items.get(id) || null;
+  async getById(id: string): Promise<T | undefined> {
+    return this.items.get(id);
   }
 
-  async create(item: Partial<T>): Promise<T> {
-    const id = (item.id as string) || this.generateId();
-    const full = { ...item, id } as T;
+  async create(data: Partial<T>): Promise<T> {
+    const id = (data.id as string) || this.generateId();
+    const full = { ...data, id } as T;
     this.items.set(id, full);
     return full;
   }
 
-  async update(id: string, item: Partial<T>): Promise<T> {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const existing = this.items.get(id);
-    if (!existing) throw new Error(`Not found: ${id}`);
-    const updated = { ...existing, ...item };
+    if (!existing) return undefined;
+    const updated = { ...existing, ...data };
     this.items.set(id, updated);
     return updated;
   }
@@ -41,8 +41,8 @@ class MemoryStore<T extends EntityInstance> implements Store<T> {
     return this.items.delete(id);
   }
 
-  async query(filter: (item: T) => boolean): Promise<T[]> {
-    return Array.from(this.items.values()).filter(filter);
+  async clear(): Promise<void> {
+    this.items.clear();
   }
 }
 
@@ -78,7 +78,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
   const memoryStoresRef = useRef<Map<string, Store>>(new Map());
 
   // Helper to extract JavaScript value from IRValue
-  const extractIRValue = (irValue: NonNullable<typeof import('../manifest/ir').IRValue>): unknown => {
+  const extractIRValue = (irValue: IRValue): unknown => {
     if (irValue.kind === 'null') return null;
     if ('value' in irValue) return irValue.value;
     if (irValue.kind === 'array') return irValue.elements.map(extractIRValue);
@@ -112,7 +112,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           diagnostics: compileResult.diagnostics,
           hasIR: !!compileResult.ir,
           entityCount: compileResult.ir?.entities?.length,
-          entities: compileResult.ir?.entities?.map((e: any) => e.name)
+          entities: compileResult.ir?.entities?.map((e: IREntity) => e.name)
         });
         if (compileResult.diagnostics.some(d => d.severity === 'error')) {
           setEngine(null);
@@ -183,6 +183,7 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
         setInstances([]);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when entity changes, not when selectedInstanceId changes (intentional)
   }, [engine, selectedEntityName]);
 
   // Load computed values when instance selection changes
