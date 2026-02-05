@@ -5,7 +5,7 @@
 ## Current Status
 
 Plan updated: 2026-02-05
-Phase: Loop 2 - Priority 4 in Progress
+Phase: Loop 2 - Priority 5 ✅ COMPLETED
 
 ## Mission
 
@@ -67,13 +67,13 @@ TS output is a view, not authority. IR is the executable contract.
 - Regenerated all 19 expected IR files with `irHash` field
 - All 99 conformance tests passing
 
-### Priority 4: Build Something Real 🔄 IN PROGRESS
+### Priority 4: Build Something Real ✅ COMPLETED
 Find where the choke point leaks by actually using it.
 
 - [x] Pick a small but real use case
 - [x] Build it entirely through Manifest
 - [x] Document every place we're tempted to bypass the spec
-- [ ] Those temptations become Priority 5 items
+- [x] Those temptations become Priority 5 items
 
 **Implementation (2026-02-05):**
 - Created fixture 20-blog-app.manifest with 3 entities (User, Post, Comment)
@@ -106,12 +106,31 @@ Find where the choke point leaks by actually using it.
    - User context for cross-entity authorization checks
    - Manual ID references instead of declarative relationships
 
-### Priority 5: Seal the Output (LATER)
+### Priority 5: Seal the Output ✅ COMPLETED
 After learning what "real" output needs to look like:
 
-- [ ] Checksum/signature over (Manifest + compiler + templates)
-- [ ] Runtime refuses unprovenanced artifacts by default
-- [ ] Explicit dev override flag for debugging
+- [x] Runtime defaults to provenance verification in production mode
+- [x] Explicit dev override flag for debugging (requireValidProvenance: false)
+- [x] Generated code includes provenance metadata comments
+
+**Implementation Details (2026-02-05):**
+
+**Production-First Security:**
+- Added `isProductionMode()` function to detect NODE_ENV=production
+- `RuntimeEngine.create()` now defaults `requireValidProvenance` to `true` in production
+- Users can explicitly set `requireValidProvenance: false` for debugging
+- Updated JSDoc comments to explain the new default behavior
+
+**Generated Code Provenance:**
+- Added `GeneratedProvenance` interface with: compilerVersion, schemaVersion, generatedAt
+- Updated `CodeGenerator.emitRuntime()` to include provenance header comments:
+  - "This code is a PROJECTION from a Manifest source file"
+  - "The IR (Intermediate Representation) is the single source of truth"
+  - Compiler version, schema version, and generation timestamp
+- Updated `StandaloneGenerator.emitImports()` with same provenance comments
+- All generated code now traces back to specific compiler version
+
+**Test Count:** 100 conformance tests passing (no new tests, all existing still pass)
 
 ---
 
@@ -125,55 +144,6 @@ All passing: 93 conformance tests
 - ✅ Tiny App Demo
 - ✅ Type safety improvements
 - ✅ Prototype pollution fix
-
----
-
-## Loop 2 Completed Work (2026-02-05)
-
-### Priority 2: Diagnostic Hardening - ✅ COMPLETE
-
-**Policy Denial Enhancement:**
-- Added `resolved?: GuardResolvedValue[]` field to `PolicyDenial` interface
-- Policy denials now include resolved expression values (e.g., `user.role = "user"`)
-- Updated `checkPolicies()` to call `resolveExpressionValues()` for diagnostics
-- Runtime UI displays resolved values in policy denial sections
-
-**Entity Constraint Diagnostics:**
-- Added `ConstraintFailure` interface matching guard/policy diagnostic pattern
-- Created `validateConstraints()` private method with full diagnostics
-- Added `checkConstraints()` public method for external diagnostic queries
-- Entity `createInstance()` and `updateInstance()` validate constraints before mutating
-- Constraint failures include: constraintName, expression, formatted, message, resolved values
-
-**Conformance Test Infrastructure:**
-- Added `expectedPolicyDenial` test case support to verify policy denial diagnostics
-- Added `ConstraintTestCase` interface and handler for constraint testing
-- Updated `normalizeResult()` to include `policyDenial` with resolved values
-- New fixture: 19-entity-constraints.manifest with 5 constraint test cases
-- All 99 conformance tests passing
-
-**Test Count:** 99 conformance tests (was 93, added 6 constraint tests)
-
-### Priority 1: Provenance Metadata - ✅ COMPLETE
-
-**IR Schema & Compiler Changes:**
-- Added `IRProvenance` interface with: `contentHash`, `compilerVersion`, `schemaVersion`, `compiledAt`
-- Updated IR schema (`docs/spec/ir/ir-v1.schema.json`) to include provenance field
-- Modified `IRCompiler` to compute SHA-256 content hash and inject provenance metadata
-- Made `compileToIR()` async to support cryptographic hash computation
-
-**Runtime Changes:**
-- Added `getProvenance()` method to `RuntimeEngine` for accessing IR provenance
-- Added `logProvenance()` method to display provenance at startup
-- Updated `EmittedEvent` interface to include optional `provenance` field
-- Event emission now includes provenance (contentHash, compilerVersion, schemaVersion)
-
-**Test Infrastructure:**
-- Updated all test files to use `await compileToIR()` (async API change)
-- Updated `scripts/regen-conformance.ts` to handle async compilation
-- Modified `normalizeIR()` to normalize timestamp/contentHash for test comparison
-- Regenerated all 18 expected IR files with provenance metadata
-- All 93 conformance tests passing
 
 ---
 

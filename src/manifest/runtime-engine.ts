@@ -13,6 +13,21 @@ import {
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
 
+/**
+ * Detect if running in production mode.
+ * Checks NODE_ENV environment variable (server-side) or global location (browser).
+ * In browsers, defaults to development since there's no standard production detection.
+ */
+function isProductionMode(): boolean {
+  // Server-side: check process.env.NODE_ENV
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+    return true;
+  }
+  // Browser: no standard production detection, default to development
+  // for safety. Users can explicitly set requireValidProvenance in browser apps.
+  return false;
+}
+
 export interface RuntimeContext {
   user?: { id: string; role?: string; [key: string]: unknown };
   [key: string]: unknown;
@@ -25,7 +40,12 @@ export interface RuntimeOptions {
    * If true, runtime will verify IR integrity hash before execution.
    * When an IR hash doesn't match, the runtime will throw an error.
    * Set to false for development/debugging mode.
-   * @default false in development, should be true in production
+   *
+   * @default
+   * - `true` in production (NODE_ENV=production)
+   * - `false` in development
+   *
+   * Explicit dev override: Set to `false` to disable verification in production for debugging.
    */
   requireValidProvenance?: boolean;
   /**
@@ -335,6 +355,7 @@ export class RuntimeEngine {
 
     try {
       // Compute hash of the current IR (excluding the irHash field itself)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { irHash: _irHash, ...provenanceWithoutIrHash } = prov;
       const canonical = {
         ...this.ir,
@@ -1158,6 +1179,9 @@ export class RuntimeEngine {
    * Static factory method to create a RuntimeEngine with optional provenance verification.
    * This is useful when you want to verify IR integrity before execution.
    *
+   * In production mode (NODE_ENV=production), provenance verification is enabled by default.
+   * Set `requireValidProvenance: false` to explicitly disable.
+   *
    * @param ir - The IR to execute
    * @param context - Runtime context (user, etc.)
    * @param options - Runtime options including requireValidProvenance
@@ -1165,10 +1189,14 @@ export class RuntimeEngine {
    *
    * @example
    * ```ts
-   * const [runtime, result] = await RuntimeEngine.create(ir, context, { requireValidProvenance: true });
+   * // Production: verification enabled by default
+   * const [runtime, result] = await RuntimeEngine.create(ir, context);
    * if (!result.valid) {
    *   throw new Error(`Invalid IR: ${result.error}`);
    * }
+   *
+   * // Development: explicitly disable verification
+   * const [runtime] = await RuntimeEngine.create(ir, context, { requireValidProvenance: false });
    * ```
    */
   static async create(
@@ -1179,7 +1207,10 @@ export class RuntimeEngine {
     const runtime = new RuntimeEngine(ir, context, options);
     let result: ProvenanceVerificationResult = { valid: true };
 
-    if (options.requireValidProvenance) {
+    // Default to true in production mode, or if explicitly set
+    const shouldVerify = options.requireValidProvenance ?? isProductionMode();
+
+    if (shouldVerify) {
       const isValid = await runtime.verifyIRHash(options.expectedIRHash);
       result = {
         valid: isValid,

@@ -74,6 +74,7 @@ async function createProvenance(source: string, irHash?: string): Promise<IRProv
 async function computeIRHash(ir: IR): Promise<string> {
   // Create a copy of the IR without the irHash for hashing
   const { provenance, ...irWithoutProvenance } = ir as IR & { provenance: IRProvenance };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { irHash: _irHash, ...provenanceWithoutIrHash } = provenance;
 
   const canonical = {
