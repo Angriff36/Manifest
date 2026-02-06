@@ -4,7 +4,7 @@
  */
 
 /** Compiler version (should match package.json and git tags) */
-export const COMPILER_VERSION = '0.3.7';
+export const COMPILER_VERSION = '0.3.8';
 
 /** IR schema version */
 export const SCHEMA_VERSION = '1.0';
