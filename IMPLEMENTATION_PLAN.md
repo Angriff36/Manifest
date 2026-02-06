@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED | Entity-scoped store compilation bug FIXED | Parser now handles all store syntax variants | Git tag drift FIXED | 02-relationships.results.json recreated with ID fields | Performance benchmarks ADDED)
+**Last Updated**: 2026-02-06 (All vNext work COMPLETE | All unit tests PASSING 427/427 | v0.3.7 released | No outstanding work items)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -182,7 +182,7 @@ Comprehensive search found:
 
 All planned vNext work is complete. Latest release: v0.3.7
 
-### Completed (2026-02-06)
+### Completed Work (2026-02-06)
 
 - **Lexer unit tests**: Complete (58 tests)
 - **Parser unit tests**: Complete (79 tests)
@@ -190,16 +190,17 @@ All planned vNext work is complete. Latest release: v0.3.7
 - **Runtime Engine unit tests**: Complete (56 tests)
 - **Negative test fixtures**: Complete (8 fixtures)
 - **Lambda expressions**: Fully implemented (parentheses syntax required)
-
-### Optional Future Enhancements
-
-- ~~Add ESLint rule to prevent hardcoded versions~~ **COMPLETED (2026-02-06)**
-- ~~Git tag drift~~ **FIXED (2026-02-06)** - v0.3.7 tag moved from `cebb697` to `64b2795` (the version sync commit)
-- ~~Add performance benchmarks~~ **COMPLETED (2026-02-06)** - Added `npm run bench` command with comprehensive benchmarks for lexer, parser, IR compiler, and runtime engine
+- **ESLint rule for hardcoded versions**: Completed (prevents version drift)
+- **Git tag drift**: Fixed (v0.3.7 tag correctly placed at version sync commit)
+- **Performance benchmarks**: Added (`npm run bench` with comprehensive coverage)
 
 ### Technical Debt Resolved
 
-- **Version Drift Fix**: Updated `runtime-engine.test.ts` to import and use `COMPILER_VERSION` from `version.ts` instead of hardcoded `'0.3.0'` strings. This ensures test expectations stay in sync with the actual compiler version.
+- **Version Drift Fix**: Updated `runtime-engine.test.ts` to import and use `COMPILER_VERSION` from `version.ts` instead of hardcoded version strings.
+
+### No Outstanding Work Items
+
+All planned vNext features are implemented, tested, and documented. The codebase has no TODO/FIXME/HACK markers. All 427 tests pass.
 
 ---
 

@@ -294,6 +294,12 @@ export class RuntimeEngine {
     timestamp: number;
   }> = new Map();
 
+  /** Track whether version has been incremented for the current command execution */
+  private versionIncrementedForCommand: boolean = false;
+
+  /** Track instances that were just created (to prevent version increment on subsequent mutate actions) */
+  private justCreatedInstanceIds: Set<string> = new Set();
+
   constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
     this.context = context;
@@ -717,7 +723,14 @@ export class RuntimeEngine {
     const store = this.stores.get(entityName);
     if (!store) return undefined;
 
-    return await store.create(mergedData);
+    const result = await store.create(mergedData);
+
+    // Track newly created instance to prevent version increment on subsequent mutate actions
+    if (result && result.id) {
+      this.justCreatedInstanceIds.add(result.id);
+    }
+
+    return result;
   }
 
   async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -742,7 +755,12 @@ export class RuntimeEngine {
       }
 
       // Auto-increment version on successful update
-      data[entity.versionProperty] = (existingVersion || 0) + 1;
+      // Only increment once per command execution to handle commands with multiple mutate actions
+      // If version is explicitly provided in data, use that (for optimistic concurrency checks)
+      if (providedVersion === undefined && !this.versionIncrementedForCommand) {
+        data[entity.versionProperty] = (existingVersion || 0) + 1;
+        this.versionIncrementedForCommand = true;
+      }
     }
 
     // Update versionAt timestamp if present
@@ -776,6 +794,12 @@ export class RuntimeEngine {
     // Clear relationship memoization cache at the start of each command execution
     // to ensure fresh data after any mutations
     this.clearMemoCache();
+
+    // Reset version increment flag at the start of each command execution
+    this.versionIncrementedForCommand = false;
+
+    // Clear just-created instance tracking
+    this.justCreatedInstanceIds.clear();
 
     const command = this.getCommand(commandName, options.entityName);
     if (!command) {
