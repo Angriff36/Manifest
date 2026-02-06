@@ -1,0 +1,9 @@
+// Test: Unclosed command block should fail
+// This tests error detection for missing closing brace in command
+
+entity Test {
+  property id: string
+}
+
+command process() {
+  mutate status = "active"

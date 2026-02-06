@@ -1,8 +1,8 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (Lexer unit tests added | 193/193 tests passing)
+**Last Updated**: 2026-02-06 (Negative test fixtures 28-35 added | 201/201 tests passing)
 
-**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 193/193 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED
+**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 201/201 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED
 
 ---
 
@@ -16,7 +16,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 |-----------|--------|----------|
 | **Baseline Features** | COMPLETE | 20 fixtures passing (100% conformance) |
 | **vNext Features** | COMPLETE | Fixtures 21-27 passing (100% conformance) |
-| **Test Suite** | PASSING | 193/193 tests (134 conformance + 1 happy + 58 lexer unit) |
+| **Test Suite** | PASSING | 201/201 tests (142 conformance + 1 happy + 58 lexer unit) |
 | **TypeScript** | CLEAN | No typecheck errors |
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
@@ -88,7 +88,7 @@ All vNext features have been implemented and verified:
 ### Potential Enhancements (OPTIONAL)
 
 - Add unit tests for parser/lexer components (currently only conformance tests)
-- Add negative test cases (currently only happy path tests exist)
+- ~~Add negative test cases (currently only happy path tests exist)~~ **DONE 2026-02-06**
 - Add ESLint rule to prevent hardcoded versions
 - Add performance benchmarks
 
@@ -98,11 +98,11 @@ All vNext features have been implemented and verified:
 
 ```
 Test Files: 3 passed (3)
-Tests: 193 passed (193)
+Tests: 201 passed (201)
   - src/manifest/runtime-engine.happy.test.ts: 1 test
-  - src/manifest/conformance/conformance.test.ts: 134 tests
-  - src/manifest/lexer.test.ts: 58 tests (NEW)
-Duration: ~400ms
+  - src/manifest/conformance/conformance.test.ts: 142 tests (includes 8 negative tests)
+  - src/manifest/lexer.test.ts: 58 tests
+Duration: ~600ms
 ```
 
 ### Unit Test Coverage (NEW)
@@ -136,7 +136,8 @@ The 58 lexer unit tests cover:
 |----------|-------|--------|
 | Baseline (01-20) | 20 | All passing |
 | vNext (21-27) | 7 | All passing |
-| **Total** | **27** | **100% passing** |
+| Negative Tests (28-35) | 8 | All passing |
+| **Total** | **35** | **100% passing** |
 
 ### vNext Fixture Details
 
@@ -149,6 +150,19 @@ The 58 lexer unit tests cover:
 | 25-command-constraints | Command-level constraints | Passing |
 | 26-performance-constraints | IR caching, memoization | Passing |
 | 27-vnext-integration | Full vNext integration | Passing |
+
+### Negative Test Fixture Details (NEW 2026-02-06)
+
+| Fixture | Error Type | Status |
+|---------|-----------|--------|
+| 28-unclosed-braces | Missing closing brace for entity block | Passing |
+| 29-missing-colon | Missing colon in property declaration | Passing |
+| 30-incomplete-expression | Incomplete expression (missing operand) | Passing |
+| 31-invalid-operators | Invalid operator sequence (`&&&`) | Passing |
+| 32-constraint-without-expression | Constraint block missing expression | Passing |
+| 33-malformed-relationship | Relationship declaration without type | Passing |
+| 34-command-with-reserved-name | Command named with reserved word | Passing |
+| 35-unclosed-command-block | Missing closing brace for command | Passing |
 
 ---
 
@@ -191,7 +205,7 @@ docs/migration/
 
 **TypeScript**: No typecheck errors
 **ESLint**: No blocking errors
-**Tests**: 193/193 passing (100%)
+**Tests**: 201/201 passing (100%)
 
 Comprehensive search found:
 - No TODO comments in implementation code
@@ -267,6 +281,30 @@ This is semantically correct as:
 
 The conformance test framework currently doesn't support passing `overrideRequests`, so `OverrideApplied` events aren't tested in conformance. This is acceptable since the mechanism is correctly implemented and the behavior matches the specification.
 
+### Negative Test Fixtures (NEW 2026-02-06)
+
+**Implemented**: Fixtures 28-35
+
+Added 8 new conformance test fixtures to cover error detection and diagnostic reporting:
+
+**Test Categories**:
+1. **Structural Errors**: Unclosed braces (entity, command blocks)
+2. **Syntax Errors**: Missing colons, malformed relationships
+3. **Expression Errors**: Incomplete expressions, invalid operators
+4. **Semantic Errors**: Constraints without expressions, reserved word usage
+
+**Fixture Details**:
+- 28-unclosed-braces: "Expected }, got EOF" at line 7
+- 29-missing-colon: "Expected :, got string" at line 5
+- 30-incomplete-expression: "Unexpected: \n" at line 6
+- 31-invalid-operators: "Unexpected: &" at line 7
+- 32-constraint-without-expression: "Constraint block must include an expression" at line 9
+- 33-malformed-relationship: "Expected :, got \n" at line 5
+- 34-command-with-reserved-name: "Reserved word 'entity' cannot be used as an identifier" at line 4
+- 35-unclosed-command-block: "Expected }, got EOF" at line 10
+
+**Impact**: Test count increased from 193 to 201 (142 conformance tests, including 8 negative tests)
+
 ---
 
 ## Next Steps
@@ -276,13 +314,13 @@ All planned vNext work is complete. Release v0.3.0 is tagged.
 ### In Progress (Unit Test Expansion)
 
 - **Lexer unit tests**: Complete (58 tests added 2026-02-06)
+- **Negative test fixtures**: Complete (8 fixtures added 2026-02-06)
 - **Parser unit tests**: Not yet implemented
 - **IR Compiler unit tests**: Not yet implemented
 - **Runtime Engine unit tests**: Not yet implemented
 
 ### Optional Future Enhancements
 
-- Add negative test cases (currently only happy path tests exist)
 - Add ESLint rule to prevent hardcoded versions
 - Add performance benchmarks
 - Add unit tests for remaining compiler components (parser, ir-compiler, runtime-engine)

@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Expected }, got EOF",
+      "line": 7,
+      "column": 1
+    }
+  ]
+}

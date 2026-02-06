@@ -1,0 +1,10 @@
+// Test: Block constraint without expression should fail
+// This tests error detection for incomplete constraint definition
+
+entity Test {
+  property id: string
+  constraint validId {
+    severity: block
+    message: "ID must be valid"
+  }
+}

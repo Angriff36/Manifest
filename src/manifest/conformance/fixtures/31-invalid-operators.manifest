@@ -1,0 +1,8 @@
+// Test: Invalid operator sequence should fail
+// This tests error detection for malformed operators
+
+entity Test {
+  property id: string
+  property name: string
+  computed check: boolean = self.id &&& self.name
+}

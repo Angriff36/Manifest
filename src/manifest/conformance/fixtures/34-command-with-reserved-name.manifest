@@ -1,0 +1,6 @@
+// Test: Command using reserved word as name should fail
+// This tests that reserved words cannot be used as command identifiers
+
+command entity() {
+  action true
+}

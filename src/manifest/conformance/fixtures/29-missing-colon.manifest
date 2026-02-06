@@ -1,0 +1,7 @@
+// Test: Missing colon in property declaration should fail
+// This tests error detection for malformed property syntax
+
+entity Test {
+  property name string
+  property age number
+}
