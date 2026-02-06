@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 426/427 tests passing)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 426/427 tests passing | v0.3.2 released)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 426/427 tests passing (1 skipped) | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (90) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -158,7 +158,7 @@ Comprehensive search found:
 
 ## Next Steps
 
-All planned vNext work is complete. Latest release: v0.3.1
+All planned vNext work is complete. Latest release: v0.3.2
 
 ### Completed (2026-02-06)
 
