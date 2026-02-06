@@ -194,8 +194,8 @@ All planned vNext work is complete. Latest release: v0.3.7
 ### Optional Future Enhancements
 
 - ~~Add ESLint rule to prevent hardcoded versions~~ **COMPLETED (2026-02-06)**
+- ~~Git tag drift~~ **FIXED (2026-02-06)** - v0.3.7 tag moved from `eb1fd5f` to current HEAD (cebb697)
 - Add performance benchmarks
-- **Git tag drift**: Move v0.3.7 tag from `eb1fd5f` to `64b2795` (current commit has correct version.ts)
 
 ### Technical Debt Resolved
 
