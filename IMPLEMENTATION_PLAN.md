@@ -204,6 +204,19 @@ All planned vNext work is complete. Latest release: v0.3.3
 
 ## Change Log
 
+### 2026-02-06: ESLint no-explicit-any Violations Fixed
+
+**Issue**: Test files had ESLint `@typescript-eslint/no-explicit-any` violations that were preventing clean CI builds.
+
+**Files Modified**:
+- `src/manifest/parser.test.ts`: Replaced all `as any` casts with proper type imports (`BinaryOpNode`, `MemberAccessNode`, `CallNode`, `ConditionalNode`, `ArrayNode`, `ObjectNode`)
+- `src/manifest/runtime-engine.test.ts`: Replaced `(data: any)` and `(i: any)` parameter types with `Partial<EntityInstance>` and `EntityInstance`
+
+**Result**:
+- TypeScript typecheck: PASS (no errors)
+- ESLint: PASS (no errors)
+- All tests: 427/427 PASS
+
 ### 2026-02-06: Version Drift Fix
 
 **Issue**: Test file `runtime-engine.test.ts` had hardcoded `'0.3.0'` version strings that were out of sync with the current `COMPILER_VERSION` `'0.3.3'` in `version.ts`.
