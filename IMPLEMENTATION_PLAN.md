@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-06
 
-**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | TypeScript Typecheck CLEAN | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED | README Documentation UPDATED | Technical Debt RESOLVED
+**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 135/135 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED
 
 ---
 
@@ -67,54 +67,23 @@ Manifest is a domain-specific language for defining business rules and workflows
 
 ---
 
-## Remaining Work (Prioritized)
+## vNext Implementation Summary (All Complete)
 
-### 1. IR Schema Documentation Update (COMPLETED 2026-02-06)
+All vNext features have been implemented and verified:
 
-IR schema JSON has been updated with all vNext fields:
-- IRConstraint: Added code (required), severity, messageTemplate, detailsMapping, overrideable, overridePolicyRef
-- IRCommand: Added constraints array
-- IREntity: Added versionProperty, versionAtProperty
-- IRPolicy: Added "override" to action enum
-- New definitions: ConstraintOutcome, OverrideRequest, ConcurrencyConflict
+| Component | Status |
+|-----------|--------|
+| IR Schema Extensions | Complete - IRConstraint, IRCommand, IREntity updated |
+| Parser/Lexer | Complete - New keywords: overrideable, ok, warn |
+| IR Compiler | Complete - Transformations for all vNext fields |
+| Runtime Engine | Complete - evaluateConstraint, validateOverrideAuthorization, events |
+| IR Schema JSON | Updated - docs/spec/ir/ir-v1.schema.json |
+| Semantics Docs | Updated - docs/spec/semantics.md includes vNext semantics |
+| Migration Guide | Created - docs/migration/vnext-migration-guide.md |
+| Spec README | Updated - docs/spec/README.md with vNext references |
+| Technical Debt | Resolved - Version centralized, comments clarified, TS errors fixed |
 
-### 2. Semantics Documentation (COMPLETED 2026-02-06)
-
-docs/spec/semantics.md has been updated with vNext semantics:
-- Constraint Severity (vNext): ok, warn, block levels
-- Constraint Codes (vNext): Stable identifiers for overrides
-- Constraint Evaluation (vNext): ConstraintOutcome structure
-- Entity Concurrency (vNext): versionProperty, versionAtProperty, ConcurrencyConflict
-- Command Constraints (vNext): Pre-execution validation
-- Override Mechanism (vNext): overrideable flag, overridePolicyRef, OverrideRequest
-- Policy override action (vNext): Policy action 'override' for authorizing constraint overrides
-
-### 3. Migration Guide (COMPLETED 2026-02-06)
-
-Created docs/migration/vnext-migration-guide.md with:
-- New constraint severity syntax (`:ok`, `:warn`, `:block`)
-- Overrideable modifier usage
-- Command-level constraints
-- Entity versioning for concurrency
-- Before/after examples
-- Quick migration checklist
-- Testing guidelines
-
-### 4. Technical Debt (RESOLVED 2026-02-06)
-
-| Issue | Location | Resolution |
-|-------|----------|------------|
-| ~~COMPILER_VERSION hardcoded~~ | ~~generator.ts:4, ir-compiler.ts:43, standalone-generator.ts:4~~ | **RESOLVED** - Centralized in version.ts, matches package.json |
-| ~~Misleading Supabase stub comment~~ | ~~generator.ts:104-105~~ | **RESOLVED** - Clarified as dev-time mock referencing production implementation |
-| ~~TypeScript errors in runtime-engine.ts~~ | ~~runtime-engine.ts~~ | **RESOLVED** - Added IRConstraint import, removed unused severity variable, cast expr as IRExpression, emitConcurrencyConflictEvent now used |
-
-### 5. README Updates (COMPLETED 2026-02-06)
-
-Updated `docs/spec/README.md` Document Map to include:
-- Reference to `docs/spec/manifest-vnext.md` (vNext features)
-- New "Migration Documentation" section with link to vNext migration guide
-
-### 6. Potential Enhancements (OPTIONAL)
+### Potential Enhancements (OPTIONAL)
 
 - Add unit tests for parser/lexer components (currently only conformance tests)
 - Add negative test cases (currently only happy path tests exist)
@@ -206,16 +175,13 @@ Comprehensive search found:
 
 ## Next Steps
 
-1. ~~**Update IR Schema JSON**: Add vNext fields to docs/spec/ir/ir-v1.schema.json~~ **DONE**
-2. ~~**Update Semantics**: Add vNext semantics to docs/spec/semantics.md~~ **DONE**
-3. ~~**Create Migration Guide**: Write docs/migration/vnext-migration-guide.md~~ **DONE**
-4. ~~**Update README**: Document vNext features in docs/spec/README.md~~ **DONE 2026-02-06**
-5. ~~**Fix Technical Debt - COMPILER_VERSION**: Centralize in version.ts~~ **DONE**
-6. ~~**Fix Technical Debt - Supabase comment**: Clarify misleading stub comment~~ **DONE 2026-02-06**
+All planned vNext work is complete. Release v0.3.0 is tagged.
 
-### All Planned Work Complete
-
-All vNext implementation, documentation, and technical debt items are resolved. Remaining items in "Potential Enhancements" are optional future work.
+Optional future enhancements:
+- Add unit tests for parser/lexer components
+- Add negative test cases
+- Add ESLint rule to prevent hardcoded versions
+- Add performance benchmarks
 
 ---
 
