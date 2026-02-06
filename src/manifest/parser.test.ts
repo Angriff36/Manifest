@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Parser } from './parser';
+import type { BinaryOpNode, MemberAccessNode, CallNode, ConditionalNode, ArrayNode, ObjectNode } from './types';
 
 describe('Parser', () => {
   describe('Program Structure', () => {
@@ -443,7 +444,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const binOp = constraint.expression as any;
+      const binOp = constraint.expression as BinaryOpNode;
       expect(binOp.right).toEqual({ type: 'Literal', value: 'hello', dataType: 'string' });
     });
 
@@ -455,7 +456,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const binOp = constraint.expression as any;
+      const binOp = constraint.expression as BinaryOpNode;
       expect(binOp.right).toEqual({ type: 'Literal', value: 42, dataType: 'number' });
     });
 
@@ -467,7 +468,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const binOp = constraint.expression as any;
+      const binOp = constraint.expression as BinaryOpNode;
       expect(binOp.right).toEqual({ type: 'Literal', value: 19.99, dataType: 'number' });
     });
 
@@ -501,7 +502,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const binOp = constraint.expression as any;
+      const binOp = constraint.expression as BinaryOpNode;
       expect(binOp.right).toEqual({ type: 'Literal', value: null, dataType: 'null' });
     });
   });
@@ -515,7 +516,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left).toEqual({ type: 'Identifier', name: 'age' });
     });
 
@@ -527,9 +528,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('MemberAccess');
-      expect((expr.left as any).property).toBe('age');
+      expect((expr.left as MemberAccessNode).property).toBe('age');
     });
 
     it('should parse user member access', () => {
@@ -540,7 +541,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const policy = result.program.entities[0].policies[0];
-      const expr = policy.expression as any;
+      const expr = policy.expression as BinaryOpNode;
       expect(expr.left.type).toBe('MemberAccess');
     });
 
@@ -552,7 +553,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('MemberAccess');
     });
 
@@ -564,9 +565,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('MemberAccess');
-      expect((expr.left as any).object.type).toBe('MemberAccess');
+      expect((expr.left as MemberAccessNode).object.type).toBe('MemberAccess');
     });
   });
 
@@ -619,11 +620,10 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const computed = result.program.entities[0].computedProperties[0];
-      const expr = computed.expression as any;
+      const expr = computed.expression as BinaryOpNode;
       // Should be parsed as 1 + (2 * 3), not (1 + 2) * 3
       expect(expr.operator).toBe('+');
-      expect(expr.right.type).toBe('BinaryOp');
-      expect(expr.right.operator).toBe('*');
+      expect((expr.right as BinaryOpNode).operator).toBe('*');
     });
 
     it('should respect operator precedence (AND before OR)', () => {
@@ -634,13 +634,13 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       // Should be parsed as (a && b) || (c && d)
       expect(expr.operator).toBe('||');
       expect(expr.left.type).toBe('BinaryOp');
-      expect(expr.left.operator).toBe('&&');
+      expect((expr.left as BinaryOpNode).operator).toBe('&&');
       expect(expr.right.type).toBe('BinaryOp');
-      expect(expr.right.operator).toBe('&&');
+      expect((expr.right as BinaryOpNode).operator).toBe('&&');
     });
   });
 
@@ -653,7 +653,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('Call');
     });
 
@@ -665,9 +665,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('Call');
-      expect((expr.left as any).arguments).toHaveLength(1);
+      expect((expr.left as CallNode).arguments).toHaveLength(1);
     });
 
     it('should parse nested function calls', () => {
@@ -678,10 +678,10 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.left.type).toBe('Call');
-      expect((expr.left as any).callee.type).toBe('Identifier');
-      expect((expr.left as any).arguments[0].type).toBe('Call');
+      expect((expr.left as CallNode).callee.type).toBe('Identifier');
+      expect((expr.left as CallNode).arguments[0].type).toBe('Call');
     });
   });
 
@@ -694,7 +694,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const computed = result.program.entities[0].computedProperties[0];
-      const expr = computed.expression as any;
+      const expr = computed.expression as ConditionalNode;
       expect(expr.type).toBe('Conditional');
       expect(expr.consequent).toEqual({ type: 'Literal', value: 'adult', dataType: 'string' });
       expect(expr.alternate).toEqual({ type: 'Literal', value: 'minor', dataType: 'string' });
@@ -708,7 +708,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const computed = result.program.entities[0].computedProperties[0];
-      const expr = computed.expression as any;
+      const expr = computed.expression as ConditionalNode;
       expect(expr.type).toBe('Conditional');
       expect(expr.alternate.type).toBe('Conditional');
     });
@@ -721,7 +721,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const computed = result.program.entities[0].computedProperties[0];
-      const expr = computed.expression as any;
+      const expr = computed.expression as ConditionalNode;
       expect(expr.type).toBe('Conditional');
     });
   });
@@ -735,9 +735,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.right.type).toBe('Array');
-      expect(expr.right.elements).toHaveLength(0);
+      expect((expr.right as ArrayNode).elements).toHaveLength(0);
     });
 
     it('should parse array with elements', () => {
@@ -748,9 +748,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.right.type).toBe('Array');
-      expect(expr.right.elements).toHaveLength(3);
+      expect((expr.right as ArrayNode).elements).toHaveLength(3);
     });
 
     it('should parse array with trailing comma', () => {
@@ -771,9 +771,9 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const constraint = result.program.entities[0].constraints[0];
-      const expr = constraint.expression as any;
+      const expr = constraint.expression as BinaryOpNode;
       expect(expr.right.type).toBe('Array');
-      expect(expr.right.elements[0].type).toBe('Array');
+      expect((expr.right as ArrayNode).elements[0].type).toBe('Array');
     });
   });
 
@@ -786,7 +786,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const prop = result.program.entities[0].properties[0];
-      const expr = prop.defaultValue as any;
+      const expr = prop.defaultValue as ObjectNode;
       expect(expr.type).toBe('Object');
       expect(expr.properties).toHaveLength(0);
     });
@@ -799,7 +799,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const prop = result.program.entities[0].properties[0];
-      const expr = prop.defaultValue as any;
+      const expr = prop.defaultValue as ObjectNode;
       expect(expr.type).toBe('Object');
       expect(expr.properties).toHaveLength(2);
     });
@@ -812,7 +812,7 @@ entity User {
 `;
       const result = new Parser().parse(source);
       const prop = result.program.entities[0].properties[0];
-      const expr = prop.defaultValue as any;
+      const expr = prop.defaultValue as ObjectNode;
       expect(expr.type).toBe('Object');
       expect(expr.properties[0].value.type).toBe('Object');
     });

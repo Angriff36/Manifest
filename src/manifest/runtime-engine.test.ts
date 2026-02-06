@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RuntimeEngine, type RuntimeContext, type RuntimeOptions } from './runtime-engine';
+import { RuntimeEngine, type RuntimeContext, type RuntimeOptions, type EntityInstance } from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR, IRExpression } from './ir';
 import { COMPILER_VERSION } from './version';
@@ -145,7 +145,7 @@ describe('RuntimeEngine', () => {
       const mockStore = {
         getAll: async () => [],
         getById: async () => undefined,
-        create: async (data: any) => ({ id: 'custom-id', ...data }),
+        create: async (data: Partial<EntityInstance>) => ({ id: 'custom-id', ...data }),
         update: async () => undefined,
         delete: async () => false,
         clear: async () => {},
@@ -474,7 +474,7 @@ describe('RuntimeEngine', () => {
       await runtime.createInstance('User', { name: 'Bob', email: 'bob@example.com', age: 25 });
       const instances = await runtime.getAllInstances('User');
       expect(instances).toHaveLength(2);
-      expect(instances.map((i: any) => i.name).sort()).toEqual(['Alice', 'Bob']);
+      expect(instances.map((i: EntityInstance) => i.name).sort()).toEqual(['Alice', 'Bob']);
     });
 
     it('should update instance', async () => {
@@ -765,7 +765,7 @@ describe('RuntimeEngine', () => {
       const serialized = await runtime.serialize();
       expect(serialized.ir).toBe(ir);
       expect(serialized.stores.User).toHaveLength(2);
-      expect(serialized.stores.User.map((u: any) => u.name).sort()).toEqual(['Alice', 'Bob']);
+      expect(serialized.stores.User.map((u: EntityInstance) => u.name).sort()).toEqual(['Alice', 'Bob']);
     });
 
     it('should restore runtime state', async () => {
