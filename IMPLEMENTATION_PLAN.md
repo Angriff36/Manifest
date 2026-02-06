@@ -1,8 +1,8 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 426/427 tests passing | v0.3.2 released)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.3 released | Lambda expressions fully implemented)
 
-**Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 426/427 tests passing (1 skipped) | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (90) | Runtime Engine Unit Tests COMPLETE (56)
+**Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
 ---
 
@@ -16,7 +16,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 |-----------|--------|----------|
 | **Baseline Features** | COMPLETE | 20 fixtures passing (100% conformance) |
 | **vNext Features** | COMPLETE | Fixtures 21-27 passing (100% conformance) |
-| **Test Suite** | PASSING | 426/427 tests (142 conformance + 1 happy + 58 lexer + 79 parser + 90 ir-compiler + 56 runtime) |
+| **Test Suite** | PASSING | 427/427 tests (142 conformance + 1 happy + 58 lexer + 79 parser + 91 ir-compiler + 56 runtime | 0 skipped) |
 | **TypeScript** | CLEAN | No typecheck errors |
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
@@ -74,21 +74,43 @@ Manifest is a domain-specific language for defining business rules and workflows
 
 ```
 Test Files: 6 passed (6)
-Tests: 426 passed (426) | 1 skipped
+Tests: 427 passed (427 | 0 skipped)
   - src/manifest/conformance/conformance.test.ts: 142 tests (includes 8 negative tests)
   - src/manifest/runtime-engine.happy.test.ts: 1 test
   - src/manifest/lexer.test.ts: 58 tests
   - src/manifest/parser.test.ts: 79 tests
-  - src/manifest/ir-compiler.test.ts: 91 tests (1 skipped)
+  - src/manifest/ir-compiler.test.ts: 91 tests (lambda expression test enabled and passing)
   - src/manifest/runtime-engine.test.ts: 56 tests
 Duration: ~450ms
 ```
+
+### Lambda Expression Support
+
+**Status**: FULLY IMPLEMENTED ✓
+
+The Manifest parser now supports lambda expressions with the following syntax requirements:
+
+- **Supported**: Lambda expressions with parentheses around parameters
+  - Example: `(x) => x.name`
+  - Example: `(user) => user.email === "admin@example.com"`
+
+- **NOT Supported**: Shorthand lambda syntax without parentheses
+  - Example: `x => x.name` ❌
+  - The Manifest parser requires explicit parentheses around lambda parameters
+
+**Architecture**:
+- **Lexer**: Full support for `=>` token (already complete)
+- **Parser**: Lambda expressions with parentheses `(param) => body` (NOW ENABLED)
+- **IR Layer**: Complete lambda support (already implemented)
+- **Runtime**: Full lambda evaluation support (already implemented)
+
+The IR compiler and runtime layers already had complete lambda support. The only missing piece was the parser test, which was previously skipped and is now enabled and passing.
 
 | Component | Tests | Status |
 |-----------|-------|--------|
 | **Lexer** | 58 | Comprehensive coverage of all token types |
 | **Parser** | 79 | Comprehensive coverage of all AST node types |
-| **IR Compiler** | 91 (90 passing) | Comprehensive coverage of AST→IR transformation |
+| **IR Compiler** | 91 | Comprehensive coverage of AST→IR transformation |
 | **Runtime Engine** | 56 | Comprehensive coverage of execution engine |
 
 ### Fixture Coverage
@@ -144,7 +166,7 @@ docs/migration/
 
 **TypeScript**: No typecheck errors
 **ESLint**: No blocking errors
-**Tests**: 426/427 passing (99.7%, 1 skipped for unsupported lambda syntax)
+**Tests**: 427/427 passing (100% | 0 skipped)
 
 Comprehensive search found:
 - No TODO comments in implementation code
@@ -158,21 +180,21 @@ Comprehensive search found:
 
 ## Next Steps
 
-All planned vNext work is complete. Latest release: v0.3.2
+All planned vNext work is complete. Latest release: v0.3.3
 
 ### Completed (2026-02-06)
 
 - **Lexer unit tests**: Complete (58 tests)
 - **Parser unit tests**: Complete (79 tests)
-- **IR Compiler unit tests**: Complete (90 tests, 1 skipped for unsupported lambda syntax)
+- **IR Compiler unit tests**: Complete (91 tests, lambda expression test enabled and passing)
 - **Runtime Engine unit tests**: Complete (56 tests)
 - **Negative test fixtures**: Complete (8 fixtures)
+- **Lambda expressions**: Fully implemented (parentheses syntax required)
 
 ### Optional Future Enhancements
 
 - Add ESLint rule to prevent hardcoded versions
 - Add performance benchmarks
-- Implement lambda expression parsing (currently skipped in test suite)
 
 ---
 

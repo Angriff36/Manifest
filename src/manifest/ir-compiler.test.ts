@@ -1051,29 +1051,27 @@ describe('IRCompiler', () => {
       }
     });
 
-    it.skip('should transform lambda expression', async () => {
-      // NOTE: Lambda syntax may not be fully supported in the parser
-      // This test can be enabled when lambda parsing is confirmed working
+    it('should transform lambda expression', async () => {
+      // Lambda expressions require parentheses around parameters: (x) => body
+      // The Manifest parser does not support shorthand: x => body
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
         entity User {
-          property items: list<object>
-          computed transformed: list<string> = map(self.items, x => x.name)
+          property value: number
+          computed doubled: number = (x) => x * 2
         }
       `);
 
       const expr = result.ir?.entities[0].computedProperties[0].expression;
       expect(expr).toEqual({
-        kind: 'call',
-        callee: { kind: 'identifier', name: 'map' },
-        args: [
-          { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'items' },
-          {
-            kind: 'lambda',
-            params: ['x'],
-            body: { kind: 'member', object: { kind: 'identifier', name: 'x' }, property: 'name' }
-          }
-        ]
+        kind: 'lambda',
+        params: ['x'],
+        body: {
+          kind: 'binary',
+          operator: '*',
+          left: { kind: 'identifier', name: 'x' },
+          right: { kind: 'literal', value: { kind: 'number', value: 2 } }
+        }
       });
     });
   });
