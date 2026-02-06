@@ -757,7 +757,9 @@ export class RuntimeEngine {
       // Auto-increment version on successful update
       // Only increment once per command execution to handle commands with multiple mutate actions
       // If version is explicitly provided in data, use that (for optimistic concurrency checks)
-      if (providedVersion === undefined && !this.versionIncrementedForCommand) {
+      // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
+      const wasJustCreated = this.justCreatedInstanceIds.has(id);
+      if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
         data[entity.versionProperty] = (existingVersion || 0) + 1;
         this.versionIncrementedForCommand = true;
       }

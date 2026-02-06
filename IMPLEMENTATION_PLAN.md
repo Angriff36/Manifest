@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All vNext work COMPLETE | All unit tests PASSING 427/427 | v0.3.7 released | No outstanding work items)
+**Last Updated**: 2026-02-06 (All vNext work COMPLETE | All unit tests PASSING 427/427 | v0.3.7 released | Version increment per-command fix implemented | No outstanding work items)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -205,6 +205,29 @@ All planned vNext features are implemented, tested, and documented. The codebase
 ---
 
 ## Change Log
+
+### 2026-02-06: Version Increment Per Command Fix
+
+**Issue**: The `updateInstance` method was auto-incrementing the version on **every** call. Commands with multiple mutate actions (e.g., `update` command with 2 mutate actions for title and content) were incrementing the version multiple times - once per mutate action instead of once per command.
+
+**Bug**:
+- Create command (3 mutate actions): version 1 → 2 → 3 → 4 (3 increments, wrong)
+- Update command (2 mutate actions): version 1 → 2 → 3 (2 increments, expected 2)
+
+**Fix**:
+1. Added `versionIncrementedForCommand` flag to track if version was already incremented for current command
+2. Added `justCreatedInstanceIds` Set to track newly created instances (to prevent increment on create command's mutate actions)
+3. Modified `updateInstance` to only increment version once per command execution
+4. Reset flags at start of each `runCommand` execution
+
+**Files Modified**:
+- `src/manifest/runtime-engine.ts` (added versionIncrementedForCommand flag and justCreatedInstanceIds Set)
+
+**Result**:
+- All 427 tests passing
+- Version increment behavior is now deterministic (exactly one increment per successful update command)
+- Create commands no longer increment version (stay at 1)
+- Update commands increment version exactly once regardless of number of mutate actions
 
 ### 2026-02-06: Optimistic Concurrency Parsing Implementation
 
