@@ -227,6 +227,23 @@
           "severity": "ok"
         }
       ]
+    },
+    {
+      "name": "messageTemplate interpolation in constraint error message",
+      "entity": "Order",
+      "data": { "id": "o15", "customerId": "c15", "status": "pending", "amount": 100, "priority": "normal", "createdAt": 1000000000000 },
+      "command": {
+        "name": "createLargeOrder",
+        "entityName": "Order",
+        "instanceId": "o15",
+        "input": { "amount": 15000 }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Cannot create order with amount 15000",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": { "id": "o15", "customerId": "c15", "status": "pending", "amount": 100, "priority": "normal", "createdAt": 1000000000000, "updatedAt": 1000000000000 }
     }
   ]
 }

@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "6aa3be531e21e8f91f6642c2e4193a752d0a8c829eb48bec797daecbdd77c082",
-    "compilerVersion": "0.2.0",
+    "irHash": "e412891c267ac09279bccb03cd7df724497954233f83e0ff34e7b0d8995fb240",
+    "compilerVersion": "0.3.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
@@ -97,11 +97,7 @@
       ],
       "computedProperties": [],
       "relationships": [],
-      "commands": [
-        "updateStatus",
-        "process",
-        "cancel"
-      ],
+      "commands": [],
       "constraints": [
         {
           "name": "positiveAmount",
@@ -311,6 +307,31 @@
           "severity": "block",
           "message": "Cannot modify cancelled orders with non-zero amount",
           "overrideable": false
+        },
+        {
+          "name": "amountLimit",
+          "code": "amountLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 10000
+              }
+            }
+          },
+          "severity": "block",
+          "overrideable": false
         }
       ],
       "policies": []
@@ -324,6 +345,28 @@
     }
   ],
   "events": [
+    {
+      "name": "OrderCreated",
+      "channel": "order.created",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
     {
       "name": "OrderStatusUpdated",
       "channel": "order.status.updated",
@@ -401,8 +444,106 @@
   ],
   "commands": [
     {
+      "name": "createLargeOrder",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [
+        {
+          "name": "respectAmountLimit",
+          "code": "respectAmountLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "input"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 10000
+              }
+            }
+          },
+          "severity": "block",
+          "overrideable": false
+        }
+      ],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "object",
+            "properties": [
+              {
+                "key": "messageTemplate",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "Cannot create order with amount {amount}"
+                  }
+                }
+              },
+              {
+                "key": "details",
+                "value": {
+                  "kind": "object",
+                  "properties": [
+                    {
+                      "key": "amount",
+                      "value": {
+                        "kind": "member",
+                        "object": {
+                          "kind": "identifier",
+                          "name": "input"
+                        },
+                        "property": "amount"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "amount",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "amount"
+          }
+        }
+      ],
+      "emits": [
+        "OrderCreated"
+      ]
+    },
+    {
       "name": "updateStatus",
-      "entity": "Order",
       "parameters": [
         {
           "name": "newStatus",
@@ -519,7 +660,6 @@
     },
     {
       "name": "process",
-      "entity": "Order",
       "parameters": [],
       "guards": [],
       "constraints": [
@@ -637,7 +777,6 @@
     },
     {
       "name": "cancel",
-      "entity": "Order",
       "parameters": [],
       "guards": [],
       "constraints": [

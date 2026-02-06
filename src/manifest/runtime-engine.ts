@@ -1449,6 +1449,48 @@ export class RuntimeEngine {
   }
 
   /**
+   * vNext: Interpolate template placeholders with values from context
+   * Supports {placeholder} syntax where placeholders are resolved from:
+   * 1. details mapping (if present)
+   * 2. resolved expression values (by expression string)
+   * 3. evaluation context (direct property access)
+   */
+  private interpolateTemplate(
+    template: string,
+    evalContext: Record<string, unknown>,
+    details?: Record<string, unknown>,
+    resolved?: Array<{ expression: string; value: unknown }>
+  ): string {
+    // Create a lookup map for resolved values by expression
+    const resolvedMap = new Map<string, unknown>();
+    if (resolved) {
+      for (const r of resolved) {
+        // Use the expression string as the key
+        resolvedMap.set(r.expression, r.value);
+      }
+    }
+
+    return template.replace(/\{([^}]+)\}/g, (_match, placeholder) => {
+      // First check details mapping
+      if (details && placeholder in details) {
+        return String(details[placeholder]);
+      }
+      // Then check resolved expressions
+      if (resolvedMap.has(placeholder)) {
+        const value = resolvedMap.get(placeholder);
+        return value === undefined ? placeholder : String(value);
+      }
+      // Finally check evaluation context
+      if (placeholder in evalContext) {
+        const value = (evalContext as Record<string, unknown>)[placeholder];
+        return value === undefined ? placeholder : String(value);
+      }
+      // Placeholder not found, return original
+      return _match;
+    });
+  }
+
+  /**
    * vNext: Evaluate a single constraint and return detailed outcome
    */
   private async evaluateConstraint(
@@ -1475,12 +1517,18 @@ export class RuntimeEngine {
     // Resolve expression values for debugging
     const resolved = await this.resolveExpressionValues(constraint.expression, evalContext);
 
+    // Build message with template interpolation if messageTemplate is used
+    let message: string | undefined = constraint.message;
+    if (constraint.messageTemplate && !message) {
+      message = this.interpolateTemplate(constraint.messageTemplate, evalContext, details, resolved.map(r => ({ expression: r.expression, value: r.value })));
+    }
+
     return {
       code: constraint.code,
       constraintName: constraint.name,
       severity: constraint.severity || 'block',
       formatted: this.formatExpression(constraint.expression),
-      message: constraint.message || constraint.messageTemplate,
+      message,
       details,
       passed,
       resolved: resolved.map(r => ({ expression: r.expression, value: r.value })),

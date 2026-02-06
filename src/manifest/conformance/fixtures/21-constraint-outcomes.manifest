@@ -12,6 +12,25 @@ entity Order {
   constraint severityInfo:ok self.createdAt == 0 "Order created recently"
   constraint severityWarning:warn self.priority == "high" and self.amount > 1000 "High priority order with large amount"
   constraint severityBlock:block self.status == "cancelled" and self.amount > 0 "Cannot modify cancelled orders with non-zero amount"
+  constraint amountLimit:block self.amount > 10000 {
+    messageTemplate: "Order amount {currentAmount} exceeds limit of {maxAmount} by {excessAmount}"
+    details: {
+      maxAmount: 10000
+      currentAmount: self.amount
+      excessAmount: self.amount - 10000
+    }
+  }
+
+  command createLargeOrder(amount: number) {
+    constraint respectAmountLimit:block self.input.amount > 10000 {
+      messageTemplate: "Cannot create order with amount {amount}"
+      details: {
+        amount: input.amount
+      }
+    }
+    mutate amount = input.amount
+    emit OrderCreated
+  }
 
   command updateStatus(newStatus: string) {
     constraint infoUpdate:ok self.status != newStatus "Status is being changed"
@@ -43,6 +62,11 @@ entity Order {
 }
 
 store Order in memory
+
+event OrderCreated: "order.created" {
+  orderId: string
+  amount: number
+}
 
 event OrderStatusUpdated: "order.status.updated" {
   orderId: string
