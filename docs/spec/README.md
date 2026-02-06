@@ -52,6 +52,11 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 - `docs/spec/builtins.md` — Built-in identifiers and functions
 - `docs/spec/adapters.md` — Adapter hooks and required behavior
 - `docs/spec/conformance.md` — Conformance fixtures and test rules
+- `docs/spec/manifest-vnext.md` — vNext features: constraint outcomes, overrides, workflows, concurrency
+
+### Migration Documentation
+
+- `docs/migration/vnext-migration-guide.md` — Guide for migrating to vNext features
 
 ## Versioning Rules
 

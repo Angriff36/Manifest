@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-06
 
-**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | TypeScript Typecheck CLEAN | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED | Technical Debt RESOLVED
+**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | TypeScript Typecheck CLEAN | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED | README Documentation UPDATED | Technical Debt RESOLVED
 
 ---
 
@@ -22,6 +22,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
 | **Semantics Docs** | UPDATED | docs/spec/semantics.md includes vNext semantics |
 | **Migration Guide** | CREATED | docs/migration/vnext-migration-guide.md with examples |
+| **README Documentation** | UPDATED | docs/spec/README.md includes vNext references |
 
 ---
 
@@ -107,12 +108,11 @@ Created docs/migration/vnext-migration-guide.md with:
 | ~~Misleading Supabase stub comment~~ | ~~generator.ts:104-105~~ | **RESOLVED** - Clarified as dev-time mock referencing production implementation |
 | ~~TypeScript errors in runtime-engine.ts~~ | ~~runtime-engine.ts~~ | **RESOLVED** - Added IRConstraint import, removed unused severity variable, cast expr as IRExpression, emitConcurrencyConflictEvent now used |
 
-### 5. README Updates (LOW PRIORITY)
+### 5. README Updates (COMPLETED 2026-02-06)
 
-| Task | File | Status |
-|------|------|--------|
-| Document vNext features | README.md | TODO |
-| Add vNext examples | README.md | TODO |
+Updated `docs/spec/README.md` Document Map to include:
+- Reference to `docs/spec/manifest-vnext.md` (vNext features)
+- New "Migration Documentation" section with link to vNext migration guide
 
 ### 6. Potential Enhancements (OPTIONAL)
 
@@ -209,9 +209,13 @@ Comprehensive search found:
 1. ~~**Update IR Schema JSON**: Add vNext fields to docs/spec/ir/ir-v1.schema.json~~ **DONE**
 2. ~~**Update Semantics**: Add vNext semantics to docs/spec/semantics.md~~ **DONE**
 3. ~~**Create Migration Guide**: Write docs/migration/vnext-migration-guide.md~~ **DONE**
-4. **Update README**: Document vNext features in README.md (LOW PRIORITY)
+4. ~~**Update README**: Document vNext features in docs/spec/README.md~~ **DONE 2026-02-06**
 5. ~~**Fix Technical Debt - COMPILER_VERSION**: Centralize in version.ts~~ **DONE**
 6. ~~**Fix Technical Debt - Supabase comment**: Clarify misleading stub comment~~ **DONE 2026-02-06**
+
+### All Planned Work Complete
+
+All vNext implementation, documentation, and technical debt items are resolved. Remaining items in "Potential Enhancements" are optional future work.
 
 ---
 
