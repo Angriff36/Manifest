@@ -541,13 +541,7 @@ export class RuntimeEngine {
       console.warn('[Manifest Runtime] No provenance information found in IR.');
       return;
     }
-    console.group('[Manifest Runtime] Provenance Information');
-    console.log(`Content Hash: ${prov.contentHash}`);
-    console.log(`IR Hash: ${prov.irHash || 'not set'}`);
-    console.log(`Compiler Version: ${prov.compilerVersion}`);
-    console.log(`Schema Version: ${prov.schemaVersion}`);
-    console.log(`Compiled At: ${prov.compiledAt}`);
-    console.groupEnd();
+    // Provenance information is available via getProvenance() for programmatic access
   }
 
   /**
@@ -618,12 +612,6 @@ export class RuntimeEngine {
           'This runtime requires valid provenance for execution.'
         );
       }
-      console.log('[Manifest Runtime] IR provenance verified successfully.');
-    } else {
-      console.log(
-        '[Manifest Runtime] IR provenance verification is disabled. ' +
-        'Enable requireValidProvenance in production for security.'
-      );
     }
   }
 

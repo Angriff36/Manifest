@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All vNext work COMPLETE | All unit tests PASSING 427/427 | v0.3.7 released | Version increment per-command fix implemented | No outstanding work items)
+**Last Updated**: 2026-02-06 (All vNext work COMPLETE | All unit tests PASSING 427/427 | v0.3.7 released | Debug console.log statements removed | Production logging cleaned up | No outstanding work items)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -205,6 +205,25 @@ All planned vNext features are implemented, tested, and documented. The codebase
 ---
 
 ## Change Log
+
+### 2026-02-06: Production Logging Cleanup
+
+**Enhancement**: Removed debug console.log statements from production runtime code.
+
+**Details**:
+- Removed `console.group` block with provenance detail logging (5 console.log statements)
+- Removed success message after IR hash verification
+- Removed info message about verification being disabled
+- Kept legitimate `console.warn` and `console.error` statements for error reporting
+
+**Files Modified**:
+- `src/manifest/runtime-engine.ts` (removed debug logging from `logProvenance()` and `assertValidProvenance()`)
+
+**Result**:
+- All 427 tests passing
+- Production output is now cleaner
+- Legitimate warnings and errors preserved
+- Provenance data still available programmatically via `getProvenance()`
 
 ### 2026-02-06: Version Increment Per Command Fix
 
