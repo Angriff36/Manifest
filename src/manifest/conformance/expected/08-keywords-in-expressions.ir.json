@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "3a3833206a4077bf313a8fff2c68a03f13085e37b0b61e84f2575b3d83c58840",
-    "compilerVersion": "0.3.0",
+    "irHash": "7b80caf9f685cb26e8b26b12beb0cf4692eb08ad83104fcb7f5b17f758631b46",
+    "compilerVersion": "0.3.2",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
@@ -124,5 +124,30 @@
       "emits": []
     }
   ],
-  "policies": []
+  "policies": [
+    {
+      "name": "canRead",
+      "entity": "Item",
+      "action": "read",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "context"
+          },
+          "property": "store"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "active"
+          }
+        }
+      }
+    }
+  ]
 }

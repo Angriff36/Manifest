@@ -3,8 +3,8 @@
  * Single source of truth for version information.
  */
 
-/** Compiler version (should match package.json) */
-export const COMPILER_VERSION = '0.3.0';
+/** Compiler version (should match package.json and git tags) */
+export const COMPILER_VERSION = '0.3.2';
 
 /** IR schema version */
 export const SCHEMA_VERSION = '1.0';
