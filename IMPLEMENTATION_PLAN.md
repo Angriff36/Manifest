@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-06
 
-**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED
+**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED | Version 0.1.9 (COMPILER_VERSION centralized)
 
 ---
 
@@ -102,7 +102,7 @@ Created docs/migration/vnext-migration-guide.md with:
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| COMPILER_VERSION hardcoded | generator.ts:4, ir-compiler.ts:43, standalone-generator.ts:4 | Shows '0.0.0' instead of actual version |
+| ~~COMPILER_VERSION hardcoded~~ | ~~generator.ts:4, ir-compiler.ts:43, standalone-generator.ts:4~~ | **RESOLVED 2026-02-06** - Centralized in version.ts |
 | Misleading Supabase stub comment | generator.ts:104-105 | Comment says stub but actual implementation exists in stores.node.ts |
 
 ### 5. README Updates (LOW PRIORITY)
@@ -203,7 +203,8 @@ Comprehensive grep search found:
 2. ~~**Update Semantics**: Add vNext semantics to docs/spec/semantics.md~~ **DONE**
 3. ~~**Create Migration Guide**: Write docs/migration/vnext-migration-guide.md~~ **DONE**
 4. **Update README**: Document vNext features in README.md
-5. **Fix Technical Debt**: Source COMPILER_VERSION from package.json, clarify Supabase comment
+5. ~~**Fix Technical Debt - COMPILER_VERSION**: Centralize in version.ts~~ **DONE 2026-02-06**
+6. **Fix Technical Debt - Supabase comment**: Clarify misleading stub comment in generator.ts:104-105
 
 ---
 
