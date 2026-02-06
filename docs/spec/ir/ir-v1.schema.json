@@ -92,7 +92,9 @@
         "relationships": { "type": "array", "items": { "$ref": "#/definitions/IRRelationship" } },
         "commands": { "type": "array", "items": { "type": "string" } },
         "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" } },
-        "policies": { "type": "array", "items": { "type": "string" } }
+        "policies": { "type": "array", "items": { "type": "string" } },
+        "versionProperty": { "type": "string", "description": "Name of version field for optimistic concurrency control" },
+        "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" }
       }
     },
     "IRProperty": {
@@ -137,11 +139,25 @@
     "IRConstraint": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "expression"],
+      "required": ["name", "code", "expression"],
       "properties": {
         "name": { "type": "string" },
+        "code": { "type": "string", "description": "Stable identifier for overrides/auditing (defaults to name)" },
         "expression": { "$ref": "#/definitions/IRExpression" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["ok", "warn", "block"],
+          "description": "Constraint severity level (default: block)"
+        },
+        "messageTemplate": { "type": "string", "description": "Template for error messages with interpolation" },
+        "detailsMapping": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/IRExpression" },
+          "description": "Structured details for UI (key-value pairs with expression values)"
+        },
+        "overrideable": { "type": "boolean", "description": "Can this constraint be overridden?" },
+        "overridePolicyRef": { "type": "string", "description": "Policy that authorizes overrides" }
       }
     },
     "IRStore": {
@@ -195,6 +211,7 @@
         "entity": { "type": "string" },
         "parameters": { "type": "array", "items": { "$ref": "#/definitions/IRParameter" } },
         "guards": { "type": "array", "items": { "$ref": "#/definitions/IRExpression" } },
+        "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" }, "description": "Command-level constraints (pre-execution validation)" },
         "actions": { "type": "array", "items": { "$ref": "#/definitions/IRAction" } },
         "emits": { "type": "array", "items": { "type": "string" } },
         "returns": { "$ref": "#/definitions/IRType" }
@@ -243,7 +260,7 @@
         "name": { "type": "string" },
         "module": { "type": "string" },
         "entity": { "type": "string" },
-        "action": { "enum": ["read", "write", "delete", "execute", "all"] },
+        "action": { "enum": ["read", "write", "delete", "execute", "all", "override"] },
         "expression": { "$ref": "#/definitions/IRExpression" },
         "message": { "type": "string" }
       }
@@ -430,6 +447,46 @@
           }
         }
       ]
+    },
+    "ConstraintOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "constraintName", "severity", "formatted", "passed"],
+      "properties": {
+        "code": { "type": "string", "description": "Stable constraint identifier" },
+        "constraintName": { "type": "string", "description": "Constraint name for reference" },
+        "severity": { "type": "string", "enum": ["ok", "warn", "block"], "description": "Severity level of the constraint" },
+        "formatted": { "type": "string", "description": "Formatted expression string" },
+        "message": { "type": "string", "description": "Optional message from constraint" },
+        "details": { "type": "object", "additionalProperties": true, "description": "Structured details for UI (resolved values)" },
+        "passed": { "type": "boolean", "description": "Whether the constraint passed" },
+        "overridden": { "type": "boolean", "description": "Whether the constraint was overridden" },
+        "overriddenBy": { "type": "string", "description": "User who authorized the override" },
+        "resolved": { "type": "array", "items": { "type": "object", "required": ["expression", "value"], "properties": { "expression": { "type": "string" }, "value": true } }, "description": "Resolved expression values for debugging" }
+      }
+    },
+    "OverrideRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraintCode", "reason", "authorizedBy", "timestamp"],
+      "properties": {
+        "constraintCode": { "type": "string", "description": "Constraint code to override" },
+        "reason": { "type": "string", "description": "Reason for the override" },
+        "authorizedBy": { "type": "string", "description": "User authorizing the override" },
+        "timestamp": { "type": "number", "description": "Timestamp of override request" }
+      }
+    },
+    "ConcurrencyConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityId", "expectedVersion", "actualVersion", "conflictCode"],
+      "properties": {
+        "entityType": { "type": "string", "description": "Type of entity that conflicted" },
+        "entityId": { "type": "string", "description": "ID of the entity instance" },
+        "expectedVersion": { "type": "number", "description": "Expected version number" },
+        "actualVersion": { "type": "number", "description": "Actual version in storage" },
+        "conflictCode": { "type": "string", "description": "Conflict code for categorization" }
+      }
     }
   }
 }
