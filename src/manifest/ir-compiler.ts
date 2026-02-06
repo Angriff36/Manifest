@@ -147,13 +147,13 @@ export class IRCompiler {
     const entityScopedStores: IRStore[] = [
       ...program.entities.filter(e => e.store).map(e => ({
         entity: e.name,
-        target: e.store as 'memory' | 'filesystem' | 'postgres' | 'supabase',
+        target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
         config: {},
       })),
       ...program.modules.flatMap(m =>
         m.entities.filter(e => e.store).map(e => ({
           entity: e.name,
-          target: e.store as 'memory' | 'filesystem' | 'postgres' | 'supabase',
+          target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
           config: {},
         }))
       ),
