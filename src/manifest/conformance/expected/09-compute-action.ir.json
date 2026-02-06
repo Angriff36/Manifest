@@ -3,7 +3,7 @@
   "provenance": {
     "contentHash": "normalized-content-hash",
     "irHash": "f5c1a46133f6c4ca3a674e3945d81e7b271e65e481b084a8b2051c19babcbd8a",
-    "compilerVersion": "0.0.0",
+    "compilerVersion": "0.1.9",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },

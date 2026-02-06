@@ -1,9 +1,5 @@
 import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode } from './types';
-
-/** Compiler version (from package.json) */
-const COMPILER_VERSION = '0.0.0';
-/** IR schema version */
-const SCHEMA_VERSION = '1.0';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
 
 /** Provenance metadata for generated code */
 interface GeneratedProvenance {

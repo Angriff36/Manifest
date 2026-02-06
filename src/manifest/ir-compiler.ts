@@ -38,11 +38,7 @@ import {
   IRProvenance,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache';
-
-/** Compiler version (from package.json) */
-const COMPILER_VERSION = '0.0.0';
-/** IR schema version */
-const SCHEMA_VERSION = '1.0';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
 
 /**
  * Compute SHA-256 hash of the source manifest
