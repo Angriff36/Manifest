@@ -160,7 +160,7 @@ const EXAMPLE_MANIFEST = \`module TaskManager {
     constraint validPriority: priority >= 1 and priority <= 5 "Priority must be 1-5"
 
     command complete() {
-      guard not completed
+      guard not self.completed
       mutate completed = true
       emit TaskCompleted
     }
@@ -301,6 +301,39 @@ function RuntimeStatus({
   );
 }
 
+function RuntimeContextEditor({
+  value,
+  error,
+  onChange
+}: {
+  value: string;
+  error: string | null;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div className="runtime-context">
+      <div className="context-header">
+        <span>Runtime Context</span>
+        <span className="context-hint">JSON</span>
+      </div>
+      <div className="context-shape mono">Expected: {'{ "user": { "id": "u1", "role": "cook" } }'}</div>
+      <textarea
+        className={\`context-editor \${error ? 'has-error' : ''}\`}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder='{\n  "user": { "id": "u1", "role": "cook" }\n}'
+        spellCheck={false}
+        rows={6}
+      />
+      {error ? (
+        <div className="context-error">{error}</div>
+      ) : (
+        <div className="context-help">Runtime context object only.</div>
+      )}
+    </div>
+  );
+}
+
 function ModelExplorer({ ir }: { ir: IR | null }) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['modules', 'entities', 'commands']));
@@ -421,6 +454,16 @@ function getDefaultValue(type: IRType): unknown {
   }
 }
 
+function omitEmptyStrings(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== '') {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function EntityPanel({
   entity,
   engine
@@ -432,15 +475,23 @@ function EntityPanel({
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const loadItems = useCallback(() => {
-    setItems(engine.getAllInstances(entity.name));
+  const loadItems = useCallback(async () => {
+    setItems(await engine.getAllInstances(entity.name));
   }, [engine, entity.name]);
 
   useEffect(() => {
-    loadItems();
-    const interval = setInterval(loadItems, 500);
-    return () => clearInterval(interval);
-  }, [loadItems]);
+    let cancelled = false;
+    const load = async () => {
+      const result = await engine.getAllInstances(entity.name);
+      if (!cancelled) setItems(result);
+    };
+    load();
+    const interval = setInterval(load, 500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [engine, entity.name]);
 
   useEffect(() => {
     const initial: Record<string, unknown> = {};
@@ -450,9 +501,10 @@ function EntityPanel({
     setFormData(initial);
   }, [entity]);
 
-  const handleCreate = () => {
-    engine.createInstance(entity.name, formData);
-    loadItems();
+  const handleCreate = async () => {
+    const payload = omitEmptyStrings(formData);
+    await engine.createInstance(entity.name, payload);
+    await loadItems();
     const initial: Record<string, unknown> = {};
     entity.properties.forEach(p => {
       initial[p.name] = getDefaultValue(p.type);
@@ -460,15 +512,16 @@ function EntityPanel({
     setFormData(initial);
   };
 
-  const handleDelete = (id: string) => {
-    engine.deleteInstance(entity.name, id);
-    loadItems();
+  const handleDelete = async (id: string) => {
+    await engine.deleteInstance(entity.name, id);
+    await loadItems();
   };
 
-  const handleUpdate = (id: string) => {
-    engine.updateInstance(entity.name, id, formData);
+  const handleUpdate = async (id: string) => {
+    const payload = omitEmptyStrings(formData);
+    await engine.updateInstance(entity.name, id, payload);
     setEditingId(null);
-    loadItems();
+    await loadItems();
   };
 
   const startEdit = (item: EntityInstance) => {
@@ -568,8 +621,9 @@ function CommandsPanel({
   const [selectedCommand, setSelectedCommand] = useState<IRCommand | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [targetInstance, setTargetInstance] = useState<string>('');
-  const [result, setResult] = useState<{ success: boolean; message: string; events: EmittedEvent[] } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string; events: EmittedEvent[]; guardFailure?: { index: number; formatted: string; resolved?: { expression: string; value: string }[] } } | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [instances, setInstances] = useState<EntityInstance[]>([]);
 
   const commands = engine.getCommands();
   const entityCommands = commands.filter(c => c.entity);
@@ -586,6 +640,19 @@ function CommandsPanel({
       setTargetInstance('');
     }
   }, [selectedCommand]);
+
+  const formatResolvedValue = (value: unknown) => {
+    if (value === undefined) return 'undefined';
+    if (value === null) return 'null';
+    if (typeof value === 'string') return JSON.stringify(value);
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    try {
+      const json = JSON.stringify(value);
+      return json === undefined ? String(value) : json;
+    } catch {
+      return String(value);
+    }
+  };
 
   const executeCommand = async () => {
     if (!selectedCommand) return;
@@ -609,7 +676,19 @@ function CommandsPanel({
         message: cmdResult.success
           ? \`Command executed successfully\${cmdResult.result !== undefined ? \`: \${JSON.stringify(cmdResult.result)}\` : ''}\`
           : cmdResult.error || 'Unknown error',
-        events: cmdResult.emittedEvents
+        events: cmdResult.emittedEvents,
+        guardFailure: cmdResult.guardFailure
+          ? {
+              index: cmdResult.guardFailure.index,
+              formatted: cmdResult.guardFailure.formatted,
+              resolved: cmdResult.guardFailure.resolved
+                ? cmdResult.guardFailure.resolved.map(entry => ({
+                    expression: entry.expression,
+                    value: formatResolvedValue(entry.value),
+                  }))
+                : undefined
+            }
+          : undefined
       });
     } catch (err: any) {
       setResult({
@@ -651,7 +730,16 @@ function CommandsPanel({
     );
   };
 
-  const instances = selectedCommand?.entity ? engine.getAllInstances(selectedCommand.entity) : [];
+  // Load instances when selectedCommand changes
+  useEffect(() => {
+    let cancelled = false;
+    const loadInstances = async () => {
+      const result = selectedCommand?.entity ? await engine.getAllInstances(selectedCommand.entity) : [];
+      if (!cancelled) setInstances(result);
+    };
+    loadInstances();
+    return () => { cancelled = true; };
+  }, [selectedCommand, engine]);
 
   return (
     <div className="commands-panel">
@@ -748,6 +836,20 @@ function CommandsPanel({
               <div className={\`command-result \${result.success ? 'success' : 'error'}\`}>
                 <div className="result-status">{result.success ? 'Success' : 'Failed'}</div>
                 <div className="result-message">{result.message}</div>
+                {!result.success && result.guardFailure && (
+                  <div className="guard-failure">
+                    <div className="guard-failure-title">Guard #{result.guardFailure.index} failed</div>
+                    <div className="guard-failure-detail mono">{result.guardFailure.formatted}</div>
+                    {result.guardFailure.resolved && result.guardFailure.resolved.length > 0 && (
+                      <div className="guard-failure-resolved">
+                        <span className="guard-failure-label">Resolved:</span>
+                        <span className="guard-failure-detail mono">
+                         {result.guardFailure.resolved.map(entry => String(entry.expression) + ' = ' + String(entry.value)).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {result.events.length > 0 && (
                   <div className="result-events">
                     <div className="events-title">Emitted Events:</div>
@@ -824,15 +926,39 @@ export default function App() {
   const [source, setSource] = useState<string>(manifestSource);
   const [compileState, setCompileState] = useState<CompileState | null>(null);
   const [runtimeState, setRuntimeState] = useState<RuntimeState>({ engine: null, lastGoodEngine: null, events: [] });
+  const [runtimeContextText, setRuntimeContextText] = useState<string>('{}');
+  const [runtimeContext, setRuntimeContext] = useState<Record<string, unknown>>({});
+  const [runtimeContextError, setRuntimeContextError] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('status');
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+
+  const handleContextChange = useCallback((next: string) => {
+    setRuntimeContextText(next);
+    const trimmed = next.trim();
+    if (trimmed.length === 0) {
+      setRuntimeContext({});
+      setRuntimeContextError(null);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        setRuntimeContextError('Runtime context must be a JSON object.');
+        return;
+      }
+      setRuntimeContext(parsed as Record<string, unknown>);
+      setRuntimeContextError(null);
+    } catch (err: any) {
+      setRuntimeContextError(err?.message || 'Invalid JSON');
+    }
+  }, []);
 
   const compile = useCallback((src: string) => {
     setIsCompiling(true);
     const start = performance.now();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const { ir, diagnostics } = compileToIR(src);
       const compileTime = Math.round(performance.now() - start);
       const success = ir !== null;
@@ -840,12 +966,12 @@ export default function App() {
       setCompileState({ ir, diagnostics, compileTime, success });
 
       if (success && ir) {
-        const newEngine = new RuntimeEngine(ir, { user: { id: 'user-1', role: 'admin' } });
+        const newEngine = new RuntimeEngine(ir, runtimeContext);
 
         if (runtimeState.engine) {
           try {
-            const data = runtimeState.engine.serialize();
-            newEngine.restore({ stores: data.stores });
+            const data = await runtimeState.engine.serialize();
+            await newEngine.restore({ stores: data.stores });
           } catch {}
         }
 
@@ -862,7 +988,14 @@ export default function App() {
 
       setIsCompiling(false);
     }, 50);
-  }, [runtimeState.engine]);
+  }, [runtimeContext, runtimeState.engine]);
+
+  useEffect(() => {
+    if (runtimeContextError) return;
+    const activeEngine = runtimeState.engine || runtimeState.lastGoodEngine;
+    if (!activeEngine) return;
+    activeEngine.replaceContext(runtimeContext);
+  }, [runtimeContext, runtimeContextError, runtimeState.engine, runtimeState.lastGoodEngine]);
 
   useEffect(() => {
     compile(source);
@@ -923,6 +1056,11 @@ export default function App() {
             manifestPath="manifest/source.manifest"
             onRecompile={handleRecompile}
             isCompiling={isCompiling}
+          />
+          <RuntimeContextEditor
+            value={runtimeContextText}
+            error={runtimeContextError}
+            onChange={handleContextChange}
           />
         </aside>
 
@@ -1019,6 +1157,15 @@ export default function App() {
         .error-msg { color: #fca5a5; flex: 1; }
         .error-pos { color: #94a3b8; font-family: monospace; font-size: 11px; }
 
+        .runtime-context { padding: 16px; border-top: 1px solid #1f2937; }
+        .context-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
+        .context-hint { font-size: 11px; color: #64748b; border: 1px solid #334155; padding: 2px 6px; border-radius: 999px; }
+        .context-shape { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
+        .context-editor { width: 100%; min-height: 120px; background: #0b1220; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-family: 'Monaco', 'Menlo', monospace; font-size: 12px; padding: 10px; resize: vertical; }
+        .context-editor.has-error { border-color: #ef4444; }
+        .context-help { margin-top: 6px; font-size: 11px; color: #64748b; }
+        .context-error { margin-top: 6px; font-size: 11px; color: #fca5a5; }
+
         .model-explorer { display: flex; height: calc(100vh - 140px); background: #1e293b; border-radius: 8px; overflow: hidden; }
         .explorer-tree { width: 280px; border-right: 1px solid #334155; overflow-y: auto; }
         .tree-header { padding: 12px 16px; font-weight: 500; border-bottom: 1px solid #334155; background: #0f172a; }
@@ -1101,6 +1248,11 @@ export default function App() {
         .result-status { font-weight: 600; margin-bottom: 4px; }
         .command-result.success .result-status { color: #34d399; }
         .command-result.error .result-status { color: #f87171; }
+        .guard-failure { margin-top: 10px; padding: 10px; border-radius: 6px; background: #1f2937; border: 1px dashed #ef444466; }
+        .guard-failure-title { font-size: 12px; font-weight: 600; color: #fca5a5; margin-bottom: 4px; }
+        .guard-failure-detail { font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+        .guard-failure-resolved { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .guard-failure-label { font-size: 12px; color: #cbd5f5; }
         .result-message { font-size: 13px; color: #94a3b8; }
         .result-events { margin-top: 12px; }
         .events-title { font-size: 12px; color: #64748b; margin-bottom: 8px; }
@@ -1391,7 +1543,7 @@ export interface IREntity {
   properties: IRProperty[];
   computedProperties: IRComputedProperty[];
   relationships: IRRelationship[];
-  commands: IRCommand[];
+  commands: string[];
   constraints: IRConstraint[];
   policies: string[];
 }
@@ -1569,7 +1721,9 @@ class IRCompiler {
     ];
     const commands = [
       ...p.commands.map(c => this.transformCommand(c)),
-      ...p.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name)))
+      ...p.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
+      ...p.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, undefined, e.name))),
+      ...p.modules.flatMap(m => m.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, m.name, e.name))))
     ];
     const policies = [
       ...p.policies.map(pl => this.transformPolicy(pl)),
@@ -1597,7 +1751,7 @@ class IRCompiler {
       properties: e.properties.map(p => this.transformProperty(p)),
       computedProperties: e.computedProperties.map(c => this.transformComputed(c)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
-      commands: e.commands.map(c => this.transformCommand(c, mod, e.name)),
+      commands: e.commands.map(c => c.name),
       constraints: e.constraints.map(c => this.transformConstraint(c)),
       policies: e.policies.map(p => p.name),
     };
@@ -1785,7 +1939,20 @@ export interface CommandResult {
   result?: unknown;
   error?: string;
   deniedBy?: string;
+  guardFailure?: GuardFailure;
   emittedEvents: EmittedEvent[];
+}
+
+export interface GuardFailure {
+  index: number;
+  expression: IRExpression;
+  formatted: string;
+  resolved?: GuardResolvedValue[];
+}
+
+export interface GuardResolvedValue {
+  expression: string;
+  value: unknown;
 }
 
 export interface EmittedEvent {
@@ -1796,33 +1963,33 @@ export interface EmittedEvent {
 }
 
 interface Store<T extends EntityInstance = EntityInstance> {
-  getAll(): T[];
-  getById(id: string): T | undefined;
-  create(data: Partial<T>): T;
-  update(id: string, data: Partial<T>): T | undefined;
-  delete(id: string): boolean;
-  clear(): void;
+  getAll(): Promise<T[]>;
+  getById(id: string): Promise<T | undefined>;
+  create(data: Partial<T>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T | undefined>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
 }
 
 class MemoryStore<T extends EntityInstance> implements Store<T> {
   private items: Map<string, T> = new Map();
-  getAll(): T[] { return Array.from(this.items.values()); }
-  getById(id: string): T | undefined { return this.items.get(id); }
-  create(data: Partial<T>): T {
+  async getAll(): Promise<T[]> { return Array.from(this.items.values()); }
+  async getById(id: string): Promise<T | undefined> { return this.items.get(id); }
+  async create(data: Partial<T>): Promise<T> {
     const id = data.id || crypto.randomUUID();
     const item = { ...data, id } as T;
     this.items.set(id, item);
     return item;
   }
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const existing = this.items.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...data, id };
     this.items.set(id, updated);
     return updated;
   }
-  delete(id: string): boolean { return this.items.delete(id); }
-  clear(): void { this.items.clear(); }
+  async delete(id: string): Promise<boolean> { return this.items.delete(id); }
+  async clear(): Promise<void> { this.items.clear(); }
 }
 
 class LocalStorageStore<T extends EntityInstance> implements Store<T> {
@@ -1832,9 +1999,9 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     catch { return []; }
   }
   private save(items: T[]): void { localStorage.setItem(this.key, JSON.stringify(items)); }
-  getAll(): T[] { return this.load(); }
-  getById(id: string): T | undefined { return this.load().find(i => i.id === id); }
-  create(data: Partial<T>): T {
+  async getAll(): Promise<T[]> { return this.load(); }
+  async getById(id: string): Promise<T | undefined> { return this.load().find(i => i.id === id); }
+  async create(data: Partial<T>): Promise<T> {
     const items = this.load();
     const id = data.id || crypto.randomUUID();
     const item = { ...data, id } as T;
@@ -1842,7 +2009,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return item;
   }
-  update(id: string, data: Partial<T>): T | undefined {
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
     const items = this.load();
     const idx = items.findIndex(i => i.id === id);
     if (idx === -1) return undefined;
@@ -1850,7 +2017,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return items[idx];
   }
-  delete(id: string): boolean {
+  async delete(id: string): Promise<boolean> {
     const items = this.load();
     const idx = items.findIndex(i => i.id === id);
     if (idx === -1) return false;
@@ -1858,7 +2025,7 @@ class LocalStorageStore<T extends EntityInstance> implements Store<T> {
     this.save(items);
     return true;
   }
-  clear(): void { localStorage.removeItem(this.key); }
+  async clear(): Promise<void> { localStorage.removeItem(this.key); }
 }
 
 type EventListener = (event: EmittedEvent) => void;
@@ -1893,30 +2060,29 @@ export class RuntimeEngine {
   getIR(): IR { return this.ir; }
   getContext(): RuntimeContext { return this.context; }
   setContext(ctx: Partial<RuntimeContext>): void { this.context = { ...this.context, ...ctx }; }
+  replaceContext(ctx: RuntimeContext): void { this.context = { ...ctx }; }
   getEntities(): IREntity[] { return this.ir.entities; }
   getEntity(name: string): IREntity | undefined { return this.ir.entities.find(e => e.name === name); }
 
   getCommands(): IRCommand[] {
-    return [
-      ...this.ir.commands,
-      ...this.ir.entities.flatMap(e => e.commands.map(c => ({ ...c, entity: e.name })))
-    ];
+    return this.ir.commands;
   }
 
   getCommand(name: string, entityName?: string): IRCommand | undefined {
     if (entityName) {
       const entity = this.getEntity(entityName);
-      return entity?.commands.find(c => c.name === name);
+      if (!entity || !entity.commands.includes(name)) return undefined;
+      return this.ir.commands.find(c => c.name === name && c.entity === entityName);
     }
     return this.ir.commands.find(c => c.name === name);
   }
 
   getPolicies(): IRPolicy[] { return this.ir.policies; }
   getStore(entityName: string): Store | undefined { return this.stores.get(entityName); }
-  getAllInstances(entityName: string): EntityInstance[] { return this.stores.get(entityName)?.getAll() || []; }
-  getInstance(entityName: string, id: string): EntityInstance | undefined { return this.stores.get(entityName)?.getById(id); }
+  async getAllInstances(entityName: string): Promise<EntityInstance[]> { return this.stores.get(entityName)?.getAll() || []; }
+  async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> { return this.stores.get(entityName)?.getById(id); }
 
-  createInstance(entityName: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
     const defaults: Record<string, unknown> = {};
@@ -1926,11 +2092,11 @@ export class RuntimeEngine {
     return this.stores.get(entityName)?.create({ ...defaults, ...data });
   }
 
-  updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): EntityInstance | undefined {
+  async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     return this.stores.get(entityName)?.update(id, data);
   }
 
-  deleteInstance(entityName: string, id: string): boolean {
+  async deleteInstance(entityName: string, id: string): Promise<boolean> {
     return this.stores.get(entityName)?.delete(id) ?? false;
   }
 
@@ -1943,7 +2109,7 @@ export class RuntimeEngine {
     if (!cmd) return { success: false, error: \`Command '\${commandName}' not found\`, emittedEvents: [] };
 
     const instance = options.instanceId && options.entityName
-      ? this.getInstance(options.entityName, options.instanceId) : undefined;
+      ? await this.getInstance(options.entityName, options.instanceId) : undefined;
     const ctx = this.buildCtx(input, instance);
 
     const policyResult = this.checkPolicies(cmd, ctx);
@@ -1951,9 +2117,20 @@ export class RuntimeEngine {
       return { success: false, error: policyResult.msg, deniedBy: policyResult.policy, emittedEvents: [] };
     }
 
-    for (const guard of cmd.guards) {
+    for (let i = 0; i < cmd.guards.length; i += 1) {
+      const guard = cmd.guards[i];
       if (!this.evalExpr(guard, ctx)) {
-        return { success: false, error: \`Guard failed for '\${commandName}'\`, emittedEvents: [] };
+        return {
+          success: false,
+          error: \`Guard failed for '\${commandName}'\`,
+          guardFailure: {
+            index: i + 1,
+            expression: guard,
+            formatted: this.formatExpr(guard),
+            resolved: this.resolveExpressionValues(guard, ctx),
+          },
+          emittedEvents: [],
+        };
       }
     }
 
@@ -1961,9 +2138,9 @@ export class RuntimeEngine {
     let result: unknown;
 
     for (const action of cmd.actions) {
-      result = this.execAction(action, ctx, options);
+      result = await this.execAction(action, ctx, options);
       if (action.kind === 'mutate' && options.instanceId && options.entityName) {
-        const updated = this.getInstance(options.entityName, options.instanceId);
+        const updated = await this.getInstance(options.entityName, options.instanceId);
         ctx.self = updated;
         ctx.this = updated;
       }
@@ -2003,10 +2180,10 @@ export class RuntimeEngine {
     return { ok: true };
   }
 
-  private execAction(action: IRAction, ctx: Record<string, unknown>, opts: { entityName?: string; instanceId?: string }): unknown {
+  private async execAction(action: IRAction, ctx: Record<string, unknown>, opts: { entityName?: string; instanceId?: string }): Promise<unknown> {
     const val = this.evalExpr(action.expression, ctx);
     if (action.kind === 'mutate' && action.target && opts.instanceId && opts.entityName) {
-      this.updateInstance(opts.entityName, opts.instanceId, { [action.target]: val });
+      await this.updateInstance(opts.entityName, opts.instanceId, { [action.target]: val });
     }
     if (action.kind === 'emit' || action.kind === 'publish') {
       const ev: EmittedEvent = { name: 'action_event', channel: 'default', payload: val, timestamp: Date.now() };
@@ -2060,6 +2237,111 @@ export class RuntimeEngine {
       };
       default: return undefined;
     }
+  }
+
+  private formatExpr(expr: IRExpression): string {
+    switch (expr.kind) {
+      case 'literal':
+        return this.formatValue(expr.value);
+      case 'identifier':
+        return expr.name;
+      case 'member':
+        return this.formatExpr(expr.object) + '.' + expr.property;
+      case 'binary':
+        return this.formatExpr(expr.left) + ' ' + expr.operator + ' ' + this.formatExpr(expr.right);
+      case 'unary':
+        return expr.operator === 'not'
+          ? 'not ' + this.formatExpr(expr.operand)
+          : expr.operator + this.formatExpr(expr.operand);
+      case 'call':
+        return this.formatExpr(expr.callee) + '(' + expr.args.map(a => this.formatExpr(a)).join(', ') + ')';
+      case 'conditional':
+        return this.formatExpr(expr.condition) + ' ? ' + this.formatExpr(expr.consequent) + ' : ' + this.formatExpr(expr.alternate);
+      case 'array':
+        return '[' + expr.elements.map(el => this.formatExpr(el)).join(', ') + ']';
+      case 'object':
+        return '{ ' + expr.properties.map(p => p.key + ': ' + this.formatExpr(p.value)).join(', ') + ' }';
+      case 'lambda':
+        return '(' + expr.params.join(', ') + ') => ' + this.formatExpr(expr.body);
+      default:
+        return '<expr>';
+    }
+  }
+
+  private formatValue(value: IRValue): string {
+    switch (value.kind) {
+      case 'string':
+        return JSON.stringify(value.value);
+      case 'number':
+        return String(value.value);
+      case 'boolean':
+        return String(value.value);
+      case 'null':
+        return 'null';
+      case 'array':
+        return '[' + value.elements.map(el => this.formatValue(el)).join(', ') + ']';
+      case 'object':
+        return '{ ' + Object.entries(value.properties).map(([k, v]) => k + ': ' + this.formatValue(v)).join(', ') + ' }';
+      default:
+        return 'null';
+    }
+  }
+
+  private resolveExpressionValues(expr: IRExpression, ctx: Record<string, unknown>): GuardResolvedValue[] {
+    const entries: GuardResolvedValue[] = [];
+    const seen = new Set<string>();
+
+    const addEntry = (node: IRExpression) => {
+      const formatted = this.formatExpr(node);
+      if (seen.has(formatted)) return;
+      seen.add(formatted);
+      let value: unknown;
+      try {
+        value = this.evalExpr(node, ctx);
+      } catch {
+        value = undefined;
+      }
+      entries.push({ expression: formatted, value });
+    };
+
+    const walk = (node: IRExpression): void => {
+      switch (node.kind) {
+        case 'literal':
+        case 'identifier':
+        case 'member':
+          addEntry(node);
+          return;
+        case 'binary':
+          walk(node.left);
+          walk(node.right);
+          return;
+        case 'unary':
+          walk(node.operand);
+          return;
+        case 'call':
+          node.args.forEach(walk);
+          return;
+        case 'conditional':
+          walk(node.condition);
+          walk(node.consequent);
+          walk(node.alternate);
+          return;
+        case 'array':
+          node.elements.forEach(walk);
+          return;
+        case 'object':
+          node.properties.forEach(p => walk(p.value));
+          return;
+        case 'lambda':
+          walk(node.body);
+          return;
+        default:
+          return;
+      }
+    };
+
+    walk(expr);
+    return entries;
   }
 
   private binOp(op: string, l: unknown, r: unknown): unknown {

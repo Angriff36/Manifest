@@ -1,0 +1,26 @@
+entity Order {
+  property required id: string
+  property total: number = 0
+  
+  command addItem(amount: number) {
+    mutate total = self.total + amount
+    emit OrderUpdated
+  }
+  
+  command complete() {
+    mutate total = self.total
+    emit OrderCompleted
+  }
+}
+
+store Order in memory
+
+event OrderUpdated: "order.updated" {
+  orderId: string
+  total: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}

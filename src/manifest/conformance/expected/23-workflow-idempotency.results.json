@@ -1,0 +1,80 @@
+{
+  "testCases": [
+    {
+      "name": "first execution succeeds",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowStep",
+          "data": { "id": "step1", "name": "Initial Setup" }
+        }
+      },
+      "command": {
+        "name": "startStep",
+        "entityName": "WorkflowStep",
+        "instanceId": "step1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "StepStarted",
+            "channel": "workflow.step.started",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": { "id": "step1", "name": "Initial Setup", "status": "in_progress", "executedAt": 0, "retryCount": 0 }
+    },
+    {
+      "name": "re-execution of completed step is safe (no-op)",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowStep",
+          "data": { "id": "step1", "name": "Initial Setup", "status": "in_progress", "executedAt": 0, "retryCount": 0 }
+        }
+      },
+      "command": {
+        "name": "completeStep",
+        "entityName": "WorkflowStep",
+        "instanceId": "step1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "StepCompleted",
+            "channel": "workflow.step.completed",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": { "id": "step1", "name": "Initial Setup", "status": "completed", "executedAt": 1000000000000, "retryCount": 0 }
+    },
+    {
+      "name": "invalid status transition is blocked",
+      "setup": {
+        "createInstance": {
+          "entity": "WorkflowStep",
+          "data": { "id": "step2", "name": "Invalid Transition", "status": "completed", "executedAt": 1000000000000, "retryCount": 0 }
+        }
+      },
+      "command": {
+        "name": "startStep",
+        "entityName": "WorkflowStep",
+        "instanceId": "step2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'startStep'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 1,
+        "expression": "self.status == \"pending\""
+      }
+    }
+  ]
+}

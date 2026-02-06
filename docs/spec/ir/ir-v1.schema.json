@@ -1,0 +1,492 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://manifest.lang/spec/ir-v1.schema.json",
+  "title": "Manifest IR v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "provenance",
+    "modules",
+    "entities",
+    "stores",
+    "events",
+    "commands",
+    "policies"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0"
+    },
+    "provenance": {
+      "$ref": "#/definitions/IRProvenance"
+    },
+    "modules": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IRModule" }
+    },
+    "entities": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IREntity" }
+    },
+    "stores": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IRStore" }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IREvent" }
+    },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IRCommand" }
+    },
+    "policies": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IRPolicy" }
+    }
+  },
+  "definitions": {
+    "IRProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contentHash", "compilerVersion", "schemaVersion", "compiledAt"],
+      "properties": {
+        "contentHash": { "type": "string", "description": "SHA-256 hash of the source manifest" },
+        "irHash": { "type": "string", "description": "SHA-256 hash of the IR itself for runtime integrity verification" },
+        "compilerVersion": { "type": "string", "description": "Version of the compiler that generated this IR" },
+        "schemaVersion": { "type": "string", "description": "IR schema version" },
+        "compiledAt": { "type": "string", "description": "ISO 8601 timestamp of compilation" }
+      }
+    },
+    "IRModule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "entities", "commands", "stores", "events", "policies"],
+      "properties": {
+        "name": { "type": "string" },
+        "entities": { "type": "array", "items": { "type": "string" } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "stores": { "type": "array", "items": { "type": "string" } },
+        "events": { "type": "array", "items": { "type": "string" } },
+        "policies": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "IREntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "properties",
+        "computedProperties",
+        "relationships",
+        "commands",
+        "constraints",
+        "policies"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "module": { "type": "string" },
+        "properties": { "type": "array", "items": { "$ref": "#/definitions/IRProperty" } },
+        "computedProperties": { "type": "array", "items": { "$ref": "#/definitions/IRComputedProperty" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/definitions/IRRelationship" } },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" } },
+        "policies": { "type": "array", "items": { "type": "string" } },
+        "versionProperty": { "type": "string", "description": "Name of version field for optimistic concurrency control" },
+        "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" }
+      }
+    },
+    "IRProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "modifiers"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/definitions/IRType" },
+        "defaultValue": { "$ref": "#/definitions/IRValue" },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "enum": ["required", "unique", "indexed", "private", "readonly", "optional"]
+          }
+        }
+      }
+    },
+    "IRComputedProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "expression", "dependencies"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/definitions/IRType" },
+        "expression": { "$ref": "#/definitions/IRExpression" },
+        "dependencies": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "IRRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "target"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "enum": ["hasMany", "hasOne", "belongsTo", "ref"] },
+        "target": { "type": "string" },
+        "foreignKey": { "type": "string" },
+        "through": { "type": "string" }
+      }
+    },
+    "IRConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "code", "expression"],
+      "properties": {
+        "name": { "type": "string" },
+        "code": { "type": "string", "description": "Stable identifier for overrides/auditing (defaults to name)" },
+        "expression": { "$ref": "#/definitions/IRExpression" },
+        "message": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["ok", "warn", "block"],
+          "description": "Constraint severity level (default: block)"
+        },
+        "messageTemplate": { "type": "string", "description": "Template for error messages with interpolation" },
+        "detailsMapping": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/IRExpression" },
+          "description": "Structured details for UI (key-value pairs with expression values)"
+        },
+        "overrideable": { "type": "boolean", "description": "Can this constraint be overridden?" },
+        "overridePolicyRef": { "type": "string", "description": "Policy that authorizes overrides" }
+      }
+    },
+    "IRStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity", "target", "config"],
+      "properties": {
+        "entity": { "type": "string" },
+        "target": { "enum": ["memory", "localStorage", "postgres", "supabase"] },
+        "config": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/IRValue" }
+        }
+      }
+    },
+    "IREvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "channel", "payload"],
+      "properties": {
+        "name": { "type": "string" },
+        "channel": { "type": "string" },
+        "payload": {
+          "oneOf": [
+            { "$ref": "#/definitions/IRType" },
+            {
+              "type": "array",
+              "items": { "$ref": "#/definitions/IREventField" }
+            }
+          ]
+        }
+      }
+    },
+    "IREventField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/definitions/IRType" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "IRCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "parameters", "guards", "actions", "emits"],
+      "properties": {
+        "name": { "type": "string" },
+        "module": { "type": "string" },
+        "entity": { "type": "string" },
+        "parameters": { "type": "array", "items": { "$ref": "#/definitions/IRParameter" } },
+        "guards": { "type": "array", "items": { "$ref": "#/definitions/IRExpression" } },
+        "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" }, "description": "Command-level constraints (pre-execution validation)" },
+        "actions": { "type": "array", "items": { "$ref": "#/definitions/IRAction" } },
+        "emits": { "type": "array", "items": { "type": "string" } },
+        "returns": { "$ref": "#/definitions/IRType" }
+      }
+    },
+    "IRParameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "required"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "$ref": "#/definitions/IRType" },
+        "required": { "type": "boolean" },
+        "defaultValue": { "$ref": "#/definitions/IRValue" }
+      }
+    },
+    "IRAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target", "expression"],
+          "properties": {
+            "kind": { "const": "mutate" },
+            "target": { "type": "string" },
+            "expression": { "$ref": "#/definitions/IRExpression" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "expression"],
+          "properties": {
+            "kind": { "enum": ["emit", "compute", "effect", "publish", "persist"] },
+            "target": { "type": "string" },
+            "expression": { "$ref": "#/definitions/IRExpression" }
+          }
+        }
+      ]
+    },
+    "IRPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "action", "expression"],
+      "properties": {
+        "name": { "type": "string" },
+        "module": { "type": "string" },
+        "entity": { "type": "string" },
+        "action": { "enum": ["read", "write", "delete", "execute", "all", "override"] },
+        "expression": { "$ref": "#/definitions/IRExpression" },
+        "message": { "type": "string" }
+      }
+    },
+    "IRType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "nullable"],
+      "properties": {
+        "name": { "type": "string" },
+        "generic": { "$ref": "#/definitions/IRType" },
+        "nullable": { "type": "boolean" }
+      }
+    },
+    "IRValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "string" },
+            "value": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "number" },
+            "value": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "boolean" },
+            "value": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "null" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "elements"],
+          "properties": {
+            "kind": { "const": "array" },
+            "elements": { "type": "array", "items": { "$ref": "#/definitions/IRValue" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "properties"],
+          "properties": {
+            "kind": { "const": "object" },
+            "properties": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/IRValue" }
+            }
+          }
+        }
+      ]
+    },
+    "IRExpression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "literal" },
+            "value": { "$ref": "#/definitions/IRValue" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "const": "identifier" },
+            "name": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "object", "property"],
+          "properties": {
+            "kind": { "const": "member" },
+            "object": { "$ref": "#/definitions/IRExpression" },
+            "property": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operator", "left", "right"],
+          "properties": {
+            "kind": { "const": "binary" },
+            "operator": { "type": "string" },
+            "left": { "$ref": "#/definitions/IRExpression" },
+            "right": { "$ref": "#/definitions/IRExpression" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operator", "operand"],
+          "properties": {
+            "kind": { "const": "unary" },
+            "operator": { "type": "string" },
+            "operand": { "$ref": "#/definitions/IRExpression" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "callee", "args"],
+          "properties": {
+            "kind": { "const": "call" },
+            "callee": { "$ref": "#/definitions/IRExpression" },
+            "args": { "type": "array", "items": { "$ref": "#/definitions/IRExpression" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "condition", "consequent", "alternate"],
+          "properties": {
+            "kind": { "const": "conditional" },
+            "condition": { "$ref": "#/definitions/IRExpression" },
+            "consequent": { "$ref": "#/definitions/IRExpression" },
+            "alternate": { "$ref": "#/definitions/IRExpression" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "elements"],
+          "properties": {
+            "kind": { "const": "array" },
+            "elements": { "type": "array", "items": { "$ref": "#/definitions/IRExpression" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "properties"],
+          "properties": {
+            "kind": { "const": "object" },
+            "properties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["key", "value"],
+                "properties": {
+                  "key": { "type": "string" },
+                  "value": { "$ref": "#/definitions/IRExpression" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "params", "body"],
+          "properties": {
+            "kind": { "const": "lambda" },
+            "params": { "type": "array", "items": { "type": "string" } },
+            "body": { "$ref": "#/definitions/IRExpression" }
+          }
+        }
+      ]
+    },
+    "ConstraintOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "constraintName", "severity", "formatted", "passed"],
+      "properties": {
+        "code": { "type": "string", "description": "Stable constraint identifier" },
+        "constraintName": { "type": "string", "description": "Constraint name for reference" },
+        "severity": { "type": "string", "enum": ["ok", "warn", "block"], "description": "Severity level of the constraint" },
+        "formatted": { "type": "string", "description": "Formatted expression string" },
+        "message": { "type": "string", "description": "Optional message from constraint" },
+        "details": { "type": "object", "additionalProperties": true, "description": "Structured details for UI (resolved values)" },
+        "passed": { "type": "boolean", "description": "Whether the constraint passed" },
+        "overridden": { "type": "boolean", "description": "Whether the constraint was overridden" },
+        "overriddenBy": { "type": "string", "description": "User who authorized the override" },
+        "resolved": { "type": "array", "items": { "type": "object", "required": ["expression", "value"], "properties": { "expression": { "type": "string" }, "value": true } }, "description": "Resolved expression values for debugging" }
+      }
+    },
+    "OverrideRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraintCode", "reason", "authorizedBy", "timestamp"],
+      "properties": {
+        "constraintCode": { "type": "string", "description": "Constraint code to override" },
+        "reason": { "type": "string", "description": "Reason for the override" },
+        "authorizedBy": { "type": "string", "description": "User authorizing the override" },
+        "timestamp": { "type": "number", "description": "Timestamp of override request" }
+      }
+    },
+    "ConcurrencyConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entityType", "entityId", "expectedVersion", "actualVersion", "conflictCode"],
+      "properties": {
+        "entityType": { "type": "string", "description": "Type of entity that conflicted" },
+        "entityId": { "type": "string", "description": "ID of the entity instance" },
+        "expectedVersion": { "type": "number", "description": "Expected version number" },
+        "actualVersion": { "type": "number", "description": "Actual version in storage" },
+        "conflictCode": { "type": "string", "description": "Conflict code for categorization" }
+      }
+    }
+  }
+}

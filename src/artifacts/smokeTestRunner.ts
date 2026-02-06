@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SmokeTestReport, SmokeTestResult } from './types';
 
 export async function runSmokeTests(clientCode: string, ast: object | null): Promise<SmokeTestReport> {
@@ -49,21 +50,23 @@ export async function runSmokeTests(clientCode: string, ast: object | null): Pro
   };
 }
 
-function extractEntities(ast: object | null): string[] {
+function extractEntities(ast: unknown): string[] {
   if (!ast) return [];
   const entities: string[] = [];
 
-  function walk(node: any) {
+  function walk(node: unknown) {
     if (!node) return;
-    if (node.type === 'entity' && node.name) {
-      entities.push(node.name);
+    if ((node as any).type === 'entity' && (node as any).name) {
+      entities.push((node as any).name);
     }
-    if (Array.isArray(node.entities)) {
-      node.entities.forEach(walk);
+    if (Array.isArray((node as any).entities)) {
+      (node as any).entities.forEach(walk);
     }
-    if (Array.isArray(node.modules)) {
-      node.modules.forEach((m: any) => {
-        if (m.entities) m.entities.forEach(walk);
+    if (Array.isArray((node as any).modules)) {
+      (node as any).modules.forEach((m: unknown) => {
+        if (m && typeof m === 'object' && 'entities' in m) {
+          (m as any).entities.forEach(walk);
+        }
       });
     }
   }
@@ -77,28 +80,30 @@ interface CommandInfo {
   name: string;
 }
 
-function extractCommands(ast: object | null): CommandInfo[] {
+function extractCommands(ast: unknown): CommandInfo[] {
   if (!ast) return [];
   const commands: CommandInfo[] = [];
 
-  function walk(node: any, entityName?: string) {
+  function walk(node: unknown, entityName?: string) {
     if (!node) return;
-    if (node.type === 'entity' && node.name) {
-      entityName = node.name;
-      if (Array.isArray(node.commands)) {
-        node.commands.forEach((cmd: any) => {
-          if (cmd.name) {
-            commands.push({ entity: entityName!, name: cmd.name });
+    if ((node as any).type === 'entity' && (node as any).name) {
+      entityName = (node as any).name;
+      if (Array.isArray((node as any).commands)) {
+        (node as any).commands.forEach((cmd: unknown) => {
+          if (cmd && typeof cmd === 'object' && 'name' in cmd && cmd.name) {
+            commands.push({ entity: entityName!, name: cmd.name as string });
           }
         });
       }
     }
-    if (Array.isArray(node.entities)) {
-      node.entities.forEach((e: any) => walk(e));
+    if (Array.isArray((node as any).entities)) {
+      (node as any).entities.forEach((e: unknown) => walk(e));
     }
-    if (Array.isArray(node.modules)) {
-      node.modules.forEach((m: any) => {
-        if (m.entities) m.entities.forEach((e: any) => walk(e));
+    if (Array.isArray((node as any).modules)) {
+      (node as any).modules.forEach((m: unknown) => {
+        if (m && typeof m === 'object' && 'entities' in m) {
+          (m as any).entities.forEach((e: unknown) => walk(e));
+        }
       });
     }
   }
@@ -112,29 +117,31 @@ interface ConstraintInfo {
   expression: string;
 }
 
-function extractConstraints(ast: object | null): ConstraintInfo[] {
+function extractConstraints(ast: unknown): ConstraintInfo[] {
   if (!ast) return [];
   const constraints: ConstraintInfo[] = [];
 
-  function walk(node: any, entityName?: string) {
+  function walk(node: unknown, entityName?: string) {
     if (!node) return;
-    if (node.type === 'entity' && node.name) {
-      entityName = node.name;
-      if (Array.isArray(node.constraints)) {
-        node.constraints.forEach((c: any) => {
-          if (c.expression) {
+    if ((node as any).type === 'entity' && (node as any).name) {
+      entityName = (node as any).name;
+      if (Array.isArray((node as any).constraints)) {
+        (node as any).constraints.forEach((c: unknown) => {
+          if (c && typeof c === 'object' && 'expression' in c && c.expression) {
             const exprStr = expressionToString(c.expression);
             constraints.push({ entity: entityName!, expression: exprStr });
           }
         });
       }
     }
-    if (Array.isArray(node.entities)) {
-      node.entities.forEach((e: any) => walk(e));
+    if (Array.isArray((node as any).entities)) {
+      (node as any).entities.forEach((e: unknown) => walk(e));
     }
-    if (Array.isArray(node.modules)) {
-      node.modules.forEach((m: any) => {
-        if (m.entities) m.entities.forEach((e: any) => walk(e));
+    if (Array.isArray((node as any).modules)) {
+      (node as any).modules.forEach((m: unknown) => {
+        if (m && typeof m === 'object' && 'entities' in m) {
+          (m as any).entities.forEach((e: unknown) => walk(e));
+        }
       });
     }
   }
@@ -143,15 +150,19 @@ function extractConstraints(ast: object | null): ConstraintInfo[] {
   return constraints;
 }
 
-function expressionToString(expr: any): string {
+function expressionToString(expr: unknown): string {
   if (!expr) return '';
-  if (expr.type === 'identifier') return expr.name;
-  if (expr.type === 'literal') return String(expr.value);
-  if (expr.type === 'binary') {
-    return `${expressionToString(expr.left)} ${expr.operator} ${expressionToString(expr.right)}`;
-  }
-  if (expr.type === 'member') {
-    return `${expressionToString(expr.object)}.${expr.property}`;
+  if (typeof expr === 'object' && expr !== null) {
+    if ('type' in expr) {
+      if ((expr as any).type === 'identifier' && 'name' in expr) return (expr as any).name;
+      if ((expr as any).type === 'literal' && 'value' in expr) return String((expr as any).value);
+      if ((expr as any).type === 'binary' && 'left' in expr && 'operator' in expr && 'right' in expr) {
+        return `${expressionToString((expr as any).left)} ${(expr as any).operator} ${expressionToString((expr as any).right)}`;
+      }
+      if ((expr as any).type === 'member' && 'object' in expr && 'property' in expr) {
+        return `${expressionToString((expr as any).object)}.${(expr as any).property}`;
+      }
+    }
   }
   return JSON.stringify(expr);
 }
@@ -177,11 +188,11 @@ async function runEntityInstantiationTest(clientCode: string, entityName: string
       passed: true,
       duration: Math.round(performance.now() - start)
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
-      error: err.message || String(err),
+      error: (err as Error).message || String(err),
       duration: Math.round(performance.now() - start)
     };
   }
@@ -210,11 +221,11 @@ async function runCommandTest(clientCode: string, entityName: string, commandNam
       passed: true,
       duration: Math.round(performance.now() - start)
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
-      error: err.message || String(err),
+      error: (err as Error).message || String(err),
       duration: Math.round(performance.now() - start)
     };
   }
@@ -243,11 +254,11 @@ async function runConstraintTest(clientCode: string, entityName: string, express
       passed: true,
       duration: Math.round(performance.now() - start)
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       name: testName,
       passed: false,
-      error: err.message || String(err),
+      error: (err as Error).message || String(err),
       duration: Math.round(performance.now() - start)
     };
   }

@@ -1,0 +1,32 @@
+// Test loose equality semantics: == and != use JavaScript loose equality
+// This locks the behavior: undefined == null is true, undefined != null is false
+
+entity EqualityTest {
+  property required id: string
+  property value: number = 0
+
+  // Test undefined == null (loose equality)
+  computed undefinedEqualsNull: boolean = context.missing == null
+  
+  // Test undefined != null (loose inequality)  
+  computed undefinedNotEqualsNull: boolean = context.missing != null
+
+  // Test null == undefined (reverse direction)
+  computed nullEqualsUndefined: boolean = null == context.missing
+
+  // Test type coercion: string "5" == number 5
+  computed stringEqualsNumber: boolean = "5" == 5
+
+  // Test type coercion: number 0 == false
+  computed zeroEqualsFalse: boolean = 0 == false
+
+  // Test is operator (alias for ==)
+  computed isOperator: boolean = context.missing is null
+
+  command testCoercion() {
+    guard "5" == 5
+    mutate value = 1
+  }
+}
+
+store EqualityTest in memory

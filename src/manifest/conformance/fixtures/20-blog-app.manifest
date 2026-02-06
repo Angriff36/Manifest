@@ -1,0 +1,191 @@
+// Blog Application - Real World Use Case
+// Tests cross-entity operations
+// Tests complex computed properties and authorization
+
+entity User {
+  property required id: string = ""
+  property required username: string = ""
+  property required email: string = ""
+  property required role: string = "author"
+  property createdAt: number = 0
+
+  computed isAuthor: boolean = self.role == "author"
+  computed isEditor: boolean = self.role == "editor"
+  computed isAdmin: boolean = self.role == "admin"
+  computed canPublish: boolean = self.role == "editor" or self.role == "admin"
+
+  command register(userId: string, name: string, emailAddr: string) {
+    guard userId != null and userId != ""
+    guard name != null and name != ""
+    guard emailAddr != null and emailAddr != ""
+    mutate id = userId
+    mutate username = name
+    mutate email = emailAddr
+    mutate createdAt = now()
+    emit UserRegistered
+  }
+
+  command promoteRole(newRole: string) {
+    guard newRole == "editor" or newRole == "admin"
+    guard user.role == "admin"
+    mutate role = newRole
+    emit RolePromoted
+  }
+
+  store User in memory
+}
+
+entity Post {
+  property required id: string = ""
+  property required title: string = ""
+  property required content: string = ""
+  property required authorId: string = ""
+  property status: string = "draft"
+  property createdAt: number = 0
+  property publishedAt: number = 0
+  property viewCount: number = 0
+
+  computed isPublished: boolean = self.status == "published"
+  computed isDraft: boolean = self.status == "draft"
+  computed ageInDays: number = (now() - self.createdAt) / 86400000
+  computed recentlyPublished: boolean = self.isPublished and (now() - self.publishedAt) < 604800000
+
+  command createPost(postId: string, titleText: string, contentText: string, author: string) {
+    guard postId != null and postId != ""
+    guard titleText != null and titleText != ""
+    guard contentText != null and contentText != ""
+    mutate id = postId
+    mutate title = titleText
+    mutate content = contentText
+    mutate authorId = author
+    mutate createdAt = now()
+    mutate status = "draft"
+    emit PostCreated
+  }
+
+  command publishPost() {
+    guard self.status == "draft"
+    guard user.role == "editor" or user.role == "admin" or user.id == self.authorId
+    mutate status = "published"
+    mutate publishedAt = now()
+    emit PostPublished
+  }
+
+  command incrementViews() {
+    mutate viewCount = self.viewCount + 1
+  }
+
+  command archivePost() {
+    guard self.status != "archived"
+    guard user.role == "editor" or user.role == "admin"
+    mutate status = "archived"
+    emit PostArchived
+  }
+
+  store Post in memory
+}
+
+entity Comment {
+  property required id: string = ""
+  property required postId: string = ""
+  property required authorId: string = ""
+  property required content: string = ""
+  property createdAt: number = 0
+  property status: string = "visible"
+
+  computed isVisible: boolean = self.status == "visible"
+  computed isHidden: boolean = self.status == "hidden"
+  computed ageInHours: number = (now() - self.createdAt) / 3600000
+
+  command addComment(commentId: string, post: string, author: string, text: string) {
+    guard commentId != null and commentId != ""
+    guard post != null and post != ""
+    guard author != null and author != ""
+    guard text != null and text != ""
+    mutate id = commentId
+    mutate postId = post
+    mutate authorId = author
+    mutate content = text
+    mutate createdAt = now()
+    mutate status = "visible"
+    emit CommentAdded
+  }
+
+  command hideComment() {
+    guard self.status == "visible"
+    guard user.role == "editor" or user.role == "admin" or user.id == self.authorId
+    mutate status = "hidden"
+    emit CommentHidden
+  }
+
+  command removeComment() {
+    guard self.status != "deleted"
+    guard user.role == "admin"
+    mutate status = "deleted"
+    emit CommentDeleted
+  }
+
+  store Comment in memory
+}
+
+// Policies for cross-entity authorization
+// Note: These demonstrate the choke point - policies can reference self.* but not
+// directly traverse relationships because relationships aren't modeled in the IR runtime.
+// Cross-entity checks must happen via user context.
+
+policy CanPublishPost execute: user.role == "editor" or user.role == "admin" "Only editors and admins can publish posts"
+policy CanModerateComments execute: user.role == "editor" or user.role == "admin" "Only editors and admins can moderate comments"
+
+event UserRegistered: "user.registered" {
+  id: string
+  username: string
+  email: string
+  role: string
+  registeredAt: number
+}
+
+event RolePromoted: "user.promoted" {
+  id: string
+  oldRole: string
+  newRole: string
+  promotedAt: number
+}
+
+event PostCreated: "post.created" {
+  id: string
+  title: string
+  authorId: string
+  createdAt: number
+}
+
+event PostPublished: "post.published" {
+  id: string
+  title: string
+  authorId: string
+  publishedAt: number
+}
+
+event PostArchived: "post.archived" {
+  id: string
+  archivedAt: number
+}
+
+event CommentAdded: "comment.added" {
+  id: string
+  postId: string
+  authorId: string
+  content: string
+  createdAt: number
+}
+
+event CommentHidden: "comment.hidden" {
+  id: string
+  postId: string
+  hiddenAt: number
+}
+
+event CommentDeleted: "comment.deleted" {
+  id: string
+  postId: string
+  deletedAt: number
+}

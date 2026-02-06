@@ -1,0 +1,348 @@
+{
+  "testCases": [
+    {
+      "name": "createInstance creates task with default values",
+      "setup": {},
+      "createInstance": {
+        "entity": "Task",
+        "data": {
+          "title": "Test Task",
+          "description": "A test task",
+          "priority": 2
+        }
+      },
+      "expectedInstance": {
+        "id": "test-id-1",
+        "title": "Test Task",
+        "description": "A test task",
+        "status": "todo",
+        "priority": 2,
+        "assigneeId": "",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "setTimestamp command sets createdAt using now()",
+      "context": {
+        "user": {
+          "id": "admin-user",
+          "role": "admin"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-1",
+            "title": "New Task",
+            "createdAt": 0
+          }
+        }
+      },
+      "command": {
+        "name": "setTimestamp",
+        "entityName": "Task",
+        "instanceId": "task-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1000000000000,
+        "emittedEvents": [
+          {
+            "name": "TaskCreated",
+            "channel": "tasks.created",
+            "payload": {
+              "id": "task-1",
+              "title": "New Task",
+              "status": "todo",
+              "createdAt": 1000000000000
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-1",
+        "title": "New Task",
+        "description": "",
+        "status": "todo",
+        "priority": 1,
+        "assigneeId": "",
+        "createdAt": 1000000000000
+      }
+    },
+    {
+      "name": "updateStatus changes task status",
+      "context": {
+        "user": {
+          "id": "user-1",
+          "role": "admin"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-2",
+            "title": "Task to Update",
+            "status": "todo",
+            "assigneeId": "user-1"
+          }
+        }
+      },
+      "command": {
+        "name": "updateStatus",
+        "entityName": "Task",
+        "instanceId": "task-2",
+        "input": {
+          "newStatus": "in-progress"
+        }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "in-progress",
+        "emittedEvents": [
+          {
+            "name": "TaskStatusUpdated",
+            "channel": "tasks.updated",
+            "payload": {
+              "id": "task-2",
+              "oldStatus": "todo",
+              "newStatus": "in-progress",
+              "updatedAt": 1000000000000
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-2",
+        "title": "Task to Update",
+        "description": "",
+        "status": "in-progress",
+        "priority": 1,
+        "assigneeId": "user-1",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "updateStatus guard fails with invalid status",
+      "context": {
+        "user": {
+          "id": "user-1",
+          "role": "admin"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-3",
+            "title": "Task with Invalid Status",
+            "status": "todo",
+            "assigneeId": "user-1"
+          }
+        }
+      },
+      "command": {
+        "name": "updateStatus",
+        "entityName": "Task",
+        "instanceId": "task-3",
+        "input": {
+          "newStatus": "invalid"
+        }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'updateStatus'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "newStatus == \"todo\" or newStatus == \"in-progress\" or newStatus == \"done\""
+      },
+      "expectedInstanceState": {
+        "id": "task-3",
+        "title": "Task with Invalid Status",
+        "description": "",
+        "status": "todo",
+        "priority": 1,
+        "assigneeId": "user-1",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "assignTask assigns user to unassigned task",
+      "context": {
+        "user": {
+          "id": "user-1",
+          "role": "admin"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-4",
+            "title": "Unassigned Task",
+            "status": "todo",
+            "assigneeId": ""
+          }
+        }
+      },
+      "command": {
+        "name": "assignTask",
+        "entityName": "Task",
+        "instanceId": "task-4",
+        "input": {
+          "userId": "user-2"
+        }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "user-2",
+        "emittedEvents": [
+          {
+            "name": "TaskAssigned",
+            "channel": "tasks.assigned",
+            "payload": {
+              "id": "task-4",
+              "assigneeId": "user-2",
+              "assignedAt": 1000000000000
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-4",
+        "title": "Unassigned Task",
+        "description": "",
+        "status": "todo",
+        "priority": 1,
+        "assigneeId": "user-2",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "assignTask policy denies non-admin reassigning task",
+      "context": {
+        "user": {
+          "id": "user-3",
+          "role": "user"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-5",
+            "title": "Already Assigned Task",
+            "status": "todo",
+            "assigneeId": "user-1"
+          }
+        }
+      },
+      "command": {
+        "name": "assignTask",
+        "entityName": "Task",
+        "instanceId": "task-5",
+        "input": {
+          "userId": "user-3"
+        }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only admins or the assigned user can modify this task",
+        "deniedBy": "OnlyCreatorOrAssignee",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "task-5",
+        "title": "Already Assigned Task",
+        "description": "",
+        "status": "todo",
+        "priority": 1,
+        "assigneeId": "user-1",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "computed property assignedUser returns Unassigned when empty",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-6",
+            "title": "Unassigned Task",
+            "assigneeId": ""
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Task",
+        "instanceId": "task-6",
+        "property": "assignedUser"
+      },
+      "expectedValue": "Unassigned"
+    },
+    {
+      "name": "computed property assignedUser returns userId when assigned",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-7",
+            "title": "Assigned Task",
+            "assigneeId": "user-123"
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Task",
+        "instanceId": "task-7",
+        "property": "assignedUser"
+      },
+      "expectedValue": "user-123"
+    },
+    {
+      "name": "computed property isHighPriority returns true for priority 3",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-8",
+            "title": "High Priority Task",
+            "priority": 3
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Task",
+        "instanceId": "task-8",
+        "property": "isHighPriority"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "computed property isHighPriority returns false for priority 1",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": {
+            "id": "task-9",
+            "title": "Low Priority Task",
+            "priority": 1
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Task",
+        "instanceId": "task-9",
+        "property": "isHighPriority"
+      },
+      "expectedValue": false
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+# Tiny App Demo Fixture
+# A complete task management application demonstrating full Manifest language capabilities
+
+entity Task {
+  property required title: string = ""
+  property optional description: string = ""
+  property required status: string = "todo"
+  property optional priority: number = 1
+  property required assigneeId: string = ""
+  property required createdAt: number = 0
+
+  computed isOverdue: boolean = (now() - self.createdAt) > 86400000 and self.status != "done"
+  computed assignedUser: string = self.assigneeId != "" ? self.assigneeId : "Unassigned"
+  computed isHighPriority: boolean = self.priority != null and self.priority >= 3
+
+  command updateStatus(newStatus: string) {
+    guard newStatus != null and newStatus != ""
+    guard newStatus == "todo" or newStatus == "in-progress" or newStatus == "done"
+    mutate status = newStatus
+    emit TaskStatusUpdated
+  }
+
+  command assignTask(userId: string) {
+    guard userId != null and userId != ""
+    guard self.assigneeId == "" or user.role == "admin"
+    mutate assigneeId = userId
+    emit TaskAssigned
+  }
+
+  command setTimestamp() {
+    compute createdAt = now()
+    emit TaskCreated
+  }
+
+  store Task in memory
+}
+
+policy OnlyCreatorOrAssignee execute: user.role == "admin" or user.id == self.assigneeId "Only admins or the assigned user can modify this task"
+
+event TaskCreated: "tasks.created" {
+  id: string
+  title: string
+  status: string
+  createdAt: number
+}
+
+event TaskStatusUpdated: "tasks.updated" {
+  id: string
+  oldStatus: string
+  newStatus: string
+  updatedAt: number
+}
+
+event TaskAssigned: "tasks.assigned" {
+  id: string
+  assigneeId: string
+  assignedAt: number
+}

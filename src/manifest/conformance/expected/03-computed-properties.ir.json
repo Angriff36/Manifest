@@ -1,5 +1,12 @@
 {
   "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "62888d85899c0f4436df791b1f2be4f47cfc9a1d922a93cde8f04fa90e0543f8",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
   "modules": [],
   "entities": [
     {
@@ -7,76 +14,157 @@
       "properties": [
         {
           "name": "price",
-          "type": { "name": "number", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "quantity",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 1 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 1
+          },
           "modifiers": []
         },
         {
           "name": "discountPercent",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 0 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
           "modifiers": []
         }
       ],
       "computedProperties": [
         {
           "name": "total",
-          "type": { "name": "number", "nullable": false },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
           "expression": {
             "kind": "binary",
             "operator": "*",
-            "left": { "kind": "identifier", "name": "price" },
-            "right": { "kind": "identifier", "name": "quantity" }
+            "left": {
+              "kind": "identifier",
+              "name": "price"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "quantity"
+            }
           },
-          "dependencies": ["price", "quantity"]
+          "dependencies": [
+            "price",
+            "quantity"
+          ]
         },
         {
           "name": "discountedTotal",
-          "type": { "name": "number", "nullable": false },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
           "expression": {
             "kind": "binary",
             "operator": "*",
-            "left": { "kind": "identifier", "name": "total" },
+            "left": {
+              "kind": "identifier",
+              "name": "total"
+            },
             "right": {
               "kind": "binary",
               "operator": "-",
-              "left": { "kind": "literal", "value": { "kind": "number", "value": 1 } },
+              "left": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 1
+                }
+              },
               "right": {
                 "kind": "binary",
                 "operator": "/",
-                "left": { "kind": "identifier", "name": "discountPercent" },
-                "right": { "kind": "literal", "value": { "kind": "number", "value": 100 } }
+                "left": {
+                  "kind": "identifier",
+                  "name": "discountPercent"
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 100
+                  }
+                }
               }
             }
           },
-          "dependencies": ["total", "discountPercent"]
+          "dependencies": [
+            "total",
+            "discountPercent"
+          ]
         },
         {
           "name": "hasDiscount",
-          "type": { "name": "boolean", "nullable": false },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
           "expression": {
             "kind": "binary",
             "operator": ">",
-            "left": { "kind": "identifier", "name": "discountPercent" },
-            "right": { "kind": "literal", "value": { "kind": "number", "value": 0 } }
+            "left": {
+              "kind": "identifier",
+              "name": "discountPercent"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
           },
-          "dependencies": ["discountPercent"]
+          "dependencies": [
+            "discountPercent"
+          ]
         },
         {
           "name": "isExpensive",
-          "type": { "name": "boolean", "nullable": false },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
           "expression": {
             "kind": "binary",
             "operator": ">",
-            "left": { "kind": "identifier", "name": "total" },
-            "right": { "kind": "literal", "value": { "kind": "number", "value": 100 } }
+            "left": {
+              "kind": "identifier",
+              "name": "total"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 100
+              }
+            }
           },
-          "dependencies": ["total"]
+          "dependencies": [
+            "total"
+          ]
         }
       ],
       "relationships": [],

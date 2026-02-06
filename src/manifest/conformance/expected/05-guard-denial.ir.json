@@ -1,5 +1,12 @@
 {
   "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "e35d21e808ed46414488d85d93a1717d1653b7ac3db7073ad267157083850d63",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
   "modules": [],
   "entities": [
     {
@@ -7,92 +14,45 @@
       "properties": [
         {
           "name": "title",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "completed",
-          "type": { "name": "boolean", "nullable": false },
-          "defaultValue": { "kind": "boolean", "value": false },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
           "modifiers": []
         },
         {
           "name": "priority",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 1 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 1
+          },
           "modifiers": []
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [
-        {
-          "name": "complete",
-          "entity": "Task",
-          "parameters": [],
-          "guards": [
-            {
-              "kind": "unary",
-              "operator": "not",
-              "operand": { "kind": "identifier", "name": "completed" }
-            }
-          ],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "completed",
-              "expression": { "kind": "literal", "value": { "kind": "boolean", "value": true } }
-            }
-          ],
-          "emits": ["TaskCompleted"]
-        },
-        {
-          "name": "setPriority",
-          "entity": "Task",
-          "parameters": [
-            {
-              "name": "level",
-              "type": { "name": "number", "nullable": false },
-              "required": true
-            }
-          ],
-          "guards": [
-            {
-              "kind": "binary",
-              "operator": "and",
-              "left": {
-                "kind": "binary",
-                "operator": ">=",
-                "left": { "kind": "identifier", "name": "level" },
-                "right": { "kind": "literal", "value": { "kind": "number", "value": 1 } }
-              },
-              "right": {
-                "kind": "binary",
-                "operator": "<=",
-                "left": { "kind": "identifier", "name": "level" },
-                "right": { "kind": "literal", "value": { "kind": "number", "value": 5 } }
-              }
-            }
-          ],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "priority",
-              "expression": { "kind": "identifier", "name": "level" }
-            }
-          ],
-          "emits": []
-        },
-        {
-          "name": "archive",
-          "entity": "Task",
-          "parameters": [],
-          "guards": [
-            { "kind": "identifier", "name": "completed" }
-          ],
-          "actions": [],
-          "emits": ["TaskArchived"]
-        }
+        "complete",
+        "setPriority",
+        "archive"
       ],
       "constraints": [],
       "policies": []
@@ -112,7 +72,10 @@
       "payload": [
         {
           "name": "taskId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
@@ -123,12 +86,134 @@
       "payload": [
         {
           "name": "taskId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
     }
   ],
-  "commands": [],
+  "commands": [
+    {
+      "name": "complete",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "unary",
+          "operator": "not",
+          "operand": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "completed"
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "completed",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TaskCompleted"
+      ]
+    },
+    {
+      "name": "setPriority",
+      "entity": "Task",
+      "parameters": [
+        {
+          "name": "level",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "and",
+          "left": {
+            "kind": "binary",
+            "operator": ">=",
+            "left": {
+              "kind": "identifier",
+              "name": "level"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "identifier",
+              "name": "level"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 5
+              }
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "priority",
+          "expression": {
+            "kind": "identifier",
+            "name": "level"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "archive",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "self"
+          },
+          "property": "completed"
+        }
+      ],
+      "constraints": [],
+      "actions": [],
+      "emits": [
+        "TaskArchived"
+      ]
+    }
+  ],
   "policies": []
 }

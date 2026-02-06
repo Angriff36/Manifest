@@ -1,0 +1,7 @@
+// Test: Incomplete expression in computed property should fail
+// This tests error detection for missing right operand
+
+entity Test {
+  property id: string
+  computed isReady: boolean = self.id ==
+}

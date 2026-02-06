@@ -1,0 +1,121 @@
+{
+  "testCases": [
+    {
+      "name": "now() in computed property returns deterministic timestamp",
+      "setup": {
+        "createInstance": {
+          "entity": "TimestampedEntity",
+          "data": { "id": "t1", "baseTime": 900000000000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "TimestampedEntity",
+        "instanceId": "t1",
+        "property": "currentTime"
+      },
+      "expectedValue": 1000000000000
+    },
+    {
+      "name": "now() in computed expression calculates elapsed time",
+      "setup": {
+        "createInstance": {
+          "entity": "TimestampedEntity",
+          "data": { "id": "t2", "baseTime": 500000000000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "TimestampedEntity",
+        "instanceId": "t2",
+        "property": "elapsed"
+      },
+      "expectedValue": 500000000000
+    },
+    {
+      "name": "uuid() in guard evaluates and passes",
+      "setup": {
+        "createInstance": {
+          "entity": "ItemContainer",
+          "data": { "id": "c1" }
+        }
+      },
+      "command": {
+        "name": "generateItemId",
+        "entityName": "ItemContainer",
+        "instanceId": "c1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "ItemGenerated",
+            "channel": "item.generated",
+            "payload": {},
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "c1",
+        "itemId": "test-id-2",
+        "verifyId": ""
+      }
+    },
+    {
+      "name": "uuid() in compute action generates deterministic ID",
+      "setup": {
+        "createInstance": {
+          "entity": "ItemContainer",
+          "data": { "id": "c2" }
+        }
+      },
+      "command": {
+        "name": "generateItemId",
+        "entityName": "ItemContainer",
+        "instanceId": "c2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "ItemGenerated",
+            "channel": "item.generated",
+            "payload": {},
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "c2",
+        "itemId": "test-id-2",
+        "verifyId": ""
+      }
+    },
+    {
+      "name": "uuid() in guard with parameter passes",
+      "setup": {
+        "createInstance": {
+          "entity": "ItemContainer",
+          "data": { "id": "c3" }
+        }
+      },
+      "command": {
+        "name": "verifyUuid",
+        "entityName": "ItemContainer",
+        "instanceId": "c3",
+        "input": { "testId": "valid-id-123" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "valid-id-123",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "c3",
+        "itemId": "",
+        "verifyId": "valid-id-123"
+      }
+    }
+  ]
+}

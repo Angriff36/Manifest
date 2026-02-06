@@ -1,6 +1,19 @@
 import { Token, Position } from './types';
 
-const KEYWORDS = new Set([
+/**
+ * RESERVED WORDS
+ *
+ * These tokens are reserved words in the Manifest language and may NOT be used
+ * as identifiers (entity names, command names, property names, parameter names,
+ * module names, policy names, constraint names, event names, etc.).
+ *
+ * Using a reserved word as an identifier will result in a compilation error
+ * with a specific diagnostic message.
+ *
+ * This is the authoritative, single source of truth for reserved words.
+ * Do NOT create a second list elsewhere.
+ */
+export const KEYWORDS = new Set([
   'entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose',
   'command', 'module', 'policy', 'store', 'event', 'computed', 'derived',
   'hasMany', 'hasOne', 'belongsTo', 'ref', 'through',
@@ -12,9 +25,13 @@ const KEYWORDS = new Set([
   'rest', 'graphql', 'websocket', 'function', 'server',
   'http', 'storage', 'timer', 'custom',
   'memory', 'postgres', 'supabase', 'localStorage',
-  'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny',
+  'read', 'write', 'delete', 'execute', 'all', 'override', 'allow', 'deny',
   'and', 'or', 'not', 'is', 'in', 'contains',
-  'user', 'self', 'context'
+  'user', 'self', 'context',
+  // vNext constraint keywords
+  'overrideable', 'ok', 'warn', 'block',
+  // vNext optimistic concurrency keywords
+  'versionProperty', 'versionAtProperty'
 ]);
 
 const OPERATORS = new Set([

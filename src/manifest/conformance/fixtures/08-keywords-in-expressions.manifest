@@ -1,0 +1,21 @@
+// Test: Keywords should be allowed in expressions (member access, object keys)
+// This verifies that context.entity, obj.command, and { entity: 1 } work
+
+entity Item {
+  property required id: string
+  property name: string = ""
+
+  // Computed property using member access with keyword property name
+  computed hasEntity: boolean = context.entity != null
+
+  // Command with guard using member access with keyword
+  command process() {
+    guard context.command == "allowed"
+    mutate name = "processed"
+  }
+
+  // Policy using member access with keyword
+  policy canRead read: context.store == "active"
+}
+
+store Item in memory

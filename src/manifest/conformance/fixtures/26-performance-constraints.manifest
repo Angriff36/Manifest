@@ -1,0 +1,38 @@
+// Performance Test - Entity with Many Constraints
+// Tests performance of entity with 10+ constraints
+
+entity Order {
+  property required id: string = ""
+  property required customerId: string = ""
+  property required amount: number = 0
+  property required status: string = "pending"
+  property createdAt: number = 0
+  property updatedAt: number = 0
+  property discount: number = 0
+  property taxRate: number = 0.08
+  property shippingAddress: string = ""
+  property billingAddress: string = ""
+  property notes: string = ""
+  property priority: string = "normal"
+
+  // Basic validation constraints (5)
+  constraint idNotEmpty: self.id != "" "Order ID cannot be empty"
+  constraint customerIdNotEmpty: self.customerId != "" "Customer ID cannot be empty"
+  constraint amountPositive: self.amount > 0 "Order amount must be positive"
+  constraint statusValid: self.status in ["pending", "processing", "shipped", "delivered", "cancelled"] "Invalid order status"
+  constraint priorityValid: self.priority in ["low", "normal", "high", "urgent"] "Invalid priority level"
+
+  // Business logic constraints (4)
+  constraint discountValid: self.discount >= 0 and self.discount <= self.amount "Discount cannot be negative or exceed order amount"
+  constraint taxRateValid: self.taxRate >= 0 and self.taxRate <= 0.5 "Tax rate must be between 0% and 50%"
+  constraint totalAmountValid: (self.amount - self.discount) * (1 + self.taxRate) > 0 "Total amount must be positive after discount and tax"
+  constraint hasTimestamp: self.createdAt > 0 "Order must have creation timestamp"
+
+  // Additional validation constraints (4)
+  constraint updatedAtValid: self.updatedAt >= self.createdAt "Update timestamp cannot be before creation"
+  constraint shippingRequired: self.status == "shipped" or self.status == "delivered" implies self.shippingAddress != "" "Shipping address required for shipped/delivered orders"
+  constraint billingRequired: self.amount > 1000 implies self.billingAddress != "" "Billing address required for orders over $1000"
+  constraint notesValid: self.notes == "" or self.notes.length > 5 "Notes must be empty or at least 5 characters"
+}
+
+store Order in memory

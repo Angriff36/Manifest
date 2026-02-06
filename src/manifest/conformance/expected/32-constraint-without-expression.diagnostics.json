@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Constraint block must include an expression",
+      "line": 9,
+      "column": 5
+    }
+  ]
+}

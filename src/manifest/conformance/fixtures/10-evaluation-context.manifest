@@ -1,0 +1,32 @@
+entity TestEntity {
+  property required id: string
+  property value: number = 0
+  property ownerId: string = ""
+
+  // Test self/this bindings in computed properties
+  computed isOwned: boolean = self.ownerId != ""
+  computed isOwnedAlias: boolean = this.ownerId != ""
+
+  // Test params in guards
+  command setValue(newValue: number) {
+    guard newValue >= 0
+    mutate value = newValue
+  }
+
+  // Test user binding (present)
+  command claim(userId: string) {
+    guard user.id == userId
+    mutate ownerId = userId
+  }
+
+  // Test user binding (absent - should be null)
+  command publicClaim(userId: string) {
+    guard user == null or user.id == userId
+    mutate ownerId = userId
+  }
+
+  // Test context binding
+  computed contextValue: number = context.testValue == null ? 0 : context.testValue
+}
+
+store TestEntity in memory

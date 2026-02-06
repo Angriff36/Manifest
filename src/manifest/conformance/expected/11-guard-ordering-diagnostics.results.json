@@ -1,0 +1,28 @@
+{
+  "testCases": [
+    {
+      "name": "guard ordering: second guard fails, first passes",
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-1", "status": "pending", "priority": 1 }
+        }
+      },
+      "command": {
+        "name": "assign",
+        "entityName": "Task",
+        "instanceId": "task-1",
+        "input": { "employeeId": "emp1" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'assign'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "self.priority > 5"
+      }
+    }
+  ]
+}

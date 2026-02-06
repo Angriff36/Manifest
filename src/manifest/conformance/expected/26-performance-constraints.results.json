@@ -1,0 +1,154 @@
+{
+  "testCases": [
+    {
+      "name": "valid instance passes all constraints",
+      "entity": "Order",
+      "data": {
+        "id": "order123",
+        "customerId": "cust456",
+        "amount": 1000,
+        "status": "pending",
+        "createdAt": 1000000000000,
+        "updatedAt": 1000000000000,
+        "shippingAddress": "123 Main St",
+        "billingAddress": "123 Main St",
+        "priority": "normal"
+      },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "instance failing multiple constraints",
+      "entity": "Order",
+      "data": {
+        "id": "",
+        "customerId: "",
+        "amount": -100,
+        "status": "invalid_status",
+        "priority": "invalid_priority",
+        "discount": 1500,
+        "taxRate": 0.6,
+        "shippingAddress: "",
+        "billingAddress: "",
+        "createdAt": 1000000000000,
+        "updatedAt": 999999999999,
+        "priority": "invalid"
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "idNotEmpty",
+          "expression": "self.id != \"\""
+        },
+        {
+          "constraintName": "customerIdNotEmpty",
+          "expression": "self.customerId != \"\""
+        },
+        {
+          "constraintName": "amountPositive",
+          "expression": "self.amount > 0"
+        },
+        {
+          "constraintName": "statusValid",
+          "expression": "self.status == \"pending\" or self.status == \"processing\" or self.status == \"shipped\" or self.status == \"delivered\" or self.status == \"cancelled\""
+        },
+        {
+          "constraintName": "priorityValid",
+          "expression": "self.priority == \"low\" or self.priority == \"normal\" or self.priority == \"high\" or self.priority == \"urgent\""
+        },
+        {
+          "constraintName": "discountValid",
+          "expression": "self.discount >= 0 and self.discount <= self.amount"
+        },
+        {
+          "constraintName": "taxRateValid",
+          "expression": "self.taxRate >= 0 and self.taxRate <= 0.5"
+        },
+        {
+          "constraintName": "totalAmountValid",
+          "expression": "(self.amount - self.discount) * (1 + self.taxRate) > 0"
+        },
+        {
+          "constraintName": "hasTimestamp",
+          "expression": "self.createdAt > 0"
+        },
+        {
+          "constraintName": "updatedAtValid",
+          "expression": "self.updatedAt >= self.createdAt"
+        },
+        {
+          "constraintName": "shippingAddressRequired",
+          "expression": "(self.status == \"shipped\" or self.status == \"delivered\") implies self.shippingAddress != \"\""
+        },
+        {
+          "constraintName": "billingAddressRequired",
+          "expression": "self.amount > 1000 implies self.billingAddress != \"\""
+        }
+      ]
+    },
+    {
+      "name": "instance with invalid discount and tax rate",
+      "entity": "Order",
+      "data": {
+        "id": "order456",
+        "customerId": "cust789",
+        "amount": 2000,
+        "discount": 2500,
+        "taxRate": 0.6,
+        "status": "pending",
+        "createdAt": 1000000000000,
+        "updatedAt": 1000000000000
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "discountValid",
+          "expression": "self.discount >= 0 and self.discount <= self.amount"
+        },
+        {
+          "constraintName": "taxRateValid",
+          "expression": "self.taxRate >= 0 and self.taxRate <= 0.5"
+        },
+        {
+          "constraintName": "billingAddressRequired",
+          "expression": "self.amount > 1000 implies self.billingAddress != \"\""
+        }
+      ]
+    },
+    {
+      "name": "instance with invalid order status",
+      "entity": "Order",
+      "data": {
+        "id": "order789",
+        "customerId": "cust101",
+        "amount": 500,
+        "status": "completed",
+        "priority": "high",
+        "createdAt": 1000000000000,
+        "updatedAt": 1000000000000
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "statusValid",
+          "expression": "self.status == \"pending\" or self.status == \"processing\" or self.status == \"shipped\" or self.status == \"delivered\" or self.status == \"cancelled\""
+        }
+      ]
+    },
+    {
+      "name": "instance with shipping constraint violation",
+      "entity": "Order",
+      "data": {
+        "id": "order101",
+        "customerId": "cust202",
+        "amount": 100,
+        "status": "shipped",
+        "shippingAddress": "",
+        "createdAt": 1000000000000,
+        "updatedAt": 1000000000000
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "shippingAddressRequired",
+          "expression": "(self.status == \"shipped\" or self.status == \"delivered\") implies self.shippingAddress != \"\""
+        }
+      ]
+    }
+  ]
+}

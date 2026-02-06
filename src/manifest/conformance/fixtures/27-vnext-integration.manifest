@@ -1,0 +1,84 @@
+entity WorkflowInstance {
+  property required id: string
+  property required name: string
+  property required version: string
+  property required status: string = "active"
+  property required createdBy: string
+  property createdAt: string = ""
+  property updatedAt: string = ""
+  property isLocked: boolean = false
+  property concurrencyVersion: number = 1
+
+  constraint versionRequired:self.version != "" "Version must be provided"
+  constraint statusValid:self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
+  constraint severityHighConcurrency:warn self.concurrencyVersion > 10 "Warning: High concurrency version detected"
+
+  command pause() {
+    constraint notLocked:block self.isLocked == false "Workflow instance is locked"
+    constraint canPause:block self.status == "active" "Can only pause active workflows"
+    mutate status = "paused"
+    mutate updatedAt = now()
+    emit WorkflowPaused
+  }
+
+  command resume() {
+    constraint notLocked:block self.isLocked == false "Workflow instance is locked"
+    constraint canResume:block self.status == "paused" "Can only resume paused workflows"
+    mutate status = "active"
+    mutate updatedAt = now()
+    emit WorkflowResumed
+  }
+
+  command lock() {
+    constraint notAlreadyLocked:block self.isLocked == false "Already locked"
+    mutate isLocked = true
+    mutate concurrencyVersion = self.concurrencyVersion + 1
+    mutate updatedAt = now()
+    emit WorkflowLocked
+  }
+
+  command unlock() {
+    constraint canUnlock:block self.isLocked == true "Not locked"
+    mutate isLocked = false
+    mutate concurrencyVersion = self.concurrencyVersion + 1
+    mutate updatedAt = now()
+    emit WorkflowUnlocked
+  }
+
+  command complete() {
+    constraint canComplete:block self.status in ["active", "paused"] "Cannot complete workflow in current state"
+    mutate status = "completed"
+    mutate updatedAt = now()
+    emit WorkflowCompleted
+  }
+}
+
+store WorkflowInstance in memory
+
+event WorkflowPaused: "workflow.paused" {
+  workflowId: string
+  previousStatus: string
+}
+
+event WorkflowResumed: "workflow.resumed" {
+  workflowId: string
+  previousStatus: string
+}
+
+event WorkflowLocked: "workflow.locked" {
+  workflowId: string
+  newVersion: number
+}
+
+event WorkflowUnlocked: "workflow.unlocked" {
+  workflowId: string
+  newVersion: number
+}
+
+event WorkflowCompleted: "workflow.completed" {
+  workflowId: string
+  finalStatus: string
+}
+
+// Note: No authorization policies in this fixture - testing business logic constraints
+// and state management (locking, concurrency, status transitions)

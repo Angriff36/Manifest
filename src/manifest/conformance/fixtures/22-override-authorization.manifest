@@ -1,0 +1,57 @@
+entity FinancialRecord {
+  property required id: string
+  property required amount: number = 0
+  property required status: string = "pending"
+  property required requestedBy: string
+  property approvedBy: string = ""
+
+  constraint amountLimit: self.amount <= 1000 "Amount must be less than or equal to 1000"
+  constraint approvalRequired: self.amount > 500 "Amounts over 500 require approval"
+  constraint statusValid: self.status in ["pending", "approved", "rejected", "processed"] "Status must be valid"
+
+  command approve() {
+    mutate status = "approved"
+    mutate approvedBy = context.user.id
+    emit RecordApproved
+  }
+
+  command reject() {
+    mutate status = "rejected"
+    emit RecordRejected
+  }
+
+  command process() {
+    constraint overrideable requiresApproval {
+      expression: self.status == "approved" or self.amount <= 500
+      severity: block
+      message: "Must be approved before processing"
+      overridePolicy: canApproveLargeAmounts
+    }
+
+    mutate status = "processed"
+    mutate approvedBy = context.user.id
+    emit RecordProcessed
+  }
+}
+
+store FinancialRecord in memory
+
+event RecordApproved: "financial.record.approved" {
+  recordId: string
+  approvedBy: string
+  amount: number
+}
+
+event RecordRejected: "financial.record.rejected" {
+  recordId: string
+  reason: string
+}
+
+event RecordProcessed: "financial.record.processed" {
+  recordId: string
+  processedBy: string
+}
+
+policy canApproveLargeAmounts override:
+  user.role == "manager" or user.role == "admin"
+  "Only managers and admins can approve large amounts"

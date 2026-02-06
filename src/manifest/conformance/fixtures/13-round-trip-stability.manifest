@@ -1,0 +1,34 @@
+entity Order {
+  property required id: string
+  property total: number = 0
+  property status: string = "pending"
+  property customerId: string = ""
+
+  computed isComplete: boolean = self.status == "completed"
+  computed hasCustomer: boolean = self.customerId != ""
+
+  command addItem(amount: number) {
+    guard amount > 0
+    mutate total = self.total + amount
+    emit OrderUpdated
+  }
+
+  command complete() {
+    guard self.status == "pending"
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted
+  }
+}
+
+store Order in memory
+
+event OrderUpdated: "order.updated" {
+  orderId: string
+  total: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  total: number
+}

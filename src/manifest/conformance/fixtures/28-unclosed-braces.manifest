@@ -1,0 +1,6 @@
+// Test: Unclosed entity block should fail compilation
+// This tests error detection for missing closing brace
+
+entity Test {
+  property name: string
+  property age: number

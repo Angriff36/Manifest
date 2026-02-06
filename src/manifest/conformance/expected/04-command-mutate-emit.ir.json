@@ -1,5 +1,12 @@
 {
   "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "1fc5901d4f0b29e7c78f2b2d95c8d035064ad10ba6157a99d2e360cff2afe836",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
   "modules": [],
   "entities": [
     {
@@ -7,73 +14,35 @@
       "properties": [
         {
           "name": "value",
-          "type": { "name": "number", "nullable": false },
-          "defaultValue": { "kind": "number", "value": 0 },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
           "modifiers": []
         },
         {
           "name": "lastUpdated",
-          "type": { "name": "string", "nullable": false },
-          "defaultValue": { "kind": "string", "value": "" },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
           "modifiers": []
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [
-        {
-          "name": "increment",
-          "entity": "Counter",
-          "parameters": [],
-          "guards": [],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "value",
-              "expression": {
-                "kind": "binary",
-                "operator": "+",
-                "left": { "kind": "identifier", "name": "value" },
-                "right": { "kind": "literal", "value": { "kind": "number", "value": 1 } }
-              }
-            }
-          ],
-          "emits": ["CounterIncremented"]
-        },
-        {
-          "name": "reset",
-          "entity": "Counter",
-          "parameters": [],
-          "guards": [],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "value",
-              "expression": { "kind": "literal", "value": { "kind": "number", "value": 0 } }
-            }
-          ],
-          "emits": ["CounterReset"]
-        },
-        {
-          "name": "setValue",
-          "entity": "Counter",
-          "parameters": [
-            {
-              "name": "newValue",
-              "type": { "name": "number", "nullable": false },
-              "required": true
-            }
-          ],
-          "guards": [],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "value",
-              "expression": { "kind": "identifier", "name": "newValue" }
-            }
-          ],
-          "emits": ["CounterSet"]
-        }
+        "increment",
+        "reset",
+        "setValue"
       ],
       "constraints": [],
       "policies": []
@@ -93,7 +62,10 @@
       "payload": [
         {
           "name": "counterId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
@@ -104,7 +76,10 @@
       "payload": [
         {
           "name": "counterId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
@@ -115,17 +90,107 @@
       "payload": [
         {
           "name": "counterId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         },
         {
           "name": "newValue",
-          "type": { "name": "number", "nullable": false },
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
           "required": true
         }
       ]
     }
   ],
-  "commands": [],
+  "commands": [
+    {
+      "name": "increment",
+      "entity": "Counter",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "value",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "identifier",
+              "name": "value"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CounterIncremented"
+      ]
+    },
+    {
+      "name": "reset",
+      "entity": "Counter",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "value",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CounterReset"
+      ]
+    },
+    {
+      "name": "setValue",
+      "entity": "Counter",
+      "parameters": [
+        {
+          "name": "newValue",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "value",
+          "expression": {
+            "kind": "identifier",
+            "name": "newValue"
+          }
+        }
+      ],
+      "emits": [
+        "CounterSet"
+      ]
+    }
+  ],
   "policies": []
 }

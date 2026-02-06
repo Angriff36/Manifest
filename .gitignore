@@ -21,3 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Temporary test screenshots
+*.png
+!public/*.png
+console-messages.json

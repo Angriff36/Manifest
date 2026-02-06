@@ -35,13 +35,79 @@ import {
   IRDiagnostic,
   CompileToIRResult,
   PropertyModifier,
+  IRProvenance,
 } from './ir';
+import { globalIRCache, type IRCache } from './ir-cache';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+
+/**
+ * Compute SHA-256 hash of the source manifest
+ */
+async function computeContentHash(source: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(source);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Create provenance metadata for the IR
+ */
+async function createProvenance(source: string, irHash?: string): Promise<IRProvenance> {
+  return {
+    contentHash: await computeContentHash(source),
+    irHash,
+    compilerVersion: COMPILER_VERSION,
+    schemaVersion: SCHEMA_VERSION,
+    compiledAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Compute SHA-256 hash of the IR for runtime integrity verification
+ * This creates a canonical representation by sorting keys and excluding the irHash itself
+ */
+async function computeIRHash(ir: IR): Promise<string> {
+  // Create a copy of the IR without the irHash for hashing
+  const { provenance, ...irWithoutProvenance } = ir as IR & { provenance: IRProvenance };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { irHash: _irHash, ...provenanceWithoutIrHash } = provenance;
+
+  const canonical = {
+    ...irWithoutProvenance,
+    provenance: provenanceWithoutIrHash,
+  };
+
+  // Use deterministic JSON serialization
+  const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export class IRCompiler {
   private diagnostics: IRDiagnostic[] = [];
+  private cache: IRCache;
 
-  compileToIR(source: string): CompileToIRResult {
+  constructor(cache?: IRCache) {
+    this.cache = cache ?? globalIRCache;
+  }
+
+  async compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult> {
     this.diagnostics = [];
+
+    // vNext: Check cache before compilation
+    const useCache = options?.useCache ?? true;
+    if (useCache) {
+      const contentHash = await computeContentHash(source);
+      const cached = this.cache.get(contentHash);
+      if (cached) {
+        return { ir: cached as IR, diagnostics: [] };
+      }
+    }
 
     const parser = new Parser();
     const { program, errors } = parser.parse(source);
@@ -59,19 +125,44 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = this.transformProgram(program);
+    const ir = await this.transformProgram(program, source);
+
+    // vNext: Cache the compiled IR
+    if (useCache && ir) {
+      const contentHash = await computeContentHash(source);
+      this.cache.set(contentHash, ir);
+    }
+
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private transformProgram(program: ManifestProgram): IR {
+  private async transformProgram(program: ManifestProgram, source: string): Promise<IR> {
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const entities: IREntity[] = [
       ...program.entities.map(e => this.transformEntity(e)),
       ...program.modules.flatMap(m => m.entities.map(e => this.transformEntity(e, m.name))),
     ];
+
+    // Collect entity-scoped stores (defined as "store in <target>" inside entity)
+    const entityScopedStores: IRStore[] = [
+      ...program.entities.filter(e => e.store).map(e => ({
+        entity: e.name,
+        target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+        config: {},
+      })),
+      ...program.modules.flatMap(m =>
+        m.entities.filter(e => e.store).map(e => ({
+          entity: e.name,
+          target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+          config: {},
+        }))
+      ),
+    ];
+
     const stores: IRStore[] = [
       ...program.stores.map(s => this.transformStore(s)),
       ...program.modules.flatMap(m => m.stores.map(s => this.transformStore(s))),
+      ...entityScopedStores,
     ];
     const events: IREvent[] = [
       ...program.events.map(e => this.transformEvent(e)),
@@ -80,14 +171,21 @@ export class IRCompiler {
     const commands: IRCommand[] = [
       ...program.commands.map(c => this.transformCommand(c)),
       ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
+      ...program.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, undefined, e.name))),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, m.name, e.name)))),
     ];
     const policies: IRPolicy[] = [
       ...program.policies.map(p => this.transformPolicy(p)),
       ...program.modules.flatMap(m => m.policies.map(p => this.transformPolicy(p, m.name))),
+      // Extract entity-scoped policies with entity name
+      ...program.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, undefined, e.name))),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
     ];
 
-    return {
+    // Create IR without irHash first, then compute hash and add to provenance
+    const irWithoutHash: IR = {
       version: '1.0',
+      provenance: await createProvenance(source),
       modules,
       entities,
       stores,
@@ -95,16 +193,29 @@ export class IRCompiler {
       commands,
       policies,
     };
+
+    // Compute the IR hash and create final IR with hash in provenance
+    const irHash = await computeIRHash(irWithoutHash);
+    return {
+      ...irWithoutHash,
+      provenance: await createProvenance(source, irHash),
+    };
   }
 
   private transformModule(m: { name: string; entities: EntityNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[] }): IRModule {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
-      commands: m.commands.map(c => c.name),
+      commands: [
+        ...m.commands.map(c => c.name),
+        ...m.entities.flatMap(e => e.commands.map(c => c.name)),
+      ],
       stores: m.stores.map(s => s.entity),
-      events: m.events.map(e => e.name),
-      policies: m.policies.map(p => p.name),
+      events: m.events.map(e => e.name), // Entity-scoped events not supported in current syntax
+      policies: [
+        ...m.policies.map(p => p.name),
+        ...m.entities.flatMap(e => e.policies.map(p => p.name)),
+      ],
     };
   }
 
@@ -115,9 +226,11 @@ export class IRCompiler {
       properties: e.properties.map(p => this.transformProperty(p)),
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
-      commands: e.commands.map(c => this.transformCommand(c, moduleName, e.name)),
+      commands: e.commands.map(c => c.name),
       constraints: e.constraints.map(c => this.transformConstraint(c)),
       policies: e.policies.map(p => p.name),
+      versionProperty: e.versionProperty,
+      versionAtProperty: e.versionAtProperty,
     };
   }
 
@@ -152,8 +265,18 @@ export class IRCompiler {
   private transformConstraint(c: ConstraintNode): IRConstraint {
     return {
       name: c.name,
+      code: c.code || c.name, // Default to name if code not specified
       expression: this.transformExpression(c.expression),
+      severity: c.severity || 'block', // Default to block
       message: c.message,
+      messageTemplate: c.messageTemplate,
+      detailsMapping: c.detailsMapping
+        ? Object.fromEntries(
+            Object.entries(c.detailsMapping).map(([k, v]) => [k, this.transformExpression(v)])
+          )
+        : undefined,
+      overrideable: c.overrideable,
+      overridePolicyRef: c.overridePolicyRef,
     };
   }
 
@@ -198,6 +321,7 @@ export class IRCompiler {
       entity: entityName,
       parameters: c.parameters.map(p => this.transformParameter(p)),
       guards: (c.guards || []).map(g => this.transformExpression(g)),
+      constraints: (c.constraints || []).map(c => this.transformConstraint(c)), // vNext
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,
@@ -354,7 +478,7 @@ export class IRCompiler {
   }
 }
 
-export function compileToIR(source: string): CompileToIRResult {
+export async function compileToIR(source: string): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();
   return compiler.compileToIR(source);
 }

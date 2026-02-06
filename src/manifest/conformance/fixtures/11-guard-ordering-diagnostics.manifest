@@ -1,0 +1,23 @@
+entity Task {
+  property required id: string
+  property status: string = "pending"
+  property priority: number = 1
+  property assignedTo: string? = null
+
+  // Three guards: first passes, second fails, third never evaluated
+  command assign(employeeId: string) {
+    guard self.status == "pending"  // Guard #1: should pass
+    guard self.priority > 5         // Guard #2: should fail (priority is 1)
+    guard self.assignedTo == null   // Guard #3: never evaluated
+    mutate assignedTo = employeeId
+    mutate status = "assigned"
+    emit TaskAssigned
+  }
+}
+
+store Task in memory
+
+event TaskAssigned: "task.assigned" {
+  taskId: string
+  employeeId: string
+}

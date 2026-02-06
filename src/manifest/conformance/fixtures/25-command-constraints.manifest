@@ -1,0 +1,35 @@
+entity Order {
+  property required id: string
+  property required customerId: string
+  property required status: string = "pending"
+  property amount: number = 0
+
+  constraint positiveAmount: self.amount >= 0 "Amount must be non-negative"
+  constraint validStatus: self.status in ["pending", "processing", "shipped", "delivered", "cancelled"] "Invalid order status"
+
+  command updateStatus(newStatus: string) {
+    constraint notCancelled: self.status != "cancelled" "Cannot update cancelled order"
+    constraint amountVerified:warn self.amount >= 100 or self.status == "cancelled" "Orders under $100 require manual approval"
+
+    mutate status = newStatus
+    emit OrderStatusChanged
+  }
+
+  command cancel() {
+    constraint notShipped: self.status != "shipped" "Cannot cancel shipped order"
+    constraint verifyCancellation: true "Cancellation confirmed"
+
+    mutate status = "cancelled"
+    emit OrderCancelled
+  }
+}
+
+store Order in memory
+
+event OrderStatusChanged: "order.status.changed" {
+  orderId: string
+}
+
+event OrderCancelled: "order.cancelled" {
+  orderId: string
+}

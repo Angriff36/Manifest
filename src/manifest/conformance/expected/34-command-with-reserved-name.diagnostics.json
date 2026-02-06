@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Reserved word 'entity' cannot be used as an identifier",
+      "line": 4,
+      "column": 15
+    }
+  ]
+}

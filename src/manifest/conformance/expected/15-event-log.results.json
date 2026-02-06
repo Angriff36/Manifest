@@ -1,0 +1,128 @@
+{
+  "testCases": [
+    {
+      "name": "addItem emits OrderUpdated event",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-1", "total": 0 }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-1",
+        "input": { "amount": 50 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 50,
+        "emittedEvents": [
+          {
+            "name": "OrderUpdated",
+            "channel": "order.updated",
+            "payload": { "amount": 50, "result": 50 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-1",
+        "total": 50
+      }
+    },
+    {
+      "name": "addItem multiple times accumulates total",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-2", "total": 100 }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-2",
+        "input": { "amount": 75 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 175,
+        "emittedEvents": [
+          {
+            "name": "OrderUpdated",
+            "channel": "order.updated",
+            "payload": { "amount": 75, "result": 175 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-2",
+        "total": 175
+      }
+    },
+    {
+      "name": "complete emits OrderCompleted event",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-3", "total": 200 }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Order",
+        "instanceId": "order-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 200,
+        "emittedEvents": [
+          {
+            "name": "OrderCompleted",
+            "channel": "order.completed",
+            "payload": { "result": 200 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-3",
+        "total": 200
+      }
+    },
+    {
+      "name": "addItem then complete events are logged",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-4", "total": 50 }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-4",
+        "input": { "amount": 25 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 75,
+        "emittedEvents": [
+          {
+            "name": "OrderUpdated",
+            "channel": "order.updated",
+            "payload": { "amount": 25, "result": 75 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-4",
+        "total": 75
+      }
+    }
+  ]
+}

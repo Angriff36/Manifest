@@ -1,5 +1,12 @@
 {
   "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "c9acf9c2ee36fa303cedbe805e09e3c570bea961a50879c631d43515eab3ec5d",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
   "modules": [],
   "entities": [
     {
@@ -7,47 +14,44 @@
       "properties": [
         {
           "name": "title",
-          "type": { "name": "string", "nullable": false },
-          "modifiers": ["required"]
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
         },
         {
           "name": "content",
-          "type": { "name": "string", "nullable": false },
-          "defaultValue": { "kind": "string", "value": "" },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
           "modifiers": []
         },
         {
           "name": "isPublic",
-          "type": { "name": "boolean", "nullable": false },
-          "defaultValue": { "kind": "boolean", "value": false },
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
           "modifiers": []
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [
-        {
-          "name": "makePublic",
-          "entity": "Document",
-          "parameters": [],
-          "guards": [],
-          "actions": [
-            {
-              "kind": "mutate",
-              "target": "isPublic",
-              "expression": { "kind": "literal", "value": { "kind": "boolean", "value": true } }
-            }
-          ],
-          "emits": ["DocumentPublished"]
-        },
-        {
-          "name": "remove",
-          "entity": "Document",
-          "parameters": [],
-          "guards": [],
-          "actions": [],
-          "emits": ["DocumentDeleted"]
-        }
+        "makePublic",
+        "remove"
       ],
       "constraints": [],
       "policies": []
@@ -67,7 +71,10 @@
       "payload": [
         {
           "name": "documentId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
@@ -78,13 +85,51 @@
       "payload": [
         {
           "name": "documentId",
-          "type": { "name": "string", "nullable": false },
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
           "required": true
         }
       ]
     }
   ],
-  "commands": [],
+  "commands": [
+    {
+      "name": "makePublic",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "isPublic",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": [
+        "DocumentPublished"
+      ]
+    },
+    {
+      "name": "remove",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [],
+      "emits": [
+        "DocumentDeleted"
+      ]
+    }
+  ],
   "policies": [
     {
       "name": "adminOnly",
@@ -94,10 +139,19 @@
         "operator": "==",
         "left": {
           "kind": "member",
-          "object": { "kind": "identifier", "name": "user" },
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
           "property": "role"
         },
-        "right": { "kind": "literal", "value": { "kind": "string", "value": "admin" } }
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
       },
       "message": "Only administrators can execute commands"
     }

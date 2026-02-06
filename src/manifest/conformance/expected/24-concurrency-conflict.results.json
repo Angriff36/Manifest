@@ -1,0 +1,72 @@
+{
+  "testCases": [
+    {
+      "name": "create instance with version",
+      "command": {
+        "name": "create",
+        "entityName": "Document",
+        "input": { "title": "Test Document", "content": "Initial content" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentCreated",
+            "channel": "DocumentCreated",
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "update with correct version succeeds",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-2", "title": "Original Title", "content": "Original content", "version": 1, "versionAt": 1000000000000 }
+        }
+      },
+      "command": {
+        "name": "update",
+        "entityName": "Document",
+        "instanceId": "doc-2",
+        "input": { "newTitle": "Updated Title", "newContent": "Updated content", "currentVersion": 1 }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentUpdated",
+            "channel": "DocumentUpdated",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": { "id": "doc-2", "title": "Updated Title", "content": "Updated content", "version": 2, "versionAt": 1000000000000 }
+    },
+    {
+      "name": "update with stale version fails",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-3", "title": "First Version", "content": "First content", "version": 1, "versionAt": 1000000000000 }
+        }
+      },
+      "command": {
+        "name": "update",
+        "entityName": "Document",
+        "instanceId": "doc-3",
+        "input": { "newTitle": "Updated Title", "newContent": "Updated content", "currentVersion": 999 }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'update'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "self.version == currentVersion"
+      }
+    }
+  ]
+}
