@@ -115,7 +115,7 @@ Duration: ~600ms
 
 | Fixture | Feature | Status |
 |---------|---------|--------|
-| 21-constraint-outcomes | Constraint severity levels | Passing |
+| 21-constraint-outcomes | Constraint severity levels, messageTemplate interpolation | Passing |
 | 22-override-authorization | Override mechanism | Passing |
 | 23-workflow-idempotency | Workflow conventions | Passing |
 | 24-concurrency-conflict | Concurrency controls | Passing |
@@ -171,6 +171,47 @@ Comprehensive search found:
 - No skip/flaky tests
 - No placeholder implementations
 - All misleading comments resolved
+
+---
+
+## Recent Implementation Work (2026-02-06)
+
+### messageTemplate Interpolation
+
+**Implemented**: runtime-engine.ts:1451-1491
+
+The `messageTemplate` field now supports placeholder interpolation using `{placeholder}` syntax. Placeholders are resolved from three sources in order:
+
+1. **detailsMapping** - Key-value pairs explicitly defined in the constraint
+2. **Resolved expressions** - Expression strings and their evaluated values
+3. **Evaluation context** - Direct property access from evalContext
+
+**Example**:
+```manifest
+constraint amountLimit:block self.amount > 10000 {
+  messageTemplate: "Order amount {currentAmount} exceeds limit of {maxAmount} by {excessAmount}"
+  details: {
+    maxAmount: 10000
+    currentAmount: self.amount
+    excessAmount: self.amount - 10000
+  }
+}
+```
+
+**Test Coverage**: Fixture 21 (constraint-outcomes) includes a constraint with messageTemplate and detailsMapping.
+
+### OverrideApplied Event Semantics Clarified
+
+**Finding**: The `OverrideApplied` event is correctly emitted **only for explicit override requests**, not for automatic policy-based overrides.
+
+- **Explicit override requests** (with user-provided reason) → emit `OverrideApplied` event for audit trail
+- **Automatic policy-based overrides** (via `overridePolicyRef`) → no separate event (policy check is part of normal execution)
+
+This is semantically correct as:
+1. Explicit overrides represent conscious decisions that require audit trails
+2. Automatic policy-based authorization is part of normal command execution flow
+
+The conformance test framework currently doesn't support passing `overrideRequests`, so `OverrideApplied` events aren't tested in conformance. This is acceptable since the mechanism is correctly implemented and the behavior matches the specification.
 
 ---
 
