@@ -142,9 +142,27 @@ export class IRCompiler {
       ...program.entities.map(e => this.transformEntity(e)),
       ...program.modules.flatMap(m => m.entities.map(e => this.transformEntity(e, m.name))),
     ];
+
+    // Collect entity-scoped stores (defined as "store in <target>" inside entity)
+    const entityScopedStores: IRStore[] = [
+      ...program.entities.filter(e => e.store).map(e => ({
+        entity: e.name,
+        target: e.store as 'memory' | 'filesystem' | 'postgres' | 'supabase',
+        config: {},
+      })),
+      ...program.modules.flatMap(m =>
+        m.entities.filter(e => e.store).map(e => ({
+          entity: e.name,
+          target: e.store as 'memory' | 'filesystem' | 'postgres' | 'supabase',
+          config: {},
+        }))
+      ),
+    ];
+
     const stores: IRStore[] = [
       ...program.stores.map(s => this.transformStore(s)),
       ...program.modules.flatMap(m => m.stores.map(s => this.transformStore(s))),
+      ...entityScopedStores,
     ];
     const events: IREvent[] = [
       ...program.events.map(e => this.transformEvent(e)),

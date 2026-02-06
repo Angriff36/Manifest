@@ -89,7 +89,27 @@ export class Parser {
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy());
-      else if (this.check('KEYWORD', 'store')) { this.advance(); store = this.advance().value; }
+      else if (this.check('KEYWORD', 'store')) {
+        // Check the syntax variant
+        const nextToken = this.tokens[this.pos + 1];
+        const afterNextToken = this.tokens[this.pos + 2];
+
+        if (nextToken?.value === 'in') {
+          // Entity-scoped syntax: "store in <target>"
+          this.advance(); // consume 'store'
+          this.advance(); // consume 'in'
+          store = this.advance().value; // get target
+        } else if (afterNextToken?.value === 'in') {
+          // Full syntax inside entity: "store <Entity> in <target>"
+          // Parse as store node and extract target
+          const storeNode = this.parseStore();
+          store = storeNode.target;
+        } else {
+          // Short syntax: "store <target>" (without "in")
+          this.advance(); // consume 'store'
+          store = this.advance().value; // get target directly
+        }
+      }
       else this.advance();
       this.skipNL();
     }

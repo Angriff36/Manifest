@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "ad56b7ad9efe468b4023cfe194ec981018a4eea9378182cd60c82ec89bf7a695",
+    "irHash": "a5a87c0e624d08756c219ccd928cdec8f3f673a4acfc7c5ead225d6c49c0cf48",
     "compilerVersion": "0.3.7",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -203,7 +203,13 @@
       "policies": []
     }
   ],
-  "stores": [],
+  "stores": [
+    {
+      "entity": "WorkflowStep",
+      "target": "memory",
+      "config": {}
+    }
+  ],
   "events": [
     {
       "name": "StepStarted",

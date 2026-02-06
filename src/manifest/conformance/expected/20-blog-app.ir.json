@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "1e4ad71dd5825f25121390e05e47cb4d3325855f6e6d5058ef3388e88dde6e08",
+    "irHash": "f9b55521c2909799ac056582cd60c1f020a21c9069da8b31719c54f457b88d5d",
     "compilerVersion": "0.3.7",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -681,7 +681,23 @@
       "policies": []
     }
   ],
-  "stores": [],
+  "stores": [
+    {
+      "entity": "User",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Post",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Comment",
+      "target": "memory",
+      "config": {}
+    }
+  ],
   "events": [
     {
       "name": "UserRegistered",

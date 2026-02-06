@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED | Entity-scoped store compilation bug FIXED | Parser now handles all store syntax variants)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -195,6 +195,7 @@ All planned vNext work is complete. Latest release: v0.3.7
 
 - ~~Add ESLint rule to prevent hardcoded versions~~ **COMPLETED (2026-02-06)**
 - Add performance benchmarks
+- **Git tag drift**: Move v0.3.7 tag from `eb1fd5f` to `64b2795` (current commit has correct version.ts)
 
 ### Technical Debt Resolved
 
