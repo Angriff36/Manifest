@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.6 released | Lambda expressions fully implemented | Version drift in tests FIXED | Version synchronization corrected)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.6 released | Lambda expressions fully implemented | Version drift FIXED | ESLint rule for hardcoded versions ADDED)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -193,7 +193,7 @@ All planned vNext work is complete. Latest release: v0.3.6
 
 ### Optional Future Enhancements
 
-- Add ESLint rule to prevent hardcoded versions
+- ~~Add ESLint rule to prevent hardcoded versions~~ **COMPLETED (2026-02-06)**
 - Add performance benchmarks
 
 ### Technical Debt Resolved
@@ -203,6 +203,25 @@ All planned vNext work is complete. Latest release: v0.3.6
 ---
 
 ## Change Log
+
+### 2026-02-06: ESLint Rule for Hardcoded Versions
+
+**Enhancement**: Added custom ESLint rule to prevent hardcoded version strings in source code.
+
+**Details**:
+- Created `eslint-rules/no-hardcoded-versions.js` with custom rule
+- Configured to warn when semver-pattern strings (X.Y.Z) appear without importing from version.ts
+- Excludes legitimate cases: version.ts (source of truth), zipExporter.ts (default versions), templates.ts (placeholders), test files, and conformance expected files
+
+**Files Added**:
+- `eslint-rules/no-hardcoded-versions.js`
+
+**Files Modified**:
+- `eslint.config.js`
+
+**Result**:
+- ESLint: PASS (no warnings)
+- Helps prevent future version drift by enforcing imports from version.ts
 
 ### 2026-02-06: Version Synchronization (v0.3.6)
 
