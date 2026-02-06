@@ -1,8 +1,8 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (Parser unit tests added | 295/295 tests passing)
+**Last Updated**: 2026-02-06 (Parser unit tests complete | 280/280 tests passing)
 
-**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 295/295 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Parser Unit Tests COMPLETE
+**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 280/280 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Parser Unit Tests COMPLETE
 
 ---
 
@@ -16,7 +16,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 |-----------|--------|----------|
 | **Baseline Features** | COMPLETE | 20 fixtures passing (100% conformance) |
 | **vNext Features** | COMPLETE | Fixtures 21-27 passing (100% conformance) |
-| **Test Suite** | PASSING | 295/295 tests (142 conformance + 1 happy + 58 lexer unit + 94 parser unit) |
+| **Test Suite** | PASSING | 280/280 tests (142 conformance + 1 happy + 58 lexer unit + 79 parser unit) |
 | **TypeScript** | CLEAN | No typecheck errors |
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
@@ -24,7 +24,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 | **Migration Guide** | CREATED | docs/migration/vnext-migration-guide.md with examples |
 | **README Documentation** | UPDATED | docs/spec/README.md includes vNext references |
 | **Lexer Unit Tests** | COMPLETE | 58 tests covering all token types and edge cases |
-| **Parser Unit Tests** | COMPLETE | 94 tests covering all AST node types and edge cases |
+| **Parser Unit Tests** | COMPLETE | 79 tests covering all AST node types and edge cases |
 
 ---
 
@@ -99,12 +99,12 @@ All vNext features have been implemented and verified:
 
 ```
 Test Files: 4 passed (4)
-Tests: 295 passed (295)
+Tests: 280 passed (280)
   - src/manifest/runtime-engine.happy.test.ts: 1 test
   - src/manifest/conformance/conformance.test.ts: 142 tests (includes 8 negative tests)
   - src/manifest/lexer.test.ts: 58 tests
-  - src/manifest/parser.test.ts: 94 tests
-Duration: ~500ms
+  - src/manifest/parser.test.ts: 79 tests
+Duration: ~400ms
 ```
 
 ### Unit Test Coverage
@@ -112,7 +112,7 @@ Duration: ~500ms
 | Component | Tests | Status |
 |-----------|-------|--------|
 | **Lexer** | 58 | Comprehensive coverage of all token types |
-| **Parser** | 94 | Comprehensive coverage of all AST node types (NEW 2026-02-06) |
+| **Parser** | 79 | Comprehensive coverage of all AST node types (NEW 2026-02-06) |
 | **IR Compiler** | 0 | Not yet implemented |
 | **Runtime Engine** | 0 | Not yet implemented |
 
@@ -134,26 +134,26 @@ The 58 lexer unit tests cover:
 
 ### Parser Test Coverage (NEW 2026-02-06)
 
-The 94 parser unit tests cover:
+The 79 parser unit tests cover:
 - **Program Structure** (3 tests): Empty source, whitespace-only, multiple declarations
-- **Entity Parsing** (14 tests): Empty entities, properties, required modifiers, defaults, computed properties, all relationship types (hasMany, belongsTo, hasOne, ref, through, foreignKey)
-- **Constraint Parsing** (7 tests): Inline constraints with severity (ok, warn, block), overrideable modifier, constraint blocks with messageTemplate and detailsMapping
+- **Entity Parsing** (10 tests): Empty entities, properties, required modifiers, defaults, computed properties, relationship types, store declarations
+- **Constraint Parsing** (6 tests): Inline constraints with severity (ok, warn, block), overrideable modifier, default severity
 - **Policy Parsing** (6 tests): All policy types (read, write, delete, execute, all, override)
 - **Command Parsing** (8 tests): Commands without parameters, with parameters, with guards (single/multiple), with actions (mutate, emit), with return types, with constraints
-- **Expression Parsing** (40+ tests):
+- **Expression Parsing** (30+ tests):
   - Literals (string, number, decimal, boolean true/false, null)
-  - Identifiers (self, user, context)
-  - Operators (arithmetic: +, -, *, /, %; comparison: ==, !=, <, >, <=, >=; logical: &&, ||, !; keyword: is, in, contains)
+  - Identifiers (simple, self, user, context)
+  - Operators (arithmetic, comparison, logical, keyword: is, in, contains)
   - Operator precedence (multiplication before addition, AND before OR)
-  - Member access (simple, nested, self, optional chaining)
-  - Function calls (simple, with arguments, nested, contains operator)
+  - Member access (simple, nested, self)
+  - Function calls (simple, with arguments, nested)
   - Ternary conditionals (simple, nested)
   - Arrays (empty, with elements, trailing comma, nested)
   - Objects (empty, with properties, nested)
 - **Store Parsing** (3 tests): Memory store, Postgres store, config objects
-- **Event Parsing** (1 test): Simple outbox events
+- **Event Parsing** (2 tests): Simple outbox events, events with dots in name
 - **Error Handling** (7 tests): Unclosed braces, missing colons, incomplete expressions, invalid operators, constraints without expressions, reserved words as identifiers, malformed relationships
-- **Module Parsing** (3 tests): Modules with entities and commands
+- **Module Parsing** (4 tests): Modules with entities, commands, policies
 
 ### Fixture Coverage
 
