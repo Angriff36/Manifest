@@ -14,8 +14,7 @@ entity Document {
     mutate id = uuid()
     mutate title = title
     mutate content = content
-    mutate version = 1
-    mutate versionAt = now()
+    // version and versionAt are auto-initialized by runtime engine
     emit DocumentCreated
   }
 
@@ -24,8 +23,7 @@ entity Document {
     guard self.version == currentVersion
     mutate title = newTitle
     mutate content = newContent
-    mutate version = currentVersion + 1
-    mutate versionAt = now()
+    // version and versionAt are auto-incremented by runtime engine
     emit DocumentUpdated
   }
 }

@@ -35,6 +35,10 @@ export interface EntityNode extends ASTNode {
   constraints: ConstraintNode[];
   policies: PolicyNode[];
   store?: string;
+  /** Optimistic concurrency: property name for version number */
+  versionProperty?: string;
+  /** Optimistic concurrency: property name for version timestamp */
+  versionAtProperty?: string;
 }
 
 export interface PropertyNode extends ASTNode {

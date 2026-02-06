@@ -229,6 +229,8 @@ export class IRCompiler {
       commands: e.commands.map(c => c.name),
       constraints: e.constraints.map(c => this.transformConstraint(c)),
       policies: e.policies.map(p => p.name),
+      versionProperty: e.versionProperty,
+      versionAtProperty: e.versionAtProperty,
     };
   }
 

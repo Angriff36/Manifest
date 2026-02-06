@@ -205,6 +205,31 @@ All planned vNext work is complete. Latest release: v0.3.7
 
 ## Change Log
 
+### 2026-02-06: Optimistic Concurrency Parsing Implementation
+
+**Issue**: The parser did not recognize `versionProperty` and `versionAtProperty` keywords, causing optimistic concurrency control to fail silently.
+
+**Fix**:
+1. Added `versionProperty` and `versionAtProperty` to lexer KEYWORDS set
+2. Updated parser to parse these keywords in entity definitions (syntax: `versionProperty <name>: <type>`)
+3. Added `versionProperty` and `versionAtProperty` fields to `EntityNode` in types.ts
+4. Updated IR compiler to propagate these fields to the IREntity interface
+5. Updated fixture 24 to use runtime engine's automatic version management (removed manual version mutations)
+
+**Files Modified**:
+- `src/manifest/lexer.ts` (added keywords)
+- `src/manifest/parser.ts` (added parsing logic)
+- `src/manifest/types.ts` (added fields to EntityNode)
+- `src/manifest/ir-compiler.ts` (propagated fields to IR)
+- `src/manifest/conformance/fixtures/24-concurrency-conflict.manifest` (removed manual version management)
+- `src/manifest/conformance/expected/24-concurrency-conflict.*.json` (regenerated)
+
+**Result**:
+- All 427 tests passing
+- Optimistic concurrency control now fully functional
+- Entities with `versionProperty` automatically initialize version on create
+- Entities with `versionProperty` auto-increment version on update
+
 ### 2026-02-06: Git Tag Drift Fix (v0.3.7)
 
 **Issue**: The v0.3.7 git tag was pointing to commit `cebb697` (a bug fix commit) instead of commit `64b2795` (the version sync commit that updated version.ts and package.json).

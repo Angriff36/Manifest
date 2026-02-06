@@ -77,6 +77,8 @@ export class Parser {
     const properties: PropertyNode[] = [], computedProperties: ComputedPropertyNode[] = [], relationships: RelationshipNode[] = [];
     const behaviors: BehaviorNode[] = [], commands: CommandNode[] = [], constraints: ConstraintNode[] = [], policies: PolicyNode[] = [];
     let store: string | undefined;
+    let versionProperty: string | undefined;
+    let versionAtProperty: string | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -110,11 +112,31 @@ export class Parser {
           store = this.advance().value; // get target directly
         }
       }
+      else if (this.check('KEYWORD', 'versionProperty')) {
+        // Syntax: versionProperty <name>: <type>
+        this.advance(); // consume 'versionProperty'
+        versionProperty = this.consumeIdentifier().value;
+        // Skip type annotation (': number')
+        if (this.check('OPERATOR', ':')) {
+          this.advance(); // consume ':'
+          this.advance(); // consume type name
+        }
+      }
+      else if (this.check('KEYWORD', 'versionAtProperty')) {
+        // Syntax: versionAtProperty <name>: <type>
+        this.advance(); // consume 'versionAtProperty'
+        versionAtProperty = this.consumeIdentifier().value;
+        // Skip type annotation (': number')
+        if (this.check('OPERATOR', ':')) {
+          this.advance(); // consume ':'
+          this.advance(); // consume type name
+        }
+      }
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, store };
+    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, store, versionProperty, versionAtProperty };
   }
 
   private parseProperty(): PropertyNode {
