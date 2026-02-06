@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.6 released | Lambda expressions fully implemented | Version drift FIXED | ESLint rule for hardcoded versions ADDED)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -180,7 +180,7 @@ Comprehensive search found:
 
 ## Next Steps
 
-All planned vNext work is complete. Latest release: v0.3.6
+All planned vNext work is complete. Latest release: v0.3.7
 
 ### Completed (2026-02-06)
 
@@ -204,6 +204,22 @@ All planned vNext work is complete. Latest release: v0.3.6
 
 ## Change Log
 
+### 2026-02-06: Version Synchronization (v0.3.7)
+
+**Issue**: Git tag v0.3.7 existed but version.ts and package.json still showed 0.3.6.
+
+**Fix**:
+1. Updated version.ts COMPILER_VERSION from '0.3.6' to '0.3.7'
+2. Updated package.json version from '0.3.6' to '0.3.7'
+3. Regenerated conformance expected outputs to match new version
+
+**Files Modified**:
+- `src/manifest/version.ts`
+- `package.json`
+- `src/manifest/conformance/expected/*.ir.json` (all regenerated)
+
+**Impact**: Version numbers now properly synchronized between code, package, and git tags.
+
 ### 2026-02-06: ESLint Rule for Hardcoded Versions
 
 **Enhancement**: Added custom ESLint rule to prevent hardcoded version strings in source code.
@@ -222,20 +238,6 @@ All planned vNext work is complete. Latest release: v0.3.6
 **Result**:
 - ESLint: PASS (no warnings)
 - Helps prevent future version drift by enforcing imports from version.ts
-
-### 2026-02-06: Version Synchronization (v0.3.6)
-
-**Issue**: Git tags v0.3.4 and v0.3.5 were created without updating the actual version numbers in version.ts and package.json, causing version drift.
-
-**Fix**:
-1. Updated version.ts COMPILER_VERSION from '0.3.3' to '0.3.6'
-2. Updated package.json version from '0.3.3' to '0.3.6'
-
-**Files Modified**:
-- `src/manifest/version.ts`
-- `package.json`
-
-**Impact**: Version numbers now properly synchronized between code, package, and git tags.
 
 ### 2026-02-06: ESLint no-explicit-any Violations Fixed
 
