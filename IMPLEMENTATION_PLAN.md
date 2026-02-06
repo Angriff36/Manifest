@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-06
 
-**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema & Semantics Documentation UPDATED | Migration Guide PENDING
+**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema & Semantics Documentation UPDATED | Migration Guide CREATED
 
 ---
 
@@ -20,7 +20,7 @@ Manifest is a domain-specific language for defining business rules and workflows
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
 | **Semantics Docs** | UPDATED | docs/spec/semantics.md includes vNext semantics |
-| **Migration Guide** | MISSING | vnext-migration-guide.md not created |
+| **Migration Guide** | CREATED | docs/migration/vnext-migration-guide.md with examples |
 
 ---
 
@@ -87,18 +87,16 @@ docs/spec/semantics.md has been updated with vNext semantics:
 - Override Mechanism (vNext): overrideable flag, overridePolicyRef, OverrideRequest
 - Policy override action (vNext): Policy action 'override' for authorizing constraint overrides
 
-### 3. Migration Guide (HIGH PRIORITY)
+### 3. Migration Guide (COMPLETED 2026-02-06)
 
-| Task | File | Status |
-|------|------|--------|
-| Create vNext migration guide | docs/migration/vnext-migration-guide.md | FILE DOESN'T EXIST |
-
-**Should include**:
+Created docs/migration/vnext-migration-guide.md with:
 - New constraint severity syntax (`:ok`, `:warn`, `:block`)
 - Overrideable modifier usage
 - Command-level constraints
 - Entity versioning for concurrency
 - Before/after examples
+- Quick migration checklist
+- Testing guidelines
 
 ### 4. Technical Debt (MEDIUM PRIORITY)
 
@@ -183,7 +181,7 @@ docs/spec/
 └── manifest-vnext.md        # vNext feature specification
 
 docs/migration/
-└── vnext-migration-guide.md # Migration guide (needs to be created)
+└── vnext-migration-guide.md # Migration guide (CREATED)
 ```
 
 ---
@@ -203,7 +201,7 @@ Comprehensive grep search found:
 
 1. ~~**Update IR Schema JSON**: Add vNext fields to docs/spec/ir/ir-v1.schema.json~~ **DONE**
 2. ~~**Update Semantics**: Add vNext semantics to docs/spec/semantics.md~~ **DONE**
-3. **Create Migration Guide**: Write docs/migration/vnext-migration-guide.md
+3. ~~**Create Migration Guide**: Write docs/migration/vnext-migration-guide.md~~ **DONE**
 4. **Update README**: Document vNext features in README.md
 5. **Fix Technical Debt**: Source COMPILER_VERSION from package.json, clarify Supabase comment
 
