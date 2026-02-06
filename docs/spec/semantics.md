@@ -59,8 +59,47 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 - Accessing a relationship on a non-existent instance returns `null` for `hasOne`/`belongsTo`/`ref` or `[]` for `hasMany`.
 - If the target entity or instance does not exist, the relationship returns `null` or `[]`.
 
+#### Entity Concurrency (vNext)
+- Entities MAY define optimistic concurrency controls via `versionProperty` and `versionAtProperty`.
+- `versionProperty`: Name of a numeric field that increments on each update (e.g., "version")
+- `versionAtProperty`: Name of a timestamp field that tracks when the version was last updated (e.g., "versionAt")
+- When a command attempts to mutate an entity with concurrency controls:
+  - The runtime MUST compare the provided `versionProperty` value against the current stored value
+  - If values match, the mutation proceeds and the version is incremented
+  - If values differ, a `ConcurrencyConflict` is returned:
+    - `entityType`: Type of entity that conflicted
+    - `entityId`: ID of the entity instance
+    - `expectedVersion`: Version number provided by the caller
+    - `actualVersion`: Current version in storage
+    - `conflictCode`: Stable code for categorizing the conflict type
+- Commands receiving a `ConcurrencyConflict` MUST NOT apply mutations and SHOULD surface the conflict to the caller.
+
 ### Constraints
 - Constraints are boolean expressions. A runtime MAY enforce them when mutating properties or creating instances.
+
+#### Constraint Severity (vNext)
+- Each constraint has a `severity` field: `ok`, `warn`, or `block` (default: `block`).
+- `ok` constraints are informational only; their outcome is always `passed` regardless of expression result.
+- `warn` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation but do not halt execution.
+- `block` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation and halt execution on failure.
+
+#### Constraint Codes (vNext)
+- Each constraint has a `code` field that provides a stable identifier for overrides and auditing.
+- The `code` defaults to the constraint `name` if not specified.
+- `code` must be unique within the scope of an entity for proper override matching.
+
+#### Constraint Evaluation (vNext)
+- When evaluated, constraints produce a `ConstraintOutcome` containing:
+  - `code`: Stable constraint identifier
+  - `constraintName`: Human-readable constraint name
+  - `severity`: The constraint's severity level
+  - `formatted`: String representation of the constraint expression
+  - `message`: Optional message from the constraint
+  - `details`: Resolved `detailsMapping` key-value pairs
+  - `passed`: Boolean indicating if expression evaluated truthily
+  - `overridden`: Boolean indicating if constraint was overridden
+  - `overriddenBy`: User ID who authorized the override (if applicable)
+  - `resolved`: Array of `{expression, value}` pairs for debugging
 
 ## Stores
 - Stores define persistence targets for entities.
@@ -73,6 +112,7 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 - The default runtime behavior is:
   - Policies with action `execute` or `all` MUST be checked for command execution.
   - Policies with action `read`, `write`, or `delete` are not enforced by default.
+  - Policies with action `override` MUST be checked when authorizing constraint overrides (vNext).
 - A policy with an `entity` applies only to commands bound to that entity.
 
 ## Commands
@@ -86,10 +126,33 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 - On execution, a runtime MUST:
   1) Build an evaluation context containing `self`, `this`, input parameters, and runtime context.
   2) Evaluate applicable policies (see Policies). If any fail, execution MUST stop with a denial.
-  3) Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
-  4) Execute actions in order.
-  5) Emit declared events in order.
-  6) Return a CommandResult with success status, emitted events, and the last action result.
+  3) Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
+  4) Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
+  5) Execute actions in order.
+  6) Emit declared events in order.
+  7) Return a CommandResult with success status, emitted events, and the last action result.
+
+### Command Constraints (vNext)
+- Commands may define a `constraints` array for pre-execution validation.
+- Command constraints are evaluated after policies but before guards.
+- Command constraints use the same constraint schema as entity constraints (code, severity, overrideable, etc.).
+- Command constraints support all three severity levels: `ok`, `warn`, `block`.
+- A command with failing `block` constraints MUST NOT execute unless an override is authorized.
+
+### Override Mechanism (vNext)
+- Constraints may be marked `overrideable: true` to allow authorized bypass.
+- An `overridePolicyRef` may be specified to reference the policy that authorizes overrides.
+- To override a constraint, the runtime receives an `OverrideRequest` containing:
+  - `constraintCode`: The code of the constraint to override
+  - `reason`: Human-readable explanation for the override
+  - `authorizedBy`: User ID of the authorizer
+  - `timestamp`: When the override was requested
+- Override authorization flow:
+  1. Runtime checks if constraint is marked `overrideable`
+  2. If `overridePolicyRef` is specified, the referenced policy is evaluated
+  3. If policy passes, the constraint outcome is marked with `overridden: true` and `overriddenBy` set to the authorizer
+  4. An `OverrideApplied` event MUST be emitted with the override details
+- Constraints NOT marked `overrideable` MAY NOT be overridden; override attempts MUST be rejected.
 
 ### Generated Artifacts
 Generated code MUST conform to the same semantics as the IR runtime:

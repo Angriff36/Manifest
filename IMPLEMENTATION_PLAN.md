@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-06
 
-**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema Documentation UPDATED | Semantics/Migration docs PENDING
+**Overall Status**: vNext Implementation COMPLETE (135/135 tests passing) | IR Schema & Semantics Documentation UPDATED | Migration Guide PENDING
 
 ---
 
@@ -18,8 +18,8 @@ Manifest is a domain-specific language for defining business rules and workflows
 | **vNext Features** | COMPLETE | Fixtures 21-27 passing (100% conformance) |
 | **Test Suite** | PASSING | 135/135 tests (134 conformance + 1 happy) |
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
-| **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json now includes vNext fields |
-| **Semantics Docs** | OUTDATED | vNext features not documented |
+| **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
+| **Semantics Docs** | UPDATED | docs/spec/semantics.md includes vNext semantics |
 | **Migration Guide** | MISSING | vnext-migration-guide.md not created |
 
 ---
@@ -76,14 +76,16 @@ IR schema JSON has been updated with all vNext fields:
 - IRPolicy: Added "override" to action enum
 - New definitions: ConstraintOutcome, OverrideRequest, ConcurrencyConflict
 
-### 2. Semantics Documentation (HIGH PRIORITY)
+### 2. Semantics Documentation (COMPLETED 2026-02-06)
 
-| Task | File | Status |
-|------|------|--------|
-| Add constraint severity semantics | docs/spec/semantics.md | TODO |
-| Add override mechanism documentation | docs/spec/semantics.md | TODO |
-| Add command constraints documentation | docs/spec/semantics.md | TODO |
-| Add concurrency controls documentation | docs/spec/semantics.md | TODO |
+docs/spec/semantics.md has been updated with vNext semantics:
+- Constraint Severity (vNext): ok, warn, block levels
+- Constraint Codes (vNext): Stable identifiers for overrides
+- Constraint Evaluation (vNext): ConstraintOutcome structure
+- Entity Concurrency (vNext): versionProperty, versionAtProperty, ConcurrencyConflict
+- Command Constraints (vNext): Pre-execution validation
+- Override Mechanism (vNext): overrideable flag, overridePolicyRef, OverrideRequest
+- Policy override action (vNext): Policy action 'override' for authorizing constraint overrides
 
 ### 3. Migration Guide (HIGH PRIORITY)
 
@@ -172,9 +174,9 @@ src/manifest/
 │   └── expected/            # Expected results (*.json, *.ir.json, *.diagnostics.json)
 
 docs/spec/
-├── semantics.md             # Runtime semantics (needs vNext updates)
+├── semantics.md             # Runtime semantics (vNext semantics added)
 ├── ir/
-│   └── ir-v1.schema.json    # IR schema (needs vNext updates)
+│   └── ir-v1.schema.json    # IR schema (vNext fields added)
 ├── conformance.md           # Conformance testing rules
 ├── builtins.md              # Built-in functions
 ├── adapters.md              # Storage adapters
@@ -200,7 +202,7 @@ Comprehensive grep search found:
 ## Next Steps
 
 1. ~~**Update IR Schema JSON**: Add vNext fields to docs/spec/ir/ir-v1.schema.json~~ **DONE**
-2. **Update Semantics**: Add vNext semantics to docs/spec/semantics.md
+2. ~~**Update Semantics**: Add vNext semantics to docs/spec/semantics.md~~ **DONE**
 3. **Create Migration Guide**: Write docs/migration/vnext-migration-guide.md
 4. **Update README**: Document vNext features in README.md
 5. **Fix Technical Debt**: Source COMPILER_VERSION from package.json, clarify Supabase comment
