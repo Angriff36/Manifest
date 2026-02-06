@@ -159,6 +159,9 @@ export class IRCompiler {
     const policies: IRPolicy[] = [
       ...program.policies.map(p => this.transformPolicy(p)),
       ...program.modules.flatMap(m => m.policies.map(p => this.transformPolicy(p, m.name))),
+      // Extract entity-scoped policies with entity name
+      ...program.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, undefined, e.name))),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
     ];
 
     // Create IR without irHash first, then compute hash and add to provenance
@@ -185,10 +188,16 @@ export class IRCompiler {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
-      commands: m.commands.map(c => c.name),
+      commands: [
+        ...m.commands.map(c => c.name),
+        ...m.entities.flatMap(e => e.commands.map(c => c.name)),
+      ],
       stores: m.stores.map(s => s.entity),
-      events: m.events.map(e => e.name),
-      policies: m.policies.map(p => p.name),
+      events: m.events.map(e => e.name), // Entity-scoped events not supported in current syntax
+      policies: [
+        ...m.policies.map(p => p.name),
+        ...m.entities.flatMap(e => e.policies.map(p => p.name)),
+      ],
     };
   }
 
