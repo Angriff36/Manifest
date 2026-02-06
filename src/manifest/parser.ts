@@ -386,12 +386,13 @@ export class Parser {
           case 'code':
             code = this.consumeIdentifier().value;
             break;
-          case 'severity':
+          case 'severity': {
             const sev = this.consumeIdentifierOrKeyword().value;
             if (sev === 'ok' || sev === 'warn' || sev === 'block') {
               severity = sev;
             }
             break;
+          }
           case 'expression':
             expression = this.parseExpr();
             break;

@@ -982,7 +982,7 @@ export class RuntimeEngine {
       // Negative constraints fire when expression is TRUE (bad state detected)
       // Positive constraints fail when expression is FALSE (required condition not met)
       const isNegativeType = constraint.name.startsWith('severity');
-      const shouldFire = isNegativeType ? Boolean(result) : !Boolean(result);
+      const shouldFire = isNegativeType ? !!result : !result;
 
       // All firing constraints are returned as failures for diagnostic purposes
       // (The severity field determines whether they block execution, but all are reported)
@@ -1461,7 +1461,7 @@ export class RuntimeEngine {
     // - Negative-type constraints (name starts with "severity"): fire when TRUE (bad state detected)
     // - Positive-type constraints: fail when FALSE (required condition not met)
     const isNegativeType = constraint.name.startsWith('severity');
-    const passed = isNegativeType ? !Boolean(result) : Boolean(result);
+    const passed = isNegativeType ? !result : !!result;
 
     // Build details mapping if specified
     let details: Record<string, unknown> | undefined = undefined;
@@ -1499,7 +1499,7 @@ export class RuntimeEngine {
     const outcomes: ConstraintOutcome[] = [];
 
     for (const constraint of command.constraints || []) {
-      let outcome = await this.evaluateConstraint(constraint, evalContext);
+      const outcome = await this.evaluateConstraint(constraint, evalContext);
 
       // Check for override if constraint failed and is overrideable
       if (!outcome.passed && constraint.overrideable) {
