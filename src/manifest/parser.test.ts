@@ -1,18 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { Parser } from './parser';
-import type {
-  ManifestProgram,
-  EntityNode,
-  PropertyNode,
-  RelationshipNode,
-  ConstraintNode,
-  PolicyNode,
-  CommandNode,
-  StoreNode,
-  OutboxEventNode,
-  ModuleNode,
-  ExpressionNode,
-} from './types';
 
 describe('Parser', () => {
   describe('Program Structure', () => {
