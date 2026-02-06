@@ -97,7 +97,7 @@ export class CodeGenerator {
   private emitStoreRuntime(program: ManifestProgram) {
     const hasSupabase = program.stores.some(s => s.target === 'supabase');
     if (hasSupabase) {
-      this.line('// Supabase client stub - replace with actual client');
+      this.line('// Development-time Supabase client mock (production runtime uses stores.node.ts:SupabaseStore)');
       this.line('const supabase = { from: (table: string) => ({ select: () => Promise.resolve({ data: [], error: null }), insert: (d: unknown) => Promise.resolve({ data: d, error: null }), update: (d: unknown) => ({ eq: () => Promise.resolve({ data: d, error: null }) }), delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };');
       this.line();
     }
