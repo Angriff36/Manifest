@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.3 released | Lambda expressions fully implemented)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.3 released | Lambda expressions fully implemented | Version drift in tests FIXED)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -195,6 +195,27 @@ All planned vNext work is complete. Latest release: v0.3.3
 
 - Add ESLint rule to prevent hardcoded versions
 - Add performance benchmarks
+
+### Technical Debt Resolved
+
+- **Version Drift Fix**: Updated `runtime-engine.test.ts` to import and use `COMPILER_VERSION` from `version.ts` instead of hardcoded `'0.3.0'` strings. This ensures test expectations stay in sync with the actual compiler version.
+
+---
+
+## Change Log
+
+### 2026-02-06: Version Drift Fix
+
+**Issue**: Test file `runtime-engine.test.ts` had hardcoded `'0.3.0'` version strings that were out of sync with the current `COMPILER_VERSION` `'0.3.3'` in `version.ts`.
+
+**Fix**: Modified test file to:
+1. Import `COMPILER_VERSION` from `./version`
+2. Replace all hardcoded version strings with `COMPILER_VERSION` constant
+
+**Files Modified**:
+- `src/manifest/runtime-engine.test.ts`
+
+**Impact**: Tests now automatically track the correct version, preventing future version drift.
 
 ---
 

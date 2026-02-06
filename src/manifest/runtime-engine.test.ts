@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RuntimeEngine, type RuntimeContext, type RuntimeOptions } from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR, IRExpression } from './ir';
+import { COMPILER_VERSION } from './version';
 
 // Helper to compile manifest source to IR
 async function compileToIR(source: string): Promise<IR> {
@@ -32,7 +33,7 @@ const simpleIR: IR = {
   version: '1.0',
   provenance: {
     contentHash: 'test-content-hash',
-    compilerVersion: '0.3.0',
+    compilerVersion: COMPILER_VERSION,
     schemaVersion: '1.0',
     compiledAt: new Date().toISOString(),
   },
@@ -83,7 +84,7 @@ describe('RuntimeEngine', () => {
       const runtime = new RuntimeEngine(simpleIR);
       const provenance = runtime.getProvenance();
       expect(provenance).toBeDefined();
-      expect(provenance?.compilerVersion).toBe('0.3.0');
+      expect(provenance?.compilerVersion).toBe(COMPILER_VERSION);
     });
 
     it('should get entities from IR', () => {
@@ -713,7 +714,7 @@ describe('RuntimeEngine', () => {
         provenance: {
           contentHash: 'test-content-hash',
           irHash: 'valid-hash',
-          compilerVersion: '0.3.0',
+          compilerVersion: COMPILER_VERSION,
           schemaVersion: '1.0',
           compiledAt: new Date().toISOString(),
         },
