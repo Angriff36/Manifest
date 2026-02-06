@@ -1,6 +1,6 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED | Entity-scoped store compilation bug FIXED | Parser now handles all store syntax variants | Git tag drift documented | 02-relationships.results.json recreated with ID fields)
+**Last Updated**: 2026-02-06 (All unit tests COMPLETE | 427/427 tests passing | v0.3.7 released | Lambda expressions fully implemented | Version drift RESOLVED | ESLint rule for hardcoded versions ADDED | Entity-scoped store compilation bug FIXED | Parser now handles all store syntax variants | Git tag drift FIXED | 02-relationships.results.json recreated with ID fields)
 
 **Overall Status**: vNext Implementation COMPLETE | All Unit Tests COMPLETE | 427/427 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED | Negative Tests ADDED | Lambda Expressions FULLY IMPLEMENTED | Lexer Unit Tests COMPLETE (58) | Parser Unit Tests COMPLETE (79) | IR Compiler Unit Tests COMPLETE (91) | Runtime Engine Unit Tests COMPLETE (56)
 
@@ -194,7 +194,7 @@ All planned vNext work is complete. Latest release: v0.3.7
 ### Optional Future Enhancements
 
 - ~~Add ESLint rule to prevent hardcoded versions~~ **COMPLETED (2026-02-06)**
-- ~~Git tag drift~~ **FIXED (2026-02-06)** - v0.3.7 tag moved from `eb1fd5f` to current HEAD (cebb697)
+- ~~Git tag drift~~ **FIXED (2026-02-06)** - v0.3.7 tag moved from `cebb697` to `64b2795` (the version sync commit)
 - Add performance benchmarks
 
 ### Technical Debt Resolved
@@ -204,6 +204,18 @@ All planned vNext work is complete. Latest release: v0.3.7
 ---
 
 ## Change Log
+
+### 2026-02-06: Git Tag Drift Fix (v0.3.7)
+
+**Issue**: The v0.3.7 git tag was pointing to commit `cebb697` (a bug fix commit) instead of commit `64b2795` (the version sync commit that updated version.ts and package.json).
+
+**Fix**:
+1. Deleted the incorrectly placed v0.3.7 tag from `cebb697`
+2. Recreated v0.3.7 tag at `64b2795` (the proper version sync commit)
+
+**Impact**:
+- Tags now follow semantic versioning best practices (tags point to version sync commits, not feature/fix commits)
+- Consistent with v0.3.6 tag placement pattern
 
 ### 2026-02-06: Version Synchronization (v0.3.7)
 
