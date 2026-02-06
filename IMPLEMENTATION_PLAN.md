@@ -1,8 +1,8 @@
 # Manifest Implementation Plan
 
-**Last Updated**: 2026-02-06 (messageTemplate interpolation implemented | 135/135 tests passing)
+**Last Updated**: 2026-02-06 (Lexer unit tests added | 193/193 tests passing)
 
-**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 135/135 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED
+**Overall Status**: vNext Implementation COMPLETE | Release v0.3.0 tagged | 193/193 tests passing | TypeScript Typecheck CLEAN | All Documentation UPDATED | Technical Debt RESOLVED
 
 ---
 
@@ -16,13 +16,14 @@ Manifest is a domain-specific language for defining business rules and workflows
 |-----------|--------|----------|
 | **Baseline Features** | COMPLETE | 20 fixtures passing (100% conformance) |
 | **vNext Features** | COMPLETE | Fixtures 21-27 passing (100% conformance) |
-| **Test Suite** | PASSING | 135/135 tests (134 conformance + 1 happy) |
-| **TypeScript** | CLEAN | No typecheck errors (6 issues resolved 2026-02-06) |
+| **Test Suite** | PASSING | 193/193 tests (134 conformance + 1 happy + 58 lexer unit) |
+| **TypeScript** | CLEAN | No typecheck errors |
 | **IR Schema (ir.ts)** | COMPLETE | All vNext interfaces implemented |
 | **IR Schema JSON** | UPDATED | docs/spec/ir/ir-v1.schema.json includes vNext fields |
 | **Semantics Docs** | UPDATED | docs/spec/semantics.md includes vNext semantics |
 | **Migration Guide** | CREATED | docs/migration/vnext-migration-guide.md with examples |
 | **README Documentation** | UPDATED | docs/spec/README.md includes vNext references |
+| **Lexer Unit Tests** | NEW | 58 tests covering all token types and edge cases |
 
 ---
 
@@ -96,12 +97,38 @@ All vNext features have been implemented and verified:
 ## Test Status
 
 ```
-Test Files: 2 passed (2)
-Tests: 135 passed (135)
+Test Files: 3 passed (3)
+Tests: 193 passed (193)
   - src/manifest/runtime-engine.happy.test.ts: 1 test
   - src/manifest/conformance/conformance.test.ts: 134 tests
-Duration: ~600ms
+  - src/manifest/lexer.test.ts: 58 tests (NEW)
+Duration: ~400ms
 ```
+
+### Unit Test Coverage (NEW)
+
+| Component | Tests | Status |
+|-----------|-------|--------|
+| **Lexer** | 58 | Comprehensive coverage of all token types |
+| **Parser** | 0 | Not yet implemented |
+| **IR Compiler** | 0 | Not yet implemented |
+| **Runtime Engine** | 0 | Not yet implemented |
+
+### Lexer Test Coverage
+
+The 58 lexer unit tests cover:
+- All keywords (entity, command, type, modifier, relationship, policy, logical, context, vNext constraint)
+- Identifiers (simple, underscores, numbers, camelCase, PascalCase)
+- Strings (double-quoted, single-quoted, escape sequences, template strings, multiline)
+- Numbers (integers, decimals)
+- Operators (single and two-character)
+- Punctuation characters
+- Newlines and whitespace handling
+- Comments (single-line and multi-line)
+- Position tracking (line/column)
+- EOF handling
+- Complex Manifest syntax tokenization
+- Edge cases
 
 ### Fixture Coverage
 
@@ -133,9 +160,11 @@ src/manifest/
 ├── ir-cache.ts              # IR compilation cache
 ├── ir-compiler.ts           # AST to IR transformation
 ├── lexer.ts                 # Tokenization (includes vNext keywords)
+├── lexer.test.ts            # Lexer unit tests (NEW - 58 tests)
 ├── parser.ts                # Parse Manifest syntax to AST
 ├── types.ts                 # AST node types
 ├── runtime-engine.ts        # Runtime execution engine
+├── runtime-engine.happy.test.ts  # Runtime happy path test
 ├── generator.ts             # TypeScript code generator
 ├── standalone-generator.ts  # Standalone bundle generator
 ├── stores.node.ts           # Server-side stores (Postgres, Supabase)
@@ -162,7 +191,7 @@ docs/migration/
 
 **TypeScript**: No typecheck errors
 **ESLint**: No blocking errors
-**Tests**: 135/135 passing (100%)
+**Tests**: 193/193 passing (100%)
 
 Comprehensive search found:
 - No TODO comments in implementation code
@@ -175,6 +204,31 @@ Comprehensive search found:
 ---
 
 ## Recent Implementation Work (2026-02-06)
+
+### Lexer Unit Tests (NEW)
+
+**Implemented**: src/manifest/lexer.test.ts
+
+Added comprehensive unit tests for the lexer component (58 tests):
+
+**Test Categories**:
+1. **Keywords** (11 tests): All reserved words including vNext constraint keywords (overrideable, ok, warn, block)
+2. **Identifiers** (5 tests): Simple identifiers, underscores, numbers, camelCase, PascalCase
+3. **Strings** (8 tests): Double/single quoted, escape sequences, template strings, multiline
+4. **Numbers** (3 tests): Integers, decimals
+5. **Operators** (5 tests): Single and two-character operators
+6. **Punctuation** (1 test): All punctuation characters
+7. **Newlines and Whitespace** (5 tests): Newline handling, position tracking
+8. **Comments** (4 tests): Single-line and multi-line comment handling
+9. **Position Tracking** (3 tests): Line/column position accuracy
+10. **EOF** (3 tests): EOF token handling
+11. **Complex Manifest Syntax** (4 tests): Real-world syntax tokenization
+12. **Edge Cases** (6 tests): Mixed tokens, special characters, arrays
+
+**Key Findings**:
+- Position tracking in the lexer records the position *after* reading the token (points to next character)
+- Numbers starting with `.` (e.g., `.5`) are treated as `.` operator + number, not as a single number token
+- All 58 tests pass with no regressions to existing conformance tests
 
 ### messageTemplate Interpolation
 
@@ -219,11 +273,19 @@ The conformance test framework currently doesn't support passing `overrideReques
 
 All planned vNext work is complete. Release v0.3.0 is tagged.
 
-Optional future enhancements:
-- Add unit tests for parser/lexer components
-- Add negative test cases
+### In Progress (Unit Test Expansion)
+
+- **Lexer unit tests**: Complete (58 tests added 2026-02-06)
+- **Parser unit tests**: Not yet implemented
+- **IR Compiler unit tests**: Not yet implemented
+- **Runtime Engine unit tests**: Not yet implemented
+
+### Optional Future Enhancements
+
+- Add negative test cases (currently only happy path tests exist)
 - Add ESLint rule to prevent hardcoded versions
 - Add performance benchmarks
+- Add unit tests for remaining compiler components (parser, ir-compiler, runtime-engine)
 
 ---
 
