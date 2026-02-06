@@ -8,6 +8,7 @@ import {
   IRValue,
   IRAction,
   IRType,
+  IRConstraint,
   ConstraintOutcome,
   OverrideRequest,
   ConcurrencyConflict,
@@ -734,11 +735,8 @@ export class RuntimeEngine {
 
       if (existingVersion !== undefined && providedVersion !== undefined) {
         if (existingVersion !== providedVersion) {
-          // Concurrency conflict - return undefined to indicate failure
-          console.warn(
-            `[Manifest Runtime] Optimistic concurrency violation for ${entityName}:${id}: ` +
-            `expected version ${existingVersion} but got ${providedVersion}`
-          );
+          // Concurrency conflict - emit event and return undefined to indicate failure
+          await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
           return undefined;
         }
       }
@@ -979,7 +977,6 @@ export class RuntimeEngine {
 
     for (const constraint of entity.constraints) {
       const result = await this.evaluateExpression(constraint.expression, evalContext);
-      const severity = constraint.severity || 'block';
 
       // Detect constraint type: "severity*" prefix indicates negative-type constraint
       // Negative constraints fire when expression is TRUE (bad state detected)
@@ -1471,7 +1468,7 @@ export class RuntimeEngine {
     if (constraint.detailsMapping) {
       details = {};
       for (const [key, expr] of Object.entries(constraint.detailsMapping)) {
-        details[key] = await this.evaluateExpression(expr, evalContext);
+        details[key] = await this.evaluateExpression(expr as IRExpression, evalContext);
       }
     }
 
