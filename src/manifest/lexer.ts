@@ -25,7 +25,7 @@ export const KEYWORDS = new Set([
   'rest', 'graphql', 'websocket', 'function', 'server',
   'http', 'storage', 'timer', 'custom',
   'memory', 'postgres', 'supabase', 'localStorage',
-  'read', 'write', 'delete', 'execute', 'all', 'allow', 'deny',
+  'read', 'write', 'delete', 'execute', 'all', 'override', 'allow', 'deny',
   'and', 'or', 'not', 'is', 'in', 'contains',
   'user', 'self', 'context',
   // vNext constraint keywords

@@ -137,7 +137,7 @@ export interface IRPolicy {
   name: string;
   module?: string;
   entity?: string;
-  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: IRExpression;
   message?: string;
 }

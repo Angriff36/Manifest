@@ -237,7 +237,7 @@ export class Parser {
     this.consume('KEYWORD', 'policy');
     const name = this.consumeIdentifier().value;
     let action: PolicyNode['action'] = 'all';
-    if (this.check('KEYWORD', 'read') || this.check('KEYWORD', 'write') || this.check('KEYWORD', 'delete') || this.check('KEYWORD', 'execute') || this.check('KEYWORD', 'all')) {
+    if (this.check('KEYWORD', 'read') || this.check('KEYWORD', 'write') || this.check('KEYWORD', 'delete') || this.check('KEYWORD', 'execute') || this.check('KEYWORD', 'all') || this.check('KEYWORD', 'override')) {
       action = this.advance().value as PolicyNode['action'];
     }
     this.consume('OPERATOR', ':');
@@ -387,7 +387,7 @@ export class Parser {
             code = this.consumeIdentifier().value;
             break;
           case 'severity':
-            const sev = this.consumeIdentifier().value;
+            const sev = this.consumeIdentifierOrKeyword().value;
             if (sev === 'ok' || sev === 'warn' || sev === 'block') {
               severity = sev;
             }

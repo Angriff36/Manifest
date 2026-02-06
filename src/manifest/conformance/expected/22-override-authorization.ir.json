@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "c9acf9c2ee36fa303cedbe805e09e3c570bea961a50879c631d43515eab3ec5d",
+    "irHash": "ca50cfcf4cb7b5aed4ef53fafcd070978420e05d3cff34c619efe4866785c5b6",
     "compilerVersion": "0.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -80,7 +80,112 @@
         "reject",
         "process"
       ],
-      "constraints": [],
+      "constraints": [
+        {
+          "name": "amountLimit",
+          "code": "amountLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1000
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Amount must be less than or equal to 1000",
+          "overrideable": false
+        },
+        {
+          "name": "approvalRequired",
+          "code": "approvalRequired",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 500
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Amounts over 500 require approval",
+          "overrideable": false
+        },
+        {
+          "name": "statusValid",
+          "code": "statusValid",
+          "expression": {
+            "kind": "binary",
+            "operator": "in",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "array",
+              "elements": [
+                {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "pending"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "approved"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "rejected"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "processed"
+                  }
+                }
+              ]
+            }
+          },
+          "severity": "block",
+          "message": "Status must be valid",
+          "overrideable": false
+        }
+      ],
       "policies": []
     }
   ],
@@ -173,83 +278,7 @@
       "entity": "FinancialRecord",
       "parameters": [],
       "guards": [],
-      "constraints": [
-        {
-          "code": "approvalPending",
-          "expression": {
-            "kind": "binary",
-            "operator": "&&",
-            "left": {
-              "kind": "binary",
-              "operator": "==",
-              "left": {
-                "kind": "member",
-                "object": {
-                  "kind": "identifier",
-                  "name": "self"
-                },
-                "property": "status"
-              },
-              "right": {
-                "kind": "literal",
-                "value": {
-                  "kind": "string",
-                  "value": "pending"
-                }
-              }
-            },
-            "right": {
-              "kind": "binary",
-              "operator": ">",
-              "left": {
-                "kind": "member",
-                "object": {
-                  "kind": "identifier",
-                  "name": "self"
-                },
-                "property": "amount"
-              },
-              "right": {
-                "kind": "literal",
-                "value": {
-                  "kind": "number",
-                  "value": 500
-                }
-              }
-            }
-          },
-          "severity": "WARN",
-          "messageTemplate": "Must be approved before processing",
-          "detailsMapping": {
-            "currentStatus": {
-              "kind": "member",
-              "object": {
-                "kind": "identifier",
-                "name": "self"
-              },
-              "property": "status"
-            },
-            "currentAmount": {
-              "kind": "member",
-              "object": {
-                "kind": "identifier",
-                "name": "self"
-              },
-              "property": "amount"
-            },
-            "approvedBy": {
-              "kind": "member",
-              "object": {
-                "kind": "identifier",
-                "name": "self"
-              },
-              "property": "approvedBy"
-            }
-          },
-          "overrideable": true,
-          "overridePolicyRef": "canApproveLargeAmounts"
-        }
-      ],
+      "constraints": [],
       "actions": [
         {
           "kind": "mutate",
@@ -268,8 +297,12 @@
           "expression": {
             "kind": "member",
             "object": {
-              "kind": "identifier",
-              "name": "user"
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "context"
+              },
+              "property": "user"
             },
             "property": "id"
           }
@@ -307,7 +340,58 @@
       "entity": "FinancialRecord",
       "parameters": [],
       "guards": [],
-      "constraints": [],
+      "constraints": [
+        {
+          "name": "requiresApproval",
+          "code": "requiresApproval",
+          "expression": {
+            "kind": "binary",
+            "operator": "or",
+            "left": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "status"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "approved"
+                }
+              }
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "<=",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "amount"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 500
+                }
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Must be approved before processing",
+          "overrideable": true,
+          "overridePolicyRef": "canApproveLargeAmounts"
+        }
+      ],
       "actions": [
         {
           "kind": "mutate",
@@ -318,6 +402,22 @@
               "kind": "string",
               "value": "processed"
             }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "approvedBy",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "context"
+              },
+              "property": "user"
+            },
+            "property": "id"
           }
         }
       ],
@@ -332,7 +432,7 @@
       "action": "override",
       "expression": {
         "kind": "binary",
-        "operator": "||",
+        "operator": "or",
         "left": {
           "kind": "binary",
           "operator": "==",
@@ -371,8 +471,7 @@
             }
           }
         }
-      },
-      "message": "Only managers and admins can approve large amounts"
+      }
     }
   ]
 }

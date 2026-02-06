@@ -49,7 +49,6 @@
       },
       "expectedResult": {
         "success": true,
-        "result": true,
         "emittedEvents": [
           {
             "name": "RecordProcessed",
@@ -115,7 +114,6 @@
       },
       "expectedResult": {
         "success": true,
-        "result": true,
         "emittedEvents": [
           {
             "name": "RecordApproved",

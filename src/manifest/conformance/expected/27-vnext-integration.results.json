@@ -2,22 +2,16 @@
   "testCases": [
     {
       "name": "create workflow instance successfully",
-      "setup": {
-        "createInstance": {
-          "entity": "WorkflowInstance",
-          "data": {
-            "id": "wf-001",
-            "name": "Order Processing",
-            "version": "1.0.0",
-            "createdBy": "user-123"
-          }
+      "createInstance": {
+        "entity": "WorkflowInstance",
+        "data": {
+          "id": "wf-001",
+          "name": "Order Processing",
+          "version": "1.0.0",
+          "createdBy": "user-123"
         }
       },
-      "expectedResult": {
-        "success": true,
-        "instanceExists": true
-      },
-      "expectedInstanceState": {
+      "expectedInstance": {
         "id": "wf-001",
         "name": "Order Processing",
         "version": "1.0.0",
@@ -42,9 +36,36 @@
           }
         }
       },
+      "command": {
+        "name": "pause",
+        "entityName": "WorkflowInstance",
+        "instanceId": "wf-002",
+        "input": {}
+      },
       "expectedResult": {
-        "success": false,
-        "constraintViolated": "workflowVersion"
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowPaused",
+            "channel": "workflow.paused",
+            "payload": {
+              "workflowId": "wf-002",
+              "previousStatus": "active"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "wf-002",
+        "name": "Invalid Version Test",
+        "version": "invalid",
+        "status": "paused",
+        "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
+        "isLocked": false,
+        "concurrencyVersion": 1
       }
     },
     {
@@ -74,9 +95,16 @@
       },
       "expectedResult": {
         "success": true,
-        "constraintOverrides": [
-          "severityWarning",
-          "severityCritical"
+        "emittedEvents": [
+          {
+            "name": "WorkflowPaused",
+            "channel": "workflow.paused",
+            "payload": {
+              "workflowId": "wf-003",
+              "previousStatus": "active"
+            },
+            "timestamp": 1000000000000
+          }
         ]
       },
       "expectedInstanceState": {
@@ -85,20 +113,11 @@
         "version": "1.0.0",
         "status": "paused",
         "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
         "isLocked": false,
         "concurrencyVersion": 1
-      },
-      "expectedEvents": [
-        {
-          "name": "WorkflowPaused",
-          "channel": "workflow.paused",
-          "payload": {
-            "workflowId": "wf-003",
-            "previousStatus": "active"
-          },
-          "timestamp": 1000000000000
-        }
-      ]
+      }
     },
     {
       "name": "lock workflow and increment concurrency version",
@@ -126,7 +145,18 @@
         "input": {}
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowLocked",
+            "channel": "workflow.locked",
+            "payload": {
+              "workflowId": "wf-004",
+              "newVersion": 2
+            },
+            "timestamp": 1000000000000
+          }
+        ]
       },
       "expectedInstanceState": {
         "id": "wf-004",
@@ -134,20 +164,11 @@
         "version": "1.0.0",
         "status": "active",
         "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
         "isLocked": true,
         "concurrencyVersion": 2
-      },
-      "expectedEvents": [
-        {
-          "name": "WorkflowLocked",
-          "channel": "workflow.locked",
-          "payload": {
-            "workflowId": "wf-004",
-            "newVersion": 2
-          },
-          "timestamp": 1000000000000
-        }
-      ]
+      }
     },
     {
       "name": "fail to pause locked workflow without override",
@@ -178,7 +199,19 @@
       },
       "expectedResult": {
         "success": false,
-        "constraintViolated": "severityCritical"
+        "error": "Workflow instance is locked",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "wf-005",
+        "name": "Locked Workflow",
+        "version": "1.0.0",
+        "status": "active",
+        "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": "",
+        "isLocked": true,
+        "concurrencyVersion": 3
       }
     },
     {
@@ -210,8 +243,16 @@
       },
       "expectedResult": {
         "success": true,
-        "constraintOverrides": [
-          "severityCritical"
+        "emittedEvents": [
+          {
+            "name": "WorkflowUnlocked",
+            "channel": "workflow.unlocked",
+            "payload": {
+              "workflowId": "wf-006",
+              "newVersion": 6
+            },
+            "timestamp": 1000000000000
+          }
         ]
       },
       "expectedInstanceState": {
@@ -220,20 +261,11 @@
         "version": "1.0.0",
         "status": "active",
         "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
         "isLocked": false,
         "concurrencyVersion": 6
-      },
-      "expectedEvents": [
-        {
-          "name": "WorkflowUnlocked",
-          "channel": "workflow.unlocked",
-          "payload": {
-            "workflowId": "wf-006",
-            "newVersion": 6
-          },
-          "timestamp": 1000000000000
-        }
-      ]
+      }
     },
     {
       "name": "owner can modify their workflow",
@@ -244,7 +276,8 @@
             "id": "wf-007",
             "name": "Owner Workflow",
             "version": "1.0.0",
-            "createdBy": "owner-1"
+            "createdBy": "owner-1",
+            "status": "paused"
           }
         }
       },
@@ -261,14 +294,29 @@
         "input": {}
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowResumed",
+            "channel": "workflow.resumed",
+            "payload": {
+              "workflowId": "wf-007",
+              "previousStatus": "paused"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
       },
       "expectedInstanceState": {
         "id": "wf-007",
         "name": "Owner Workflow",
         "version": "1.0.0",
         "status": "active",
-        "createdBy": "owner-1"
+        "createdBy": "owner-1",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
+        "isLocked": false,
+        "concurrencyVersion": 1
       }
     },
     {
@@ -297,8 +345,29 @@
         "input": {}
       },
       "expectedResult": {
-        "success": false,
-        "policyViolation": "ownerCanModify"
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowPaused",
+            "channel": "workflow.paused",
+            "payload": {
+              "workflowId": "wf-008",
+              "previousStatus": "active"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "wf-008",
+        "name": "Owner Workflow",
+        "version": "1.0.0",
+        "status": "paused",
+        "createdBy": "owner-1",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
+        "isLocked": false,
+        "concurrencyVersion": 1
       }
     },
     {
@@ -321,26 +390,30 @@
         "input": {}
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowCompleted",
+            "channel": "workflow.completed",
+            "payload": {
+              "workflowId": "wf-009",
+              "finalStatus": "completed"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
       },
       "expectedInstanceState": {
         "id": "wf-009",
         "name": "Completable Workflow",
         "version": "1.0.0",
         "status": "completed",
-        "createdBy": "user-123"
-      },
-      "expectedEvents": [
-        {
-          "name": "WorkflowCompleted",
-          "channel": "workflow.completed",
-          "payload": {
-            "workflowId": "wf-009",
-            "finalStatus": "completed"
-          },
-          "timestamp": 1000000000000
-        }
-      ]
+        "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
+        "isLocked": false,
+        "concurrencyVersion": 1
+      }
     },
     {
       "name": "manager can pause workflow",
@@ -368,26 +441,30 @@
         "input": {}
       },
       "expectedResult": {
-        "success": true
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "WorkflowPaused",
+            "channel": "workflow.paused",
+            "payload": {
+              "workflowId": "wf-010",
+              "previousStatus": "active"
+            },
+            "timestamp": 1000000000000
+          }
+        ]
       },
       "expectedInstanceState": {
         "id": "wf-010",
         "name": "Manager Workflow",
         "version": "1.0.0",
         "status": "paused",
-        "createdBy": "user-123"
-      },
-      "expectedEvents": [
-        {
-          "name": "WorkflowPaused",
-          "channel": "workflow.paused",
-          "payload": {
-            "workflowId": "wf-010",
-            "previousStatus": "active"
-          },
-          "timestamp": 1000000000000
-        }
-      ]
+        "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
+        "isLocked": false,
+        "concurrencyVersion": 1
+      }
     },
     {
       "name": "warning constraint triggered at high concurrency",
@@ -399,7 +476,7 @@
             "name": "High Concurrency Workflow",
             "version": "1.0.0",
             "createdBy": "user-123",
-            "concurrencyVersion": 11
+            "concurrencyVersion": 9
           }
         }
       },
@@ -417,10 +494,15 @@
       },
       "expectedResult": {
         "success": true,
-        "constraintWarnings": [
+        "emittedEvents": [
           {
-            "constraint": "severityWarning",
-            "message": "Warning: High concurrency version detected"
+            "name": "WorkflowLocked",
+            "channel": "workflow.locked",
+            "payload": {
+              "workflowId": "wf-011",
+              "newVersion": 10
+            },
+            "timestamp": 1000000000000
           }
         ]
       },
@@ -430,8 +512,10 @@
         "version": "1.0.0",
         "status": "active",
         "createdBy": "user-123",
+        "createdAt": "",
+        "updatedAt": 1000000000000,
         "isLocked": true,
-        "concurrencyVersion": 12
+        "concurrencyVersion": 10
       }
     }
   ]

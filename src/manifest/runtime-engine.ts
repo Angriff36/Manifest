@@ -1504,16 +1504,31 @@ export class RuntimeEngine {
     for (const constraint of command.constraints || []) {
       let outcome = await this.evaluateConstraint(constraint, evalContext);
 
-      // Check for override request if constraint failed
-      if (!outcome.passed && overrideRequests) {
-        const overrideReq = overrideRequests.find(o => o.constraintCode === constraint.code);
-        if (overrideReq && constraint.overrideable) {
-          // Validate override authorization
-          const authorized = await this.validateOverrideAuthorization(constraint, overrideReq, evalContext);
-          if (authorized) {
-            outcome.overridden = true;
-            outcome.overriddenBy = overrideReq.authorizedBy;
-            await this.emitOverrideAppliedEvent(constraint, overrideReq, outcome);
+      // Check for override if constraint failed and is overrideable
+      if (!outcome.passed && constraint.overrideable) {
+        // First check for explicit override request
+        if (overrideRequests) {
+          const overrideReq = overrideRequests.find(o => o.constraintCode === constraint.code);
+          if (overrideReq) {
+            const authorized = await this.validateOverrideAuthorization(constraint, overrideReq, evalContext);
+            if (authorized) {
+              outcome.overridden = true;
+              outcome.overriddenBy = overrideReq.authorizedBy;
+              await this.emitOverrideAppliedEvent(constraint, overrideReq, outcome);
+            }
+          }
+        }
+
+        // If still not overridden and has overridePolicyRef, automatically check policy
+        if (!outcome.overridden && constraint.overridePolicyRef) {
+          const policy = this.ir.policies.find(p => p.name === constraint.overridePolicyRef);
+          if (policy && policy.action === 'override') {
+            const policyResult = await this.evaluateExpression(policy.expression, evalContext);
+            const authorized = Boolean(policyResult);
+            if (authorized) {
+              outcome.overridden = true;
+              outcome.overriddenBy = 'policy:' + policy.name;
+            }
           }
         }
       }

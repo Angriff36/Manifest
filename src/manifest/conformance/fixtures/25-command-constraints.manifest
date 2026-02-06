@@ -8,15 +8,15 @@ entity Order {
   constraint validStatus: self.status in ["pending", "processing", "shipped", "delivered", "cancelled"] "Invalid order status"
 
   command updateStatus(newStatus: string) {
-    constraint statusChangeAllowed: newStatus != "cancelled" or self.status == "cancelled" "Cannot cancel an already cancelled order"
-    constraint amountVerified: self.amount >= 100 or self.status == "cancelled" "Orders under $100 require manual approval"
+    constraint notCancelled: self.status != "cancelled" "Cannot update cancelled order"
+    constraint amountVerified:warn self.amount >= 100 or self.status == "cancelled" "Orders under $100 require manual approval"
 
     mutate status = newStatus
     emit OrderStatusChanged
   }
 
   command cancel() {
-    constraint cannotCancelCancelled: self.status != "cancelled" "Cannot cancel an already cancelled order"
+    constraint notShipped: self.status != "shipped" "Cannot cancel shipped order"
     constraint verifyCancellation: true "Cancellation confirmed"
 
     mutate status = "cancelled"

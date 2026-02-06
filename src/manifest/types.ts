@@ -85,7 +85,7 @@ export interface ParameterNode extends ASTNode {
 export interface PolicyNode extends ASTNode {
   type: 'Policy';
   name: string;
-  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: ExpressionNode;
   message?: string;
 }

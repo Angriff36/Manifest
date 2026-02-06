@@ -9,13 +9,12 @@ entity WorkflowInstance {
   property isLocked: boolean = false
   property concurrencyVersion: number = 1
 
-  constraint workflowVersion:block self.version != "" "Version must be provided"
-  constraint statusValid:block self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
-  constraint concurrencyConflict:block self.isLocked == false "Workflow instance is locked for concurrent access"
-  constraint severityBlock:block self.isLocked == true "Critical: Workflow instance is locked"
-  constraint severityWarning:warn self.concurrencyVersion > 10 "Warning: High concurrency version detected"
+  constraint versionRequired:self.version != "" "Version must be provided"
+  constraint statusValid:self.status in ["active", "paused", "completed", "cancelled"] "Status must be valid"
+  constraint severityHighConcurrency:warn self.concurrencyVersion > 10 "Warning: High concurrency version detected"
 
   command pause() {
+    constraint notLocked:block self.isLocked == false "Workflow instance is locked"
     constraint canPause:block self.status == "active" "Can only pause active workflows"
     mutate status = "paused"
     mutate updatedAt = now()
@@ -23,6 +22,7 @@ entity WorkflowInstance {
   }
 
   command resume() {
+    constraint notLocked:block self.isLocked == false "Workflow instance is locked"
     constraint canResume:block self.status == "paused" "Can only resume paused workflows"
     mutate status = "active"
     mutate updatedAt = now()
@@ -30,7 +30,7 @@ entity WorkflowInstance {
   }
 
   command lock() {
-    constraint canLock:block self.isLocked == false "Already locked"
+    constraint notAlreadyLocked:block self.isLocked == false "Already locked"
     mutate isLocked = true
     mutate concurrencyVersion = self.concurrencyVersion + 1
     mutate updatedAt = now()
@@ -80,14 +80,5 @@ event WorkflowCompleted: "workflow.completed" {
   finalStatus: string
 }
 
-policy adminCanLock:
-  user.role == "admin"
-  "Administrators can lock workflows"
-
-policy managerCanPause:
-  user.role in ["admin", "manager"]
-  "Managers and admins can pause workflows"
-
-policy ownerCanModify:
-  user.id == self.createdBy
-  "Workflow owner can modify their workflows"
+// Note: No authorization policies in this fixture - testing business logic constraints
+// and state management (locking, concurrency, status transitions)

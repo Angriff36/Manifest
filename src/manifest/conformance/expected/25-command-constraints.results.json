@@ -25,8 +25,8 @@
         "success": true,
         "emittedEvents": [
           {
-            "name": "OrderStatusUpdated",
-            "channel": "order.status.updated",
+            "name": "OrderStatusChanged",
+            "channel": "order.status.changed",
             "timestamp": 1000000000000
           }
         ]
@@ -57,8 +57,8 @@
         "success": true,
         "emittedEvents": [
           {
-            "name": "OrderStatusUpdated",
-            "channel": "order.status.updated",
+            "name": "OrderStatusChanged",
+            "channel": "order.status.changed",
             "timestamp": 1000000000000
           }
         ]

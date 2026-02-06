@@ -209,48 +209,29 @@
       "guards": [],
       "constraints": [
         {
-          "name": "statusChangeAllowed",
-          "code": "statusChangeAllowed",
+          "name": "notCancelled",
+          "code": "notCancelled",
           "expression": {
             "kind": "binary",
-            "operator": "or",
+            "operator": "!=",
             "left": {
-              "kind": "binary",
-              "operator": "!=",
-              "left": {
+              "kind": "member",
+              "object": {
                 "kind": "identifier",
-                "name": "newStatus"
+                "name": "self"
               },
-              "right": {
-                "kind": "literal",
-                "value": {
-                  "kind": "string",
-                  "value": "cancelled"
-                }
-              }
+              "property": "status"
             },
             "right": {
-              "kind": "binary",
-              "operator": "==",
-              "left": {
-                "kind": "member",
-                "object": {
-                  "kind": "identifier",
-                  "name": "self"
-                },
-                "property": "status"
-              },
-              "right": {
-                "kind": "literal",
-                "value": {
-                  "kind": "string",
-                  "value": "cancelled"
-                }
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "cancelled"
               }
             }
           },
           "severity": "block",
-          "message": "Cannot cancel an already cancelled order",
+          "message": "Cannot update cancelled order",
           "overrideable": false
         },
         {
@@ -298,7 +279,7 @@
               }
             }
           },
-          "severity": "block",
+          "severity": "warn",
           "message": "Orders under $100 require manual approval",
           "overrideable": false
         }
@@ -324,8 +305,8 @@
       "guards": [],
       "constraints": [
         {
-          "name": "cannotCancelCancelled",
-          "code": "cannotCancelCancelled",
+          "name": "notShipped",
+          "code": "notShipped",
           "expression": {
             "kind": "binary",
             "operator": "!=",
@@ -341,12 +322,12 @@
               "kind": "literal",
               "value": {
                 "kind": "string",
-                "value": "cancelled"
+                "value": "shipped"
               }
             }
           },
           "severity": "block",
-          "message": "Cannot cancel an already cancelled order",
+          "message": "Cannot cancel shipped order",
           "overrideable": false
         },
         {
