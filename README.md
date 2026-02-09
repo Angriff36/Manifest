@@ -41,6 +41,15 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 - **Computed Properties**: Derived values with explicit dependency tracking
 - **Relationships**: Declarative relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`)
 
+## Getting Started
+
+**New to Manifest?** Start with the [Usage Patterns Guide](docs/guides/usage-patterns.md) to understand the two ways to integrate Manifest into your application:
+
+1. **Projections** - Auto-generate API routes from `.manifest` files (best for simple CRUD)
+2. **Embedded Runtime** - Use the runtime directly in your handlers (best for complex workflows)
+
+Most applications use both patterns together.
+
 ## Projection System
 
 The projection system generates platform-specific code from Manifest IR. Projections are **tooling**, not runtime semantics—they consume IR and emit artifacts like API routes, type definitions, and client SDKs.

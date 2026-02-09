@@ -36,7 +36,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",
-    "conformance:regen": "tsx scripts/regen-conformance.ts"
+    "conformance:regen": "tsx scripts/regen-conformance.ts",
+    "manifest": "tsx ./packages/cli/src/index.ts",
+    "manifest:compile": "tsx ./packages/cli/src/index.ts compile",
+    "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
+    "manifest:build": "tsx ./packages/cli/src/index.ts build",
+    "manifest:validate": "tsx ./packages/cli/src/index.ts validate"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
