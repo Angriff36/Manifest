@@ -485,7 +485,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     const tenantCtx = options.includeTenantFilter
       ? `{ user: { id: userId, ${options.tenantIdProperty}: ${options.tenantIdProperty} } }`
-      : '{ user: { id: userId } }';
+      : `{ user: { id: userId, ${options.tenantIdProperty}: "__no_tenant__" } }`;
     lines.push(`    const runtime = createManifestRuntime(${tenantCtx});`);
     lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
     lines.push(`      entityName: "${entity.name}",`);

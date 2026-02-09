@@ -365,7 +365,8 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(commandResult);
       expect(code).not.toContain('userTenantMapping');
-      expect(code).not.toContain('tenantId');
+      // When includeTenantFilter is false, tenantId is still included but with a placeholder
+      expect(code).toContain('tenantId: "__no_tenant__"');
     });
 
     it('returns error diagnostic if entity not found', async () => {
