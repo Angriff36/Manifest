@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.dev/ir-v1.schema.json",
+  "title": "Manifest IR v1",
+  "description": "Intermediate Representation schema for Manifest applications",
+  "type": "object",
+  "required": ["version", "entities"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Schema version identifier"
+    },
+    "entities": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Entity" },
+      "description": "List of entity definitions"
+    },
+    "seed": {
+      "type": "object",
+      "description": "Optional seed data configuration",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "object" }
+      }
+    }
+  },
+  "definitions": {
+    "Entity": {
+      "type": "object",
+      "required": ["name", "properties"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Entity name in PascalCase"
+        },
+        "properties": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Property" },
+          "minItems": 1,
+          "description": "List of entity properties"
+        },
+        "belongsTo": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Relation" },
+          "description": "Belongs-to relationships"
+        },
+        "hasMany": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Relation" },
+          "description": "Has-many relationships"
+        },
+        "policies": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": { "$ref": "#/definitions/PolicyRule" },
+            "read": { "$ref": "#/definitions/PolicyRule" },
+            "update": { "$ref": "#/definitions/PolicyRule" },
+            "delete": { "$ref": "#/definitions/PolicyRule" }
+          },
+          "description": "CRUD access policies"
+        }
+      }
+    },
+    "Property": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Property name in camelCase"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "date",
+            "timestamp",
+            "text",
+            "email",
+            "url",
+            "money",
+            "image",
+            "file"
+          ],
+          "description": "Property data type"
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether the property is optional"
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Whether the property value must be unique"
+        },
+        "default": {
+          "description": "Default value for the property"
+        },
+        "validation": {
+          "$ref": "#/definitions/Validation"
+        }
+      }
+    },
+    "Validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string" },
+        "enum": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "Relation": {
+      "type": "object",
+      "required": ["entity"],
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Target entity name"
+        },
+        "eager": {
+          "type": "boolean",
+          "description": "Whether to eagerly load this relation"
+        }
+      }
+    },
+    "PolicyRule": {
+      "type": "object",
+      "required": ["access"],
+      "additionalProperties": false,
+      "properties": {
+        "access": {
+          "type": "string",
+          "enum": ["public", "authenticated", "admin", "owner", "restricted"],
+          "description": "Access level for this operation"
+        }
+      }
+    }
+  }
+}

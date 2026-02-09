@@ -671,10 +671,13 @@ export class RuntimeEngine {
    * Returns array of constraint failures (empty if all pass)
    * Useful for diagnostic purposes without mutating state
    */
-  async checkConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintFailure[]> {
+  async checkConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintOutcome[]> {
     const entity = this.getEntity(entityName);
     if (!entity) return [];
-    return await this.validateConstraints(entity, data);
+    const outcomes = await this.validateConstraints(entity, data);
+    // Return only failed constraints for backwards compatibility with test patterns
+    // (Callers can still see all outcomes by using validateConstraints directly)
+    return outcomes.filter(o => !o.passed);
   }
 
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -701,11 +704,23 @@ export class RuntimeEngine {
     }
 
     // Validate entity constraints
-    const constraintFailures = await this.validateConstraints(entity, mergedData);
-    if (constraintFailures.length > 0) {
-      // Log constraint failures for diagnostics
-      console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
+    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+
+    // Only block on severity='block' constraints that failed
+    const blockingFailures = constraintOutcomes.filter(
+      o => !o.passed && o.severity === 'block'
+    );
+
+    if (blockingFailures.length > 0) {
+      // Log blocking constraint failures for diagnostics
+      console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
       return undefined;
+    }
+
+    // Log non-blocking outcomes (warn/ok) for diagnostics
+    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+    if (nonBlockingOutcomes.length > 0) {
+      console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
     }
 
     const store = this.stores.get(entityName);
@@ -761,11 +776,23 @@ export class RuntimeEngine {
     const mergedData = { ...existing, ...data };
 
     // Validate entity constraints
-    const constraintFailures = await this.validateConstraints(entity, mergedData);
-    if (constraintFailures.length > 0) {
-      // Log constraint failures for diagnostics
-      console.warn('[Manifest Runtime] Constraint validation failed:', constraintFailures);
+    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+
+    // Only block on severity='block' constraints that failed
+    const blockingFailures = constraintOutcomes.filter(
+      o => !o.passed && o.severity === 'block'
+    );
+
+    if (blockingFailures.length > 0) {
+      // Log blocking constraint failures for diagnostics
+      console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
       return undefined;
+    }
+
+    // Log non-blocking outcomes (warn/ok) for diagnostics
+    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+    if (nonBlockingOutcomes.length > 0) {
+      console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
     }
 
     return await store.update(id, data);
@@ -976,8 +1003,8 @@ export class RuntimeEngine {
   private async validateConstraints(
     entity: IREntity,
     instanceData: Record<string, unknown>
-  ): Promise<ConstraintFailure[]> {
-    const failures: ConstraintFailure[] = [];
+  ): Promise<ConstraintOutcome[]> {
+    const outcomes: ConstraintOutcome[] = [];
 
     // Build evaluation context with self/this pointing to the instance
     const evalContext = {
@@ -989,29 +1016,13 @@ export class RuntimeEngine {
       _entity: entity.name,
     };
 
+    // Use evaluateConstraint to build proper ConstraintOutcome objects
     for (const constraint of entity.constraints) {
-      const result = await this.evaluateExpression(constraint.expression, evalContext);
-
-      // Detect constraint type: "severity*" prefix indicates negative-type constraint
-      // Negative constraints fire when expression is TRUE (bad state detected)
-      // Positive constraints fail when expression is FALSE (required condition not met)
-      const isNegativeType = constraint.name.startsWith('severity');
-      const shouldFire = isNegativeType ? !!result : !result;
-
-      // All firing constraints are returned as failures for diagnostic purposes
-      // (The severity field determines whether they block execution, but all are reported)
-      if (shouldFire) {
-        failures.push({
-          constraintName: constraint.name,
-          expression: constraint.expression,
-          formatted: this.formatExpression(constraint.expression),
-          message: constraint.message || `Constraint '${constraint.name}' failed`,
-          resolved: await this.resolveExpressionValues(constraint.expression, evalContext),
-        });
-      }
+      const outcome = await this.evaluateConstraint(constraint, evalContext);
+      outcomes.push(outcome);
     }
 
-    return failures;
+    return outcomes;
   }
 
   private extractContextKeys(expr: IRExpression): string[] {

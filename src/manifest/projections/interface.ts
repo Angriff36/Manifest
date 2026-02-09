@@ -135,6 +135,20 @@ export interface NextJsProjectionOptions {
   /** Custom import path for Manifest runtime factory (default: '@/lib/manifest-runtime') */
   runtimeImportPath?: string;
 
+  /**
+   * Pluggable tenant resolution strategy.
+   * When provided, replaces the default userTenantMapping.findUnique pattern.
+   * Example: { importPath: '@repo/database', functionName: 'getTenantIdForOrg', lookupKey: 'orgId' }
+   */
+  tenantProvider?: {
+    /** Import path for the tenant lookup function */
+    importPath: string;
+    /** Function name to call (e.g. 'getTenantIdForOrg') */
+    functionName: string;
+    /** Which auth field to pass as the lookup key */
+    lookupKey: 'orgId' | 'userId';
+  };
+
   /** Custom indentation (default: 2 spaces) */
   indentSize?: number;
 }

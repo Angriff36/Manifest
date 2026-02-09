@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "entities": [
+    {
+      "name": "User",
+      "properties": [
+        { "name": "email", "type": "email", "unique": true },
+        { "name": "displayName", "type": "string" },
+        { "name": "avatar", "type": "image", "optional": true },
+        { "name": "isActive", "type": "boolean", "default": true }
+      ],
+      "hasMany": [
+        { "entity": "Post" }
+      ],
+      "policies": {
+        "create": { "access": "public" },
+        "read": { "access": "authenticated" },
+        "update": { "access": "owner" },
+        "delete": { "access": "admin" }
+      }
+    },
+    {
+      "name": "Post",
+      "properties": [
+        { "name": "title", "type": "string", "validation": { "minLength": 1, "maxLength": 200 } },
+        { "name": "body", "type": "text" },
+        { "name": "publishedAt", "type": "timestamp", "optional": true },
+        { "name": "status", "type": "string", "validation": { "enum": ["draft", "published", "archived"] } }
+      ],
+      "belongsTo": [
+        { "entity": "User", "eager": true }
+      ],
+      "policies": {
+        "create": { "access": "authenticated" },
+        "read": { "access": "public" },
+        "update": { "access": "owner" },
+        "delete": { "access": "owner" }
+      }
+    }
+  ],
+  "seed": {
+    "User": [
+      { "email": "admin@example.com", "displayName": "Admin", "isActive": true }
+    ]
+  }
+}

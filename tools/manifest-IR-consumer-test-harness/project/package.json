@@ -1,0 +1,9 @@
+{
+  "name": "node-starter",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build -w @repo/manifest-ir-harness",
+    "test": "npm run test -w @repo/manifest-ir-harness"
+  }
+}

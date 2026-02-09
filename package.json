@@ -1,8 +1,32 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "@manifest/runtime",
   "private": true,
   "version": "0.3.8",
   "type": "module",
+  "main": "./src/manifest/runtime-engine.ts",
+  "types": "./src/manifest/runtime-engine.ts",
+  "exports": {
+    ".": {
+      "import": "./src/manifest/runtime-engine.ts",
+      "types": "./src/manifest/runtime-engine.ts"
+    },
+    "./compiler": {
+      "import": "./src/manifest/compiler.ts",
+      "types": "./src/manifest/compiler.ts"
+    },
+    "./ir-compiler": {
+      "import": "./src/manifest/ir-compiler.ts",
+      "types": "./src/manifest/ir-compiler.ts"
+    },
+    "./projections/nextjs": {
+      "import": "./src/manifest/projections/nextjs/generator.ts",
+      "types": "./src/manifest/projections/nextjs/generator.ts"
+    },
+    "./ir": {
+      "import": "./src/manifest/ir.ts",
+      "types": "./src/manifest/ir.ts"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

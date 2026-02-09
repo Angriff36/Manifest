@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "User": {
+      "fields": ["id", "name", "email", "role"],
+      "primaryKey": "id"
+    },
+    "Product": {
+      "fields": ["id", "name", "price"],
+      "primaryKey": "id"
+    }
+  },
+  "policies": {
+    "readUser": {
+      "effect": "allow",
+      "resource": "User",
+      "action": "read",
+      "condition": "isAuthenticated"
+    }
+  },
+  "guards": {
+    "isAuthenticated": {
+      "expression": "ctx.user != null"
+    }
+  },
+  "actions": {
+    "createOrder": {
+      "input": ["userId", "items", "couponCode"],
+      "output": "Order"
+    },
+    "deleteOrder": {
+      "input": ["orderId"],
+      "output": "void"
+    }
+  },
+  "metadata": {
+    "version": "1.1.0",
+    "generatedAt": "2025-02-01T00:00:00Z"
+  }
+}

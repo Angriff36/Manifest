@@ -1,0 +1,18 @@
+entity Order {
+  property id: string
+  property status: string = "draft"
+  property items: array
+
+  command submit() {
+    guard self.status == "draft"
+    guard self.items.length > 0
+    mutate status = "submitted"
+    emit orderSubmitted
+  }
+
+  command complete() {
+    guard self.status == "submitted"
+    mutate status = "completed"
+    emit orderCompleted
+  }
+}

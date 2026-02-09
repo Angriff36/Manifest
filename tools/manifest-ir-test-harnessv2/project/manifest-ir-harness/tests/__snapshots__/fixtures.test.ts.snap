@@ -1,0 +1,323 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Fixture Tests > Fixture: 01-simple-command > matches snapshot 1`] = `
+{
+  "execution": {
+    "context": {
+      "user": {
+        "id": "user-1",
+        "role": "customer",
+      },
+    },
+    "steps": [
+      {
+        "assertions": {
+          "details": [
+            {
+              "actual": true,
+              "check": "success",
+              "expected": true,
+              "passed": true,
+            },
+            {
+              "actual": "submitted",
+              "check": "stateAfter.status",
+              "expected": "submitted",
+              "passed": true,
+            },
+            {
+              "actual": [
+                "orderSubmitted",
+              ],
+              "check": "emittedEvents",
+              "expected": [
+                "orderSubmitted",
+              ],
+              "passed": true,
+            },
+          ],
+          "failed": 0,
+          "passed": 3,
+        },
+        "command": {
+          "entity": "Order",
+          "id": "order-1",
+          "name": "submit",
+          "params": {},
+        },
+        "result": {
+          "emittedEvents": [
+            {
+              "data": {
+                "items": [
+                  {
+                    "id": "item-1",
+                    "price": 10,
+                  },
+                ],
+                "status": "submitted",
+              },
+              "name": "orderSubmitted",
+            },
+          ],
+          "entityStateAfter": {
+            "items": [
+              {
+                "id": "item-1",
+                "price": 10,
+              },
+            ],
+            "status": "submitted",
+          },
+          "success": true,
+        },
+        "step": 1,
+      },
+    ],
+  },
+  "harness": {
+    "executedAt": "[TIMESTAMP]",
+    "version": "1.0.0",
+  },
+  "script": {
+    "description": "Order submission with valid guards",
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/01-simple-command/script.json",
+  },
+  "source": {
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/01-simple-command/test.ir.json",
+    "type": "ir",
+  },
+  "summary": {
+    "assertionsFailed": 0,
+    "assertionsPassed": 3,
+    "failed": 0,
+    "passed": 1,
+    "totalSteps": 1,
+  },
+}
+`;
+
+exports[`Fixture Tests > Fixture: 02-guard-denial > matches snapshot 1`] = `
+{
+  "execution": {
+    "context": {
+      "user": {
+        "id": "user-1",
+      },
+    },
+    "steps": [
+      {
+        "assertions": {
+          "details": [
+            {
+              "actual": false,
+              "check": "success",
+              "expected": false,
+              "passed": true,
+            },
+            {
+              "actual": "guard",
+              "check": "error.type",
+              "expected": "guard",
+              "passed": true,
+            },
+            {
+              "actual": 1,
+              "check": "error.guardIndex",
+              "expected": 1,
+              "passed": true,
+            },
+            {
+              "actual": "self.items.length > 0",
+              "check": "error.message",
+              "expected": "self.items.length > 0",
+              "passed": true,
+            },
+          ],
+          "failed": 0,
+          "passed": 4,
+        },
+        "command": {
+          "entity": "Order",
+          "id": "order-2",
+          "name": "submit",
+          "params": {},
+        },
+        "result": {
+          "error": "self.items.length > 0",
+          "guardFailures": [
+            {
+              "evaluatedTo": false,
+              "expression": "self.items.length > 0",
+              "guardIndex": 1,
+              "resolvedValues": {
+                "self.items.length": 0,
+              },
+            },
+          ],
+          "success": false,
+        },
+        "step": 1,
+      },
+    ],
+  },
+  "harness": {
+    "executedAt": "[TIMESTAMP]",
+    "version": "1.0.0",
+  },
+  "script": {
+    "description": "Submit fails when order has no items",
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/02-guard-denial/script.json",
+  },
+  "source": {
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/02-guard-denial/test.ir.json",
+    "type": "ir",
+  },
+  "summary": {
+    "assertionsFailed": 0,
+    "assertionsPassed": 4,
+    "failed": 1,
+    "passed": 0,
+    "totalSteps": 1,
+  },
+}
+`;
+
+exports[`Fixture Tests > Fixture: 03-events-ordering > matches snapshot 1`] = `
+{
+  "execution": {
+    "context": {},
+    "steps": [
+      {
+        "assertions": {
+          "details": [
+            {
+              "actual": true,
+              "check": "success",
+              "expected": true,
+              "passed": true,
+            },
+            {
+              "actual": [
+                "orderSubmitted",
+              ],
+              "check": "emittedEvents",
+              "expected": [
+                "orderSubmitted",
+              ],
+              "passed": true,
+            },
+          ],
+          "failed": 0,
+          "passed": 2,
+        },
+        "command": {
+          "entity": "Order",
+          "id": "order-3",
+          "name": "submit",
+          "params": {},
+        },
+        "result": {
+          "emittedEvents": [
+            {
+              "data": {
+                "items": [
+                  {
+                    "id": "x",
+                  },
+                ],
+                "status": "submitted",
+              },
+              "name": "orderSubmitted",
+            },
+          ],
+          "entityStateAfter": {
+            "items": [
+              {
+                "id": "x",
+              },
+            ],
+            "status": "submitted",
+          },
+          "success": true,
+        },
+        "step": 1,
+      },
+      {
+        "assertions": {
+          "details": [
+            {
+              "actual": true,
+              "check": "success",
+              "expected": true,
+              "passed": true,
+            },
+            {
+              "actual": [
+                "orderCompleted",
+              ],
+              "check": "emittedEvents",
+              "expected": [
+                "orderCompleted",
+              ],
+              "passed": true,
+            },
+          ],
+          "failed": 0,
+          "passed": 2,
+        },
+        "command": {
+          "entity": "Order",
+          "id": "order-3",
+          "name": "complete",
+          "params": {},
+        },
+        "result": {
+          "emittedEvents": [
+            {
+              "data": {
+                "items": [
+                  {
+                    "id": "x",
+                  },
+                ],
+                "status": "completed",
+              },
+              "name": "orderCompleted",
+            },
+          ],
+          "entityStateAfter": {
+            "items": [
+              {
+                "id": "x",
+              },
+            ],
+            "status": "completed",
+          },
+          "success": true,
+        },
+        "step": 2,
+      },
+    ],
+  },
+  "harness": {
+    "executedAt": "[TIMESTAMP]",
+    "version": "1.0.0",
+  },
+  "script": {
+    "description": "Multiple commands emit events in order",
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/03-events-ordering/script.json",
+  },
+  "source": {
+    "path": "/tmp/cc-agent/63475348/project/manifest-ir-harness/fixtures/03-events-ordering/test.ir.json",
+    "type": "ir",
+  },
+  "summary": {
+    "assertionsFailed": 0,
+    "assertionsPassed": 4,
+    "failed": 0,
+    "passed": 2,
+    "totalSteps": 2,
+  },
+}
+`;

@@ -1,0 +1,8 @@
+{
+  "name": "node-starter",
+  "private": true,
+  "scripts": {
+    "build": "cd manifest-ir-harness && npm run build",
+    "test": "cd manifest-ir-harness && npx vitest run"
+  }
+}

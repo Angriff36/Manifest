@@ -39,6 +39,11 @@ interface NormalizedNextJsOptions {
   strictMode: boolean;
   includeComments: boolean;
   indentSize: number;
+  tenantProvider?: {
+    importPath: string;
+    functionName: string;
+    lookupKey: 'orgId' | 'userId';
+  };
 }
 
 /**
@@ -67,6 +72,7 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     ...options,
     includeComments: options?.includeComments ?? true,
     indentSize: options?.indentSize ?? 2,
+    tenantProvider: options?.tenantProvider,
   };
 }
 
@@ -110,11 +116,14 @@ function generateAuthBody(options: NormalizedNextJsOptions): string {
   const { authProvider } = options;
 
   switch (authProvider) {
-    case 'clerk':
-      return `  const { userId } = await auth();
+    case 'clerk': {
+      const needsOrgId = options.tenantProvider?.lookupKey === 'orgId';
+      const destructure = needsOrgId ? '{ orgId, userId }' : '{ userId }';
+      return `  const ${destructure} = await auth();
   if (!userId) {
     return manifestErrorResponse("Unauthorized", 401);
   }`;
+    }
 
     case 'nextauth':
       return `  const session = await getServerSession();
@@ -142,10 +151,18 @@ function generateAuthBody(options: NormalizedNextJsOptions): string {
  * Generate tenant lookup code.
  */
 function generateTenantLookup(options: NormalizedNextJsOptions): string {
-  const { includeTenantFilter } = options;
-
-  if (!includeTenantFilter) {
+  if (!options.includeTenantFilter) {
     return '';
+  }
+
+  if (options.tenantProvider) {
+    const { functionName, lookupKey } = options.tenantProvider;
+    return `
+  const ${options.tenantIdProperty} = await ${functionName}(${lookupKey});
+
+  if (!${options.tenantIdProperty}) {
+    return manifestErrorResponse("Tenant not found", 400);
+  }`;
   }
 
   return `
@@ -449,7 +466,11 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     lines.push(generateImport('{ manifestSuccessResponse, manifestErrorResponse }', responseImportPath));
     if (options.includeTenantFilter) {
-      lines.push(generateImport('{ database }', options.databaseImportPath));
+      if (options.tenantProvider) {
+        lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      } else {
+        lines.push(generateImport('{ database }', options.databaseImportPath));
+      }
     }
     const authImport = generateAuthImport(options);
     if (authImport) lines.push(authImport);
@@ -506,7 +527,12 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
     lines.push('');
     lines.push('import { NextRequest } from "next/server";');
-    lines.push(generateImport(`{ database }`, databaseImportPath));
+    if (options.tenantProvider) {
+      lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      lines.push(generateImport(`{ database }`, databaseImportPath));
+    } else {
+      lines.push(generateImport(`{ database }`, databaseImportPath));
+    }
     lines.push(generateImport(
       `{ manifestSuccessResponse, manifestErrorResponse }`,
       responseImportPath

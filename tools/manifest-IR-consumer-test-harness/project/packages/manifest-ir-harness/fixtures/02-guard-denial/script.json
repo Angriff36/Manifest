@@ -1,0 +1,33 @@
+{
+  "description": "Submit fails when order has no items",
+  "context": {
+    "user": { "id": "user-1" }
+  },
+  "seedEntities": [
+    {
+      "entity": "Order",
+      "id": "order-2",
+      "properties": {
+        "status": "draft",
+        "items": []
+      }
+    }
+  ],
+  "commands": [
+    {
+      "step": 1,
+      "entity": "Order",
+      "id": "order-2",
+      "command": "submit",
+      "params": {},
+      "expect": {
+        "success": false,
+        "error": {
+          "type": "guard",
+          "guardIndex": 1,
+          "message": "items.length > 0"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "description": "Multiple commands emit events in order",
+  "seedEntities": [
+    {
+      "entity": "Order",
+      "id": "order-3",
+      "properties": {
+        "status": "draft",
+        "items": [{ "id": "x" }]
+      }
+    }
+  ],
+  "commands": [
+    {
+      "step": 1,
+      "entity": "Order",
+      "id": "order-3",
+      "command": "submit",
+      "expect": {
+        "success": true,
+        "emittedEvents": ["orderSubmitted"]
+      }
+    },
+    {
+      "step": 2,
+      "entity": "Order",
+      "id": "order-3",
+      "command": "complete",
+      "expect": {
+        "success": true,
+        "emittedEvents": ["orderCompleted"]
+      }
+    }
+  ]
+}

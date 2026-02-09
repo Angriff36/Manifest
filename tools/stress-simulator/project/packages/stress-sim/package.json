@@ -1,0 +1,21 @@
+{
+  "name": "stress-sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "stress-sim": "./dist/cli/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "stress-sim": "node ./dist/cli/index.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.11.0"
+  }
+}

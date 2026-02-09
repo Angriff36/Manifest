@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "entities": {
+    "Order": {
+      "properties": {
+        "status": { "type": "string" },
+        "items": { "type": "array" }
+      },
+      "commands": {
+        "submit": {
+          "guards": [
+            {
+              "expression": "self.status == 'draft'",
+              "check": { "path": "status", "operator": "eq", "value": "draft" }
+            },
+            {
+              "expression": "self.items.length > 0",
+              "check": { "path": "items.length", "operator": "gt", "value": 0 }
+            }
+          ],
+          "transitions": {
+            "status": "submitted"
+          },
+          "events": ["orderSubmitted"]
+        }
+      }
+    }
+  }
+}
