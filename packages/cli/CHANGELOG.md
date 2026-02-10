@@ -15,6 +15,9 @@ All notable changes to this package will be documented in this file.
 - **Import Fallback Path**: Fixed relative import path for development
   - Changed from `../../../src/` to `../../../../src/`
   - Correct for files located at `packages/cli/src/commands/generate.ts`
+- **Import Export Name**: Fixed to use named export instead of default
+  - Changed from `projectionModule.default` to `projectionModule.NextJsProjection`
+  - The generator exports `NextJsProjection` as a named export, not default
 
 ### Added
 - **API Contract Tests**: Added 12 tests in `src/cli/generate.test.ts`
