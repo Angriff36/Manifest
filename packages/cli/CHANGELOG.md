@@ -5,6 +5,10 @@ All notable changes to this package will be documented in this file.
 ## [0.3.9] - 2025-02-09
 
 ### Fixed
+- **CLI Projection Options Not Passed to generate()**: Options were passed to constructor but not included in request object
+  - The projection's `generate()` method expects options via `request.options`
+  - CLI now passes `projectionOptions` in every `generate()` call
+  - Fixes issue where generated code used default `@/lib/*` paths instead of configured paths
 - **CLI Projection API Bug**: Fixed calls to deprecated projection methods
   - `generateRoute()` → `generate(ir, { surface: 'nextjs.route', entity })`
   - `generateTypes()` → `generate(ir, { surface: 'ts.types' })`

@@ -2,33 +2,41 @@
   "name": "@manifest/runtime",
   "version": "0.3.8",
   "type": "module",
-  "main": "./src/manifest/runtime-engine.ts",
-  "types": "./src/manifest/runtime-engine.ts",
+  "main": "./dist/manifest/runtime-engine.js",
+  "types": "./dist/manifest/runtime-engine.d.ts",
   "exports": {
     ".": {
-      "import": "./src/manifest/runtime-engine.ts",
-      "types": "./src/manifest/runtime-engine.ts"
+      "types": "./dist/manifest/runtime-engine.d.ts",
+      "import": "./dist/manifest/runtime-engine.js"
     },
     "./compiler": {
-      "import": "./src/manifest/compiler.ts",
-      "types": "./src/manifest/compiler.ts"
+      "types": "./dist/manifest/compiler.d.ts",
+      "import": "./dist/manifest/compiler.js"
     },
     "./ir-compiler": {
-      "import": "./src/manifest/ir-compiler.ts",
-      "types": "./src/manifest/ir-compiler.ts"
+      "types": "./dist/manifest/ir-compiler.d.ts",
+      "import": "./dist/manifest/ir-compiler.js"
     },
     "./projections/nextjs": {
-      "import": "./src/manifest/projections/nextjs/generator.ts",
-      "types": "./src/manifest/projections/nextjs/generator.ts"
+      "types": "./dist/manifest/projections/nextjs/generator.d.ts",
+      "import": "./dist/manifest/projections/nextjs/generator.js"
     },
     "./ir": {
-      "import": "./src/manifest/ir.ts",
-      "types": "./src/manifest/ir.ts"
-    }
+      "types": "./dist/manifest/ir.d.ts",
+      "import": "./dist/manifest/ir.js"
+    },
+    "./package.json": "./package.json"
   },
+  "files": [
+    "dist/**",
+    "README*",
+    "LICENSE*",
+    "package.json"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "tsc -p tsconfig.lib.json",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
@@ -40,7 +48,8 @@
     "manifest:compile": "tsx ./packages/cli/src/index.ts compile",
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
-    "manifest:validate": "tsx ./packages/cli/src/index.ts validate"
+    "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
+    "prepublishOnly": "pnpm run build:lib"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

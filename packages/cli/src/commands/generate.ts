@@ -23,8 +23,9 @@ async function loadDependencies() {
     } catch (error) {
       // Fallback to relative import for development
       // From packages/cli/src/commands/generate.ts, go up 4 levels to repo root, then into src
+      // Note: generator.js exports NextJsProjection as a named export, not default
       const projectionModule = await import('../../../../src/manifest/projections/nextjs/generator.js');
-      NextJsProjection = projectionModule.default;
+      NextJsProjection = projectionModule.NextJsProjection;
     }
   }
 
@@ -109,19 +110,19 @@ async function generateFromIR(
     // Generate based on surface
     if (options.surface === 'all') {
       // Generate all surfaces
-      await generateAllSurfaces(projection, ir, outputDir, spinner);
+      await generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'route') {
       // Generate GET routes for all entities
-      await generateRoutes(projection, ir, outputDir, spinner);
+      await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'command') {
       // Generate POST routes for all commands
-      await generateCommands(projection, ir, outputDir, spinner);
+      await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
-      await generateTypes(projection, ir, outputDir, spinner);
+      await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'client') {
       // Generate client SDK
-      await generateClient(projection, ir, outputDir, spinner);
+      await generateClient(projection, ir, outputDir, spinner, projectionOptions);
     } else {
       throw new Error(`Unknown surface: ${options.surface}`);
     }
@@ -139,19 +140,20 @@ async function generateAllSurfaces(
   projection: any,
   ir: any,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
+  projectionOptions: any
 ): Promise<void> {
   spinner.text = 'Generating routes...';
-  await generateRoutes(projection, ir, outputDir, spinner);
+  await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
 
   spinner.text = 'Generating commands...';
-  await generateCommands(projection, ir, outputDir, spinner);
+  await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
 
   spinner.text = 'Generating types...';
-  await generateTypes(projection, ir, outputDir, spinner);
+  await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
   spinner.text = 'Generating client...';
-  await generateClient(projection, ir, outputDir, spinner);
+  await generateClient(projection, ir, outputDir, spinner, projectionOptions);
 }
 
 /**
@@ -161,7 +163,8 @@ async function generateRoutes(
   projection: any,
   ir: any,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
+  projectionOptions: any
 ): Promise<void> {
   const entities = ir.entities || [];
 
@@ -171,6 +174,7 @@ async function generateRoutes(
     const result = projection.generate(ir, {
       surface: 'nextjs.route',
       entity: entity.name,
+      options: projectionOptions,
     });
     await writeProjectionResult(result, outputDir);
   }
@@ -183,7 +187,8 @@ async function generateCommands(
   projection: any,
   ir: any,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
+  projectionOptions: any
 ): Promise<void> {
   const commands = ir.commands || [];
 
@@ -195,6 +200,7 @@ async function generateCommands(
         surface: 'nextjs.command',
         entity: command.entity,
         command: command.name,
+        options: projectionOptions,
       });
       await writeProjectionResult(result, outputDir);
     }
@@ -208,12 +214,14 @@ async function generateTypes(
   projection: any,
   ir: any,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
+  projectionOptions: any
 ): Promise<void> {
   spinner.text = 'Generating TypeScript types...';
 
   const result = projection.generate(ir, {
     surface: 'ts.types',
+    options: projectionOptions,
   });
   await writeProjectionResult(result, outputDir);
 }
@@ -225,12 +233,14 @@ async function generateClient(
   projection: any,
   ir: any,
   outputDir: string,
-  spinner: Ora
+  spinner: Ora,
+  projectionOptions: any
 ): Promise<void> {
   spinner.text = 'Generating client SDK...';
 
   const result = projection.generate(ir, {
     surface: 'ts.client',
+    options: projectionOptions,
   });
   await writeProjectionResult(result, outputDir);
 }
