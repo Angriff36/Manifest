@@ -22,7 +22,8 @@ async function loadDependencies() {
       NextJsProjection = projectionModule.NextJsProjection;
     } catch (error) {
       // Fallback to relative import for development
-      const projectionModule = await import('../../../src/manifest/projections/nextjs/generator.js');
+      // From packages/cli/src/commands/generate.ts, go up 4 levels to repo root, then into src
+      const projectionModule = await import('../../../../src/manifest/projections/nextjs/generator.js');
       NextJsProjection = projectionModule.default;
     }
   }
@@ -101,7 +102,6 @@ async function generateFromIR(
       databaseImportPath: options.database,
       runtimeImportPath: options.runtime,
       responseImportPath: options.response,
-      outputPath: outputDir,
     };
 
     const projection = new NextJsProjection(projectionOptions);
@@ -168,8 +168,11 @@ async function generateRoutes(
   for (const entity of entities) {
     spinner.text = `Generating route for ${entity.name}...`;
 
-    const result = projection.generateRoute(ir, entity.name);
-    await writeProjectionResult(result, outputDir, entity.name, 'route');
+    const result = projection.generate(ir, {
+      surface: 'nextjs.route',
+      entity: entity.name,
+    });
+    await writeProjectionResult(result, outputDir);
   }
 }
 
@@ -188,8 +191,12 @@ async function generateCommands(
     spinner.text = `Generating command route for ${command.name}...`;
 
     if (command.entity) {
-      const result = projection.generateRoute(ir, command.entity, command.name);
-      await writeProjectionResult(result, outputDir, command.entity, command.name);
+      const result = projection.generate(ir, {
+        surface: 'nextjs.command',
+        entity: command.entity,
+        command: command.name,
+      });
+      await writeProjectionResult(result, outputDir);
     }
   }
 }
@@ -205,8 +212,10 @@ async function generateTypes(
 ): Promise<void> {
   spinner.text = 'Generating TypeScript types...';
 
-  const result = projection.generateTypes(ir);
-  await writeProjectionResult(result, outputDir, 'types', 'types');
+  const result = projection.generate(ir, {
+    surface: 'ts.types',
+  });
+  await writeProjectionResult(result, outputDir);
 }
 
 /**
@@ -220,39 +229,49 @@ async function generateClient(
 ): Promise<void> {
   spinner.text = 'Generating client SDK...';
 
-  const result = projection.generateClient(ir);
-  await writeProjectionResult(result, outputDir, 'client', 'client');
+  const result = projection.generate(ir, {
+    surface: 'ts.client',
+  });
+  await writeProjectionResult(result, outputDir);
 }
 
 /**
- * Write projection result to file
+ * Write projection result to file(s)
  */
 async function writeProjectionResult(
   result: ProjectionResult,
-  outputDir: string,
-  name: string,
-  type: string
+  outputDir: string
 ): Promise<void> {
-  if (!result.filePath) {
-    console.warn(chalk.yellow(`  No file path for ${name} ${type}`));
-    return;
-  }
-
-  const outputPath = path.resolve(outputDir, path.basename(result.filePath));
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, result.code, 'utf-8');
-
-  console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
-
-  // Show diagnostics if any
+  // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
     result.diagnostics.forEach((d: any) => {
       if (d.severity === 'error') {
         console.error(chalk.red(`  Error: ${d.message}`));
       } else if (d.severity === 'warning') {
         console.warn(chalk.yellow(`  Warning: ${d.message}`));
+      } else {
+        console.log(chalk.gray(`  Info: ${d.message}`));
       }
     });
+  }
+
+  // Write each artifact
+  for (const artifact of result.artifacts) {
+    if (!artifact.pathHint) {
+      console.warn(chalk.yellow(`  Artifact "${artifact.id}" has no path hint, skipping`));
+      continue;
+    }
+
+    // Use pathHint directly (it may include subdirectories)
+    const outputPath = path.resolve(outputDir, artifact.pathHint);
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, artifact.code, 'utf-8');
+
+    console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
+  }
+
+  if (result.artifacts.length === 0 && result.diagnostics.length === 0) {
+    console.warn(chalk.yellow(`  No artifacts generated`));
   }
 }
 
