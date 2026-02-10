@@ -1,6 +1,5 @@
 {
   "name": "@manifest/runtime",
-  "private": true,
   "version": "0.3.8",
   "type": "module",
   "main": "./src/manifest/runtime-engine.ts",

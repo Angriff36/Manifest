@@ -10,6 +10,7 @@ A conforming runtime MAY support:
 - `localStorage`
 - `postgres`
 - `supabase`
+- **Custom stores** (via `storeProvider` hook)
 
 ### Default Behavior
 - If a store target is not supported, the runtime MUST emit a diagnostic and MUST NOT silently fall back.
@@ -22,6 +23,56 @@ A conforming runtime MAY support:
 - ~~The IR runtime currently supports `memory` and `localStorage` only and falls back to `memory` for other targets without emitting diagnostics.~~
 - **RESOLVED (2026-02-05)**: Runtime now throws clear errors for unsupported storage targets (`postgres`, `supabase` in browser) at runtime-engine.ts:312-323.
 - **RESOLVED (2026-02-05)**: PostgresStore and SupabaseStore are fully implemented in `src/manifest/stores.node.ts`. Server-side applications can use these stores via the `storeProvider` option in RuntimeOptions.
+
+## Implementing Custom Adapters
+
+Applications MAY implement custom storage adapters by:
+
+1. Implementing the `Store` interface from runtime-engine.ts
+2. Providing the store via the `storeProvider` option in RuntimeOptions
+
+### Store Interface
+
+```typescript
+interface Store<T extends EntityInstance = EntityInstance> {
+  getAll(): Promise<T[]>;
+  getById(id: string): Promise<T | undefined>;
+  create(data: Partial<T>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T | undefined>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
+}
+```
+
+### Using Custom Stores
+
+```typescript
+import { RuntimeEngine } from '@manifest/runtime';
+import { MyCustomStore } from './my-custom-store';
+
+const runtime = new RuntimeEngine(ir, {
+  userId: 'user-123',
+  tenantId: 'tenant-456',
+  storeProvider: (entityName) => {
+    if (entityName === 'Recipe') {
+      return new MyCustomStore({ /* config */ });
+    }
+    return undefined; // Use default memory store
+  }
+});
+```
+
+### Implementation Examples
+
+See [guides/implementing-custom-stores.md](../guides/implementing-custom-stores.md) for complete examples:
+- PrismaStore with transactional outbox
+- TypeORM integration
+- Drizzle integration
+- Custom database adapters
+
+### Event Collection
+
+For transactional outbox patterns, stores MAY support event collection via the `eventCollector` option. See [guides/transactional-outbox-pattern.md](../guides/transactional-outbox-pattern.md) for details.
 
 ## Action Adapters
 The following actions are adapter hooks:

@@ -234,9 +234,9 @@ export async function validateCommand(
       summarySpinner.fail(`${invalidCount} file(s) invalid, ${validCount} valid`);
       console.error('');
       console.error(chalk.bold.red('Errors:'));
-      allErrors.forEach(error => {
-        console.error(chalk.red(`  • ${error}`));
-      }));
+      for (const error of allErrors) {
+        console.error(chalk.red(`  - ${error}`));
+      }
       process.exit(1);
     }
 
