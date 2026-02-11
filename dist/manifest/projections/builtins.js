@@ -7,8 +7,8 @@
  * The registry calls this automatically on first access, so consumers
  * don't need to think about startup ordering.
  */
-import { registerProjection } from './registry';
-import { NextJsProjection } from './nextjs/generator';
+import { registerProjection } from './registry.js';
+import { NextJsProjection } from './nextjs/generator.js';
 /**
  * Register all built-in projections.
  *

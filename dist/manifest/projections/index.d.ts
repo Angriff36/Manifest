@@ -9,8 +9,8 @@
  *
  * See docs/patterns/external-projections.md for detailed rationale.
  */
-export * from './interface';
-export * from './registry';
-export { NextJsProjection } from './nextjs/generator';
-export { registerBuiltinProjections, listBuiltinProjections } from './builtins';
+export * from './interface.js';
+export * from './registry.js';
+export { NextJsProjection } from './nextjs/generator.js';
+export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 //# sourceMappingURL=index.d.ts.map

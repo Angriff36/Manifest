@@ -1,5 +1,5 @@
-import { Parser } from './parser';
-import { CodeGenerator } from './generator';
+import { Parser } from './parser.js';
+import { CodeGenerator } from './generator.js';
 export class ManifestCompiler {
     parser = new Parser();
     generator = new CodeGenerator();
@@ -19,5 +19,5 @@ export class ManifestCompiler {
         return this.parser.parse(source);
     }
 }
-export * from './types';
+export * from './types.js';
 //# sourceMappingURL=compiler.js.map

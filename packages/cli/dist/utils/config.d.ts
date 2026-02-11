@@ -7,30 +7,10 @@ export interface ManifestConfig {
     $schema?: string;
     src?: string;
     output?: string;
-    projections?: {
-        nextjs?: {
-            output?: string;
-            options?: {
-                authProvider?: string;
-                authImportPath?: string;
-                databaseImportPath?: string;
-                runtimeImportPath?: string;
-                responseImportPath?: string;
-                includeTenantFilter?: boolean;
-                includeSoftDeleteFilter?: boolean;
-                tenantIdProperty?: string;
-                deletedAtProperty?: string;
-                appDir?: string;
-            };
-        };
-    };
-    dev?: {
-        port?: number;
-        watch?: boolean;
-    };
-    test?: {
-        coverage?: boolean;
-    };
+    projections?: Record<string, {
+        output?: string;
+        options?: Record<string, any>;
+    }>;
 }
 /**
  * Find and load the config file

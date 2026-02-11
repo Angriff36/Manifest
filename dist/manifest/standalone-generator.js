@@ -1,4 +1,4 @@
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 export class StandaloneGenerator {
     out = [];
     indent = 0;

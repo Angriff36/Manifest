@@ -8,32 +8,8 @@ import path from 'path';
 import yaml from 'js-yaml';
 const DEFAULT_CONFIG = {
     $schema: 'https://manifest.dev/config.schema.json',
-    src: 'modules/**/*.manifest',
+    src: '**/*.manifest',
     output: 'ir/',
-    projections: {
-        nextjs: {
-            output: 'app/api/',
-            options: {
-                authProvider: 'clerk',
-                authImportPath: '@/lib/auth',
-                databaseImportPath: '@/lib/database',
-                runtimeImportPath: '@/lib/manifest-runtime',
-                responseImportPath: '@/lib/manifest-response',
-                includeTenantFilter: true,
-                includeSoftDeleteFilter: true,
-                tenantIdProperty: 'tenantId',
-                deletedAtProperty: 'deletedAt',
-                appDir: 'app',
-            },
-        },
-    },
-    dev: {
-        port: 5173,
-        watch: true,
-    },
-    test: {
-        coverage: true,
-    },
 };
 const CONFIG_PATHS = [
     'manifest.config.yaml',
@@ -76,26 +52,6 @@ function mergeConfig(defaults, user) {
     return {
         ...defaults,
         ...user,
-        projections: {
-            ...defaults.projections,
-            ...user.projections,
-            nextjs: {
-                ...defaults.projections?.nextjs,
-                ...user.projections?.nextjs,
-                options: {
-                    ...defaults.projections?.nextjs?.options,
-                    ...user.projections?.nextjs?.options,
-                },
-            },
-        },
-        dev: {
-            ...defaults.dev,
-            ...user.dev,
-        },
-        test: {
-            ...defaults.test,
-            ...user.test,
-        },
     };
 }
 /**
@@ -122,8 +78,7 @@ export async function configExists(cwd = process.cwd()) {
  */
 export async function getNextJsOptions(cwd = process.cwd()) {
     const config = await getConfig(cwd);
-    const nextjsConfig = config.projections?.nextjs;
-    const options = nextjsConfig?.options || {};
+    const options = config.projections?.nextjs?.options || config.projections?.['nextjs']?.options || {};
     return {
         authProvider: options.authProvider || 'clerk',
         authImportPath: options.authImportPath || '@/lib/auth',
@@ -144,7 +99,7 @@ export async function getOutputPaths(cwd = process.cwd()) {
     const config = await getConfig(cwd);
     return {
         irOutput: config.output || 'ir/',
-        codeOutput: config.projections?.nextjs?.output || 'app/api/',
+        codeOutput: config.projections?.nextjs?.output || config.projections?.['nextjs']?.output || 'generated/',
     };
 }
 //# sourceMappingURL=config.js.map

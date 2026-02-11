@@ -103,7 +103,6 @@ describe('NextJsProjection', () => {
 
       const noFilterCode = firstCode(noFilterResult);
       expect(noFilterCode).not.toContain('tenantId');
-      expect(noFilterCode).not.toContain('userTenantMapping');
 
       const withFilterResult = projection.generate(result.ir!, {
         surface: 'nextjs.route',
@@ -112,7 +111,7 @@ describe('NextJsProjection', () => {
 
       const withFilterCode = firstCode(withFilterResult);
       expect(withFilterCode).toContain('tenantId');
-      expect(withFilterCode).toContain('userTenantMapping');
+      expect(withFilterCode).toContain('getTenantIdForOrg');
     });
 
     it('respects includeSoftDeleteFilter option', async () => {
@@ -157,8 +156,8 @@ describe('NextJsProjection', () => {
         entity: 'Recipe',
         options: { authProvider: 'clerk' },
       });
-      expect(firstCode(clerkResult)).toContain('@clerk/nextjs');
-      expect(firstCode(clerkResult)).toContain('const { userId } = await auth()');
+      expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
+      expect(firstCode(clerkResult)).toContain('const { orgId, userId } = await auth()');
 
       const nextAuthResult = projection.generate(result.ir!, {
         surface: 'nextjs.route',
@@ -344,12 +343,12 @@ describe('NextJsProjection', () => {
       const code = firstCode(commandResult);
 
       // Tenant lookup must be present
-      expect(code).toContain('userTenantMapping');
+      expect(code).toContain('getTenantIdForOrg');
       expect(code).toContain('tenantId');
       // Tenant must be passed into runtime context, not just body
       expect(code).toContain('tenantId: tenantId');
-      // Database must be imported for tenant lookup
-      expect(code).toContain('from "@/lib/database"');
+      // Tenant resolver import should be used for tenant lookup
+      expect(code).toContain('from "@/app/lib/tenant"');
     });
 
     it('omits tenant lookup when includeTenantFilter is false', async () => {
@@ -364,7 +363,7 @@ describe('NextJsProjection', () => {
       });
 
       const code = firstCode(commandResult);
-      expect(code).not.toContain('userTenantMapping');
+      expect(code).not.toContain('getTenantIdForOrg');
       // When includeTenantFilter is false, tenantId is still included but with a placeholder
       expect(code).toContain('tenantId: "__no_tenant__"');
     });
@@ -455,7 +454,7 @@ describe('NextJsProjection', () => {
         command: 'create',
         options: { authProvider: 'clerk' },
       });
-      expect(firstCode(clerkResult)).toContain('@clerk/nextjs');
+      expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
 
       const noAuthResult = projection.generate(result.ir!, {
         surface: 'nextjs.command',
@@ -477,7 +476,7 @@ describe('NextJsProjection', () => {
       });
 
       expect(commandResult.artifacts[0].id).toBe('nextjs.command:Recipe.create');
-      expect(commandResult.artifacts[0].pathHint).toContain('recipe/commands/create/route.ts');
+      expect(commandResult.artifacts[0].pathHint).toContain('recipe/create/route.ts');
     });
   });
 

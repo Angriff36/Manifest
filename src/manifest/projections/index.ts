@@ -10,9 +10,9 @@
  * See docs/patterns/external-projections.md for detailed rationale.
  */
 
-export * from './interface';
-export * from './registry';
+export * from './interface.js';
+export * from './registry.js';
 
 // Re-export built-in projections for convenience
-export { NextJsProjection } from './nextjs/generator';
-export { registerBuiltinProjections, listBuiltinProjections } from './builtins';
+export { NextJsProjection } from './nextjs/generator.js';
+export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';

@@ -27,8 +27,12 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "manifest": "./packages/cli/dist/index.js"
+  },
   "files": [
     "dist/**",
+    "packages/cli/dist/**",
     "README*",
     "LICENSE*",
     "package.json"
@@ -44,12 +48,14 @@
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",
     "conformance:regen": "tsx scripts/regen-conformance.ts",
+"init": "node scripts/init.mjs",
     "manifest": "tsx ./packages/cli/src/index.ts",
+    "manifest:init": "tsx ./packages/cli/src/index.ts init",
     "manifest:compile": "tsx ./packages/cli/src/index.ts compile",
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
-    "prepublishOnly": "pnpm run build:lib"
+    "prepublishOnly": "pnpm run build:lib && cd packages/cli && tsc"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

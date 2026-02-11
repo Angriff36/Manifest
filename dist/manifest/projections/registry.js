@@ -7,7 +7,7 @@
  * KEY: getProjection() auto-registers builtins on first call.
  * Consumers don't need to think about startup ordering.
  */
-import { registerBuiltinProjections } from './builtins';
+import { registerBuiltinProjections } from './builtins.js';
 /**
  * Internal registry of all registered projections.
  * Using Map for O(1) lookup by name.

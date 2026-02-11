@@ -423,6 +423,72 @@ See `docs/examples/` for complete examples:
 
 ## Troubleshooting
 
+### Windows: `manifest` exits `0` with no output
+
+If CLI commands return exit `0` with no output on Windows (especially with pnpm shims), verify from your project root:
+
+```bash
+pnpm exec manifest --help
+node .\node_modules\@manifest\runtime\packages\cli\dist\index.js --help
+.\node_modules\.bin\manifest.cmd --help
+```
+
+Expected result: each command prints the Manifest help text.
+
+Root cause (fixed in `0.3.10`): direct-run detection compared unresolved normalized paths, which could differ across `node_modules` shim paths and `.pnpm` real targets.
+
+Implementation summary:
+- CLI now compares normalized **realpaths** for module and argv entrypoint.
+- On Windows, comparison is case-insensitive.
+- If argv realpath cannot be resolved, fallback bin-context checks allow execution (`manifest`/`index.js` path hints, ESM main-equivalent check).
+
+Note on `init --force`:
+- `manifest init --force` is interactive and requires terminal input.
+- In non-interactive/headless shells, it may wait for prompts or exit without rewriting config.
+
+### `TypeError: Cannot read properties of undefined (reading 'output')` in `manifest compile`
+
+If `pnpm exec manifest compile` fails at `packages/cli/dist/index.js` around line `48`, you are likely on a build with duplicate Commander argument declarations.
+
+Fixed behavior:
+- Command signatures no longer duplicate args in both `.command(...)` and `.argument(...)`.
+- Action handlers use safe option defaults (`options = {}`).
+- Config access remains null-safe (`config?.output`, `config?.projections?...`).
+
+Quick check:
+
+```bash
+pnpm exec manifest --help
+```
+
+Expected command shapes:
+- `compile [options] [source]`
+- `generate [options] <ir>`
+- `build [options] [source]`
+- `validate [options] [ir]`
+
+### `Cannot find module .../dist/manifest/parser` during `manifest compile`
+
+If compile starts and then fails with:
+
+```text
+Cannot find module .../dist/manifest/parser imported from .../dist/manifest/ir-compiler.js
+```
+
+you are on a runtime build where ESM relative imports were emitted without `.js` extensions.
+
+Fixed behavior:
+- Runtime ESM imports now use explicit `.js` extensions (for example `./parser.js`, `./lexer.js`, `./ir-cache.js`, `./version.js`).
+- Projection registry/builtins exports/imports were also aligned to `.js` specifiers for Node ESM resolution.
+
+Validation command:
+
+```bash
+pnpm exec manifest compile
+```
+
+Expected result: compile runs across discovered manifests without module-resolution errors.
+
 ### "Cannot find module '@manifest/compiler'"
 
 Make sure you're running from the Manifest repo or have installed the dependencies:

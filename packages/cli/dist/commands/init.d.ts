@@ -1,8 +1,8 @@
 /**
  * manifest init command
  *
- * Interactive setup for Manifest projects.
- * Creates manifest.config.yaml with project-specific settings.
+ * Creates a manifest.config.yaml for Manifest projects.
+ * Asks for the final output paths - no guessing, no doubling.
  */
 interface InitOptions {
     force?: boolean;

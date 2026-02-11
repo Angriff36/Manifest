@@ -9,7 +9,7 @@
  */
 
 import type { ProjectionTarget } from './interface';
-import { registerBuiltinProjections } from './builtins';
+import { registerBuiltinProjections } from './builtins.js';
 
 /**
  * Internal registry of all registered projections.

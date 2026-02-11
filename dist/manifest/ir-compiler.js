@@ -1,6 +1,6 @@
-import { Parser } from './parser';
-import { globalIRCache } from './ir-cache';
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+import { Parser } from './parser.js';
+import { globalIRCache } from './ir-cache.js';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 /**
  * Compute SHA-256 hash of the source manifest
  */

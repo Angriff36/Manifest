@@ -1,6 +1,6 @@
-import { Parser } from './parser';
-import { CodeGenerator } from './generator';
-import { CompilationResult, ManifestProgram } from './types';
+import { Parser } from './parser.js';
+import { CodeGenerator } from './generator.js';
+import { CompilationResult, ManifestProgram } from './types.js';
 
 export class ManifestCompiler {
   private parser = new Parser();
@@ -22,4 +22,4 @@ export class ManifestCompiler {
   }
 }
 
-export * from './types';
+export * from './types.js';

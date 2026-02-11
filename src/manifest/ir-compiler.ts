@@ -1,4 +1,4 @@
-import { Parser } from './parser';
+import { Parser } from './parser.js';
 import {
   ManifestProgram,
   EntityNode,
@@ -37,8 +37,8 @@ import {
   PropertyModifier,
   IRProvenance,
 } from './ir';
-import { globalIRCache, type IRCache } from './ir-cache';
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+import { globalIRCache, type IRCache } from './ir-cache.js';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /**
  * Compute SHA-256 hash of the source manifest

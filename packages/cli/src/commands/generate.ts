@@ -9,38 +9,17 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
-import type { ProjectionResult } from '@manifest/projections';
 
-// Dynamic imports for projections
-let NextJsProjection: any;
-let loadIR: any;
-
+// Import from the main Manifest package
 async function loadDependencies() {
-  if (!NextJsProjection) {
-    try {
-      const projectionModule = await import('@manifest/projections');
-      NextJsProjection = projectionModule.NextJsProjection;
-    } catch (error) {
-      // Fallback to relative import for development
-      // From packages/cli/src/commands/generate.ts, go up 4 levels to repo root, then into src
-      // Note: generator.js exports NextJsProjection as a named export, not default
-      const projectionModule = await import('../../../../src/manifest/projections/nextjs/generator.js');
-      NextJsProjection = projectionModule.NextJsProjection;
-    }
-  }
+  const projectionModule = await import('@manifest/runtime/projections/nextjs');
+  const NextJsProjection = projectionModule.NextJsProjection;
 
-  if (!loadIR) {
-    try {
-      const module = await import('@manifest/ir');
-      loadIR = module.loadIR;
-    } catch (error) {
-      // Fallback to reading JSON directly
-      loadIR = async (filePath: string) => {
-        const content = await fs.readFile(filePath, 'utf-8');
-        return JSON.parse(content);
-      };
-    }
-  }
+  // IR is just JSON, load it directly
+  const loadIR = async (filePath: string) => {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(content);
+  };
 
   return { NextJsProjection, loadIR };
 }
@@ -105,7 +84,7 @@ async function generateFromIR(
       responseImportPath: options.response,
     };
 
-    const projection = new NextJsProjection(projectionOptions);
+    const projection = new NextJsProjection();
 
     // Generate based on surface
     if (options.surface === 'all') {
@@ -249,7 +228,7 @@ async function generateClient(
  * Write projection result to file(s)
  */
 async function writeProjectionResult(
-  result: ProjectionResult,
+  result: any,
   outputDir: string
 ): Promise<void> {
   // Show diagnostics first (if any errors, we might still write files)

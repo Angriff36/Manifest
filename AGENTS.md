@@ -16,6 +16,8 @@
 If any implementation behavior differs, it must be called out as
 **Nonconformance** in the spec docs, then fixed via spec → tests → code.
 
+**USE PLANNING WITH FILES SKILL!**
+
 ## Validation Commands (Backpressure)
 
 Run these after implementing to get immediate feedback:

@@ -13,62 +13,17 @@ export interface ManifestConfig {
   src?: string;
   output?: string;
 
-  projections?: {
-    nextjs?: {
-      output?: string;
-      options?: {
-        authProvider?: string;
-        authImportPath?: string;
-        databaseImportPath?: string;
-        runtimeImportPath?: string;
-        responseImportPath?: string;
-        includeTenantFilter?: boolean;
-        includeSoftDeleteFilter?: boolean;
-        tenantIdProperty?: string;
-        deletedAtProperty?: string;
-        appDir?: string;
-      };
-    };
-  };
-
-  dev?: {
-    port?: number;
-    watch?: boolean;
-  };
-
-  test?: {
-    coverage?: boolean;
-  };
+  // Optional: Projection settings for code generation
+  projections?: Record<string, {
+    output?: string;
+    options?: Record<string, any>;
+  }>;
 }
 
 const DEFAULT_CONFIG: ManifestConfig = {
   $schema: 'https://manifest.dev/config.schema.json',
-  src: 'modules/**/*.manifest',
+  src: '**/*.manifest',
   output: 'ir/',
-  projections: {
-    nextjs: {
-      output: 'app/api/',
-      options: {
-        authProvider: 'clerk',
-        authImportPath: '@/lib/auth',
-        databaseImportPath: '@/lib/database',
-        runtimeImportPath: '@/lib/manifest-runtime',
-        responseImportPath: '@/lib/manifest-response',
-        includeTenantFilter: true,
-        includeSoftDeleteFilter: true,
-        tenantIdProperty: 'tenantId',
-        deletedAtProperty: 'deletedAt',
-        appDir: 'app',
-      },
-    },
-  },
-  dev: {
-    port: 5173,
-    watch: true,
-  },
-  test: {
-    coverage: true,
-  },
 };
 
 const CONFIG_PATHS = [
@@ -116,26 +71,6 @@ function mergeConfig(defaults: ManifestConfig, user: ManifestConfig | null): Man
   return {
     ...defaults,
     ...user,
-    projections: {
-      ...defaults.projections,
-      ...user.projections,
-      nextjs: {
-        ...defaults.projections?.nextjs,
-        ...user.projections?.nextjs,
-        options: {
-          ...defaults.projections?.nextjs?.options,
-          ...user.projections?.nextjs?.options,
-        },
-      },
-    },
-    dev: {
-      ...defaults.dev,
-      ...user.dev,
-    },
-    test: {
-      ...defaults.test,
-      ...user.test,
-    },
   };
 }
 
@@ -179,8 +114,7 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
   appDir: string;
 }> {
   const config = await getConfig(cwd);
-  const nextjsConfig = config.projections?.nextjs;
-  const options = nextjsConfig?.options || {};
+  const options = config.projections?.nextjs?.options || config.projections?.['nextjs']?.options || {};
 
   return {
     authProvider: options.authProvider || 'clerk',
@@ -207,6 +141,6 @@ export async function getOutputPaths(cwd: string = process.cwd()): Promise<{
 
   return {
     irOutput: config.output || 'ir/',
-    codeOutput: config.projections?.nextjs?.output || 'app/api/',
+    codeOutput: config.projections?.nextjs?.output || config.projections?.['nextjs']?.output || 'generated/',
   };
 }

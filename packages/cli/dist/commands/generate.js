@@ -8,34 +8,15 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
-// Dynamic imports for projections
-let NextJsProjection;
-let loadIR;
+// Import from the main Manifest package
 async function loadDependencies() {
-    if (!NextJsProjection) {
-        try {
-            const projectionModule = await import('@manifest/projections');
-            NextJsProjection = projectionModule.NextJsProjection;
-        }
-        catch (error) {
-            // Fallback to relative import for development
-            const projectionModule = await import('../../../src/manifest/projections/nextjs/generator.js');
-            NextJsProjection = projectionModule.default;
-        }
-    }
-    if (!loadIR) {
-        try {
-            const module = await import('@manifest/ir');
-            loadIR = module.loadIR;
-        }
-        catch (error) {
-            // Fallback to reading JSON directly
-            loadIR = async (filePath) => {
-                const content = await fs.readFile(filePath, 'utf-8');
-                return JSON.parse(content);
-            };
-        }
-    }
+    const projectionModule = await import('@manifest/runtime/projections/nextjs');
+    const NextJsProjection = projectionModule.NextJsProjection;
+    // IR is just JSON, load it directly
+    const loadIR = async (filePath) => {
+        const content = await fs.readFile(filePath, 'utf-8');
+        return JSON.parse(content);
+    };
     return { NextJsProjection, loadIR };
 }
 /**
@@ -74,27 +55,27 @@ async function generateFromIR(irFile, options, spinner) {
             runtimeImportPath: options.runtime,
             responseImportPath: options.response,
         };
-        const projection = new NextJsProjection(projectionOptions);
+        const projection = new NextJsProjection();
         // Generate based on surface
         if (options.surface === 'all') {
             // Generate all surfaces
-            await generateAllSurfaces(projection, ir, outputDir, spinner);
+            await generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'route') {
             // Generate GET routes for all entities
-            await generateRoutes(projection, ir, outputDir, spinner);
+            await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'command') {
             // Generate POST routes for all commands
-            await generateCommands(projection, ir, outputDir, spinner);
+            await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'types') {
             // Generate TypeScript types
-            await generateTypes(projection, ir, outputDir, spinner);
+            await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'client') {
             // Generate client SDK
-            await generateClient(projection, ir, outputDir, spinner);
+            await generateClient(projection, ir, outputDir, spinner, projectionOptions);
         }
         else {
             throw new Error(`Unknown surface: ${options.surface}`);
@@ -108,26 +89,27 @@ async function generateFromIR(irFile, options, spinner) {
 /**
  * Generate all projection surfaces
  */
-async function generateAllSurfaces(projection, ir, outputDir, spinner) {
+async function generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions) {
     spinner.text = 'Generating routes...';
-    await generateRoutes(projection, ir, outputDir, spinner);
+    await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
     spinner.text = 'Generating commands...';
-    await generateCommands(projection, ir, outputDir, spinner);
+    await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
     spinner.text = 'Generating types...';
-    await generateTypes(projection, ir, outputDir, spinner);
+    await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
     spinner.text = 'Generating client...';
-    await generateClient(projection, ir, outputDir, spinner);
+    await generateClient(projection, ir, outputDir, spinner, projectionOptions);
 }
 /**
  * Generate GET routes for entities
  */
-async function generateRoutes(projection, ir, outputDir, spinner) {
+async function generateRoutes(projection, ir, outputDir, spinner, projectionOptions) {
     const entities = ir.entities || [];
     for (const entity of entities) {
         spinner.text = `Generating route for ${entity.name}...`;
         const result = projection.generate(ir, {
             surface: 'nextjs.route',
             entity: entity.name,
+            options: projectionOptions,
         });
         await writeProjectionResult(result, outputDir);
     }
@@ -135,7 +117,7 @@ async function generateRoutes(projection, ir, outputDir, spinner) {
 /**
  * Generate POST routes for commands
  */
-async function generateCommands(projection, ir, outputDir, spinner) {
+async function generateCommands(projection, ir, outputDir, spinner, projectionOptions) {
     const commands = ir.commands || [];
     for (const command of commands) {
         spinner.text = `Generating command route for ${command.name}...`;
@@ -144,6 +126,7 @@ async function generateCommands(projection, ir, outputDir, spinner) {
                 surface: 'nextjs.command',
                 entity: command.entity,
                 command: command.name,
+                options: projectionOptions,
             });
             await writeProjectionResult(result, outputDir);
         }
@@ -152,20 +135,22 @@ async function generateCommands(projection, ir, outputDir, spinner) {
 /**
  * Generate TypeScript types
  */
-async function generateTypes(projection, ir, outputDir, spinner) {
+async function generateTypes(projection, ir, outputDir, spinner, projectionOptions) {
     spinner.text = 'Generating TypeScript types...';
     const result = projection.generate(ir, {
         surface: 'ts.types',
+        options: projectionOptions,
     });
     await writeProjectionResult(result, outputDir);
 }
 /**
  * Generate client SDK
  */
-async function generateClient(projection, ir, outputDir, spinner) {
+async function generateClient(projection, ir, outputDir, spinner, projectionOptions) {
     spinner.text = 'Generating client SDK...';
     const result = projection.generate(ir, {
         surface: 'ts.client',
+        options: projectionOptions,
     });
     await writeProjectionResult(result, outputDir);
 }

@@ -8,17 +8,22 @@
  * Default options for Next.js projection.
  */
 const DEFAULT_OPTIONS = {
-    authProvider: 'custom',
-    authImportPath: '@/lib/auth',
-    databaseImportPath: '@/lib/database',
+    authProvider: 'clerk',
+    authImportPath: '@repo/auth/server',
+    databaseImportPath: '@repo/database',
     responseImportPath: '@/lib/manifest-response',
     runtimeImportPath: '@/lib/manifest-runtime',
     includeTenantFilter: true,
     includeSoftDeleteFilter: true,
     tenantIdProperty: 'tenantId',
     deletedAtProperty: 'deletedAt',
-    appDir: 'app/api',
+    appDir: 'apps/api/app/api',
     strictMode: true,
+};
+const DEFAULT_TENANT_PROVIDER = {
+    importPath: '@/app/lib/tenant',
+    functionName: 'getTenantIdForOrg',
+    lookupKey: 'orgId',
 };
 /**
  * Normalize user options with defaults.
@@ -29,8 +34,22 @@ function normalizeOptions(options) {
         ...options,
         includeComments: options?.includeComments ?? true,
         indentSize: options?.indentSize ?? 2,
-        tenantProvider: options?.tenantProvider,
+        tenantProvider: options?.tenantProvider ?? DEFAULT_TENANT_PROVIDER,
     };
+}
+function toLowerCamelCase(value) {
+    if (!value)
+        return value;
+    return value[0].toLowerCase() + value.slice(1);
+}
+function toKebabCase(value) {
+    return value
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/\s+/g, '-')
+        .toLowerCase();
+}
+function toEntitySegment(value) {
+    return value.toLowerCase();
 }
 /**
  * Generate an import statement with proper path handling.
@@ -68,8 +87,11 @@ function generateAuthBody(options) {
         case 'clerk': {
             const needsOrgId = options.tenantProvider?.lookupKey === 'orgId';
             const destructure = needsOrgId ? '{ orgId, userId }' : '{ userId }';
+            const authGuard = needsOrgId
+                ? 'if (!(userId && orgId)) {'
+                : 'if (!userId) {';
             return `  const ${destructure} = await auth();
-  if (!userId) {
+  ${authGuard}
     return manifestErrorResponse("Unauthorized", 401);
   }`;
         }
@@ -122,7 +144,8 @@ function generateTenantLookup(options) {
  * Generate Prisma query with filters.
  */
 function generatePrismaQuery(entityName, options) {
-    const lowerEntity = entityName.toLowerCase();
+    const delegateName = toLowerCamelCase(entityName);
+    const variableName = `${delegateName}s`;
     const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
     const whereConditions = [];
     if (includeTenantFilter) {
@@ -136,7 +159,7 @@ function generatePrismaQuery(entityName, options) {
         ${whereConditions.join(',\n        ')}
       },`
         : '';
-    return `const ${lowerEntity}s = await database.${lowerEntity}.findMany({
+    return `const ${variableName} = await database.${delegateName}.findMany({
     ${whereClause}
     orderBy: {
       createdAt: "desc",
@@ -202,7 +225,7 @@ export class NextJsProjection {
                 return {
                     artifacts: [{
                             id: `nextjs.route:${request.entity}`,
-                            pathHint: `${opts.appDir}/${request.entity.toLowerCase()}/route.ts`,
+                            pathHint: `${opts.appDir}/${toEntitySegment(request.entity)}/list/route.ts`,
                             contentType: 'typescript',
                             code: result.code,
                         }],
@@ -230,7 +253,7 @@ export class NextJsProjection {
                 return {
                     artifacts: [{
                             id: `nextjs.command:${request.entity}.${request.command}`,
-                            pathHint: `${commandOpts.appDir}/${request.entity.toLowerCase()}/commands/${request.command}/route.ts`,
+                            pathHint: `${commandOpts.appDir}/${toEntitySegment(request.entity)}/${toKebabCase(request.command)}/route.ts`,
                             contentType: 'typescript',
                             code: commandResult.code,
                         }],
@@ -352,9 +375,9 @@ export class NextJsProjection {
         lines.push('// Generated from Manifest IR - DO NOT EDIT');
         lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints');
         lines.push('');
-        lines.push('import { NextRequest } from "next/server";');
+        lines.push('import type { NextRequest } from "next/server";');
+        lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse }', responseImportPath));
         lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
-        lines.push(generateImport('{ manifestSuccessResponse, manifestErrorResponse }', responseImportPath));
         if (options.includeTenantFilter) {
             if (options.tenantProvider) {
                 lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
@@ -379,7 +402,7 @@ export class NextJsProjection {
         const tenantCtx = options.includeTenantFilter
             ? `{ user: { id: userId, ${options.tenantIdProperty}: ${options.tenantIdProperty} } }`
             : `{ user: { id: userId, ${options.tenantIdProperty}: "__no_tenant__" } }`;
-        lines.push(`    const runtime = createManifestRuntime(${tenantCtx});`);
+        lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
         lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
         lines.push(`      entityName: "${entity.name}",`);
         lines.push('    });');
@@ -409,13 +432,14 @@ export class NextJsProjection {
      */
     _generateGetRoute(entity, options) {
         const { databaseImportPath, responseImportPath } = options;
-        const lowerEntity = entity.name.toLowerCase();
+        const delegateName = toLowerCamelCase(entity.name);
+        const variableName = `${delegateName}s`;
         const lines = [];
         // Add comment explaining the design decision
         lines.push(`// Auto-generated Next.js API route for ${entity.name}`);
         lines.push('// Generated from Manifest IR - DO NOT EDIT');
         lines.push('');
-        lines.push('import { NextRequest } from "next/server";');
+        lines.push('import type { NextRequest } from "next/server";');
         if (options.tenantProvider) {
             lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
             lines.push(generateImport(`{ database }`, databaseImportPath));
@@ -423,7 +447,7 @@ export class NextJsProjection {
         else {
             lines.push(generateImport(`{ database }`, databaseImportPath));
         }
-        lines.push(generateImport(`{ manifestSuccessResponse, manifestErrorResponse }`, responseImportPath));
+        lines.push(generateImport(`{ manifestErrorResponse, manifestSuccessResponse }`, responseImportPath));
         const authImport = generateAuthImport(options);
         if (authImport)
             lines.push(authImport);
@@ -435,9 +459,9 @@ export class NextJsProjection {
         lines.push('');
         lines.push(generatePrismaQuery(entity.name, options));
         lines.push('');
-        lines.push(`    return manifestSuccessResponse({ ${lowerEntity}s });`);
+        lines.push(`    return manifestSuccessResponse({ ${variableName} });`);
         lines.push('  } catch (error) {');
-        lines.push(`    console.error("Error fetching ${lowerEntity}s:", error);`);
+        lines.push(`    console.error("Error fetching ${variableName}:", error);`);
         lines.push('    return manifestErrorResponse("Internal server error", 500);');
         lines.push('  }');
         lines.push('}');

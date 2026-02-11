@@ -9,8 +9,8 @@
  */
 
 import type { ProjectionTarget } from './interface';
-import { registerProjection } from './registry';
-import { NextJsProjection } from './nextjs/generator';
+import { registerProjection } from './registry.js';
+import { NextJsProjection } from './nextjs/generator.js';
 
 /**
  * Register all built-in projections.

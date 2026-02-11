@@ -20,7 +20,8 @@ import {
   getProjectionNames,
 } from '../src/manifest/projections/registry.js';
 import type { NextJsProjectionOptions } from '../src/manifest/projections/interface.js';
-import { readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 
 function printUsage(): void {
   console.error('Usage: manifest-generate <target> <surface> <manifest-file> [entity] [command] [options]');
@@ -147,6 +148,35 @@ function parseArgs(args: string[]): {
   return result;
 }
 
+function toKebabCase(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+}
+
+function toEntitySegment(value: string): string {
+  return value.toLowerCase();
+}
+
+function getCanonicalCapsuleOutputPath(args: {
+  surface?: string;
+  entity?: string;
+  command?: string;
+}): string | null {
+  if (!args.surface || !args.entity) {
+    return null;
+  }
+
+  if (args.surface !== 'nextjs.route' && args.surface !== 'nextjs.command') {
+    return null;
+  }
+
+  const entitySegment = toEntitySegment(args.entity);
+  const commandSegment = toKebabCase(args.command ?? 'list');
+  return join('apps', 'api', 'app', 'api', entitySegment, commandSegment, 'route.ts');
+}
+
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
 
@@ -261,12 +291,16 @@ async function main(): Promise<number> {
   // CLI writes first artifact (dev tool - single surface, single output)
   const artifact = genResult.artifacts[0];
 
-  if (args.outputPath) {
+  const canonicalOutputPath = getCanonicalCapsuleOutputPath(args);
+  const outputPath = canonicalOutputPath ?? args.outputPath;
+
+  if (outputPath) {
     try {
-      writeFileSync(args.outputPath, artifact.code, 'utf-8');
-      console.log(`Generated ${args.target} ${args.surface} -> ${args.outputPath}`);
+      mkdirSync(dirname(outputPath), { recursive: true });
+      writeFileSync(outputPath, artifact.code, 'utf-8');
+      console.log(`Generated ${args.target} ${args.surface} -> ${outputPath}`);
     } catch (error) {
-      console.error(`Error: Failed to write output file: ${args.outputPath}`);
+      console.error(`Error: Failed to write output file: ${outputPath}`);
       if (error instanceof Error) {
         console.error(`  ${error.message}`);
       }

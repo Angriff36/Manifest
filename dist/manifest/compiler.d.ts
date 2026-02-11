@@ -1,4 +1,4 @@
-import { CompilationResult, ManifestProgram } from './types';
+import { CompilationResult, ManifestProgram } from './types.js';
 export declare class ManifestCompiler {
     private parser;
     private generator;
@@ -8,5 +8,5 @@ export declare class ManifestCompiler {
         errors: unknown[];
     };
 }
-export * from './types';
+export * from './types.js';
 //# sourceMappingURL=compiler.d.ts.map

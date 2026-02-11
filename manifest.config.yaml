@@ -1,0 +1,3 @@
+$schema: https://manifest.dev/config.schema.json
+src: '**/*.manifest'
+output: ir/
