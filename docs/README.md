@@ -24,6 +24,26 @@ Use this routing table before editing anything:
 - **Migration docs:** `docs/migration/**`
 - **Drafts, proposals, and design notes:** `specs/**`
 
+## Understanding Manifest
+
+New to Manifest? Start with these guides:
+
+- **What is Manifest?** `docs/ARCHITECTURE_AND_POSITIONING.md` - What Manifest IS and is NOT
+- **Quick Start:** `docs/QUICKSTART.md` - Get up and running in 5 minutes
+- **FAQ:** `docs/FAQ.md` - Common questions and answers
+
+## Integration Patterns
+
+Most applications use BOTH projections AND embedded runtime:
+
+- **Usage Patterns:** `docs/patterns/usage-patterns.md` - Decision guide for projections vs embedded runtime
+- **Embedded Runtime:** `docs/patterns/embedded-runtime-pattern.md` - Direct runtime integration
+- **Event Wiring:** `docs/patterns/event-wiring.md` - Connect events to infrastructure (WebSockets, queues, webhooks)
+- **Complex Workflows:** `docs/patterns/complex-workflows.md` - Multi-step business processes
+- **Hybrid Integration:** `docs/patterns/hybrid-integration.md` - Combining projections and embedded runtime
+- **Multi-Tenancy:** `docs/patterns/multi-tenancy.md` - Tenant isolation and scoping
+- **Custom Stores:** `docs/patterns/implementing-custom-stores.md` - ORM integration
+
 ## Folder Meanings In Plain Terms
 
 - `docs/spec/`: What the language means and requires.

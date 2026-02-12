@@ -224,15 +224,34 @@ npm run conformance:regen
 **Cause**: No IR caching; recompiling entire program each time.
 
 **Solution**:
-Enable IR caching (vNext feature):
+Cache compiled IR to avoid recompilation:
 
 ```typescript
-import { compile } from '@manifest/runtime';
+import { compileToIR } from '@manifest/runtime/ir-compiler';
+import fs from 'fs/promises';
 
-const result = await compile(source, {
-  cache: true,
-  cacheDir: '.manifest-cache'
-});
+// Check for cached IR
+const cachePath = '.manifest-cache/recipe.ir.json';
+let ir;
+
+try {
+  const cached = await fs.readFile(cachePath, 'utf-8');
+  ir = JSON.parse(cached);
+} catch {
+  // Compile fresh if no cache
+  const source = await fs.readFile('manifest/Recipe.manifest', 'utf-8');
+  const result = await compileToIR(source);
+
+  if (result.diagnostics.some(d => d.severity === 'error')) {
+    throw new Error('Compilation failed');
+  }
+
+  ir = result.ir;
+
+  // Write to cache
+  await fs.mkdir('.manifest-cache', { recursive: true });
+  await fs.writeFile(cachePath, JSON.stringify(ir, null, 2));
+}
 ```
 
 ### Slow command execution

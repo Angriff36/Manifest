@@ -1,0 +1,312 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "65e1f0c0cc0481abfcc0b157490f1a48b24338712e6f463235789c24f56952de",
+    "irHash": "67cfde936797d3f3ccef4dffd3e90b643509c7a4dda5447cea5a429f565c1154",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2026-02-12T14:05:15.925Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Counter",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "value",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "reset"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Timer",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "seconds",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "reset"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Logger",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "lastMessage",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "reset"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Counter",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Timer",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Logger",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "CounterReset",
+      "channel": "counter.reset",
+      "payload": [
+        {
+          "name": "counterId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TimerReset",
+      "channel": "timer.reset",
+      "payload": [
+        {
+          "name": "timerId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "LoggerReset",
+      "channel": "logger.reset",
+      "payload": [
+        {
+          "name": "loggerId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "reset",
+      "entity": "Counter",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "value",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "reset",
+      "entity": "Timer",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "seconds",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "reset",
+      "entity": "Logger",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "lastMessage",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": ""
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [
+    {
+      "name": "CanResetCounter",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      }
+    },
+    {
+      "name": "CanResetTimer",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      }
+    },
+    {
+      "name": "CanResetLogger",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      }
+    }
+  ]
+}

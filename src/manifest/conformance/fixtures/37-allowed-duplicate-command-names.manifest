@@ -1,0 +1,66 @@
+// Fixture 37: Allowed Duplicate Command Names
+//
+// This fixture demonstrates that command names are scoped by entity,
+// not globally unique. Two different entities can have commands with
+// the same name without causing a duplicate error.
+//
+// Identity rules:
+// - Entities: globally unique by name
+// - Commands: unique by (entity, name) tuple
+// - Events: unique by channel
+// - Policies: globally unique by name
+
+entity Counter {
+  property required id: string
+  property value: number = 0
+
+  command reset() {
+    mutate value = 0
+  }
+
+  store Counter in memory
+}
+
+entity Timer {
+  property required id: string
+  property seconds: number = 0
+
+  command reset() {
+    mutate seconds = 0
+  }
+
+  store Timer in memory
+}
+
+entity Logger {
+  property required id: string
+  property lastMessage: string = ""
+
+  command reset() {
+    mutate lastMessage = ""
+  }
+
+  store Logger in memory
+}
+
+// All three entities have a "reset" command - this is allowed
+// because commands are scoped by entity: (Counter, reset),
+// (Timer, reset), (Logger, reset) are all unique identities.
+
+// Events use channel as unique identifier, not name
+event CounterReset: "counter.reset" {
+  counterId: string
+}
+
+event TimerReset: "timer.reset" {
+  timerId: string
+}
+
+event LoggerReset: "logger.reset" {
+  loggerId: string
+}
+
+// Policies are globally unique by name - cannot have duplicates
+policy CanResetCounter execute: user.role == "admin"
+policy CanResetTimer execute: user.role == "admin"
+policy CanResetLogger execute: user.role == "admin"

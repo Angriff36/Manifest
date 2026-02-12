@@ -59,7 +59,7 @@ entity Todo {
 ## Compile to IR
 
 ```typescript
-import { compile } from '@manifest/runtime';
+import { compileToIR } from '@manifest/runtime/ir-compiler';
 
 const source = `
   entity Todo {
@@ -68,15 +68,15 @@ const source = `
   }
 `;
 
-const result = compile(source);
+const { ir, diagnostics } = await compileToIR(source);
 
-if (result.diagnostics.length > 0) {
+if (diagnostics.some(d => d.severity === 'error')) {
   console.error('Compilation errors:');
-  result.diagnostics.forEach(d => console.error(`  ${d.message}`));
+  diagnostics.forEach(d => console.error(`  ${d.message}`));
   process.exit(1);
 }
 
-console.log('IR:', result.ir);
+console.log('IR:', ir);
 ```
 
 ---
@@ -86,7 +86,7 @@ console.log('IR:', result.ir);
 ```typescript
 import { RuntimeEngine } from '@manifest/runtime';
 
-const runtime = new RuntimeEngine(result.ir, {
+const runtime = new RuntimeEngine(ir, {
   userId: 'user-123',
   tenantId: 'tenant-456',
 });

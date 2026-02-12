@@ -10,39 +10,36 @@ Complete API reference for the Manifest runtime and compiler.
 
 ## Core Exports
 
-### `compile(source: string, options?: CompileOptions): CompileResult`
+### `compileToIR(source: string): Promise<CompileResult>`
 
 Compiles Manifest source code to IR.
 
 ```typescript
-import { compile } from '@manifest/runtime';
+import { compileToIR } from '@manifest/runtime/ir-compiler';
 
-const result = compile(`
+const { ir, diagnostics } = await compileToIR(`
   entity Todo {
     property id: string
     property title: string
   }
 `);
 
-if (result.diagnostics.length > 0) {
-  console.error('Errors:', result.diagnostics);
+if (diagnostics.some(d => d.severity === 'error')) {
+  console.error('Errors:', diagnostics);
   process.exit(1);
 }
 
-console.log('IR:', result.ir);
+console.log('IR:', ir);
 ```
 
 **Parameters:**
 - `source`: Manifest source code
-- `options.cache`: Enable IR caching (boolean, default: false)
-- `options.cacheDir`: Directory for cached IR (string, default: '.manifest-cache')
 
 **Returns:**
 ```typescript
 interface CompileResult {
   ir?: IR;                              // Compiled IR if successful
   diagnostics: Diagnostic[];            // Compilation errors/warnings
-  sourceMap?: SourceMap;                // Source map for debugging
 }
 ```
 
@@ -62,7 +59,7 @@ constructor(
 ```
 
 **Parameters:**
-- `ir`: Compiled IR from `compile()`
+- `ir`: Compiled IR from `compileToIR()`
 - `context.userId`: User identifier for authorization
 - `context.tenantId`: Tenant identifier for multi-tenancy
 - `context.storeProvider`: Custom store factory (optional)

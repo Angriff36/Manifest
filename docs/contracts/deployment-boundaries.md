@@ -121,13 +121,47 @@ event ProdActionRan: "app.prod_action_ran" {
 Use `setEnvironment("PROD")` for persisted data, and/or pass `context.env = "PROD"` at runtime.
 
 ### 9) Custom business validation beyond schema (e.g., unique names across manifests)
-Implement a deterministic repository validation pass:
-1. Compile all manifests to IR.
-2. Aggregate names (entities, commands, policies, etc.).
-3. Emit deterministic diagnostics for duplicates.
-4. Fail CI on violations.
+Duplicate name validation is enforced at compile time by the merge scripts:
 
-Diagnostics must explain; they must not auto-repair semantics.
+**Implementation locations:**
+- `scripts/manifest/compile.mjs` - Detects duplicates BEFORE writing combined IR, exits non-zero
+- `scripts/manifest/check.mjs` - Validates existing combined IR for duplicates
+
+**Identity rules (what makes a name unique):**
+| Element | Identity Key | Scope | Example |
+|---------|--------------|-------|---------|
+| Entities | `name` | Global | `"Recipe"` must be unique across all manifests |
+| Commands | `(entity, name)` tuple | Scoped to entity | `Recipe.update` and `User.update` are distinct commands |
+| Events | `channel` | Global | `"recipe.updated"` must be unique across all manifests |
+| Policies | `name` | Global | `"CanEditRecipe"` must be unique across all manifests |
+
+These rules are enforced by both `compile.mjs` and `check.mjs`. Common command names like `update`, `delete`, or `reset` are allowed across different entities because commands are scoped by entity.
+
+**Validation behavior:**
+1. All manifests are compiled to individual IRs
+2. A deterministic validation pass builds maps keyed by the appropriate identity for each element type
+3. If any key appears more than once, the script:
+   - Prints a diagnostic listing the duplicate with fully-qualified key (e.g., `Recipe.update`) and which manifest file each instance came from
+   - Exits with non-zero status
+   - Does NOT write `combined.ir.json` (compile.mjs) or fails the check (check.mjs)
+
+**Example diagnostic output:**
+```
+[manifest/compile] Duplicate name validation failed:
+  Duplicate entity "Recipe" found in:
+    - Recipe.manifest
+    - recipe-rules.manifest
+  Duplicate command "Recipe.update" found in:
+    - Recipe.manifest
+    - recipe-rules.manifest
+  Duplicate event channel "recipe.updated" found in:
+    - Recipe.manifest
+    - recipe-rules.manifest
+[manifest/compile] Cannot write combined.ir.json with duplicate names.
+[manifest/compile] Please resolve duplicates by renaming or consolidating conflicting definitions.
+```
+
+**No auto-resolution:** The scripts do NOT auto-rename or auto-resolve collisions. Duplicates must be resolved manually by renaming or consolidating conflicting definitions in the source manifest files.
 
 ### 10) Managing references across multiple manifest files
 Manage references at compile-time by producing a single program graph (or equivalent merged IR) from multiple sources, then enforce referential integrity before runtime.
