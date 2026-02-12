@@ -98,6 +98,7 @@ If behavior changes, the **spec changes first**, then **tests**, then
   tests.
 - **No silent drift in export templates.** Exported runnable projects must track
   real compiler/runtime meaning.
+- In route handlers, strip client identity fields (`id`, `userId`, `tenantId`, `orgId`, `user`) and inject auth/path-authoritative values.
 
 ## Agent Workflow (required)
 

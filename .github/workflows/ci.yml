@@ -29,6 +29,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Documentation integrity checks
+        run: npm run docs:check
+
       - name: Run test suite (427 tests)
         run: npm test
 

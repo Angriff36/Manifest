@@ -25,3 +25,8 @@ dist-ssr
 *.png
 !public/*.png
 console-messages.json
+
+# Local agent/work planning and scratch directories
+.codex-main-push/
+codex-plans/
+claude-code-plans/

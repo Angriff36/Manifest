@@ -1,5 +1,13 @@
 # Conformance
 
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
 Conformance tests are the executable source of truth for Manifest semantics.
 
 ## Source of Truth
@@ -77,3 +85,6 @@ were updated to match the specification.
 
 This demonstrates that the conformance suite detects partial or inconsistent
 language changes and prevents unintentional semantic drift.
+
+
+

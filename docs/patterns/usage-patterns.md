@@ -18,6 +18,13 @@ Use projections when you want generated platform code (for example Next.js route
 - Mutating operations must execute through runtime command execution (`RuntimeEngine.runCommand`) so policies, constraints, guards, actions, and emits run in spec order.
 - Read operations are application-defined and may use direct storage queries.
 
+#### Do not trust `request.json()` for identity
+
+When using generated route workflows or embedded handlers around them, treat client payload identity fields as untrusted input.
+
+- DO NOT trust `id`, `userId`, `tenantId`, `orgId`, or `user` from `request.json()`.
+- Derive identity from auth context and URL/path params, then inject authoritative values before command execution.
+
 See:
 
 - `C:/Projects/Manifest/docs/patterns/external-projections.md`
@@ -33,7 +40,7 @@ Use embedded runtime when you need full control over command orchestration, side
 
 See:
 
-- `C:/Projects/Manifest/docs/guides/embedded-runtime-pattern.md`
+- `C:/Projects/Manifest/docs/patterns/embedded-runtime-pattern.md`
 
 ## Decision Guide
 

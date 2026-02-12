@@ -58,6 +58,15 @@ try {
 
 If guards or policies reference `user` or `context`, provide those fields in runtime context. Missing required context is a valid execution failure.
 
+## Request Identity Hardening (Route Payload Hygiene)
+
+When commands are executed from HTTP handlers, identity must come from trusted server-side sources (auth and path params), not request body fields.
+
+- Strip client-supplied identity fields before executing commands: `id`, `userId`, `tenantId`, `orgId`, `user`.
+- Rebuild the payload from non-identity fields plus injected authoritative identity values (for example path `id` and authenticated `userId`).
+- Preserve non-identity business fields (for example `stationId`) unchanged.
+- This prevents parameter tampering and identity spoofing where a client attempts to act on behalf of another user or resource.
+
 ## Determinism for Tests
 
 Use deterministic options in tests:

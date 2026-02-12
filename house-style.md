@@ -1,3 +1,9 @@
+# Manifest House Style
+
+Authority: Binding
+Enforced by: docs/spec/* + src/manifest/conformance/*
+Last updated: 2026-02-11
+
 Manifest Language – House Style (Normative)
 
 This system defines a formal language and reference runtime. It is not an end-user application.
