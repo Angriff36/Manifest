@@ -1,0 +1,61 @@
+1. How would you define a basic application service, including its name and
+   image, within a manifest file?
+
+8/100 Evaluation
+`The context is largely ineffective at enabling a correct implementation as it does not address the concept of an 'application service' or how to define its 'image' within a manifest file. The strongest aspect is the clear presentation of how to define and manage 'entities' and interact with the 'RuntimeEngine', which are well-documented with code examples. However, the critical missing elements are any mention or example of an 'application service' construct or an 'image' property. The sub-scoring reflects a complete lack of relevance and implementation guidance for the specific question, with minimal points for API accuracy of unrelated concepts and general clarity.`
+
+2. Provide a manifest snippet that declares a dependency on an external database
+   service for an application component.
+
+40/100
+`The context provides strong guidance for implementing and wiring custom storage adapters in TypeScript, but it largely misses the specific request for a declarative 'manifest snippet' for an external database dependency. The strongest aspect is the detailed TypeScript code for creating a custom Postgres store and integrating it with the RuntimeEngine's storeProvider. However, the context lacks a direct manifest snippet that declares an *external database service* dependency; the provided JSON manifest snippet explicitly targets an 'in-memory' store. The sub-scores reflect low relevance and completeness for the specific question, balanced by good API accuracy and moderate clarity for the provided code examples.`
+
+3. How would you structure a manifest to provide different port configurations
+   for development and production environments?
+
+28/100
+`This context is highly ineffective at enabling a correct implementation for environment-specific port configurations. The strongest aspect is the clear and accurate demonstration of how to implement and integrate custom storage adapters using the "storeProvider" option. It completely lacks any information or examples related to network port configuration, environment variables, or general environment-specific settings within the Manifest framework. The sub-scoring reflects very low relevance and completeness for the question, minimal implementation guidance, but high API accuracy and fair clarity for its own content.`
+
+4. Write a manifest snippet to specify CPU and memory resource limits for a
+   deployed application component.
+
+34/100
+`The provided context is fundamentally misaligned with the question, as it documents a TypeScript RuntimeEngine API for executing Manifest commands rather than providing manifest syntax for declaring resource limits in deployment configurations. The strongest aspect is that the API documentation is well-structured with clear method signatures, parameter descriptions, and working code examples that demonstrate proper RuntimeEngine usage patterns. However, the context completely lacks any information about manifest syntax for specifying CPU and memory resource constraints, deployment configuration formats, or resource limit declarations—the core requirement of the question. To implement the requested solution, an AI assistant would need entirely different documentation covering manifest schema definitions, resource specification syntax, and deployment configuration examples, making this context essentially unusable for the stated task.`
+
+5. How would you define a build step in a manifest to execute a specific script
+   during the build process?
+
+42/100
+`The context provides comprehensive RuntimeEngine API documentation and working examples, but fails to directly address the specific question about defining build steps in a manifest to execute scripts during the build process. The strongest aspect is the detailed RuntimeEngine API documentation with clear method signatures and practical command execution examples that demonstrate runtime behavior well. However, the context contains no information about build steps, build configuration, manifest build definitions, or script execution during compilation—the core requirements of the question. The documentation focuses entirely on runtime command execution and entity management rather than build-time script execution, making it fundamentally misaligned with the question despite being well-organized and technically accurate for its own domain.`
+
+6. Describe how you would use version control to track changes and revert a
+   manifest file to a previous state.
+
+28/100
+`The provided context is fundamentally misaligned with the question about version control and reverting manifest files, offering no guidance on Git workflows, branching strategies, or file restoration techniques. The strongest aspect is the inclusion of concrete, runnable code examples for IR compilation and validation tools that demonstrate proper API usage patterns. However, the context focuses entirely on Manifest IR compilation, validation, and diffing tools rather than addressing version control workflows, commit history management, or reverting to previous states. The context would require substantial supplementation with Git-specific documentation to answer the actual question, making it unsuitable for guiding implementation of version control-based manifest file management.`
+
+7. How would you ensure a newly created manifest file adheres to its predefined
+   structural schema before deployment?
+
+72/100
+`The context effectively guides an AI assistant toward schema validation by providing a concrete bash command demonstrating the IR Schema Validator tool, though it assumes Node.js familiarity and doesn't explain integration into deployment workflows. The strongest aspect is the complete, executable bash command showing exact tool invocation with schema and IR file paths, which directly addresses validation before deployment. However, the context lacks critical implementation details including error handling patterns, programmatic API usage (if available), integration with CI/CD pipelines, validation failure recovery procedures, and language-specific examples beyond bash. The subscores reflect strong API accuracy (18/25) for the validator tool itself, good relevance (16/20) to schema validation, but weaker implementation guidance (28/40) due to missing integration patterns, limited completeness (6/10) without deployment context, and minimal clarity (4/5) regarding when and why to use this validation step.`
+
+8. Provide a manifest snippet demonstrating how to update an existing
+   application's environment variable from 'DEV' to 'PROD'.
+
+29/100
+`The provided context is largely ineffective for implementing the requested solution, as it describes a runtime engine for managing entity instances, not application environment variables. The strongest aspect is the clear and accurate demonstration of the`Manifest`runtime's API for creating and updating internal entity data. However, it entirely lacks any information or API related to application environment variables, which is the core of the question. The context scores poorly on relevance and completeness for the specific task, despite having good API accuracy and clarity for its own domain.`
+
+9. Beyond basic schema validation, how would you implement custom logic to
+   validate business-specific rules within a manifest file, such as ensuring
+   unique service names across all manifests?
+
+29/100
+`The context is largely ineffective for implementing custom business logic validation, particularly for cross-manifest rules like ensuring unique service names. The strongest aspect is the clear example of the manifest's JSON schema structure, which shows where "constraints" are conceptually defined within the manifest data itself. However, it critically lacks any code snippets or API guidance for programmatically defining, implementing, or running custom validation logic, especially for rules requiring aggregation across multiple manifests. The subscores reflect very low marks for implementation guidance, relevance, and completeness, with slightly higher scores for API accuracy (of what's provided) and clarity of individual sections.`
+
+10. In a complex system with multiple manifest files, how would you establish
+    and manage references between components defined in separate manifests,
+    ensuring consistency when one is updated?
+
+42/100
+`The context provides foundational API documentation for Manifest compilation and runtime execution but fails to address the core question about managing cross-manifest references and consistency. The strongest aspect is the comprehensive RuntimeEngine API documentation with clear method signatures and working examples for single-manifest operations. However, the documentation lacks any guidance on inter-manifest dependencies, reference resolution, versioning strategies, or consistency mechanisms when multiple manifests are updated—which are essential for answering the question. The context focuses on single-manifest workflows (compilation, entity management, command execution) rather than the multi-manifest coordination patterns needed for the stated problem, leaving an AI assistant without actionable patterns for establishing and maintaining cross-manifest references.`
