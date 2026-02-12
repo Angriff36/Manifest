@@ -1,18 +1,66 @@
 {
-  "name": "vite-react-typescript-starter",
-  "private": true,
+  "name": "@manifest/runtime",
   "version": "0.3.8",
   "type": "module",
+  "main": "./dist/manifest/runtime-engine.js",
+  "types": "./dist/manifest/runtime-engine.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/manifest/runtime-engine.d.ts",
+      "import": "./dist/manifest/runtime-engine.js"
+    },
+    "./compiler": {
+      "types": "./dist/manifest/compiler.d.ts",
+      "import": "./dist/manifest/compiler.js"
+    },
+    "./ir-compiler": {
+      "types": "./dist/manifest/ir-compiler.d.ts",
+      "import": "./dist/manifest/ir-compiler.js"
+    },
+    "./projections/nextjs": {
+      "types": "./dist/manifest/projections/nextjs/generator.d.ts",
+      "import": "./dist/manifest/projections/nextjs/generator.js"
+    },
+    "./ir": {
+      "types": "./dist/manifest/ir.d.ts",
+      "import": "./dist/manifest/ir.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "manifest": "./packages/cli/dist/index.js"
+  },
+  "files": [
+    "dist/**",
+    "packages/cli/dist/**",
+    "README*",
+    "LICENSE*",
+    "package.json"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "tsc -p tsconfig.lib.json",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",
-    "conformance:regen": "tsx scripts/regen-conformance.ts"
+    "docs:check:metadata": "node scripts/check-doc-metadata.mjs",
+    "docs:check:links": "node scripts/check-doc-links.mjs",
+    "docs:check": "npm run docs:check:metadata && npm run docs:check:links",
+    "verify:docs": "npm run docs:check && npm test",
+    "verify:docs:quick": "npm run docs:check",
+    "conformance:regen": "tsx scripts/regen-conformance.ts",
+    "init": "node scripts/init.mjs",
+    "manifest": "tsx ./packages/cli/src/index.ts",
+    "manifest:init": "tsx ./packages/cli/src/index.ts init",
+    "manifest:compile": "tsx ./packages/cli/src/index.ts compile",
+    "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
+    "manifest:build": "tsx ./packages/cli/src/index.ts build",
+    "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
+    "prepublishOnly": "pnpm run build:lib && cd packages/cli && tsc"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

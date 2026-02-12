@@ -1,4 +1,4 @@
-import { Lexer } from './lexer';
+import { Lexer } from './lexer.js';
 import {
   Token, ManifestProgram, EntityNode, PropertyNode, TypeNode, BehaviorNode,
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,

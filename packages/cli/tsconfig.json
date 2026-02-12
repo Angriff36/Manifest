@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@manifest/runtime/*": ["../../dist/manifest/*"],
+      "@manifest/runtime": ["../../dist/manifest/runtime-engine.d.ts"],
+      "@manifest/runtime/compiler": ["../../dist/manifest/compiler.d.ts"],
+      "@manifest/runtime/ir-compiler": ["../../dist/manifest/ir-compiler.d.ts"],
+      "@manifest/runtime/projections/nextjs": ["../../dist/manifest/projections/nextjs/generator.d.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

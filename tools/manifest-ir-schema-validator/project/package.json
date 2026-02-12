@@ -1,0 +1,26 @@
+{
+  "name": "ir-validate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CLI tool to validate Manifest IR JSON against ir-v1.schema.json",
+  "type": "module",
+  "bin": {
+    "ir-validate": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

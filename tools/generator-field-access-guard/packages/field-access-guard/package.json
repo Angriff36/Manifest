@@ -1,0 +1,21 @@
+{
+  "name": "field-access-guard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "field-guard": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.11.0"
+  }
+}

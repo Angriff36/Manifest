@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "User": {
+      "fields": ["id", "name", "email"],
+      "primaryKey": "id"
+    },
+    "Order": {
+      "fields": ["id", "userId", "total"],
+      "primaryKey": "id"
+    }
+  },
+  "policies": {
+    "readUser": {
+      "effect": "allow",
+      "resource": "User",
+      "action": "read"
+    }
+  },
+  "guards": {
+    "isAuthenticated": {
+      "expression": "ctx.user != null"
+    },
+    "isAdmin": {
+      "expression": "ctx.user.role == 'admin'"
+    }
+  },
+  "actions": {
+    "createOrder": {
+      "input": ["userId", "items"],
+      "output": "Order"
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "generatedAt": "2025-01-01T00:00:00Z"
+  }
+}

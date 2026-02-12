@@ -1,0 +1,41 @@
+{
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        { "name": "id", "type": "string" },
+        { "name": "status", "type": "string", "default": "draft" },
+        { "name": "items", "type": "array", "default": [] }
+      ],
+      "commands": [
+        {
+          "name": "submit",
+          "params": [],
+          "guards": [
+            { "expression": "self.status == \"draft\"" },
+            { "expression": "self.items.length > 0" }
+          ],
+          "mutations": [
+            { "property": "status", "value": "submitted" }
+          ],
+          "events": [
+            { "name": "orderSubmitted" }
+          ]
+        },
+        {
+          "name": "complete",
+          "params": [],
+          "guards": [
+            { "expression": "self.status == \"submitted\"" }
+          ],
+          "mutations": [
+            { "property": "status", "value": "completed" }
+          ],
+          "events": [
+            { "name": "orderCompleted" }
+          ]
+        }
+      ]
+    }
+  ]
+}

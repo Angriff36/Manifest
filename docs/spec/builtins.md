@@ -1,4 +1,12 @@
-﻿# Built-ins
+# Built-ins
+
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
 
 This document defines built-in identifiers and functions available during expression evaluation.
 
@@ -26,3 +34,6 @@ A conforming runtime MUST provide:
 ### Nonconformance
 - ~~The IR runtime does not provide `now()` or `uuid()` built-ins.~~
 - **RESOLVED (2026-02-05)**: Both functions are implemented in runtime-engine.ts:279-284. `now()` uses `Date.now()` (or custom override), `uuid()` uses `crypto.randomUUID()` (or custom override).
+
+
+

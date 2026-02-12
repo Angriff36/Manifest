@@ -1,0 +1,21 @@
+{
+  "version": "2.0",
+  "entities": [
+    {
+      "name": "",
+      "properties": [],
+      "unknownField": true
+    },
+    {
+      "name": "Task",
+      "properties": [
+        { "name": "title", "type": "unsupported_type" },
+        { "name": "", "type": "string" }
+      ],
+      "belongsTo": [
+        { "entity": "" }
+      ]
+    }
+  ],
+  "extraTopLevel": "not-allowed"
+}

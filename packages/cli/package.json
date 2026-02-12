@@ -1,0 +1,33 @@
+{
+  "name": "@manifest/cli",
+  "version": "0.3.8",
+  "description": "CLI for the Manifest language",
+  "type": "module",
+  "bin": {
+    "manifest": "./bin/manifest.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.2",
+    "glob": "^10.3.12",
+    "inquirer": "^9.2.0",
+    "js-yaml": "^4.1.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.6",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "latest",
+    "typescript": "^5.5.3",
+    "vitest": "latest"
+  }
+}

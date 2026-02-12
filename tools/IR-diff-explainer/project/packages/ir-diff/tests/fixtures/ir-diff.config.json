@@ -1,0 +1,10 @@
+{
+  "labels": [
+    { "pathPrefix": "entities", "label": "Entities" },
+    { "pathPrefix": "policies", "label": "Policies" },
+    { "pathPrefix": "guards", "label": "Guards" },
+    { "pathPrefix": "actions", "label": "Actions" },
+    { "pathPrefix": "metadata", "label": "Metadata" }
+  ],
+  "highRisk": ["guards", "policies", "actions"]
+}

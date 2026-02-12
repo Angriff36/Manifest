@@ -1,0 +1,8 @@
+{
+  "name": "node-starter",
+  "private": true,
+  "scripts": {
+    "build": "cd packages/stress-sim && npm run build",
+    "test": "cd packages/stress-sim && npm test"
+  }
+}

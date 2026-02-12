@@ -1,0 +1,6 @@
+entity Recipe {
+  property required id: string
+  property required name: string
+  property category: string?
+  property rating: number = 5
+}

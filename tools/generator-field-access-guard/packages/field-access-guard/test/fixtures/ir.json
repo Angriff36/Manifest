@@ -1,0 +1,26 @@
+{
+  "entities": [
+    {
+      "name": "User",
+      "properties": [
+        { "type": "string", "name": "email" },
+        { "type": "number", "name": "age" }
+      ]
+    },
+    {
+      "name": "Post",
+      "properties": [
+        { "type": "string", "name": "title" },
+        { "type": "text", "name": "body" }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "test"
+  },
+  "policies": {
+    "read": { "allow": true },
+    "write": { "allow": false }
+  }
+}

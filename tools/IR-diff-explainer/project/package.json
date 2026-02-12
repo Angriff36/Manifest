@@ -1,0 +1,8 @@
+{
+  "name": "node-starter",
+  "private": true,
+  "scripts": {
+    "build": "cd packages/ir-diff && npm run build",
+    "test": "cd packages/ir-diff && npm run test"
+  }
+}

@@ -1,5 +1,5 @@
 import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode } from './types';
-import { COMPILER_VERSION, SCHEMA_VERSION } from './version';
+import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /** Provenance metadata for generated code */
 interface GeneratedProvenance {

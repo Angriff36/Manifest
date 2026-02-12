@@ -1,0 +1,117 @@
+{
+  "testCases": [
+    {
+      "name": "OK severity - informational only, never blocks even when false",
+      "setup": {},
+      "createInstance": {
+        "entity": "Task",
+        "data": {
+          "id": "task-1",
+          "name": "Test Task",
+          "status": "pending",
+          "priority": -1
+        }
+      },
+      "expectedInstance": {
+        "id": "task-1",
+        "name": "Test Task",
+        "status": "pending",
+        "priority": -1,
+        "dueDate": 0
+      }
+    },
+    {
+      "name": "WARN severity - produces outcome but does not block execution",
+      "setup": {},
+      "createInstance": {
+        "entity": "Task",
+        "data": {
+          "id": "task-2",
+          "name": "High Priority Task",
+          "status": "pending",
+          "priority": 10
+        }
+      },
+      "expectedInstance": {
+        "id": "task-2",
+        "name": "High Priority Task",
+        "status": "pending",
+        "priority": 10,
+        "dueDate": 0
+      }
+    },
+    {
+      "name": "BLOCK severity - constraint fires for invalid status",
+      "entity": "Task",
+      "data": {
+        "id": "task-3",
+        "name": "Invalid Status Task",
+        "status": "invalid-status",
+        "priority": 1
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "blockStatus",
+          "expression": "status in [\"pending\", \"in_progress\", \"completed\", \"cancelled\"]"
+        }
+      ]
+    },
+    {
+      "name": "All constraints passing - instance created successfully",
+      "setup": {},
+      "createInstance": {
+        "entity": "Task",
+        "data": {
+          "id": "task-4",
+          "name": "Valid Task",
+          "status": "pending",
+          "priority": 3
+        }
+      },
+      "expectedInstance": {
+        "id": "task-4",
+        "name": "Valid Task",
+        "status": "pending",
+        "priority": 3,
+        "dueDate": 0
+      }
+    },
+    {
+      "name": "WARN negative-type constraint - does not block when triggered",
+      "setup": {},
+      "createInstance": {
+        "entity": "Task",
+        "data": {
+          "id": "task-5",
+          "name": "Overdue Task",
+          "status": "pending",
+          "priority": 1,
+          "dueDate": 500000000000
+        }
+      },
+      "expectedInstance": {
+        "id": "task-5",
+        "name": "Overdue Task",
+        "status": "pending",
+        "priority": 1,
+        "dueDate": 500000000000
+      }
+    },
+    {
+      "name": "BLOCK negative-type constraint fires for cancelled status",
+      "entity": "Task",
+      "data": {
+        "id": "task-6",
+        "name": "Cancelled Task",
+        "status": "cancelled",
+        "priority": 1
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityBlockCancelled",
+          "expression": "status == \"cancelled\""
+        }
+      ]
+    }
+  ]
+}

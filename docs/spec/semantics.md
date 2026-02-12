@@ -1,5 +1,13 @@
 # Manifest IR v1 Semantics
 
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
 This document defines the runtime meaning of IR v1. The IR schema is authoritative; this document defines how conforming runtimes MUST interpret it.
 
 ## Runtime Model
@@ -173,6 +181,20 @@ Generated client command methods SHALL:
 4. Emit declared events
 5. Return the last action result
 
+### Generated Projections
+- Projections are generated views/outputs derived from IR, not semantic authority.
+- Runtime meaning remains anchored in IR semantics.
+- Projections MUST NOT diverge from IR semantics.
+
+Brief source alignment:
+- `README.md`: "Projections are tooling, not runtime semantics."
+- `docs/patterns/usage-patterns.md`: "Projections are tooling, not language semantics."
+
+See also:
+- `../patterns/usage-patterns.md`
+- `../patterns/embedded-runtime-pattern.md`
+- `adapters.md`
+
 ## Actions
 - `mutate`: Evaluate expression and, if a current instance is bound, assign the result to the target field and return the value. If no instance is bound, the action has no storage effect and returns the value.
 - `emit`: Evaluate expression; return the value. Runtimes MAY emit a generic action event.
@@ -203,3 +225,6 @@ Generated client command methods SHALL:
 
 ## Nonconformance
 There are no known nonconformances. All implementations conform to this specification.
+
+
+

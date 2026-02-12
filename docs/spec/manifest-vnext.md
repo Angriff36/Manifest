@@ -1,5 +1,13 @@
 # Spec 2: Manifest Runtime and Language Enhancements for Ops-Scale Rules, Overrides, and Performance
 
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
+Authority: Binding
+Enforced by: src/manifest/conformance/**
+Last updated: 2026-02-11
+
 ## Title
 Manifest vNext: Constraint Outcomes, Overrides, Workflows, and Runtime Performance
 
@@ -121,3 +129,6 @@ This is convention-first, enforced via conformance tests before introducing heav
 - Standardizes failures: no custom error shapes per route
 - Enables safe exceptions: overrides are uniform and auditable
 - Makes refactors survivable: behavior lives in specs + fixtures, not scattered code
+
+
+

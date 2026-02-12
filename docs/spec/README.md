@@ -1,24 +1,40 @@
-﻿# Manifest Language Specification
+Authority: Binding Enforced by: src/manifest/conformance/** Last updated:
+2026-02-11
 
-If behavior changes, the specification MUST be updated before tests and implementation.
+Quick routing:
+
+- Human overview: `docs/README.md`
+- Contracts signpost: `docs/contracts/README.md`
+- Governance rules: `docs/DOCUMENTATION_GOVERNANCE.md`
+
+# Manifest Language Specification
+
+If behavior changes, the specification MUST be updated before tests and
+implementation.
 
 ## Purpose
 
 This directory defines the authoritative language specification for Manifest.
-The specification freezes meaning, not tooling.
-The IR schema is the anchor of the language.
+The specification freezes meaning, not tooling. The IR schema is the anchor of
+the language.
 
 ## IR-First Architecture
 
-Manifest is an **IR-first language**. The Intermediate Representation (IR) is the single source of truth for program semantics.
+Manifest is an **IR-first language**. The Intermediate Representation (IR) is
+the single source of truth for program semantics.
 
 ### Key Principles
 
-1. **IR is Authority**: The IR (defined by `ir-v1.schema.json`) is the executable contract. All runtime behavior derives from the IR.
+1. **IR is Authority**: The IR (defined by `ir-v1.schema.json`) is the
+   executable contract. All runtime behavior derives from the IR.
 
-2. **Generated Code is Derivative**: Any TypeScript, React components, or other code generated from the IR is a *view* or *projection*—not the source of truth. Generated code MUST NOT diverge from IR semantics.
+2. **Generated Code is Derivative**: Any TypeScript, React components, or other
+   code generated from the IR is a _view_ or _projection_—not the source of
+   truth. Generated code MUST NOT diverge from IR semantics.
 
-3. **Provenance is Mandatory**: IR includes provenance metadata (`contentHash`, `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt`) for traceability. Runtimes MAY verify IR integrity via the `irHash` before execution.
+3. **Provenance is Mandatory**: IR includes provenance metadata (`contentHash`,
+   `irHash`, `compilerVersion`, `schemaVersion`, `compiledAt`) for traceability.
+   Runtimes MAY verify IR integrity via the `irHash` before execution.
 
 4. **No Silent Drift**: Changes to IR schema or semantics MUST be reflected in:
    - The IR schema version
@@ -29,21 +45,28 @@ Manifest is an **IR-first language**. The Intermediate Representation (IR) is th
 ### What This Means
 
 - **Compilers** produce IR, not executable code. The IR is the deliverable.
-- **Runtimes** execute IR directly. Generated TypeScript is for debugging or IDE integration only.
-- **Generated Code** (e.g., TypeScript definitions, React components) is a convenience layer that MUST stay in sync with IR.
-- **Verification**: Production deployments SHOULD enable `requireValidProvenance` to ensure IR integrity.
+- **Runtimes** execute IR directly. Generated TypeScript is for debugging or IDE
+  integration only.
+- **Generated Code** (e.g., TypeScript definitions, React components) is a
+  convenience layer that MUST stay in sync with IR.
+- **Verification**: Production deployments SHOULD enable
+  `requireValidProvenance` to ensure IR integrity.
 
 ### The Choke Point
 
 The IR is the "choke point" that prevents semantic drift:
+
 - Source manifest → Compiler → **IR** (choke point) → Runtime
 - Generated code → IR (verified) → Execution
 
-If you cannot prove your code came from a specific IR + toolchain version, it is not Manifest.
+If you cannot prove your code came from a specific IR + toolchain version, it is
+not Manifest.
 
 ## Normative Language
 
-The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** in this specification are to be interpreted as described in RFC 2119.
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
+**SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** in this
+specification are to be interpreted as described in RFC 2119.
 
 ## Document Map
 
@@ -52,11 +75,18 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 - `docs/spec/builtins.md` — Built-in identifiers and functions
 - `docs/spec/adapters.md` — Adapter hooks and required behavior
 - `docs/spec/conformance.md` — Conformance fixtures and test rules
-- `docs/spec/manifest-vnext.md` — vNext features: constraint outcomes, overrides, workflows, concurrency
+- `docs/spec/manifest-vnext.md` — vNext features: constraint outcomes,
+  overrides, workflows, concurrency
 
 ### Migration Documentation
 
-- `docs/migration/vnext-migration-guide.md` — Guide for migrating to vNext features
+- `docs/migration/vnext-migration-guide.md` — Guide for migrating to vNext
+  features
+
+### Documentation Governance
+
+- `docs/DOCUMENTATION_GOVERNANCE.md` — Doc authority tiers, edit rules, and
+  mandatory-vs-temporary test policy
 
 ## Versioning Rules
 
@@ -68,9 +98,12 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 ## Nonconformance Policy
 
-When implementation behavior differs from this specification, the difference MUST be explicitly documented as **Nonconformance** in the relevant specification file.
+When implementation behavior differs from this specification, the difference
+MUST be explicitly documented as **Nonconformance** in the relevant
+specification file.
 
-This allows staged implementation without weakening the authority of the language definition.
+This allows staged implementation without weakening the authority of the
+language definition.
 
 ## Conformance Enforcement
 

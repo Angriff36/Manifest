@@ -1,0 +1,49 @@
+// Test constraint severity levels: ok, warn, block
+// ok: informational only, never blocks
+// warn: produces outcome but does not block execution
+// block: blocks execution when constraint fails
+
+entity Task {
+  property id: string
+  property name: string
+  property status: string = "pending"
+  property priority: number = 1
+  property dueDate: number = 0
+
+  // OK severity - informational only, never blocks even when expression is false
+  constraint okInfo {
+    expression: priority > 0
+    severity: ok
+    message: "Priority is positive"
+  }
+
+  // WARN severity - produces outcome but does not block execution
+  constraint warnHighPriority {
+    expression: priority <= 5
+    severity: warn
+    message: "Priority is higher than recommended (> 5)"
+  }
+
+  // BLOCK severity - blocks execution when constraint fails
+  constraint blockStatus {
+    expression: status in ["pending", "in_progress", "completed", "cancelled"]
+    severity: block
+    message: "Status must be one of: pending, in_progress, completed, cancelled"
+  }
+
+  // WARN severity with negative-type constraint (fires when TRUE)
+  constraint severityWarnOverdue {
+    expression: dueDate > 0 and now() > dueDate
+    severity: warn
+    message: "Task is overdue"
+  }
+
+  // BLOCK severity with negative-type constraint (fires when TRUE)
+  constraint severityBlockCancelled {
+    expression: status == "cancelled"
+    severity: block
+    message: "Cannot modify cancelled tasks"
+  }
+}
+
+store Task in memory

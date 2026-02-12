@@ -1,0 +1,8 @@
+{
+  "name": "node-starter",
+  "private": true,
+  "scripts": {
+    "build": "cd packages/field-access-guard && npx tsc",
+    "test": "cd packages/field-access-guard && npx vitest run"
+  }
+}

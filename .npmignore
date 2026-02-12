@@ -1,0 +1,50 @@
+# Exclude source files (we only ship dist)
+/src
+/*.ts
+!*.d.ts
+/tsconfig*.json
+/vite.config.ts
+/vitest.config.ts
+/eslint.config.js
+/postcss.config.js
+/tailwind.config.js
+/index.html
+
+# Exclude test files
+__tests__
+**/*.test.ts
+**/*.bench.ts
+
+# Exclude development files
+AGENTS.md
+CLAUDE.md
+IMPLEMENTATION_PLAN.md
+OBSERVATIONS.md
+PROMPT_*.md
+Phase-*.md
+house-style.md
+specs/
+tools/
+scripts/
+loop.sh
+test-*.js
+test-*.mts
+dump-ir.mts
+generated.ts
+*.png
+
+# Exclude dev configuration
+.env
+.env.local
+.vscode
+.idea
+
+# But INCLUDE dist (negate the gitignore)
+!dist/
+dist/
+
+# Keep package files
+package.json
+package-lock.json
+pnpm-lock.yaml
+README.md

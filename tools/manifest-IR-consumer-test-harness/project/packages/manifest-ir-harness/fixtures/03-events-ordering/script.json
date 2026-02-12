@@ -1,0 +1,46 @@
+{
+  "description": "Multi-step command sequence with deterministic event ordering",
+  "context": {
+    "user": { "id": "user-1", "role": "admin" }
+  },
+  "seedEntities": [
+    {
+      "entity": "Order",
+      "id": "order-3",
+      "properties": {
+        "status": "draft",
+        "items": [{ "id": "item-1", "price": 25, "quantity": 1 }]
+      }
+    }
+  ],
+  "commands": [
+    {
+      "step": 1,
+      "entity": "Order",
+      "id": "order-3",
+      "command": "submit",
+      "params": {},
+      "expect": {
+        "success": true,
+        "stateAfter": {
+          "status": "submitted"
+        },
+        "emittedEvents": ["orderSubmitted"]
+      }
+    },
+    {
+      "step": 2,
+      "entity": "Order",
+      "id": "order-3",
+      "command": "confirm",
+      "params": {},
+      "expect": {
+        "success": true,
+        "stateAfter": {
+          "status": "confirmed"
+        },
+        "emittedEvents": ["orderConfirmed", "notificationSent"]
+      }
+    }
+  ]
+}
