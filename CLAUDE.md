@@ -11,7 +11,7 @@ This is a **language implementation**, not an end-user application. The Runtime 
 ## Essential Commands
 
 ```bash
-npm test                    # Run all tests (448 tests - must always pass)
+npm test                    # Run all tests (467 tests - must always pass)
 npm run typecheck          # TypeScript check without emit
 npm run lint               # ESLint validation
 npm run dev                # Development server (localhost:5173)
@@ -87,9 +87,9 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite (448 tests total)
+### Test Suite (467 tests total)
 1. **Conformance Tests** (142): Fixture-based testing with expected outputs
-2. **Unit Tests** (285):
+2. **Unit Tests** (304):
    - Lexer tests (58): Tokenization and edge cases
    - Parser tests (79): AST construction
    - IR Compiler tests (91): IR generation
@@ -125,7 +125,7 @@ From `house-style.md` and `AGENTS.md`:
 
 1. **One iteration = one committable unit**: Commit within ~15 minutes. If you can't, scope is too big
 2. **Backpressure rules**: Partial progress committed > perfect progress lost
-3. **Test-driven**: All changes must maintain 448/448 test passing
+3. **Test-driven**: All changes must maintain 467/467 test passing
 4. **Spec-driven**: If behavior changes, update spec first, then tests, then implementation
 5. **Commit early**: Touching 5+ files without committing is a red flag
 
@@ -186,7 +186,7 @@ UI must reflect IR and semantics, not invent them:
 ## Definition of "Done"
 
 A change is only done when:
-- `npm test` is green (448/448 passing)
+- `npm test` is green (467/467 passing)
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Spec/test/impl are aligned (no undocumented nonconformance)
