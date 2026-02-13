@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RuntimeEngine, type RuntimeContext, type RuntimeOptions, type EntityInstance } from './runtime-engine';
+import { RuntimeEngine, EvaluationBudgetExceededError, type RuntimeContext, type RuntimeOptions, type EntityInstance } from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR, IRExpression } from './ir';
 import { COMPILER_VERSION } from './version';
@@ -785,6 +785,228 @@ describe('RuntimeEngine', () => {
       const instances = await runtime2.getAllInstances('User');
       expect(instances).toHaveLength(1);
       expect(instances[0].name).toBe('Alice');
+    });
+  });
+
+  describe('Bounded Complexity Limits', () => {
+    // Helper: build a deeply nested binary expression tree (depth N)
+    function makeNestedBinaryExpr(depth: number): IRExpression {
+      if (depth <= 0) {
+        return { kind: 'literal', value: { kind: 'number', value: 1 } };
+      }
+      return {
+        kind: 'binary',
+        operator: '+',
+        left: makeNestedBinaryExpr(depth - 1),
+        right: { kind: 'literal', value: { kind: 'number', value: 1 } },
+      };
+    }
+
+    // Helper: build an IR with a command whose guard is a given expression
+    function makeIRWithGuard(guardExpr: IRExpression): IR {
+      return {
+        version: '1.0',
+        provenance: {
+          contentHash: 'budget-test',
+          compilerVersion: COMPILER_VERSION,
+          schemaVersion: '1.0',
+          compiledAt: new Date().toISOString(),
+        },
+        modules: [],
+        entities: [{
+          name: 'Item',
+          properties: [
+            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: ['doSomething'],
+          constraints: [],
+          policies: [],
+        }],
+        stores: [],
+        events: [],
+        commands: [{
+          name: 'doSomething',
+          entity: 'Item',
+          params: [],
+          guards: [guardExpr],
+          actions: [],
+          emits: [],
+          constraints: [],
+        }],
+        policies: [],
+      };
+    }
+
+    it('default limits (no evaluationLimits) — existing tests still pass', async () => {
+      const ir = await compileToIR(`
+        entity Task {
+          property title: string
+          property priority: number
+          command doCreate(title: string, priority: number) {
+            guard title != ""
+            mutate result = true
+          }
+        }
+      `);
+      const runtime = new RuntimeEngine(ir, {}, {}); // No evaluationLimits
+      const result = await runtime.runCommand('doCreate', { title: 'Test', priority: 1 });
+      expect(result.success).toBe(true);
+    });
+
+    it('depth limit exceeded returns CommandResult failure', async () => {
+      const deepExpr = makeNestedBinaryExpr(10);
+      const ir = makeIRWithGuard(deepExpr);
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxExpressionDepth: 5 },
+      });
+      const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('depth');
+      expect(result.error).toContain('5');
+    });
+
+    it('step limit exceeded returns CommandResult failure', async () => {
+      // Build an expression with many steps but shallow depth:
+      // binary(binary(binary(..., 1), 1), 1) — depth 1 per binary but many steps
+      // Actually, a wide expression: array of many literals
+      const elements: IRExpression[] = [];
+      for (let i = 0; i < 60; i++) {
+        elements.push({ kind: 'literal', value: { kind: 'number', value: i } });
+      }
+      const wideExpr: IRExpression = { kind: 'array', elements };
+      const ir = makeIRWithGuard(wideExpr);
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxEvaluationSteps: 50 },
+      });
+      const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('steps');
+      expect(result.error).toContain('50');
+    });
+
+    it('depth limit produces descriptive error with limit type and value', async () => {
+      const deepExpr = makeNestedBinaryExpr(20);
+      const ir = makeIRWithGuard(deepExpr);
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxExpressionDepth: 3 },
+      });
+      const result = await runtime.runCommand('doSomething', {}, { entityName: 'Item' });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Evaluation budget exceeded: depth limit 3 reached');
+    });
+
+    it('step counter resets between commands', async () => {
+      const ir = await compileToIR(`
+        entity Task {
+          property title: string
+          command doCreate(title: string) {
+            guard title != ""
+            mutate result = true
+          }
+        }
+      `);
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxEvaluationSteps: 100 },
+      });
+      // First command should succeed
+      const result1 = await runtime.runCommand('doCreate', { title: 'First' });
+      expect(result1.success).toBe(true);
+      // Second command should also succeed (budget resets)
+      const result2 = await runtime.runCommand('doCreate', { title: 'Second' });
+      expect(result2.success).toBe(true);
+    });
+
+    it('EvaluationBudgetExceededError has correct properties', () => {
+      const err = new EvaluationBudgetExceededError('depth', 64);
+      expect(err.name).toBe('EvaluationBudgetExceededError');
+      expect(err.limitType).toBe('depth');
+      expect(err.limit).toBe(64);
+      expect(err.message).toBe('Evaluation budget exceeded: depth limit 64 reached');
+    });
+
+    it('checkConstraints respects evaluation limits', async () => {
+      // Build an entity with a constraint that uses a deeply nested expression
+      const deepExpr = makeNestedBinaryExpr(10);
+      const ir: IR = {
+        version: '1.0',
+        provenance: {
+          contentHash: 'constraint-budget-test',
+          compilerVersion: COMPILER_VERSION,
+          schemaVersion: '1.0',
+          compiledAt: new Date().toISOString(),
+        },
+        modules: [],
+        entities: [{
+          name: 'Item',
+          properties: [
+            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+          ],
+          computedProperties: [],
+          relationships: [],
+          commands: [],
+          constraints: [{
+            name: 'deepCheck',
+            code: 'deepCheck',
+            expression: deepExpr,
+            severity: 'block',
+          }],
+          policies: [],
+        }],
+        stores: [],
+        events: [],
+        commands: [],
+        policies: [],
+      };
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxExpressionDepth: 5 },
+      });
+      // checkConstraints should propagate the budget error (not swallowed)
+      await expect(runtime.checkConstraints('Item', { value: 1 }))
+        .rejects.toThrow(EvaluationBudgetExceededError);
+    });
+
+    it('evaluateComputed respects evaluation limits', async () => {
+      const deepExpr = makeNestedBinaryExpr(10);
+      const ir: IR = {
+        version: '1.0',
+        provenance: {
+          contentHash: 'computed-budget-test',
+          compilerVersion: COMPILER_VERSION,
+          schemaVersion: '1.0',
+          compiledAt: new Date().toISOString(),
+        },
+        modules: [],
+        entities: [{
+          name: 'Item',
+          properties: [
+            { name: 'value', type: { name: 'number', nullable: false }, modifiers: [] },
+          ],
+          computedProperties: [{
+            name: 'deepValue',
+            expression: deepExpr,
+            type: { name: 'number', nullable: false },
+          }],
+          relationships: [],
+          commands: [],
+          constraints: [],
+          policies: [],
+        }],
+        stores: [],
+        events: [],
+        commands: [],
+        policies: [],
+      };
+      const runtime = new RuntimeEngine(ir, {}, {
+        evaluationLimits: { maxExpressionDepth: 5 },
+      });
+      // Create an instance first
+      const instance = await runtime.createInstance('Item', { value: 42 });
+      expect(instance).toBeDefined();
+      // evaluateComputed should propagate the budget error
+      await expect(runtime.evaluateComputed('Item', instance!.id, 'deepValue'))
+        .rejects.toThrow(EvaluationBudgetExceededError);
     });
   });
 });

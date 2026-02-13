@@ -93,7 +93,26 @@
         "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" } },
         "policies": { "type": "array", "items": { "type": "string" } },
         "versionProperty": { "type": "string", "description": "Name of version field for optimistic concurrency control" },
-        "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" }
+        "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/IRTransition" },
+          "description": "Optional allowed state transitions for validation"
+        }
+      }
+    },
+    "IRTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "from", "to"],
+      "properties": {
+        "property": { "type": "string", "description": "Property name that holds state" },
+        "from": { "type": "string", "description": "Value the property transitions FROM" },
+        "to": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Allowed values the property can transition TO"
+        }
       }
     },
     "IRProperty": {

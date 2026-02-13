@@ -83,6 +83,16 @@ export interface RuntimeOptions {
    * ```
    */
   storeProvider?: (entityName: string) => Store | undefined;
+  /** Caller-provided idempotency store for command deduplication */
+  idempotencyStore?: IdempotencyStore;
+  /**
+   * If true, adapter actions (persist/publish/effect) throw ManifestEffectBoundaryError
+   * instead of the default no-op behavior. Use for conformance testing and replay validation.
+   * See docs/spec/adapters.md for the normative exception.
+   */
+  deterministicMode?: boolean;
+  /** Optional complexity limits for expression evaluation */
+  evaluationLimits?: EvaluationLimits;
 }
 
 export interface EntityInstance {
@@ -151,6 +161,12 @@ export interface EmittedEvent {
     compilerVersion: string;
     schemaVersion: string;
   };
+  /** Caller-supplied correlation ID grouping related events across a workflow */
+  correlationId?: string;
+  /** Caller-supplied ID of the event/command that caused this emission */
+  causationId?: string;
+  /** Zero-based index of this event within the current runCommand invocation. Per-command only. */
+  emitIndex?: number;
 }
 
 export interface Store<T extends EntityInstance = EntityInstance> {
@@ -160,6 +176,60 @@ export interface Store<T extends EntityInstance = EntityInstance> {
   update(id: string, data: Partial<T>): Promise<T | undefined>;
   delete(id: string): Promise<boolean>;
   clear(): Promise<void>;
+}
+
+export interface IdempotencyStore {
+  /** Check if a command with this key has already been executed */
+  has(key: string): Promise<boolean>;
+  /** Record a command result for an idempotency key */
+  set(key: string, result: CommandResult): Promise<void>;
+  /** Retrieve the cached result for an idempotency key */
+  get(key: string): Promise<CommandResult | undefined>;
+}
+
+/**
+ * Thrown when an adapter action (persist/publish/effect) is executed in deterministicMode.
+ * This is a programming error, not a domain failure.
+ * See docs/spec/adapters.md for the normative exception to default no-op behavior.
+ */
+export class ManifestEffectBoundaryError extends Error {
+  readonly actionKind: string;
+  constructor(actionKind: string) {
+    super(
+      `Action '${actionKind}' is not allowed in deterministicMode. ` +
+      `Adapter actions (persist/publish/effect) must be handled externally. ` +
+      `See docs/spec/adapters.md.`
+    );
+    this.name = 'ManifestEffectBoundaryError';
+    this.actionKind = actionKind;
+  }
+}
+
+/**
+ * Thrown when expression evaluation exceeds configured depth or step limits.
+ * This is a domain failure (caught and converted to CommandResult), not a programming error.
+ * See docs/spec/manifest-vnext.md § "Diagnostic Payload Bounding".
+ */
+export class EvaluationBudgetExceededError extends Error {
+  readonly limitType: 'depth' | 'steps';
+  readonly limit: number;
+  constructor(limitType: 'depth' | 'steps', limit: number) {
+    super(`Evaluation budget exceeded: ${limitType} limit ${limit} reached`);
+    this.name = 'EvaluationBudgetExceededError';
+    this.limitType = limitType;
+    this.limit = limit;
+  }
+}
+
+/**
+ * Optional complexity limits for expression evaluation.
+ * Defaults are permissive — no existing programs should be affected.
+ */
+export interface EvaluationLimits {
+  /** Maximum expression nesting depth. Default: 64 */
+  maxExpressionDepth?: number;
+  /** Maximum total evaluation steps per entry point. Default: 10_000 */
+  maxEvaluationSteps?: number;
 }
 
 class MemoryStore<T extends EntityInstance> implements Store<T> {
@@ -299,6 +369,33 @@ export class RuntimeEngine {
 
   /** Track instances that were just created (to prevent version increment on subsequent mutate actions) */
   private justCreatedInstanceIds: Set<string> = new Set();
+
+  /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
+  private lastTransitionError: string | null = null;
+
+  /** Per-entry-point evaluation budget for bounded complexity enforcement */
+  private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
+
+  /**
+   * Initialize evaluation budget if not already active (re-entrant safe).
+   * Returns true if this call initialized the budget (caller must clear it in finally).
+   * Returns false if budget was already active (caller should NOT clear it).
+   */
+  private initEvalBudget(): boolean {
+    if (this.evalBudget) return false; // Already active — re-entrant call
+    this.evalBudget = {
+      depth: 0,
+      steps: 0,
+      maxDepth: this.options.evaluationLimits?.maxExpressionDepth ?? 64,
+      maxSteps: this.options.evaluationLimits?.maxEvaluationSteps ?? 10_000,
+    };
+    return true;
+  }
+
+  /** Clear evaluation budget (only call if initEvalBudget returned true) */
+  private clearEvalBudget(): void {
+    this.evalBudget = null;
+  }
 
   constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
@@ -674,66 +771,76 @@ export class RuntimeEngine {
   async checkConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintOutcome[]> {
     const entity = this.getEntity(entityName);
     if (!entity) return [];
-    const outcomes = await this.validateConstraints(entity, data);
-    // Return only failed constraints for backwards compatibility with test patterns
-    // (Callers can still see all outcomes by using validateConstraints directly)
-    return outcomes.filter(o => !o.passed);
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      const outcomes = await this.validateConstraints(entity, data);
+      // Return only failed constraints for backwards compatibility with test patterns
+      // (Callers can still see all outcomes by using validateConstraints directly)
+      return outcomes.filter(o => !o.passed);
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
   }
 
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
 
-    const defaults: Record<string, unknown> = {};
-    for (const prop of entity.properties) {
-      if (prop.defaultValue) {
-        defaults[prop.name] = this.irValueToJs(prop.defaultValue);
-      } else {
-        defaults[prop.name] = this.getDefaultForType(prop.type);
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      const defaults: Record<string, unknown> = {};
+      for (const prop of entity.properties) {
+        if (prop.defaultValue) {
+          defaults[prop.name] = this.irValueToJs(prop.defaultValue);
+        } else {
+          defaults[prop.name] = this.getDefaultForType(prop.type);
+        }
       }
+
+      const mergedData = { ...defaults, ...data };
+
+      // Handle version properties for optimistic concurrency control
+      if (entity.versionProperty) {
+        mergedData[entity.versionProperty] = 1;
+      }
+      if (entity.versionAtProperty) {
+        mergedData[entity.versionAtProperty] = this.getNow();
+      }
+
+      // Validate entity constraints
+      const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+
+      // Only block on severity='block' constraints that failed
+      const blockingFailures = constraintOutcomes.filter(
+        o => !o.passed && o.severity === 'block'
+      );
+
+      if (blockingFailures.length > 0) {
+        // Log blocking constraint failures for diagnostics
+        console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
+        return undefined;
+      }
+
+      // Log non-blocking outcomes (warn/ok) for diagnostics
+      const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+      if (nonBlockingOutcomes.length > 0) {
+        console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
+      }
+
+      const store = this.stores.get(entityName);
+      if (!store) return undefined;
+
+      const result = await store.create(mergedData);
+
+      // Track newly created instance to prevent version increment on subsequent mutate actions
+      if (result && result.id) {
+        this.justCreatedInstanceIds.add(result.id);
+      }
+
+      return result;
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
     }
-
-    const mergedData = { ...defaults, ...data };
-
-    // Handle version properties for optimistic concurrency control
-    if (entity.versionProperty) {
-      mergedData[entity.versionProperty] = 1;
-    }
-    if (entity.versionAtProperty) {
-      mergedData[entity.versionAtProperty] = this.getNow();
-    }
-
-    // Validate entity constraints
-    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
-
-    // Only block on severity='block' constraints that failed
-    const blockingFailures = constraintOutcomes.filter(
-      o => !o.passed && o.severity === 'block'
-    );
-
-    if (blockingFailures.length > 0) {
-      // Log blocking constraint failures for diagnostics
-      console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
-      return undefined;
-    }
-
-    // Log non-blocking outcomes (warn/ok) for diagnostics
-    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
-    if (nonBlockingOutcomes.length > 0) {
-      console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
-    }
-
-    const store = this.stores.get(entityName);
-    if (!store) return undefined;
-
-    const result = await store.create(mergedData);
-
-    // Track newly created instance to prevent version increment on subsequent mutate actions
-    if (result && result.id) {
-      this.justCreatedInstanceIds.add(result.id);
-    }
-
-    return result;
   }
 
   async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -744,58 +851,79 @@ export class RuntimeEngine {
     const existing = await store.getById(id);
     if (!existing) return undefined;
 
-    // Optimistic concurrency control: check version if entity has versionProperty
-    if (entity.versionProperty) {
-      const existingVersion = existing[entity.versionProperty] as number | undefined;
-      const providedVersion = data[entity.versionProperty] as number | undefined;
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      // Optimistic concurrency control: check version if entity has versionProperty
+      if (entity.versionProperty) {
+        const existingVersion = existing[entity.versionProperty] as number | undefined;
+        const providedVersion = data[entity.versionProperty] as number | undefined;
 
-      if (existingVersion !== undefined && providedVersion !== undefined) {
-        if (existingVersion !== providedVersion) {
-          // Concurrency conflict - emit event and return undefined to indicate failure
-          await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
-          return undefined;
+        if (existingVersion !== undefined && providedVersion !== undefined) {
+          if (existingVersion !== providedVersion) {
+            // Concurrency conflict - emit event and return undefined to indicate failure
+            await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
+            return undefined;
+          }
+        }
+
+        // Auto-increment version on successful update
+        // Only increment once per command execution to handle commands with multiple mutate actions
+        // If version is explicitly provided in data, use that (for optimistic concurrency checks)
+        // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
+        const wasJustCreated = this.justCreatedInstanceIds.has(id);
+        if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
+          data[entity.versionProperty] = (existingVersion || 0) + 1;
+          this.versionIncrementedForCommand = true;
         }
       }
 
-      // Auto-increment version on successful update
-      // Only increment once per command execution to handle commands with multiple mutate actions
-      // If version is explicitly provided in data, use that (for optimistic concurrency checks)
-      // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
-      const wasJustCreated = this.justCreatedInstanceIds.has(id);
-      if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
-        data[entity.versionProperty] = (existingVersion || 0) + 1;
-        this.versionIncrementedForCommand = true;
+      // Update versionAt timestamp if present
+      if (entity.versionAtProperty) {
+        data[entity.versionAtProperty] = this.getNow();
       }
+
+      const mergedData = { ...existing, ...data };
+
+      // Validate state transitions if entity declares them
+      if (entity.transitions && entity.transitions.length > 0) {
+        for (const [prop, newValue] of Object.entries(data)) {
+          const rules = entity.transitions.filter(t => t.property === prop);
+          if (rules.length === 0) continue;
+          const currentValue = existing[prop];
+          if (currentValue === undefined) continue;
+          const matchingRule = rules.find(t => t.from === String(currentValue));
+          if (matchingRule && !matchingRule.to.includes(String(newValue))) {
+            const allowed = matchingRule.to.map(v => `'${v}'`).join(', ');
+            this.lastTransitionError = `Invalid state transition for '${prop}': '${currentValue}' -> '${newValue}' is not allowed. Allowed from '${currentValue}': [${allowed}]`;
+            return undefined;
+          }
+        }
+      }
+
+      // Validate entity constraints
+      const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+
+      // Only block on severity='block' constraints that failed
+      const blockingFailures = constraintOutcomes.filter(
+        o => !o.passed && o.severity === 'block'
+      );
+
+      if (blockingFailures.length > 0) {
+        // Log blocking constraint failures for diagnostics
+        console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
+        return undefined;
+      }
+
+      // Log non-blocking outcomes (warn/ok) for diagnostics
+      const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+      if (nonBlockingOutcomes.length > 0) {
+        console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
+      }
+
+      return await store.update(id, data);
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
     }
-
-    // Update versionAt timestamp if present
-    if (entity.versionAtProperty) {
-      data[entity.versionAtProperty] = this.getNow();
-    }
-
-    const mergedData = { ...existing, ...data };
-
-    // Validate entity constraints
-    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
-
-    // Only block on severity='block' constraints that failed
-    const blockingFailures = constraintOutcomes.filter(
-      o => !o.passed && o.severity === 'block'
-    );
-
-    if (blockingFailures.length > 0) {
-      // Log blocking constraint failures for diagnostics
-      console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
-      return undefined;
-    }
-
-    // Log non-blocking outcomes (warn/ok) for diagnostics
-    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
-    if (nonBlockingOutcomes.length > 0) {
-      console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
-    }
-
-    return await store.update(id, data);
   }
 
   async deleteInstance(entityName: string, id: string): Promise<boolean> {
@@ -806,7 +934,55 @@ export class RuntimeEngine {
   async runCommand(
     commandName: string,
     input: Record<string, unknown>,
-    options: { entityName?: string; instanceId?: string; overrideRequests?: OverrideRequest[] } = {}
+    options: {
+      entityName?: string;
+      instanceId?: string;
+      overrideRequests?: OverrideRequest[];
+      /** Correlation ID for workflow event grouping */
+      correlationId?: string;
+      /** Causation ID linking this command to its trigger */
+      causationId?: string;
+      /** Caller-provided idempotency key for dedup. Required if idempotencyStore is configured. */
+      idempotencyKey?: string;
+    } = {}
+  ): Promise<CommandResult> {
+    // Idempotency short-circuit (before ANY evaluation)
+    if (this.options.idempotencyStore) {
+      if (options.idempotencyKey === undefined) {
+        return {
+          success: false,
+          error: 'IdempotencyStore is configured but no idempotencyKey was provided',
+          emittedEvents: [],
+        };
+      }
+      const cached = await this.options.idempotencyStore.get(options.idempotencyKey);
+      if (cached !== undefined) {
+        return cached;
+      }
+    }
+
+    // Full command execution
+    const result = await this._executeCommandInternal(commandName, input, options);
+
+    // Cache result (success OR failure)
+    if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
+      await this.options.idempotencyStore.set(options.idempotencyKey, result);
+    }
+
+    return result;
+  }
+
+  private async _executeCommandInternal(
+    commandName: string,
+    input: Record<string, unknown>,
+    options: {
+      entityName?: string;
+      instanceId?: string;
+      overrideRequests?: OverrideRequest[];
+      correlationId?: string;
+      causationId?: string;
+      idempotencyKey?: string;
+    }
   ): Promise<CommandResult> {
     // Clear relationship memoization cache at the start of each command execution
     // to ensure fresh data after any mutations
@@ -817,6 +993,13 @@ export class RuntimeEngine {
 
     // Clear just-created instance tracking
     this.justCreatedInstanceIds.clear();
+
+    // Clear transition error tracking
+    this.lastTransitionError = null;
+
+    // Initialize evaluation budget for bounded complexity enforcement
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
 
     const command = this.getCommand(commandName, options.entityName);
     if (!command) {
@@ -880,9 +1063,24 @@ export class RuntimeEngine {
 
     const emittedEvents: EmittedEvent[] = [];
     let result: unknown;
+    const emitCounter = { value: 0 };
+    const workflowMeta = {
+      correlationId: options.correlationId,
+      causationId: options.causationId,
+    };
 
     for (const action of command.actions) {
-      const actionResult = await this.executeAction(action, evalContext, options);
+      const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta);
+
+      // Check for transition validation errors after mutate/compute actions
+      if (this.lastTransitionError) {
+        return {
+          success: false,
+          error: this.lastTransitionError,
+          emittedEvents: [],
+        };
+      }
+
       if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
         const currentInstance = await this.getInstance(options.entityName, options.instanceId);
         // Refresh both self/this bindings and spread instance properties into evalContext
@@ -908,6 +1106,9 @@ export class RuntimeEngine {
             schemaVersion: prov.schemaVersion,
           },
         } : {}),
+        ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+        ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+        emitIndex: emitCounter.value++,
       };
       emittedEvents.push(emitted);
       this.eventLog.push(emitted);
@@ -921,6 +1122,19 @@ export class RuntimeEngine {
       constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
       emittedEvents,
     };
+
+    } catch (e) {
+      if (e instanceof EvaluationBudgetExceededError) {
+        return {
+          success: false,
+          error: e.message,
+          emittedEvents: [],
+        };
+      }
+      throw e; // re-throw other errors (ManifestEffectBoundaryError, etc.)
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
   }
 
   private buildEvalContext(
@@ -1194,8 +1408,16 @@ export class RuntimeEngine {
   private async executeAction(
     action: IRAction,
     evalContext: Record<string, unknown>,
-    options: { entityName?: string; instanceId?: string }
+    options: { entityName?: string; instanceId?: string },
+    emitCounter: { value: number },
+    workflowMeta: { correlationId?: string; causationId?: string }
   ): Promise<unknown> {
+    // Effect boundary enforcement: in deterministicMode, adapter actions hard-error
+    if (this.options.deterministicMode &&
+        (action.kind === 'persist' || action.kind === 'publish' || action.kind === 'effect')) {
+      throw new ManifestEffectBoundaryError(action.kind);
+    }
+
     const value = await this.evaluateExpression(action.expression, evalContext);
 
     switch (action.kind) {
@@ -1222,6 +1444,9 @@ export class RuntimeEngine {
               schemaVersion: prov.schemaVersion,
             },
           } : {}),
+          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+          emitIndex: emitCounter.value++,
         };
         this.eventLog.push(event);
         this.notifyListeners(event);
@@ -1246,6 +1471,18 @@ export class RuntimeEngine {
   }
 
   async evaluateExpression(expr: IRExpression, context: Record<string, unknown>): Promise<unknown> {
+    // Bounded complexity enforcement
+    if (this.evalBudget) {
+      this.evalBudget.steps++;
+      if (this.evalBudget.steps > this.evalBudget.maxSteps) {
+        throw new EvaluationBudgetExceededError('steps', this.evalBudget.maxSteps);
+      }
+      this.evalBudget.depth++;
+      if (this.evalBudget.depth > this.evalBudget.maxDepth) {
+        throw new EvaluationBudgetExceededError('depth', this.evalBudget.maxDepth);
+      }
+    }
+    try {
     switch (expr.kind) {
       case 'literal':
         return this.irValueToJs(expr.value);
@@ -1350,6 +1587,11 @@ export class RuntimeEngine {
       default:
         return undefined;
     }
+    } finally {
+      if (this.evalBudget) {
+        this.evalBudget.depth--;
+      }
+    }
   }
 
   private evaluateBinaryOp(op: string, left: unknown, right: unknown): unknown {
@@ -1435,7 +1677,12 @@ export class RuntimeEngine {
     const instance = await this.getInstance(entityName, instanceId);
     if (!instance) return undefined;
 
-    return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
   }
 
   private async evaluateComputedInternal(

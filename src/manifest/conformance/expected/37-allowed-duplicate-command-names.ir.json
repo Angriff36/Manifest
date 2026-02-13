@@ -1,11 +1,11 @@
 {
   "version": "1.0",
   "provenance": {
-    "contentHash": "65e1f0c0cc0481abfcc0b157490f1a48b24338712e6f463235789c24f56952de",
+    "contentHash": "normalized-content-hash",
     "irHash": "67cfde936797d3f3ccef4dffd3e90b643509c7a4dda5447cea5a429f565c1154",
     "compilerVersion": "0.3.8",
     "schemaVersion": "1.0",
-    "compiledAt": "2026-02-12T14:05:15.925Z"
+    "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
   "entities": [

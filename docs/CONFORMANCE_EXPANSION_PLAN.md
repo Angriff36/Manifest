@@ -189,7 +189,7 @@ Based on analysis of existing conformance tests, current fixtures cover approxim
         "success": true,
         "emittedEvents": [{
           "name": "OverrideApplied",
-          "channel": "constraint.overridden",
+          "channel": "system",
           "payload": {
             "constraintCode": "ageCheck",
             "reason": "Urgent override",

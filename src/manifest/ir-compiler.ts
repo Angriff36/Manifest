@@ -14,6 +14,7 @@ import {
   ActionNode,
   ExpressionNode,
   TypeNode,
+  TransitionNode,
 } from './types';
 import {
   IR,
@@ -36,6 +37,7 @@ import {
   CompileToIRResult,
   PropertyModifier,
   IRProvenance,
+  IRTransition,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -231,6 +233,15 @@ export class IRCompiler {
       policies: e.policies.map(p => p.name),
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
+      ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
+    };
+  }
+
+  private transformTransition(t: TransitionNode): IRTransition {
+    return {
+      property: t.property,
+      from: t.from,
+      to: t.to,
     };
   }
 

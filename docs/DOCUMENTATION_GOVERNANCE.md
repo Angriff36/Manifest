@@ -1,7 +1,9 @@
 # Manifest Documentation Governance
 
-Last updated: 2026-02-11
+Last updated: 2026-02-12
 Status: Active
+Authority: Binding
+Enforced by: npm run docs:check
 
 ## Purpose
 

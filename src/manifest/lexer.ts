@@ -31,7 +31,9 @@ export const KEYWORDS = new Set([
   // vNext constraint keywords
   'overrideable', 'ok', 'warn', 'block',
   // vNext optimistic concurrency keywords
-  'versionProperty', 'versionAtProperty'
+  'versionProperty', 'versionAtProperty',
+  // vNext state transition keywords
+  'transition'
 ]);
 
 const OPERATORS = new Set([

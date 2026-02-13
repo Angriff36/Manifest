@@ -1,5 +1,7 @@
-Authority: Binding Enforced by: src/manifest/conformance/** Last updated:
-2026-02-11
+Last updated: 2026-02-12
+Status: Active
+Authority: Binding
+Enforced by: src/manifest/conformance/**, npm test
 
 Quick routing:
 

@@ -1,0 +1,210 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "db880e6c66e71a3e83c5dc49c1a2897077f56fd82aea544059d5b8b51de7d691",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Document",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "Untitled"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "submit",
+        "approve",
+        "archive",
+        "revertToDraft",
+        "rename"
+      ],
+      "constraints": [],
+      "policies": [],
+      "transitions": [
+        {
+          "property": "status",
+          "from": "draft",
+          "to": [
+            "review",
+            "archived"
+          ]
+        },
+        {
+          "property": "status",
+          "from": "review",
+          "to": [
+            "published",
+            "draft"
+          ]
+        },
+        {
+          "property": "status",
+          "from": "published",
+          "to": [
+            "archived"
+          ]
+        }
+      ]
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Document",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "submit",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "review"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "approve",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "published"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "archive",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "archived"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "revertToDraft",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "rename",
+      "entity": "Document",
+      "parameters": [
+        {
+          "name": "newTitle",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "newTitle"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": []
+}

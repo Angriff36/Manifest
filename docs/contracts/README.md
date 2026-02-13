@@ -1,8 +1,9 @@
 # Contracts Signpost
 
+Last updated: 2026-02-12
+Status: Active
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
 
 This folder is a label layer only.
 

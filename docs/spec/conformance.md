@@ -1,12 +1,9 @@
 # Conformance
 
+Last updated: 2026-02-12
+Status: Active
 Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
-
-Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
+Enforced by: src/manifest/conformance/**, npm test
 
 Conformance tests are the executable source of truth for Manifest semantics.
 

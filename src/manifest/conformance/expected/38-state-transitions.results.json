@@ -1,0 +1,120 @@
+{
+  "testCases": [
+    {
+      "name": "Valid transition: draft -> review succeeds",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-1", "status": "draft", "title": "Test" }
+        }
+      },
+      "command": {
+        "name": "submit",
+        "entityName": "Document",
+        "instanceId": "doc-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "doc-1",
+        "status": "review",
+        "title": "Test"
+      }
+    },
+    {
+      "name": "Valid transition: review -> published succeeds",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-2", "status": "review", "title": "Test" }
+        }
+      },
+      "command": {
+        "name": "approve",
+        "entityName": "Document",
+        "instanceId": "doc-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "doc-2",
+        "status": "published",
+        "title": "Test"
+      }
+    },
+    {
+      "name": "Invalid transition: published -> draft blocked",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-3", "status": "published", "title": "Test" }
+        }
+      },
+      "command": {
+        "name": "revertToDraft",
+        "entityName": "Document",
+        "instanceId": "doc-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Invalid state transition for 'status': 'published' -> 'draft' is not allowed. Allowed from 'published': ['archived']",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Unconstrained property mutation succeeds regardless of transitions",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-4", "status": "draft", "title": "Old Title" }
+        }
+      },
+      "command": {
+        "name": "rename",
+        "entityName": "Document",
+        "instanceId": "doc-4",
+        "input": { "newTitle": "New Title" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "doc-4",
+        "status": "draft",
+        "title": "New Title"
+      }
+    },
+    {
+      "name": "Valid transition: review -> draft (revert) succeeds",
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-5", "status": "review", "title": "Test" }
+        }
+      },
+      "command": {
+        "name": "revertToDraft",
+        "entityName": "Document",
+        "instanceId": "doc-5",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "doc-5",
+        "status": "draft",
+        "title": "Test"
+      }
+    }
+  ]
+}

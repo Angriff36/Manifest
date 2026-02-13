@@ -1,0 +1,39 @@
+// Fixture 38: State Transitions
+//
+// This fixture tests state transition validation:
+// - Transition rules compile into IR
+// - Valid transitions succeed at runtime
+// - Invalid transitions are blocked at runtime
+// - Properties not in transitions are unconstrained
+
+entity Document {
+  property required id: string
+  property status: string = "draft"
+  property title: string = "Untitled"
+
+  transition status from "draft" to ["review", "archived"]
+  transition status from "review" to ["published", "draft"]
+  transition status from "published" to ["archived"]
+
+  command submit() {
+    mutate status = "review"
+  }
+
+  command approve() {
+    mutate status = "published"
+  }
+
+  command archive() {
+    mutate status = "archived"
+  }
+
+  command revertToDraft() {
+    mutate status = "draft"
+  }
+
+  command rename(newTitle: string) {
+    mutate title = newTitle
+  }
+
+  store Document in memory
+}

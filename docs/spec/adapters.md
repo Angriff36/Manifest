@@ -1,8 +1,9 @@
 # Adapters
 
+Last updated: 2026-02-12
+Status: Active
 Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
+Enforced by: src/manifest/conformance/**, npm test
 
 This document defines adapter hooks for storage targets and action kinds. Adapters are extensions, not core language features, unless stated otherwise.
 
@@ -104,6 +105,17 @@ Implementations MAY add adapters with the following contracts:
 - `effect`: invoke external side effects (HTTP, storage, timers, custom).
 
 Adapters MUST be deterministic with respect to a deterministic runtime configuration when used in conformance tests.
+
+### Deterministic Mode Exception (vNext)
+When `RuntimeOptions.deterministicMode` is `true`, the default no-op behavior for `persist`, `publish`, and `effect` is replaced with a hard error (`ManifestEffectBoundaryError`). This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures. See `semantics.md` for the normative command execution order.
+
+### IdempotencyStore (vNext)
+A conforming runtime MAY accept an `IdempotencyStore` via `RuntimeOptions`. The `IdempotencyStore` interface provides:
+- `has(key: string): Promise<boolean>` — check if a key exists
+- `set(key: string, result: CommandResult): Promise<void>` — store a result
+- `get(key: string): Promise<CommandResult | undefined>` — retrieve a cached result
+
+When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. Both successful and failed `CommandResult` values are cached. The idempotency check runs before any command evaluation (see `semantics.md` for placement in the execution order).
 
 ### Nonconformance
 - ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~

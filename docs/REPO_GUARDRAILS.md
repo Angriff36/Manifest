@@ -1,5 +1,10 @@
 # Manifest Repository Guardrails
 
+Last updated: 2026-02-12
+Status: Active
+Authority: Advisory
+Enforced by: None
+
 This document defines automated guardrails and development protocols that protect the semantic integrity of the Manifest language implementation. These guardrails prevent accidental violations of the language contract defined in the specification documents.
 
 ## Table of Contents

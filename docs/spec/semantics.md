@@ -1,12 +1,9 @@
 # Manifest IR v1 Semantics
 
+Last updated: 2026-02-12
+Status: Active
 Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
-
-Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
+Enforced by: src/manifest/conformance/**, npm test
 
 This document defines the runtime meaning of IR v1. The IR schema is authoritative; this document defines how conforming runtimes MUST interpret it.
 
@@ -82,6 +79,16 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
     - `conflictCode`: Stable code for categorizing the conflict type
 - Commands receiving a `ConcurrencyConflict` MUST NOT apply mutations and SHOULD surface the conflict to the caller.
 
+#### State Transitions (vNext)
+- Entities MAY define `transitions`: an array of `IRTransition` objects specifying allowed state changes.
+- Each `IRTransition` has: `property` (the field name), `from` (current value), `to` (array of allowed new values).
+- When a command mutates a property that has transition rules:
+  - The runtime MUST find the transition rule matching the property's current value via `from`.
+  - If a matching rule exists and the new value is NOT in `to`, the command MUST fail with a descriptive error.
+  - If no matching rule exists for the current value, the transition is unconstrained from that state.
+- Properties not referenced in any transition rule are unconstrained.
+- Transition validation occurs before entity constraint validation.
+
 ### Constraints
 - Constraints are boolean expressions. A runtime MAY enforce them when mutating properties or creating instances.
 
@@ -94,7 +101,7 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
 #### Constraint Codes (vNext)
 - Each constraint has a `code` field that provides a stable identifier for overrides and auditing.
 - The `code` defaults to the constraint `name` if not specified.
-- `code` must be unique within the scope of an entity for proper override matching.
+- `code` MUST be unique within the scope of an entity for proper override matching.
 
 #### Constraint Evaluation (vNext)
 - When evaluated, constraints produce a `ConstraintOutcome` containing:
@@ -203,6 +210,11 @@ See also:
 - `compute`: Evaluate expression; return the value.
 - `effect`: Evaluate expression; return the value. Runtimes MAY invoke side effects via adapters.
 
+### Deterministic Mode (vNext)
+- When `deterministicMode` is `true`, a conforming runtime MUST throw `ManifestEffectBoundaryError` for `persist`, `publish`, and `effect` action kinds instead of the default no-op behavior.
+- This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures.
+- See `adapters.md` for the normative exception to default no-op behavior.
+
 ## Events
 - Commands declare `emits` as a list of event names.
 - When a command emits an event, the runtime MUST log an EmittedEvent with:
@@ -210,6 +222,19 @@ See also:
   - `channel`: the event channel if defined in IR, otherwise the event name
   - `payload`: an object containing command input and the last action result
   - `timestamp`: the runtime time source
+
+### Event Workflow Metadata (vNext)
+- A conforming runtime MUST attach `emitIndex` (zero-based per-command emission index) to emitted events. `emitIndex` resets to 0 at the start of each `runCommand` invocation.
+- If `correlationId` or `causationId` are provided in command options, the runtime MUST propagate them to emitted events.
+- `emitIndex` is a per-command counter only. It is NOT a global sequence. Cross-command ordering is the caller's responsibility.
+- Given identical IR + identical runtime context (including injected `now`/`generateId`) + identical input + identical options, emitted events MUST have identical `emitIndex` values.
+
+### Idempotency (vNext)
+- A conforming runtime MAY support an `IdempotencyStore` for command deduplication.
+- When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. If no key is provided, the runtime MUST return an error.
+- If the key exists in the store, the runtime MUST return the cached `CommandResult` without re-executing the command.
+- Both successful and failed results MUST be cached.
+- The idempotency check occurs BEFORE any command evaluation (before building evaluation context, policy checks, constraints, guards, actions, or event emission).
 
 ## Expressions
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.

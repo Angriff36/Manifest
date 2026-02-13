@@ -32,6 +32,15 @@ export interface IRModule {
   policies: string[];
 }
 
+export interface IRTransition {
+  /** Property name that holds state */
+  property: string;
+  /** Value the property transitions FROM */
+  from: string;
+  /** Allowed values the property can transition TO */
+  to: string[];
+}
+
 export interface IREntity {
   name: string;
   module?: string;
@@ -45,6 +54,8 @@ export interface IREntity {
   versionProperty?: string;
   /** Name of timestamp field for version tracking */
   versionAtProperty?: string;
+  /** Optional allowed state transitions for validation */
+  transitions?: IRTransition[];
 }
 
 export interface IRProperty {

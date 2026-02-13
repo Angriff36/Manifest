@@ -1,12 +1,9 @@
 # Built-ins
 
+Last updated: 2026-02-12
+Status: Active
 Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
-
-Authority: Binding
-Enforced by: src/manifest/conformance/**
-Last updated: 2026-02-11
+Enforced by: src/manifest/conformance/**, npm test
 
 This document defines built-in identifiers and functions available during expression evaluation.
 

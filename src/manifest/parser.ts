@@ -4,7 +4,7 @@ import {
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
-  ComputedPropertyNode, RelationshipNode
+  ComputedPropertyNode, RelationshipNode, TransitionNode
 } from './types';
 
 export class Parser {
@@ -76,6 +76,7 @@ export class Parser {
 
     const properties: PropertyNode[] = [], computedProperties: ComputedPropertyNode[] = [], relationships: RelationshipNode[] = [];
     const behaviors: BehaviorNode[] = [], commands: CommandNode[] = [], constraints: ConstraintNode[] = [], policies: PolicyNode[] = [];
+    const transitions: TransitionNode[] = [];
     let store: string | undefined;
     let versionProperty: string | undefined;
     let versionAtProperty: string | undefined;
@@ -132,11 +133,12 @@ export class Parser {
           this.advance(); // consume type name
         }
       }
+      else if (this.check('KEYWORD', 'transition')) transitions.push(this.parseTransition());
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, store, versionProperty, versionAtProperty };
+    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, transitions, store, versionProperty, versionAtProperty };
   }
 
   private parseProperty(): PropertyNode {
@@ -151,6 +153,31 @@ export class Parser {
     let defaultValue: ExpressionNode | undefined;
     if (this.check('OPERATOR', '=')) { this.advance(); defaultValue = this.parseExpr(); }
     return { type: 'Property', name, dataType, defaultValue, modifiers };
+  }
+
+  private parseTransition(): TransitionNode {
+    // Syntax: transition <property> from "<value>" to ["<value>", "<value>"]
+    this.consume('KEYWORD', 'transition');
+    const property = this.consumeIdentifier().value;
+    this.consume('KEYWORD', 'from');
+    const fromToken = this.advance(); // consume the "from" value (string literal)
+    const from = fromToken.type === 'STRING' ? fromToken.value : fromToken.value;
+    this.consume('KEYWORD', 'to');
+    const to: string[] = [];
+    if (this.check('PUNCTUATION', '[')) {
+      this.advance(); // consume '['
+      while (!this.check('PUNCTUATION', ']') && !this.isEnd()) {
+        const valToken = this.advance();
+        to.push(valToken.type === 'STRING' ? valToken.value : valToken.value);
+        if (this.check('PUNCTUATION', ',')) this.advance(); // consume ','
+      }
+      this.consume('PUNCTUATION', ']');
+    } else {
+      // Single value: transition status from "draft" to "review"
+      const valToken = this.advance();
+      to.push(valToken.type === 'STRING' ? valToken.value : valToken.value);
+    }
+    return { type: 'Transition', property, from, to };
   }
 
   private parseComputedProperty(): ComputedPropertyNode {

@@ -24,6 +24,13 @@ export interface ModuleNode extends ASTNode {
   events: OutboxEventNode[];
 }
 
+export interface TransitionNode extends ASTNode {
+  type: 'Transition';
+  property: string;
+  from: string;
+  to: string[];
+}
+
 export interface EntityNode extends ASTNode {
   type: 'Entity';
   name: string;
@@ -34,6 +41,7 @@ export interface EntityNode extends ASTNode {
   commands: CommandNode[];
   constraints: ConstraintNode[];
   policies: PolicyNode[];
+  transitions: TransitionNode[];
   store?: string;
   /** Optimistic concurrency: property name for version number */
   versionProperty?: string;

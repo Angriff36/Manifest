@@ -1,5 +1,10 @@
 # Manifest Determinism Audit
 
+Last updated: 2026-02-12
+Status: Active
+Authority: Advisory
+Enforced by: npm test, manual review
+
 ## Executive Summary
 
 This audit identifies and categorizes all sources of nondeterminism in the Manifest codebase. The audit follows the principle that **identical IR + identical runtime context must produce identical results**. Nondeterminism is categorized as either CONFIGURABLE (acceptable when explicitly configured) or HARDCODED (requires remediation).
