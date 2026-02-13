@@ -1,507 +1,491 @@
 # Event Wiring Patterns
 
+Last updated: 2026-02-13
+Status: Active
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
 
-This guide shows how to wire Manifest events to external infrastructure (transports, queues, webhooks).
+This guide shows how to wire Manifest events to external infrastructure (Ably, queues, webhooks) using the Capsule Pro catering operations domain.
 
-Normative event semantics are defined in `docs/spec/semantics.md`.
+Normative event semantics are defined in `docs/spec/semantics.md`. Workflow metadata is defined in `docs/spec/manifest-vnext.md` § "Workflow Metadata (Normative)".
 
 ---
 
-## Core Concept
+## Event Shape
 
-Manifest emits events with a **guaranteed contract**:
+Every emitted event carries this shape:
 
 ```typescript
 interface EmittedEvent {
-  name: string;           // Event name from IR
+  name: string;           // Event name from IR (e.g., 'PrepTaskClaimed')
   channel: string;        // Channel from event definition or defaults to name
   payload: object;        // Command input + last action result
   timestamp: number;      // Milliseconds since epoch
+
+  // Workflow metadata (present when supplied via command options)
+  emitIndex: number;      // Per-command emission counter (0, 1, 2...), always present
+  correlationId?: string; // Groups events across a multi-step workflow
+  causationId?: string;   // Links this event to its triggering cause
 }
 ```
 
-**Events are emitted in declaration order** after successful command execution.
-
-Your job: **wire these events to infrastructure**.
+`emitIndex` is deterministic: identical IR + identical input + identical context = identical `emitIndex` values. Use it for replay verification (see `docs/patterns/complex-workflows.md` § Pattern 4).
 
 ---
 
-## Event Observer Pattern
+## Pattern 1: Ably Real-Time Push with Correlation
 
-Use `runtime.onEvent()` to observe events:
+Capsule Pro uses Ably for real-time kitchen updates. Wire events to Ably channels with tenant isolation, preserving workflow metadata for client-side tracing.
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import Ably from 'ably';
+import { createPrepTaskRuntime } from '@capsule/manifest-adapters';
 
-const runtime = new RuntimeEngine(ir, { userId, tenantId });
+const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
 
-const unsubscribe = runtime.onEvent((event) => {
-  console.log('Event:', event.name);
-  console.log('Channel:', event.channel);
-  console.log('Payload:', event.payload);
-  console.log('Timestamp:', event.timestamp);
-});
+export function wireKitchenEventsToAbly(
+  tenantId: string,
+  runtime: ReturnType<typeof createPrepTaskRuntime>,
+) {
+  runtime.onEvent((event) => {
+    // Tenant-scoped channel: only this organization's staff sees it
+    const channel = ably.channels.get(`tenant:${tenantId}:kitchen`);
 
-// Execute command
-await runtime.runCommand('Invoice', 'approve', { reason: 'validated' });
+    channel.publish(event.name, {
+      ...event.payload,
+      timestamp: event.timestamp,
+      emitIndex: event.emitIndex,
+      correlationId: event.correlationId,
+      causationId: event.causationId,
+    });
+  });
+}
 
-// Cleanup
-unsubscribe();
+// Client-side: production board subscribes to kitchen events
+// The correlationId lets the UI group related events (e.g., all steps
+// in a single event-day workflow) into a timeline view.
 ```
 
-**Important**: `onEvent()` is synchronous. For async work, dispatch to a queue.
+### Client-Side Correlation Grouping
+
+```typescript
+// React component on the production board
+import { useChannel } from 'ably/react';
+
+function useWorkflowTimeline(tenantId: string) {
+  const [events, setEvents] = useState<Map<string, EmittedEvent[]>>(new Map());
+
+  useChannel(`tenant:${tenantId}:kitchen`, (message) => {
+    const event = message.data;
+    const correlationId = event.correlationId ?? 'uncorrelated';
+
+    setEvents(prev => {
+      const updated = new Map(prev);
+      const existing = updated.get(correlationId) ?? [];
+      updated.set(correlationId, [...existing, event]);
+      return updated;
+    });
+  });
+
+  return events; // Map<correlationId, events[]>
+}
+```
 
 ---
 
-## Pattern 1: Real-Time Transport (WebSockets)
+## Pattern 2: Transactional Outbox with Workflow Metadata
 
-Wire events to WebSockets for real-time updates.
-
-### Ably
+Capsule Pro uses the outbox pattern for guaranteed event delivery. Store events in the same database transaction as the command result, then publish to Ably asynchronously.
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { prisma } from '@capsule/database';
+import { createInventoryRuntime } from '@capsule/manifest-adapters';
+
+export async function reserveInventoryWithOutbox(
+  tenantId: string,
+  userId: string,
+  itemId: string,
+  quantity: number,
+  eventId: string,
+  correlationId: string,
+) {
+  const runtime = createInventoryRuntime({
+    tenantId,
+    userId,
+    storeProvider: createPrismaStoreProvider(tenantId),
+  });
+
+  // Collect events during command execution
+  const collectedEvents: EmittedEvent[] = [];
+  runtime.onEvent((event) => collectedEvents.push(event));
+
+  const result = await runtime.runCommand('reserve', {
+    quantity,
+    eventId,
+  }, {
+    entityName: 'InventoryItem',
+    instanceId: itemId,
+    correlationId,
+    causationId: `user-reserve-${userId}`,
+  });
+
+  if (!result.success) return result;
+
+  // Store command result + events in same transaction
+  await prisma.$transaction(async (tx) => {
+    // Update inventory item in database
+    await tx.inventoryItem.update({
+      where: { tenantId_id: { tenantId, id: itemId } },
+      data: {
+        quantityReserved: { increment: quantity },
+        quantityAvailable: { decrement: quantity },
+      },
+    });
+
+    // Store events in outbox — workflow metadata preserved
+    await tx.outbox.createMany({
+      data: collectedEvents.map(event => ({
+        tenantId,
+        eventName: event.name,
+        channel: event.channel,
+        payload: event.payload,
+        correlationId: event.correlationId ?? null,
+        causationId: event.causationId ?? null,
+        emitIndex: event.emitIndex,
+        timestamp: new Date(event.timestamp),
+        published: false,
+      })),
+    });
+  });
+
+  return result;
+}
+```
+
+### Outbox Worker: Publish to Ably
+
+```typescript
 import Ably from 'ably';
 
 const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
-const runtime = new RuntimeEngine(ir, { userId, tenantId });
 
-runtime.onEvent((event) => {
-  // Publish to Ably channel
-  const channel = ably.channels.get(event.channel);
-  channel.publish(event.name, {
-    ...event.payload,
-    timestamp: event.timestamp,
+// Runs on a schedule (e.g., every 2 seconds)
+export async function publishOutboxEvents() {
+  const pending = await prisma.outbox.findMany({
+    where: { published: false },
+    orderBy: { timestamp: 'asc' },
+    take: 100,
   });
-});
-```
 
-### Pusher
+  for (const entry of pending) {
+    const channel = ably.channels.get(`tenant:${entry.tenantId}:${entry.channel}`);
 
-```typescript
-import Pusher from 'pusher';
+    await channel.publish(entry.eventName, {
+      ...entry.payload,
+      timestamp: entry.timestamp,
+      emitIndex: entry.emitIndex,
+      correlationId: entry.correlationId,
+      causationId: entry.causationId,
+    });
 
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER,
-});
-
-runtime.onEvent((event) => {
-  pusher.trigger(event.channel, event.name, event.payload);
-});
-```
-
-### Native WebSockets (ws library)
-
-```typescript
-import { WebSocketServer } from 'ws';
-
-const wss = new WebSocketServer({ port: 8080 });
-
-runtime.onEvent((event) => {
-  // Broadcast to all connected clients
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({
-        type: event.name,
-        channel: event.channel,
-        payload: event.payload,
-        timestamp: event.timestamp,
-      }));
-    }
-  });
-});
-```
-
-### With Channel Filtering
-
-```typescript
-// Only send events to subscribers of that channel
-const subscriptions = new Map<WebSocket, Set<string>>();
-
-runtime.onEvent((event) => {
-  subscriptions.forEach((channels, client) => {
-    if (channels.has(event.channel) && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(event));
-    }
-  });
-});
+    await prisma.outbox.update({
+      where: { id: entry.id },
+      data: { published: true, publishedAt: new Date() },
+    });
+  }
+}
 ```
 
 ---
 
-## Pattern 2: Message Queues
+## Pattern 3: Event-Driven Prep Task Automation
 
-Wire events to message queues for async processing.
-
-### Kafka
+When a prep task is claimed, automatically check station capacity and notify the kitchen lead. Each reaction uses `causationId` to trace why it happened.
 
 ```typescript
-import { Kafka } from 'kafkajs';
-
-const kafka = new Kafka({
-  clientId: 'manifest-app',
-  brokers: ['localhost:9092'],
-});
-
-const producer = kafka.producer();
-await producer.connect();
-
-runtime.onEvent(async (event) => {
-  await producer.send({
-    topic: event.channel,
-    messages: [{
-      key: event.name,
-      value: JSON.stringify(event.payload),
-      timestamp: String(event.timestamp),
-    }],
-  });
-});
-```
-
-### RabbitMQ
-
-```typescript
-import amqp from 'amqplib';
-
-const connection = await amqp.connect('amqp://localhost');
-const channel = await connection.createChannel();
-
-runtime.onEvent((event) => {
-  channel.publish(
-    event.channel,        // Exchange
-    event.name,           // Routing key
-    Buffer.from(JSON.stringify(event.payload))
-  );
-});
-```
-
-### AWS SQS
-
-```typescript
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-
-const sqs = new SQSClient({ region: 'us-east-1' });
-
-runtime.onEvent(async (event) => {
-  await sqs.send(new SendMessageCommand({
-    QueueUrl: process.env.SQS_QUEUE_URL,
-    MessageBody: JSON.stringify({
-      eventName: event.name,
-      channel: event.channel,
-      payload: event.payload,
-      timestamp: event.timestamp,
-    }),
-    MessageAttributes: {
-      EventName: { DataType: 'String', StringValue: event.name },
-      Channel: { DataType: 'String', StringValue: event.channel },
-    },
-  }));
-});
-```
-
----
-
-## Pattern 3: Background Jobs
-
-Wire events to job queues for async side effects.
-
-### BullMQ
-
-```typescript
+import { createPrepTaskRuntime, createStationRuntime } from '@capsule/manifest-adapters';
 import { Queue } from 'bullmq';
 
-const emailQueue = new Queue('emails', {
-  connection: { host: 'localhost', port: 6379 }
+const notificationQueue = new Queue('notifications', {
+  connection: { host: process.env.REDIS_HOST, port: 6379 },
 });
 
-const analyticsQueue = new Queue('analytics', {
-  connection: { host: 'localhost', port: 6379 }
-});
-
-runtime.onEvent((event) => {
-  // Route events to appropriate queues
-  if (event.name === 'InvoiceGenerated') {
-    emailQueue.add('send-invoice-email', {
-      invoiceId: event.payload.invoiceId,
-      userId: event.payload.userId,
-    });
-  }
-
-  if (event.name === 'OrderPlaced') {
-    emailQueue.add('send-order-confirmation', event.payload);
-    analyticsQueue.add('track-order', event.payload);
-  }
-
-  if (event.name === 'UserRegistered') {
-    emailQueue.add('send-welcome-email', event.payload);
-    analyticsQueue.add('track-registration', event.payload);
-  }
-});
-```
-
-### Temporal
-
-```typescript
-import { Client } from '@temporalio/client';
-
-const client = new Client();
-
-runtime.onEvent(async (event) => {
-  if (event.name === 'OrderPlaced') {
-    await client.workflow.start('processOrder', {
-      taskQueue: 'orders',
-      workflowId: `order-${event.payload.orderId}`,
-      args: [event.payload],
-    });
-  }
-});
-```
-
-### Inngest
-
-```typescript
-import { Inngest } from 'inngest';
-
-const inngest = new Inngest({ id: 'manifest-app' });
-
-runtime.onEvent(async (event) => {
-  await inngest.send({
-    name: event.name,
-    data: {
-      channel: event.channel,
-      ...event.payload,
-    },
+export function setupPrepTaskAutomation(tenantId: string) {
+  const prepRuntime = createPrepTaskRuntime({
+    tenantId,
+    userId: 'system',
+    storeProvider: createPrismaStoreProvider(tenantId),
   });
-});
+
+  const stationRuntime = createStationRuntime({
+    tenantId,
+    userId: 'system',
+    storeProvider: createPrismaStoreProvider(tenantId),
+  });
+
+  // When a task is claimed, assign it to its station
+  prepRuntime.onEvent(async (event) => {
+    if (event.name !== 'PrepTaskClaimed') return;
+
+    const task = await prisma.prepTask.findUnique({
+      where: { tenantId_id: { tenantId, id: event.payload.id } },
+    });
+    if (!task?.stationId) return;
+
+    await stationRuntime.runCommand('assignTask', {
+      taskId: task.id,
+    }, {
+      entityName: 'Station',
+      instanceId: task.stationId,
+      // Same correlation as the claim event — links the whole chain
+      correlationId: event.correlationId,
+      // This station assignment was caused by the prep task claim
+      causationId: `PrepTaskClaimed-${event.payload.id}-${event.emitIndex}`,
+    });
+  });
+
+  // When a task is completed, remove it from the station
+  prepRuntime.onEvent(async (event) => {
+    if (event.name !== 'PrepTaskCompleted') return;
+
+    const task = await prisma.prepTask.findUnique({
+      where: { tenantId_id: { tenantId, id: event.payload.id } },
+    });
+    if (!task?.stationId) return;
+
+    await stationRuntime.runCommand('removeTask', {
+      taskId: task.id,
+    }, {
+      entityName: 'Station',
+      instanceId: task.stationId,
+      correlationId: event.correlationId,
+      causationId: `PrepTaskCompleted-${event.payload.id}-${event.emitIndex}`,
+    });
+  });
+
+  // When any kitchen event fires, notify the kitchen lead
+  prepRuntime.onEvent(async (event) => {
+    if (!['PrepTaskClaimed', 'PrepTaskCompleted', 'PrepTaskReleased'].includes(event.name)) return;
+
+    await notificationQueue.add('kitchen-notification', {
+      tenantId,
+      eventName: event.name,
+      payload: event.payload,
+      correlationId: event.correlationId,
+      causationId: event.causationId,
+      emitIndex: event.emitIndex,
+    }, {
+      // Deduplicate: same event name + same task + same emitIndex = same notification
+      jobId: `${event.name}-${event.payload.id}-${event.emitIndex}`,
+    });
+  });
+
+  return { prepRuntime, stationRuntime };
+}
 ```
 
 ---
 
-## Pattern 4: Webhooks
+## Pattern 4: Inventory Alert Pipeline
 
-Wire events to external webhooks for integration.
-
-### Basic Webhook
+Wire inventory events to an alert system that checks constraint outcomes and triggers reorder suggestions.
 
 ```typescript
-runtime.onEvent(async (event) => {
-  if (event.name === 'InvoiceGenerated') {
-    await fetch('https://api.example.com/webhooks/invoice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event: event.name,
-        payload: event.payload,
-        timestamp: event.timestamp,
-      }),
-    });
-  }
-});
+import { createInventoryRuntime, getWarningConstraints } from '@capsule/manifest-adapters';
+import * as Sentry from '@sentry/nextjs';
+
+export function setupInventoryAlerts(tenantId: string) {
+  const runtime = createInventoryRuntime({
+    tenantId,
+    userId: 'system',
+    storeProvider: createPrismaStoreProvider(tenantId),
+  });
+
+  // After any inventory command, check for low-stock warnings
+  runtime.onEvent(async (event) => {
+    if (!['InventoryConsumed', 'InventoryWasted'].includes(event.name)) return;
+
+    // Re-check constraints for this item to get current state
+    try {
+      const outcomes = await runtime.checkConstraints(
+        'InventoryItem',
+        event.payload.id,
+      );
+
+      const warnings = getWarningConstraints(outcomes);
+      const belowPar = warnings.find(w => w.code === 'warnBelowPar');
+      const lowStock = warnings.find(w => w.code === 'warnLowStock');
+
+      if (belowPar || lowStock) {
+        // Create alert in database
+        await prisma.inventoryAlert.create({
+          data: {
+            tenantId,
+            inventoryItemId: event.payload.id,
+            alertType: lowStock ? 'LOW_STOCK' : 'BELOW_PAR',
+            message: (lowStock ?? belowPar)!.message,
+            triggeredAt: new Date(),
+            // Link to the workflow that caused depletion
+            metadata: {
+              correlationId: event.correlationId,
+              causationId: event.causationId,
+              triggerEvent: event.name,
+            },
+          },
+        });
+
+        // Push to Ably for real-time dashboard
+        const channel = ably.channels.get(`tenant:${tenantId}:alerts`);
+        channel.publish('inventory-alert', {
+          itemId: event.payload.id,
+          alertType: lowStock ? 'LOW_STOCK' : 'BELOW_PAR',
+          correlationId: event.correlationId,
+        });
+      }
+    } catch (e) {
+      Sentry.captureException(e, {
+        extra: { tenantId, event: event.name, itemId: event.payload.id },
+      });
+    }
+  });
+
+  return runtime;
+}
 ```
 
-### With Retry Logic
+---
+
+## Pattern 5: Event Filtering by Channel and Severity
+
+Route events to different destinations based on channel and associated constraint outcomes.
+
+```typescript
+import Ably from 'ably';
+import { Queue } from 'bullmq';
+
+const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
+const auditQueue = new Queue('audit');
+
+export function setupEventRouting(tenantId: string, runtime: RuntimeEngine) {
+  runtime.onEvent((event) => {
+    // System events (overrides, budget errors) → audit queue only
+    if (event.channel === 'system') {
+      auditQueue.add('audit-event', {
+        tenantId,
+        eventName: event.name,
+        payload: event.payload,
+        correlationId: event.correlationId,
+        causationId: event.causationId,
+        emitIndex: event.emitIndex,
+        timestamp: event.timestamp,
+      });
+      return;
+    }
+
+    // Kitchen events → real-time push to production board
+    if (['PrepTaskClaimed', 'PrepTaskStarted', 'PrepTaskCompleted', 'PrepTaskReleased'].includes(event.name)) {
+      ably.channels
+        .get(`tenant:${tenantId}:kitchen`)
+        .publish(event.name, {
+          ...event.payload,
+          emitIndex: event.emitIndex,
+          correlationId: event.correlationId,
+        });
+    }
+
+    // Inventory events → real-time push + background reorder check
+    if (['InventoryConsumed', 'InventoryReserved', 'InventoryWasted'].includes(event.name)) {
+      ably.channels
+        .get(`tenant:${tenantId}:inventory`)
+        .publish(event.name, event.payload);
+
+      auditQueue.add('check-reorder', {
+        tenantId,
+        itemId: event.payload.id,
+        correlationId: event.correlationId,
+      });
+    }
+
+    // Station events → real-time push to capacity dashboard
+    if (['StationTaskAssigned', 'StationTaskRemoved'].includes(event.name)) {
+      ably.channels
+        .get(`tenant:${tenantId}:stations`)
+        .publish(event.name, event.payload);
+    }
+  });
+}
+```
+
+---
+
+## Pattern 6: Webhook Delivery with Idempotency
+
+Deliver events to external integrations (e.g., accounting system, supplier portal) with retry and deduplication.
 
 ```typescript
 import pRetry from 'p-retry';
 
-runtime.onEvent(async (event) => {
-  await pRetry(
-    async () => {
-      const response = await fetch('https://api.example.com/webhooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Webhook failed: ${response.statusText}`);
-      }
-    },
-    { retries: 3 }
-  );
-});
-```
-
-### Webhook Registry
-
-```typescript
 interface WebhookConfig {
   url: string;
   events: string[];
   headers?: Record<string, string>;
+  tenantId: string;
 }
 
 const webhooks: WebhookConfig[] = [
   {
-    url: 'https://api.example.com/invoices',
-    events: ['InvoiceGenerated', 'InvoiceApproved'],
+    tenantId: 'tenant-acme-catering',
+    url: 'https://accounting.acme.com/api/events',
+    events: ['InventoryConsumed', 'InventoryWasted', 'InventoryRestocked'],
+    headers: { 'X-API-Key': process.env.ACME_ACCOUNTING_KEY! },
   },
   {
-    url: 'https://analytics.example.com/track',
-    events: ['OrderPlaced', 'OrderCompleted'],
-    headers: { 'X-API-Key': process.env.ANALYTICS_API_KEY },
+    tenantId: 'tenant-acme-catering',
+    url: 'https://supplier-portal.example.com/webhooks',
+    events: ['InventoryRestocked'],
   },
 ];
 
-runtime.onEvent(async (event) => {
-  const matchingWebhooks = webhooks.filter(w => w.events.includes(event.name));
+export function setupWebhookDelivery(tenantId: string, runtime: RuntimeEngine) {
+  const matchingWebhooks = webhooks.filter(w => w.tenantId === tenantId);
 
-  await Promise.all(
-    matchingWebhooks.map(webhook =>
-      fetch(webhook.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...webhook.headers,
+  runtime.onEvent(async (event) => {
+    const targets = matchingWebhooks.filter(w => w.events.includes(event.name));
+
+    for (const webhook of targets) {
+      // Idempotency key: same event + same emitIndex = same delivery
+      const idempotencyKey = `webhook-${event.name}-${event.correlationId}-${event.emitIndex}`;
+
+      await pRetry(
+        async () => {
+          const response = await fetch(webhook.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Idempotency-Key': idempotencyKey,
+              'X-Correlation-Id': event.correlationId ?? '',
+              'X-Causation-Id': event.causationId ?? '',
+              ...webhook.headers,
+            },
+            body: JSON.stringify({
+              event: event.name,
+              payload: event.payload,
+              timestamp: event.timestamp,
+              emitIndex: event.emitIndex,
+              correlationId: event.correlationId,
+              causationId: event.causationId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Webhook ${webhook.url} failed: ${response.status}`);
+          }
         },
-        body: JSON.stringify(event),
-      })
-    )
-  );
-});
-```
-
----
-
-## Pattern 5: Multi-Channel Fanout
-
-Wire events to multiple destinations simultaneously.
-
-```typescript
-import { Queue } from 'bullmq';
-import Ably from 'ably';
-
-const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
-const emailQueue = new Queue('emails');
-const analyticsQueue = new Queue('analytics');
-
-runtime.onEvent(async (event) => {
-  // Real-time push
-  ably.channels.get(event.channel).publish(event.name, event.payload);
-
-  // Background jobs
-  if (event.name === 'OrderPlaced') {
-    emailQueue.add('send-confirmation', event.payload);
-    analyticsQueue.add('track-order', event.payload);
-  }
-
-  // Webhook
-  await fetch('https://api.example.com/events', {
-    method: 'POST',
-    body: JSON.stringify(event),
+        { retries: 3, minTimeout: 1000 },
+      );
+    }
   });
-
-  // Log to observability
-  console.log('[Event]', event.name, event.payload);
-});
-```
-
----
-
-## Pattern 6: Transactional Outbox
-
-Store events in a database transaction, then dispatch asynchronously.
-
-```typescript
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-// During command execution, collect events
-const eventCollector: EmittedEvent[] = [];
-
-runtime.onEvent((event) => {
-  eventCollector.push(event);
-});
-
-// After command succeeds, store events in transaction
-await prisma.$transaction(async (tx) => {
-  // Store command result
-  await tx.invoice.update({
-    where: { id: invoiceId },
-    data: { status: 'approved' },
-  });
-
-  // Store events in outbox table
-  await tx.eventOutbox.createMany({
-    data: eventCollector.map(event => ({
-      eventName: event.name,
-      channel: event.channel,
-      payload: event.payload,
-      timestamp: new Date(event.timestamp),
-      published: false,
-    })),
-  });
-});
-
-// Separate worker process dispatches from outbox
-setInterval(async () => {
-  const pendingEvents = await prisma.eventOutbox.findMany({
-    where: { published: false },
-    take: 100,
-  });
-
-  for (const event of pendingEvents) {
-    await ably.channels.get(event.channel).publish(event.eventName, event.payload);
-
-    await prisma.eventOutbox.update({
-      where: { id: event.id },
-      data: { published: true },
-    });
-  }
-}, 5000);
-```
-
-See: `docs/patterns/transactional-outbox-pattern.md` for complete implementation.
-
----
-
-## Pattern 7: Event Filtering
-
-Filter events before dispatching.
-
-### By Event Name
-
-```typescript
-runtime.onEvent((event) => {
-  const allowedEvents = ['OrderPlaced', 'OrderCompleted', 'InvoiceGenerated'];
-
-  if (allowedEvents.includes(event.name)) {
-    ably.channels.get(event.channel).publish(event.name, event.payload);
-  }
-});
-```
-
-### By Channel
-
-```typescript
-runtime.onEvent((event) => {
-  if (event.channel.startsWith('admin.')) {
-    // Only send admin events to specific transport
-    adminWebSocket.send(JSON.stringify(event));
-  } else {
-    // Send public events to public transport
-    publicAbly.channels.get(event.channel).publish(event.name, event.payload);
-  }
-});
-```
-
-### By Tenant
-
-```typescript
-runtime.onEvent((event) => {
-  const tenantId = event.payload.tenantId;
-
-  // Only send events to subscribers of this tenant
-  const tenantChannel = ably.channels.get(`tenant:${tenantId}:${event.channel}`);
-  tenantChannel.publish(event.name, event.payload);
-});
+}
 ```
 
 ---
@@ -510,100 +494,84 @@ runtime.onEvent((event) => {
 
 ### 1. Keep Event Handlers Fast
 
-Event handlers run synchronously during command execution. For async work, dispatch to a queue.
+Event handlers run during command execution. Dispatch to queues for async work.
 
-**Good:**
+```typescript
+// Good: fast dispatch
+runtime.onEvent((event) => {
+  notificationQueue.add('notify', event.payload);
+});
+
+// Bad: slow async work blocks the command
+runtime.onEvent(async (event) => {
+  await sendEmail(event.payload); // blocks command return
+});
+```
+
+### 2. Preserve Workflow Metadata Through the Pipeline
+
+Every layer (outbox, queue, webhook) should carry `correlationId`, `causationId`, and `emitIndex`:
 
 ```typescript
 runtime.onEvent((event) => {
-  emailQueue.add('send-email', event.payload); // Fast dispatch
-});
-```
-
-**Bad:**
-
-```typescript
-runtime.onEvent(async (event) => {
-  await sendEmail(event.payload); // Slow async work
-});
-```
-
-### 2. Handle Errors Gracefully
-
-Don't let event dispatch failures crash command execution.
-
-```typescript
-runtime.onEvent(async (event) => {
-  try {
-    await ably.channels.get(event.channel).publish(event.name, event.payload);
-  } catch (error) {
-    console.error('[Event dispatch failed]', event.name, error);
-    // Log to error tracking (Sentry, Datadog)
-  }
-});
-```
-
-### 3. Use Idempotency Keys
-
-Ensure event handlers are idempotent.
-
-```typescript
-runtime.onEvent(async (event) => {
-  await emailQueue.add('send-email', event.payload, {
-    jobId: `${event.name}-${event.payload.invoiceId}`, // Idempotency key
+  queue.add('process', {
+    ...event.payload,
+    correlationId: event.correlationId,
+    causationId: event.causationId,
+    emitIndex: event.emitIndex,
   });
 });
 ```
 
-### 4. Validate Payload Shape
-
-Event payloads are opaque objects. Validate before use.
+### 3. Use emitIndex + correlationId for Deduplication
 
 ```typescript
-import { z } from 'zod';
-
-const InvoiceGeneratedSchema = z.object({
-  invoiceId: z.string(),
-  userId: z.string(),
-  amount: z.number(),
-});
-
+// BullMQ job deduplication using emitIndex
 runtime.onEvent((event) => {
-  if (event.name === 'InvoiceGenerated') {
-    const result = InvoiceGeneratedSchema.safeParse(event.payload);
-
-    if (result.success) {
-      emailQueue.add('send-invoice-email', result.data);
-    } else {
-      console.error('[Invalid event payload]', result.error);
-    }
-  }
+  emailQueue.add('send-email', event.payload, {
+    jobId: `${event.name}-${event.correlationId}-${event.emitIndex}`,
+  });
 });
 ```
 
-### 5. Use Observability
+### 4. Handle Override Events Separately
 
-Log events for debugging and monitoring.
+`OverrideApplied` events come on the `system` channel and should go to audit, not the production board:
 
 ```typescript
-import { trace } from '@opentelemetry/api';
-
 runtime.onEvent((event) => {
-  const span = trace.getTracer('manifest').startSpan('event.dispatch', {
-    attributes: {
-      'event.name': event.name,
-      'event.channel': event.channel,
-    },
-  });
+  if (event.name === 'OverrideApplied') {
+    // Audit log only — manager override happened
+    auditQueue.add('override-audit', {
+      constraintCode: event.payload.constraintCode,
+      reason: event.payload.reason,
+      authorizedBy: event.payload.authorizedBy,
+      correlationId: event.correlationId,
+    });
+    return;
+  }
 
+  // Normal events → production board
+  ably.channels.get(`tenant:${tenantId}:kitchen`).publish(event.name, event.payload);
+});
+```
+
+### 5. Use Sentry for Event Dispatch Failures
+
+```typescript
+import * as Sentry from '@sentry/nextjs';
+
+runtime.onEvent(async (event) => {
   try {
-    ably.channels.get(event.channel).publish(event.name, event.payload);
-    span.setStatus({ code: 1 }); // OK
+    await ably.channels.get(`tenant:${tenantId}:kitchen`).publish(event.name, event.payload);
   } catch (error) {
-    span.recordException(error);
-    span.setStatus({ code: 2 }); // Error
-  } finally {
-    span.end();
+    Sentry.captureException(error, {
+      extra: {
+        eventName: event.name,
+        correlationId: event.correlationId,
+        tenantId,
+      },
+    });
   }
 });
 ```
@@ -612,25 +580,22 @@ runtime.onEvent((event) => {
 
 ## Common Patterns Summary
 
-| Pattern | Use Case | Examples |
-|---------|----------|----------|
-| Real-Time Transport | Push updates to clients | Ably, Pusher, WebSockets |
-| Message Queues | Async processing, fanout | Kafka, RabbitMQ, SQS |
-| Background Jobs | Side effects, retries | BullMQ, Temporal, Inngest |
-| Webhooks | External integrations | Stripe, Slack, Zapier |
-| Transactional Outbox | Guaranteed delivery | Prisma + worker |
-| Multi-Channel Fanout | Dispatch to many systems | Combine all above |
+| Pattern | Use Case | Capsule Pro Example |
+|---------|----------|-------------------|
+| Ably Real-Time | Push updates to production board | Kitchen task status, station capacity |
+| Transactional Outbox | Guaranteed delivery with Prisma | Inventory changes, financial events |
+| Event-Driven Automation | Trigger downstream steps | Claim task → assign station → notify lead |
+| Alert Pipeline | Constraint-based monitoring | Low stock → alert → reorder suggestion |
+| Channel Routing | Route by event type | Kitchen → Ably, inventory → queue, overrides → audit |
+| Webhook Delivery | External integrations | Accounting system, supplier portal |
 
 ---
 
 ## Related Documentation
 
-- **Spec**: `docs/spec/semantics.md` → Events
-- **Adapters**: `docs/spec/adapters.md` → Action Adapters
-- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md` → Event Handling
-- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md`
-- **Usage Patterns**: `docs/patterns/usage-patterns.md`
-
----
-
-**TL;DR**: Manifest emits events with a guaranteed contract. Wire them to YOUR infrastructure (WebSockets, queues, webhooks). Events are NOT Manifest's responsibility—they're YOUR adapter boundary.
+- **Spec**: `docs/spec/semantics.md` — Event emission semantics
+- **vNext**: `docs/spec/manifest-vnext.md` — Workflow metadata, emitIndex determinism
+- **Adapters**: `docs/spec/adapters.md` — Action adapters, effect boundaries
+- **Complex Workflows**: `docs/patterns/complex-workflows.md` — Multi-step orchestration with correlation
+- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md` — Detailed outbox implementation
+- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md` — Basic runtime usage
