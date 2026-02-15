@@ -12,7 +12,7 @@ import cors from 'cors';
 import { glob } from 'glob';
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +33,13 @@ const MANIFEST_ROOT = args['manifest-root'] || DEFAULT_MANIFEST_ROOT;
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Windows paths are case-insensitive — normalize for security checks
+function isWithinRoot(filePath, root) {
+  const resolvedPath = path.resolve(filePath).toLowerCase();
+  const resolvedRoot = path.resolve(root).toLowerCase();
+  return resolvedPath.startsWith(resolvedRoot);
+}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -62,9 +69,7 @@ app.get('/api/files/:name', async (req, res) => {
   try {
     const filePath = path.join(MANIFEST_ROOT, req.params.name);
     // Security: ensure file is within MANIFEST_ROOT
-    const resolvedPath = path.resolve(filePath);
-    const resolvedRoot = path.resolve(MANIFEST_ROOT);
-    if (!resolvedPath.startsWith(resolvedRoot)) {
+    if (!isWithinRoot(filePath, MANIFEST_ROOT)) {
       return res.status(403).json({ error: 'Access denied' });
     }
     
@@ -84,9 +89,7 @@ app.post('/api/scan', async (req, res) => {
     }
 
     // Security check
-    const resolvedPath = path.resolve(filePath);
-    const resolvedRoot = path.resolve(MANIFEST_ROOT);
-    if (!resolvedPath.startsWith(resolvedRoot)) {
+    if (!isWithinRoot(filePath, MANIFEST_ROOT)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -112,6 +115,64 @@ app.post('/api/scan', async (req, res) => {
     } catch {
       res.status(500).json({ error: error.message });
     }
+  }
+});
+
+// Compile a manifest file and return the IR
+app.post('/api/compile', async (req, res) => {
+  try {
+    const { filePath } = req.body;
+    if (!filePath) {
+      return res.status(400).json({ error: 'filePath is required' });
+    }
+
+    // Security check
+    if (!isWithinRoot(filePath, MANIFEST_ROOT)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const content = await fs.readFile(filePath, 'utf-8');
+
+    // Use the compiler directly (pathToFileURL needed for Windows dynamic imports)
+    const compilerPath = path.resolve(__dirname, '../../../dist/manifest/ir-compiler.js');
+    const { compileToIR } = await import(pathToFileURL(compilerPath).href);
+    const result = await compileToIR(content);
+
+    res.json({
+      ir: result.ir || null,
+      diagnostics: result.diagnostics || [],
+      source: content,
+      file: filePath,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Compile all manifest files and return combined IR
+app.post('/api/compile-all', async (req, res) => {
+  try {
+    const pattern = path.join(MANIFEST_ROOT, '**/*.manifest').replace(/\\/g, '/');
+    const files = await glob(pattern, { windowsPathsNoEscape: true });
+
+    const compilerPath = path.resolve(__dirname, '../../../dist/manifest/ir-compiler.js');
+    const { compileToIR } = await import(pathToFileURL(compilerPath).href);
+
+    const results = [];
+    for (const filePath of files) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const result = await compileToIR(content);
+      results.push({
+        file: filePath,
+        name: path.basename(filePath),
+        ir: result.ir || null,
+        diagnostics: result.diagnostics || [],
+      });
+    }
+
+    res.json({ results, filesCompiled: results.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -154,6 +215,8 @@ app.listen(PORT, () => {
 ║    GET  /api/health           - Health check             ║
 ║    GET  /api/files            - List all .manifest files ║
 ║    GET  /api/files/:name      - Read a specific file     ║
+║    POST /api/compile          - Compile file → IR        ║
+║    POST /api/compile-all      - Compile all → IR         ║
 ║    POST /api/scan             - Scan a single file       ║
 ║    POST /api/scan-all         - Scan all files           ║
 ╚══════════════════════════════════════════════════════════╝

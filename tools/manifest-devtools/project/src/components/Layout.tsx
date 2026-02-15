@@ -12,6 +12,7 @@ import {
   Search,
   Shield,
   AlertCircle,
+  FolderOpen,
 } from 'lucide-react';
 
 export type ToolId = 'dashboard' | 'guard-debugger' | 'fixture-generator' | 'profiler' | 'ir-verifier' | 'migration' | 'entity-scanner' | 'policy-coverage' | 'issue-tracker';
@@ -39,9 +40,23 @@ interface LayoutProps {
   activeTool: ToolId;
   onNavigate: (id: ToolId) => void;
   children: React.ReactNode;
+  manifestRoot: string;
+  rootInput: string;
+  onRootInputChange: (value: string) => void;
+  onRootSubmit: () => void;
+  onBrowse: () => void;
 }
 
-export default function Layout({ activeTool, onNavigate, children }: LayoutProps) {
+export default function Layout({
+  activeTool,
+  onNavigate,
+  children,
+  manifestRoot,
+  rootInput,
+  onRootInputChange,
+  onRootSubmit,
+  onBrowse,
+}: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -123,6 +138,34 @@ export default function Layout({ activeTool, onNavigate, children }: LayoutProps
             <h2 className="text-sm font-medium text-slate-200">
               {NAV_ITEMS.find((n) => n.id === activeTool)?.label}
             </h2>
+          </div>
+
+          {/* Manifest root path bar */}
+          <div className="ml-auto flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                manifestRoot ? 'bg-emerald-400' : 'bg-red-400'
+              }`}
+              title={manifestRoot ? `Root: ${manifestRoot}` : 'No manifest root set'}
+            />
+            <input
+              type="text"
+              value={rootInput}
+              onChange={(e) => onRootInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onRootSubmit();
+              }}
+              placeholder="Enter manifest directory path..."
+              className="w-[400px] h-8 px-3 text-xs bg-surface-lighter border border-surface-border rounded-md text-slate-300 placeholder-slate-600 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20"
+            />
+            <button
+              onClick={onBrowse}
+              className="h-8 px-2.5 flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 bg-surface-lighter border border-surface-border rounded-md hover:bg-surface-hover transition-colors"
+              title="Browse for directory"
+            >
+              <FolderOpen size={14} />
+              <span>Browse</span>
+            </button>
           </div>
         </header>
 

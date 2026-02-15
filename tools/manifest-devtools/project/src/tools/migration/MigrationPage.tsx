@@ -1,266 +1,260 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  ArrowRight,
-  Play,
-  AlertTriangle,
+  ArrowLeftRight,
   AlertCircle,
-  Info,
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
-  FileCode2,
+  Plus,
+  Minus,
+  RefreshCw,
+  Loader2,
+  FileJson,
 } from 'lucide-react';
-import CodeEditor from '../../components/CodeEditor';
-import { applyMigration, computeDiff, type DiffLine, type AppliedRule } from './rewriteEngine';
-import { VERSIONS, getRulesForVersions, getBreakingChanges, type BreakingChange } from './versionRules';
-
-const SAMPLE_SOURCE = `// Order validation module
-fn validate_order(order) {
-  guard order.total > 0
-  guard order.items.length > 0
-  guard order.status == "pending"
-
-  let tax = calculate_tax(order.total)
-  let shipping = estimate_shipping(order.address)
-
-  match order.priority {
-    "rush" -> apply_rush_fee(order)
-    "standard" -> noop()
-  }
-
-  return {
-    subtotal: order.total,
-    tax: tax,
-    shipping: shipping,
-    total: order.total + tax + shipping
-  }
-}
-
-fn calculate_tax(amount) {
-  guard amount > 0
-  let rate = lookup_tax_rate()
-  return amount * rate
-}`;
+import { diffIR, listFiles, type IRDiffResult, type IRDiffChange, type ManifestFile } from '../../lib/api';
 
 export default function MigrationPage() {
-  const [fromVersion, setFromVersion] = useState('0.1.0');
-  const [toVersion, setToVersion] = useState('1.0.0');
-  const [source, setSource] = useState(SAMPLE_SOURCE);
-  const [hasMigrated, setHasMigrated] = useState(false);
+  const [files, setFiles] = useState<ManifestFile[]>([]);
+  const [fileA, setFileA] = useState('');
+  const [fileB, setFileB] = useState('');
+  const [result, setResult] = useState<IRDiffResult | null>(null);
+  const [diffing, setDiffing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const migration = useMemo(() => {
-    if (!hasMigrated) return null;
-    const rules = getRulesForVersions(fromVersion, toVersion);
-    return applyMigration(source, rules);
-  }, [source, fromVersion, toVersion, hasMigrated]);
+  useEffect(() => {
+    listFiles().then(({ files: f }) => {
+      setFiles(f);
+      if (f.length >= 2) {
+        setFileA(f[0].path);
+        setFileB(f[1].path);
+      } else if (f.length === 1) {
+        setFileA(f[0].path);
+        setFileB(f[0].path);
+      }
+    }).catch(() => {});
+  }, []);
 
-  const diff = useMemo(() => {
-    if (!migration) return [];
-    return computeDiff(source, migration.output);
-  }, [source, migration]);
-
-  const breakingChanges = useMemo(() => {
-    return getBreakingChanges(fromVersion, toVersion);
-  }, [fromVersion, toVersion]);
-
-  const runMigration = () => setHasMigrated(true);
+  const runDiff = useCallback(async () => {
+    if (!fileA || !fileB) return;
+    setDiffing(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await diffIR(fileA, fileB);
+      if (!data.success) {
+        setError(data.error || 'Diff failed');
+      } else {
+        setResult(data);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Diff failed');
+    } finally {
+      setDiffing(false);
+    }
+  }, [fileA, fileB]);
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-100 mb-1">Migration Assistant</h1>
+        <h1 className="text-xl font-semibold text-slate-100 mb-1">IR Diff Analyzer</h1>
         <p className="text-sm text-slate-400">
-          Automatically migrate Manifest source between syntax versions. Review changes with a side-by-side diff.
+          Compare the compiled IR of two .manifest files. Identifies added, removed, and changed paths with risk assessment.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">From:</label>
+      {/* File selectors */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-xs text-slate-500 mb-1 block">File A (Before)</label>
           <select
-            value={fromVersion}
-            onChange={(e) => { setFromVersion(e.target.value); setHasMigrated(false); }}
-            className="tool-input"
+            value={fileA}
+            onChange={(e) => { setFileA(e.target.value); setResult(null); }}
+            className="tool-input w-full"
           >
-            {VERSIONS.slice(0, -1).map((v) => (
-              <option key={v.version} value={v.version}>{v.label}</option>
+            <option value="">Select file...</option>
+            {files.map((f) => (
+              <option key={f.path} value={f.path}>{f.name}</option>
             ))}
           </select>
         </div>
 
-        <ArrowRight size={16} className="text-slate-500" />
+        <ArrowLeftRight size={16} className="text-slate-500 mb-2" />
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-500">To:</label>
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-xs text-slate-500 mb-1 block">File B (After)</label>
           <select
-            value={toVersion}
-            onChange={(e) => { setToVersion(e.target.value); setHasMigrated(false); }}
-            className="tool-input"
+            value={fileB}
+            onChange={(e) => { setFileB(e.target.value); setResult(null); }}
+            className="tool-input w-full"
           >
-            {VERSIONS.filter((v) => v.version > fromVersion).map((v) => (
-              <option key={v.version} value={v.version}>{v.label}</option>
+            <option value="">Select file...</option>
+            {files.map((f) => (
+              <option key={f.path} value={f.path}>{f.name}</option>
             ))}
           </select>
         </div>
 
-        <button onClick={runMigration} className="btn-primary ml-auto">
-          <Play size={14} /> Migrate
+        <button onClick={runDiff} disabled={diffing || !fileA || !fileB} className="btn-primary mb-0">
+          {diffing ? (
+            <span className="flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" /> Diffing...
+            </span>
+          ) : (
+            <>
+              <RefreshCw size={14} /> Compare IR
+            </>
+          )}
         </button>
       </div>
 
-      {breakingChanges.length > 0 && (
-        <BreakingChangesPanel changes={breakingChanges} />
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div className="tool-panel p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <FileCode2 size={14} className="text-slate-400" />
-            <h3 className="text-sm font-medium text-slate-300">
-              Original ({VERSIONS.find((v) => v.version === fromVersion)?.label})
-            </h3>
+      {error && (
+        <div className="tool-panel p-4 border-l-4 border-l-rose-500 mb-4 animate-slide-in">
+          <div className="flex items-center gap-2 text-rose-400">
+            <AlertCircle size={16} />
+            <span className="text-sm">{error}</span>
           </div>
-          <CodeEditor value={source} onChange={(v) => { setSource(v); setHasMigrated(false); }} height="280px" />
         </div>
+      )}
 
-        <div className="tool-panel p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <FileCode2 size={14} className="text-accent" />
-            <h3 className="text-sm font-medium text-slate-300">
-              Migrated ({VERSIONS.find((v) => v.version === toVersion)?.label})
-            </h3>
-            {migration && (
-              <span className="badge-info text-[10px] ml-auto">
-                {migration.appliedRules.length} changes
-              </span>
-            )}
+      {!result && !error && (
+        <div className="tool-panel flex flex-col items-center justify-center py-24 text-slate-500">
+          <ArrowLeftRight size={32} className="mb-3 text-slate-600" />
+          <p className="text-sm">Select two files and click "Compare IR" to see the diff</p>
+        </div>
+      )}
+
+      {result && result.diff && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="Total Changes" value={result.diff.totalChanges} color="text-slate-300" />
+            <StatCard label="Added" value={result.diff.added} color="text-emerald-400" icon={<Plus size={14} />} />
+            <StatCard label="Removed" value={result.diff.removed} color="text-rose-400" icon={<Minus size={14} />} />
+            <StatCard label="Changed" value={result.diff.changed} color="text-amber-400" icon={<RefreshCw size={14} />} />
+            <StatCard label="High Risk" value={result.diff.highRiskCount} color="text-red-400" icon={<AlertTriangle size={14} />} />
           </div>
-          <CodeEditor
-            value={migration?.output || source}
-            onChange={() => {}}
-            readOnly
-            height="280px"
-          />
-        </div>
-      </div>
 
-      {migration && diff.length > 0 && (
-        <div className="space-y-4">
-          <DiffPanel diff={diff} />
-          <AppliedRulesPanel rules={migration.appliedRules} />
-        </div>
-      )}
-
-      {!migration && (
-        <div className="tool-panel flex flex-col items-center justify-center py-12 text-slate-500">
-          <ArrowRight size={32} className="mb-3 text-slate-600" />
-          <p className="text-sm">Select versions and click "Migrate" to see the diff</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BreakingChangesPanel({ changes }: { changes: BreakingChange[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const breaking = changes.filter((c) => c.severity === 'breaking');
-  const warnings = changes.filter((c) => c.severity === 'warning');
-
-  return (
-    <div className="tool-panel p-4 mb-4 border-l-4 border-l-amber-500 animate-slide-in">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left"
-      >
-        <AlertTriangle size={14} className="text-amber-400" />
-        <span className="text-sm font-medium text-slate-200">
-          {breaking.length} breaking change{breaking.length !== 1 ? 's' : ''}, {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
-        </span>
-        {expanded ? <ChevronDown size={14} className="ml-auto text-slate-500" /> : <ChevronRight size={14} className="ml-auto text-slate-500" />}
-      </button>
-      {expanded && (
-        <div className="mt-3 space-y-2 animate-fade-in">
-          {changes.map((change, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs">
-              {change.severity === 'breaking' ? (
-                <AlertCircle size={12} className="text-rose-400 mt-0.5 shrink-0" />
-              ) : change.severity === 'warning' ? (
-                <AlertTriangle size={12} className="text-amber-400 mt-0.5 shrink-0" />
-              ) : (
-                <Info size={12} className="text-cyan-400 mt-0.5 shrink-0" />
-              )}
-              <div>
-                <p className="text-slate-300">{change.title}</p>
-                <p className="text-slate-500">{change.description}</p>
-              </div>
+          {/* File labels */}
+          <div className="tool-panel p-3 flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <FileJson size={12} className="text-slate-400" />
+              <span className="text-slate-500">A:</span>
+              <span className="text-slate-300 code-font">{result.fileA?.name}</span>
             </div>
-          ))}
+            <ArrowLeftRight size={12} className="text-slate-600" />
+            <div className="flex items-center gap-2">
+              <FileJson size={12} className="text-accent" />
+              <span className="text-slate-500">B:</span>
+              <span className="text-slate-300 code-font">{result.fileB?.name}</span>
+            </div>
+          </div>
+
+          {/* Changes list */}
+          {result.diff.totalChanges === 0 ? (
+            <div className="tool-panel p-8 text-center">
+              <p className="text-sm text-emerald-400">No differences found — IR is identical.</p>
+            </div>
+          ) : (
+            <ChangesList changes={result.diff.changes} />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function DiffPanel({ diff }: { diff: DiffLine[] }) {
+function StatCard({ label, value, color, icon }: { label: string; value: number; color: string; icon?: React.ReactNode }) {
+  return (
+    <div className="tool-panel p-3">
+      <div className={`flex items-center gap-1.5 mb-0.5 ${color}`}>
+        {icon}
+        <span className="text-xl font-bold">{value}</span>
+      </div>
+      <p className="text-[10px] text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function ChangesList({ changes }: { changes: IRDiffChange[] }) {
+  const [filter, setFilter] = useState<'all' | 'added' | 'removed' | 'changed' | 'high'>('all');
+  const [expanded, setExpanded] = useState(false);
+
+  const filtered = changes.filter((c) => {
+    if (filter === 'all') return true;
+    if (filter === 'high') return c.risk === 'high';
+    return c.changeType === filter;
+  });
+
+  const shown = expanded ? filtered : filtered.slice(0, 30);
+
   return (
     <div className="tool-panel overflow-hidden">
-      <div className="px-4 py-2 border-b border-surface-border bg-surface-light/50">
-        <h4 className="text-sm font-medium text-slate-300">Diff View</h4>
-      </div>
-      <div className="overflow-x-auto max-h-72 overflow-y-auto">
-        <pre className="text-xs code-font">
-          {diff.map((line, i) => (
-            <div
-              key={i}
-              className={`px-4 py-0.5 ${
-                line.type === 'added'
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : line.type === 'removed'
-                  ? 'bg-rose-500/10 text-rose-400'
-                  : 'text-slate-400'
-              }`}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-surface-border bg-surface-light/50">
+        <h4 className="text-sm font-medium text-slate-300">Changes ({filtered.length})</h4>
+        <div className="flex gap-1 ml-auto">
+          {(['all', 'added', 'removed', 'changed', 'high'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`text-[10px] px-2 py-0.5 rounded ${filter === f ? 'bg-accent/20 text-accent' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              <span className="select-none text-slate-600 w-8 inline-block text-right mr-4">
-                {line.lineNumber}
-              </span>
-              <span className="select-none mr-2">
-                {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
-              </span>
-              {line.content}
-            </div>
+              {f === 'high' ? 'High Risk' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
           ))}
-        </pre>
+        </div>
       </div>
+
+      <div className="max-h-96 overflow-y-auto">
+        {shown.map((change, i) => (
+          <ChangeRow key={i} change={change} />
+        ))}
+      </div>
+
+      {filtered.length > 30 && (
+        <div className="px-4 py-2 border-t border-surface-border">
+          <button onClick={() => setExpanded(!expanded)} className="btn-ghost text-xs">
+            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {expanded ? 'Show less' : `Show all ${filtered.length}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function AppliedRulesPanel({ rules }: { rules: AppliedRule[] }) {
-  if (rules.length === 0) return null;
+function ChangeRow({ change }: { change: IRDiffChange }) {
+  const typeColor = change.changeType === 'added'
+    ? 'text-emerald-400 bg-emerald-500/10'
+    : change.changeType === 'removed'
+    ? 'text-rose-400 bg-rose-500/10'
+    : 'text-amber-400 bg-amber-500/10';
+
+  const typeIcon = change.changeType === 'added'
+    ? <Plus size={10} />
+    : change.changeType === 'removed'
+    ? <Minus size={10} />
+    : <RefreshCw size={10} />;
 
   return (
-    <div className="tool-panel p-4 animate-slide-in">
-      <h4 className="text-sm font-medium text-slate-300 mb-3">Applied Rules ({rules.length})</h4>
-      <div className="space-y-2">
-        {rules.map((applied, i) => (
-          <div key={i} className="bg-surface rounded-md border border-surface-border p-3">
-            <div className="flex items-center gap-2 mb-2">
-              {applied.rule.severity === 'breaking' ? (
-                <span className="badge-error text-[10px]">Breaking</span>
-              ) : applied.rule.severity === 'warning' ? (
-                <span className="badge-warning text-[10px]">Warning</span>
-              ) : (
-                <span className="badge-info text-[10px]">Info</span>
-              )}
-              <span className="text-xs text-slate-300">{applied.rule.description}</span>
-              <span className="text-[10px] text-slate-600 ml-auto">Line {applied.lineNumber}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs code-font">
-              <div className="bg-rose-500/5 rounded px-2 py-1 text-rose-400">{applied.before}</div>
-              <div className="bg-emerald-500/5 rounded px-2 py-1 text-emerald-400">{applied.after}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="flex items-center gap-3 px-4 py-1.5 border-b border-surface-border/50 hover:bg-surface-light/30 text-xs">
+      <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${typeColor}`}>
+        {typeIcon}
+        {change.changeType}
+      </span>
+
+      <span className="code-font text-slate-300 flex-1 truncate" title={change.path}>
+        {change.path}
+      </span>
+
+      {change.label && (
+        <span className="text-[10px] text-slate-500">{change.label}</span>
+      )}
+
+      {change.risk === 'high' && (
+        <span className="flex items-center gap-0.5 text-[10px] text-red-400">
+          <AlertTriangle size={10} /> high risk
+        </span>
+      )}
     </div>
   );
 }

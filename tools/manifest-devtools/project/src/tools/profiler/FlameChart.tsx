@@ -8,11 +8,14 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   io: { bg: '#3b1a1a', text: '#fb923c', border: '#c2410c' },
   match: { bg: '#2a1f3d', text: '#a78bfa', border: '#7c3aed' },
   binding: { bg: '#1a2e3b', text: '#38bdf8', border: '#0284c7' },
+  compile: { bg: '#1a2e3b', text: '#38bdf8', border: '#0284c7' },
+  policy: { bg: '#2a1f3d', text: '#a78bfa', border: '#7c3aed' },
+  action: { bg: '#3b1a1a', text: '#fb923c', border: '#c2410c' },
+  constraint: { bg: '#1c3a2a', text: '#34d399', border: '#059669' },
 };
 
 const ROW_HEIGHT = 28;
 const ROW_GAP = 2;
-const MIN_WIDTH = 2;
 
 interface FlameChartProps {
   root: FlameNode;

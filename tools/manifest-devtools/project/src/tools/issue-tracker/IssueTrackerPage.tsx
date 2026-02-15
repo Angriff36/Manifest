@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, AlertTriangle, Info, Search, Filter, CheckCircle, X, Folder, RefreshCw } from 'lucide-react';
-import { scanFile, scanAll, listFiles, checkHealth, type ManifestFile } from '../../lib/api';
+import { scanFile, scanAll, listFiles, getManifestRoot, type ManifestFile } from '../../lib/api';
 
 type IssueSeverity = 'error' | 'warning' | 'info';
 
@@ -26,17 +26,16 @@ export default function IssueTrackerPage() {
   const [serverStatus, setServerStatus] = useState<{connected: boolean; root: string} | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Check server health on mount
+  // Check manifest root on mount
   useEffect(() => {
-    checkHealth()
-      .then(status => {
-        setServerStatus({ connected: true, root: status.manifestRoot });
-        loadFiles();
-      })
-      .catch(() => {
-        setServerStatus({ connected: false, root: '' });
-        setError('API server not available. Run: npm run server');
-      });
+    const root = getManifestRoot();
+    if (root) {
+      setServerStatus({ connected: true, root });
+      loadFiles();
+    } else {
+      setServerStatus({ connected: false, root: '' });
+      setError('No manifest directory set. Enter a path in the toolbar above.');
+    }
   }, []);
 
   const loadFiles = async () => {
