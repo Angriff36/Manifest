@@ -145,19 +145,21 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
 
 The ergonomics spec defines a scanner that catches all configuration issues before runtime. This is the highest-priority new feature toward the ultimate goal.
 
-### P1-A: Policy Coverage Scanner [MISSING]
+### P1-A: Policy Coverage Scanner [COMPLETED]
 - **Spec**: Ergonomics spec Layer 2, Section 2.2 (Scanner Rule 1)
 - **Rule**: Every command MUST have a policy. Scanner catches missing policies with actionable error messages.
-- **Status**: CLI exists at `packages/cli/src/commands/` with 6 commands: compile, validate, generate, build, check, init. NO scan command exists. Zero references to "scan" in CLI source.
-- **Location**: `packages/cli/src/commands/scan.ts` (new file), register in `packages/cli/src/index.ts`
+- **Status**: ✅ **COMPLETED** — `manifest scan` command implemented in `packages/cli/src/commands/scan.ts`
 - **Implementation**:
-  - Parse compiled IR (reuse existing compile step)
-  - For each command, check if at least one policy with action `execute` or `all` covers it (matching entity scope)
-  - Note: Current runtime `checkPolicies()` at `runtime-engine.ts:1180-1212` returns `allowed: true` when no policies match — this is by design but means uncovered commands silently succeed. The scanner must flag this gap.
-  - Emit error with exact file location, command name, and suggested fix
-  - Error format per spec: `"Command 'Entity.command' has no policy."`
+  - Created new `scan.ts` command file with policy coverage scanner
+  - Compiles .manifest files to IR using existing `compileToIR` from `@manifest/runtime/ir-compiler`
+  - Checks each command in `ir.commands` for policy coverage (policies with action `execute` or `all`)
+  - Reports errors with file location, line number, command name, and suggested fix
+  - Also checks store targets against known built-in targets (memory, localStorage, postgres, supabase)
+  - Supports both text and JSON output formats
   - Exit code 1 on errors, 0 on clean scan
-- **Note**: This can work with YAML config alone; does NOT require P2-A TypeScript config
+- **Test coverage**: Tested on 42 conformance fixtures - correctly passes fixtures with policies, fails fixtures without
+- **Files**: `packages/cli/src/commands/scan.ts`, `packages/cli/src/index.ts`
+- **CLI usage**: `npx manifest scan [source] [--format text|json] [--strict]`
 
 ### P1-B: Property Alignment Scanner (Prisma) [MISSING]
 - **Spec**: Ergonomics spec Layer 2, Section 2.2 (Scanner Rule 2)
@@ -382,7 +384,8 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] Lambda expressions with parentheses syntax (shorthand `x => ...` NOT supported)
 - [x] Storage adapters: memory, localStorage, postgres, supabase
 - [x] Next.js projection (App Router) with Clerk/NextAuth/custom/none auth
-- [x] CLI: init, compile, generate, build, validate, check commands (6 of 7; scan missing)
+- [x] CLI: init, compile, generate, build, validate, check, scan commands (7 of 7) ✅
+- [x] Scanner: Policy coverage checking, store target validation — P1-A ✅
 - [x] Semantic diagnostic infrastructure with constraint code uniqueness — NC-1, NC-8 ✅
 - [x] All 4 vnext required fixtures (39, 52, 53, 54) — NC-7 ✅
 - [x] 545/545 tests passing (202 conformance + 322 unit + 21 projection)
@@ -408,7 +411,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 8. ✅ **NC-7**: Add vnext required fixtures 52-53 (override-allowed, override-denied) — **COMPLETED**
 
 ### Phase 2: Scanner CLI (highest ergonomics impact, no language changes needed)
-9. **P1-A**: Policy coverage scanner (`packages/cli/src/commands/scan.ts`)
+9. ✅ **P1-A**: Policy coverage scanner (`packages/cli/src/commands/scan.ts`) — **COMPLETED**
 
 ### Phase 3: Spec authoring (prerequisites for language changes)
 10. **P6-A**: Write default policy spec in `docs/spec/semantics.md`
@@ -440,7 +443,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 
 | Metric | Current | Target | Unblocked By |
 |--------|---------|--------|--------------|
-| 500 errors from config issues | Unknown (no scanner) | **0** (scanner catches all) | P1-A, P1-B, P1-C |
+| 500 errors from config issues | Unknown (no scanner) | **0** (scanner catches all) | ✅ P1-A (policy scanner), P1-B, P1-C |
 | 403 errors from missing policies | Unknown (no defaults) | **0** (defaults + scanner) | P3-A, P1-A |
 | Time from "add entity" to "working API" | Unknown | **< 5 minutes** | P2-A, P2-B, P2-C |
 | Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
