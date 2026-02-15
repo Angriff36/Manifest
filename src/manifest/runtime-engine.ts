@@ -377,6 +377,9 @@ export class RuntimeEngine {
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
 
+  /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
+  private lastConcurrencyConflict: ConcurrencyConflict | null = null;
+
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
   private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
 
@@ -864,7 +867,14 @@ export class RuntimeEngine {
 
         if (existingVersion !== undefined && providedVersion !== undefined) {
           if (existingVersion !== providedVersion) {
-            // Concurrency conflict - emit event and return undefined to indicate failure
+            // Concurrency conflict - store structured details, emit event, and return undefined
+            this.lastConcurrencyConflict = {
+              entityType: entityName,
+              entityId: id,
+              expectedVersion: providedVersion,
+              actualVersion: existingVersion,
+              conflictCode: 'VERSION_MISMATCH',
+            };
             await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
             return undefined;
           }
@@ -1001,6 +1011,9 @@ export class RuntimeEngine {
     // Clear transition error tracking
     this.lastTransitionError = null;
 
+    // Clear concurrency conflict tracking
+    this.lastConcurrencyConflict = null;
+
     // Initialize evaluation budget for bounded complexity enforcement
     const ownsEvalBudget = this.initEvalBudget();
     try {
@@ -1089,6 +1102,21 @@ export class RuntimeEngine {
         return {
           success: false,
           error: this.lastTransitionError,
+          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+          emittedEvents: [],
+        };
+      }
+
+      // Check for concurrency conflict after mutate/compute actions
+      // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
+      if (this.lastConcurrencyConflict) {
+        const conflict: ConcurrencyConflict = this.lastConcurrencyConflict;
+        this.lastConcurrencyConflict = null;
+        return {
+          success: false,
+          error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
+          concurrencyConflict: conflict,
           ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
           ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
           emittedEvents: [],

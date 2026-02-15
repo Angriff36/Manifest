@@ -1,0 +1,128 @@
+{
+  "testCases": [
+    {
+      "name": "create counter initializes version to 1",
+      "command": {
+        "name": "create",
+        "entityName": "Counter",
+        "input": {
+          "initialCount": 10
+        }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "CounterCreated",
+            "channel": "CounterCreated",
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "increment with correct version succeeds and auto-increments",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": {
+            "id": "counter-1",
+            "count": 10,
+            "version": 1,
+            "versionAt": 1000000000000
+          }
+        }
+      },
+      "command": {
+        "name": "increment",
+        "entityName": "Counter",
+        "instanceId": "counter-1",
+        "input": {
+          "expectedVersion": 1
+        }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "CounterIncremented",
+            "channel": "CounterIncremented",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "counter-1",
+        "count": 11,
+        "version": 2,
+        "versionAt": 1000000000000
+      }
+    },
+    {
+      "name": "increment with stale version returns ConcurrencyConflict",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": {
+            "id": "counter-2",
+            "count": 10,
+            "version": 1,
+            "versionAt": 1000000000000
+          }
+        }
+      },
+      "command": {
+        "name": "increment",
+        "entityName": "Counter",
+        "instanceId": "counter-2",
+        "input": {
+          "expectedVersion": 999
+        }
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      },
+      "expectedConcurrencyConflict": {
+        "entityType": "Counter",
+        "entityId": "counter-2",
+        "expectedVersion": 999,
+        "actualVersion": 1,
+        "conflictCode": "VERSION_MISMATCH"
+      }
+    },
+    {
+      "name": "increment with zero version returns ConcurrencyConflict",
+      "setup": {
+        "createInstance": {
+          "entity": "Counter",
+          "data": {
+            "id": "counter-3",
+            "count": 5,
+            "version": 1,
+            "versionAt": 1000000000000
+          }
+        }
+      },
+      "command": {
+        "name": "increment",
+        "entityName": "Counter",
+        "instanceId": "counter-3",
+        "input": {
+          "expectedVersion": 0
+        }
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      },
+      "expectedConcurrencyConflict": {
+        "entityType": "Counter",
+        "entityId": "counter-3",
+        "expectedVersion": 0,
+        "actualVersion": 1,
+        "conflictCode": "VERSION_MISMATCH"
+      }
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Counter",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "count",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "create",
+        "increment"
+      ],
+      "constraints": [],
+      "policies": [],
+      "versionProperty": "version"
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Counter",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "create",
+      "entity": "Counter",
+      "parameters": [
+        {
+          "name": "initialCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "uuid"
+            },
+            "args": []
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "count",
+          "expression": {
+            "kind": "identifier",
+            "name": "initialCount"
+          }
+        }
+      ],
+      "emits": [
+        "CounterCreated"
+      ]
+    },
+    {
+      "name": "increment",
+      "entity": "Counter",
+      "parameters": [
+        {
+          "name": "expectedVersion",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "version",
+          "expression": {
+            "kind": "identifier",
+            "name": "expectedVersion"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "count",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "count"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "emits": [
+        "CounterIncremented"
+      ]
+    }
+  ],
+  "policies": []
+}

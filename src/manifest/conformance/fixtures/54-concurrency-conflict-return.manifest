@@ -1,0 +1,28 @@
+// Fixture 54: ConcurrencyConflict Return Object
+// Tests that the runtime returns a structured ConcurrencyConflict object
+// on CommandResult when a version mismatch is detected during mutation.
+// Unlike fixture 24, this does NOT use manual guards for version checking —
+// it relies on the runtime's automatic optimistic concurrency control
+// via versionProperty to detect and report conflicts.
+
+entity Counter {
+  property required id: string = ""
+  property count: number = 0
+
+  versionProperty version: number
+
+  command create(initialCount: number) {
+    mutate id = uuid()
+    mutate count = initialCount
+    emit CounterCreated
+  }
+
+  command increment(expectedVersion: number) {
+    // No manual version guard — runtime detects conflict via versionProperty
+    mutate version = expectedVersion
+    mutate count = self.count + 1
+    emit CounterIncremented
+  }
+}
+
+store Counter in memory

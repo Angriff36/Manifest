@@ -85,6 +85,13 @@ interface CommandTestCase {
     policyName: string;
     expression: string;
   };
+  expectedConcurrencyConflict?: {
+    entityType: string;
+    entityId: string;
+    expectedVersion: number;
+    actualVersion: number;
+    conflictCode: string;
+  };
 }
 
 interface ComputedTestCase {
@@ -182,6 +189,9 @@ function normalizeResult(result: CommandResult): Partial<CommandResult> {
       contextKeys: result.policyDenial.contextKeys,
       resolved: result.policyDenial.resolved,
     };
+  }
+  if (result.concurrencyConflict !== undefined) {
+    normalized.concurrencyConflict = result.concurrencyConflict;
   }
   return normalized;
 }
@@ -300,6 +310,15 @@ describe('Manifest Conformance Tests', () => {
                 // Verify resolved values are present for diagnostics
                 expect(normalizedResult.policyDenial?.resolved).toBeDefined();
                 expect(Array.isArray(normalizedResult.policyDenial?.resolved)).toBe(true);
+              }
+
+              if (tc.expectedConcurrencyConflict) {
+                expect(normalizedResult.concurrencyConflict).toBeDefined();
+                expect(normalizedResult.concurrencyConflict?.entityType).toBe(tc.expectedConcurrencyConflict.entityType);
+                expect(normalizedResult.concurrencyConflict?.entityId).toBe(tc.expectedConcurrencyConflict.entityId);
+                expect(normalizedResult.concurrencyConflict?.expectedVersion).toBe(tc.expectedConcurrencyConflict.expectedVersion);
+                expect(normalizedResult.concurrencyConflict?.actualVersion).toBe(tc.expectedConcurrencyConflict.actualVersion);
+                expect(normalizedResult.concurrencyConflict?.conflictCode).toBe(tc.expectedConcurrencyConflict.conflictCode);
               }
 
               if (tc.expectedResult.result !== undefined) {

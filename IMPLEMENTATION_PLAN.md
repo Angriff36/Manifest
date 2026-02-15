@@ -3,7 +3,7 @@
 **Date**: 2026-02-14 (verified)
 **Version**: v0.3.8
 **Status**: Active Implementation
-**Baseline**: 490/490 tests passing (157 conformance + 312 unit + 21 projection)
+**Baseline**: 495/495 tests passing (162 conformance + 312 unit + 21 projection)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
 **Ultimate Goal**: Zero trial-and-error debugging of configuration issues
 
@@ -47,27 +47,23 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
   - (c) Override rejection for non-overrideable constraints (no event emitted)
   - (d) Override with overridePolicyRef evaluation
 
-### NC-3: Concurrency Conflict Return Object Conformance [BROKEN]
+### NC-3: Concurrency Conflict Return Object Conformance [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Entity Concurrency section) and `docs/spec/semantics.md`
 - **Rule**: "Runtime MUST return ConcurrencyConflict" with fields entityType, entityId, expectedVersion, actualVersion, conflictCode
-- **Status**: **DEEPER THAN PREVIOUSLY ASSESSED** — This is not just a conformance test gap but a runtime implementation bug:
-  - `CommandResult` interface at `ir.ts:119` correctly defines `concurrencyConflict?: ConcurrencyConflict` field
-  - `ConcurrencyConflict` interface at `ir.ts:232-243` correctly defines all 5 required fields
-  - `runtime-engine.ts:1944-1967` emits a ConcurrencyConflict **event** to the event log
-  - **BUG**: `runtime-engine.ts:865-870` — when `updateInstance()` detects version mismatch, it emits the event and returns `undefined`, but the calling code in `executeAction()` at `runtime-engine.ts:1442-1448` **discards the return value** of `updateInstance()`. The mutate action returns the evaluated value regardless of whether the update succeeded or failed.
-  - **RESULT**: `CommandResult.concurrencyConflict` is **NEVER populated** anywhere in the codebase. Zero assignments to this field exist. A concurrency conflict silently succeeds from the CommandResult perspective while only appearing in the event log.
-- **Verified**: Fixture 24 `results.json` has 3 test cases:
-  - Test 1: "create instance with version" — asserts `success: true`
-  - Test 2: "update with correct version succeeds" — asserts `success: true`, verifies version auto-incremented to 2
-  - Test 3: "update with stale version fails" — asserts `success: false` via **guard failure** (`guard: self.version == currentVersion`), NOT via ConcurrencyConflict return. Guard failure at index 2 with expression `self.version == currentVersion`.
-  - **No test case asserts `concurrencyConflict` object on the result**
-- **Impact**: Clients cannot programmatically distinguish concurrency failures from other failures. The spec-mandated ConcurrencyConflict return path is dead code.
-- **Fix**:
-  - (a) Wire `updateInstance()` return value through `executeAction()` to detect version mismatch
-  - (b) When mismatch detected, populate `CommandResult.concurrencyConflict` with the structured object
-  - (c) Return `success: false` with concurrencyConflict details (not just guard failure)
-  - (d) Add fixture 54 (or extend 24) testing ConcurrencyConflict return object fields
-- **Files**: `src/manifest/runtime-engine.ts`, conformance fixture
+- **Status**: ✅ **COMPLETED** — Fixed in `runtime-engine.ts` following the `lastTransitionError` pattern
+- **Implementation**:
+  - Added `lastConcurrencyConflict: ConcurrencyConflict | null` private field to `RuntimeEngine` (line 380-381)
+  - In `updateInstance()` (line 871-877): When version mismatch detected, stores structured `ConcurrencyConflict` object before emitting event
+  - In `_executeCommandInternal()` (lines 1111-1124): After each action execution, checks `lastConcurrencyConflict` and returns `{ success: false, concurrencyConflict: conflict, emittedEvents: [] }` — stopping further mutations per spec requirement
+  - Reset tracking at command start (line 1007-1008)
+  - Enhanced conformance test runner (`conformance.test.ts`) with `expectedConcurrencyConflict` field and full assertion of all 5 ConcurrencyConflict fields
+  - Created conformance fixture `54-concurrency-conflict-return.manifest` with 4 test cases:
+    1. Create counter (version initialized to 1)
+    2. Increment with correct version succeeds (version auto-increments to 2)
+    3. Increment with stale version returns ConcurrencyConflict (version 999 vs stored 1)
+    4. Increment with zero version returns ConcurrencyConflict (version 0 vs stored 1)
+- **Test coverage**: 495/495 passing (+5 tests: +4 conformance from fixture 54, +1 IR compilation test)
+- **Files**: `src/manifest/runtime-engine.ts`, `src/manifest/conformance/conformance.test.ts`, `src/manifest/conformance/fixtures/54-concurrency-conflict-return.manifest`, expected IR and results
 
 ### NC-4: Relationship Runtime Conformance Gap [PARTIAL]
 - **Spec**: `docs/spec/semantics.md` (Relationship Resolution Rules section)
@@ -114,11 +110,11 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
   - ✅ `39-duplicate-constraint-codes.manifest` — **COMPLETED** (see NC-1)
   - `52-override-allowed.manifest` — Override authorization with OverrideApplied event (overlaps NC-2)
   - `53-override-denied.manifest` — Override rejection for non-overrideable constraints (overlaps NC-2)
-  - `54-concurrency-conflict.manifest` — Version mismatch returns ConcurrencyConflict (overlaps NC-3)
-- **Status**: 1 of 4 complete. Fixtures 52-54 remain missing.
+  - ✅ `54-concurrency-conflict-return.manifest` — **COMPLETED** (see NC-3/NC-9)
+- **Status**: 2 of 4 complete. Fixtures 52-53 remain missing.
 - **Impact**: The vnext spec explicitly requires these fixtures for conformance. Their absence means the vnext features lack the executable semantics evidence demanded by `docs/spec/conformance.md`.
-- **Fix**: Create remaining 3 fixtures (52-54) with appropriate `.manifest`, `.ir.json`, `.diagnostics.json`, and/or `.results.json` files
-- **Note**: Fixtures 52-54 provide dedicated focused tests vs. enriching existing fixtures 22/24. Both approaches have merit — dedicated fixtures are cleaner; enriching existing ones avoids duplication. Recommend creating dedicated fixtures per vnext spec, then consider whether enriching 22/24 is also warranted.
+- **Fix**: Create remaining 2 fixtures (52-53) with appropriate `.manifest`, `.ir.json`, `.diagnostics.json`, and/or `.results.json` files
+- **Note**: Fixtures 52-53 provide dedicated focused tests vs. enriching existing fixture 22. Both approaches have merit — dedicated fixtures are cleaner; enriching existing ones avoids duplication. Recommend creating dedicated fixtures per vnext spec, then consider whether enriching 22 is also warranted.
 
 ### NC-8: IR Compiler Has No Semantic Diagnostic Infrastructure [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` requires compiler to emit diagnostics for constraint code duplicates; `docs/spec/conformance.md` requires diagnostics to be testable via `.diagnostics.json` files
@@ -133,17 +129,17 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
 - **Test coverage**: 7 new unit tests in `ir-compiler.test.ts` (Semantic Diagnostics > Constraint Code Uniqueness)
 - **Files**: `src/manifest/ir-compiler.ts`
 
-### NC-9: ConcurrencyConflict Return Path Dead Code [BROKEN]
+### NC-9: ConcurrencyConflict Return Path Dead Code [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Entity Concurrency section), `docs/spec/semantics.md`
 - **Rule**: "On mutation: compare provided version vs stored; if match, increment and proceed; if differ, return ConcurrencyConflict with: entityType, entityId, expectedVersion, actualVersion, conflictCode"
-- **Status**: This is the implementation-level detail of NC-3. The `CommandResult.concurrencyConflict` field is declared but never assigned:
-  - `ir.ts:119` declares `concurrencyConflict?: ConcurrencyConflict` on `CommandResult`
-  - `runtime-engine.ts:865-870` detects mismatch in `updateInstance()`, emits event, returns `undefined`
-  - `runtime-engine.ts:1442-1448` in `executeAction()` case `'mutate'` — calls `updateInstance()` but **does not check return value**. Always returns the evaluated expression value.
-  - `_executeCommandInternal()` success path at lines 1132-1140 never reads or assigns `concurrencyConflict`
-  - The field exists on the interface but is dead — zero code paths assign to it
-- **Impact**: The auto-version comparison mechanism (versionProperty) fires and emits events, but the structured ConcurrencyConflict return to callers is broken. Fixture 24 works only because it uses manual guards (`guard: self.version == currentVersion`), which are a separate mechanism.
-- **Fix**: (Consolidated with NC-3 — the fix is identical)
+- **Status**: ✅ **COMPLETED** — This is the implementation-level detail of NC-3 (see NC-3 for full implementation details)
+- **Implementation**: Fixed in `runtime-engine.ts` by:
+  - Adding `lastConcurrencyConflict` tracking field
+  - Storing conflict object in `updateInstance()` when version mismatch detected
+  - Checking for conflict after action execution in `_executeCommandInternal()`
+  - Returning `{ success: false, concurrencyConflict }` instead of silently succeeding
+- **Test coverage**: Fixture 54 (`54-concurrency-conflict-return.manifest`) with 4 comprehensive test cases
+- **Files**: Same as NC-3 (consolidated fix)
 
 ---
 
@@ -416,12 +412,12 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 ### Phase 1: Conformance Debt (spec violations first)
 1. ✅ **NC-8**: Add semantic diagnostic infrastructure to `ir-compiler.ts` (prerequisite for NC-1) — **COMPLETED**
 2. ✅ **NC-1**: Constraint code uniqueness diagnostic in `ir-compiler.ts` + fixture 39 — **COMPLETED**
-3. **NC-3/NC-9**: Fix ConcurrencyConflict return path in `runtime-engine.ts` (wire `updateInstance()` result through `executeAction()`, populate `CommandResult.concurrencyConflict`)
+3. ✅ **NC-3/NC-9**: Fix ConcurrencyConflict return path in `runtime-engine.ts` + fixture 54 — **COMPLETED**
 4. **NC-2**: Extend fixture 22 results.json with OverrideApplied event payload verification
 5. **NC-4**: Add `02-relationships.results.json` for relationship runtime traversal
 6. **NC-5**: Add `20-blog-app.results.json` for multi-entity runtime conformance
 7. **NC-6**: Add provenance verification unit tests (verifyIRHash valid/tampered, assertValidProvenance throw, RuntimeEngine.create factory)
-8. **NC-7**: Add vnext required fixtures 52-54 (override-allowed, override-denied, concurrency-conflict)
+8. **NC-7**: Add vnext required fixtures 52-53 (override-allowed, override-denied)
 
 ### Phase 2: Scanner CLI (highest ergonomics impact, no language changes needed)
 9. **P1-A**: Policy coverage scanner (`packages/cli/src/commands/scan.ts`)
@@ -460,10 +456,10 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 403 errors from missing policies | Unknown (no defaults) | **0** (defaults + scanner) | P3-A, P1-A |
 | Time from "add entity" to "working API" | Unknown | **< 5 minutes** | P2-A, P2-B, P2-C |
 | Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
-| Conformance fixtures with runtime evidence | 25/38 (.results.json) | **38/38+** | NC-4, NC-5, NC-7, phase 1 |
-| vnext required fixtures created | **1/4** (fixture 39 ✅) | **4/4** | NC-7 (52-54 remain) |
+| Conformance fixtures with runtime evidence | 26/40 (.results.json) | **40/40+** | NC-4, NC-5, NC-7, phase 1 |
+| vnext required fixtures created | **2/4** (fixtures 39 ✅, 54 ✅) | **4/4** | NC-7 (52-53 remain) |
 | Provenance verification test cases | 0 meaningful | **5+** | NC-6 |
-| ConcurrencyConflict return populated | **0** (dead code) | **Always** (on version mismatch) | NC-3/NC-9 |
+| ConcurrencyConflict return populated | **Always** (on version mismatch) — ✅ DONE | **Always** (on version mismatch) | ✅ NC-3/NC-9 complete |
 | CLI command test coverage | **0%** (zero test files) | **>80%** | P7-A |
 | Compiler semantic diagnostics | **1** (constraint code uniqueness ✅) | **1+** (extensible) | ✅ NC-8, NC-1 complete |
 
@@ -496,7 +492,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 21 | constraint-outcomes | Y | | Y | |
 | 22 | override-authorization | Y | | Y | NC-2: missing OverrideApplied event verification |
 | 23 | workflow-idempotency | Y | | Y | |
-| 24 | concurrency-conflict | Y | | Y | NC-3: missing ConcurrencyConflict object verification |
+| 24 | concurrency-conflict | Y | | Y | Uses manual guard; see fixture 54 for ConcurrencyConflict return path |
 | 25 | command-constraints | Y | | Y | |
 | 26 | performance-constraints | Y | | Y | |
 | 27 | vnext-integration | Y | | Y | |
@@ -514,7 +510,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 39 | duplicate-constraint-codes | | Y | | ✅ **COMPLETED** (NC-1): diagnostic-only (shouldFail=true) |
 | 52 | (planned) override-allowed | | | | NC-7: vnext required fixture |
 | 53 | (planned) override-denied | | | | NC-7: vnext required fixture |
-| 54 | (planned) concurrency-conflict | | | | NC-7: vnext required fixture |
+| 54 | concurrency-conflict-return | Y | | Y | ✅ **COMPLETED** (NC-3/NC-9): ConcurrencyConflict return path |
 
 ---
 
@@ -531,8 +527,8 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | Deprecated markers | **Clean** | One test assertion about deprecated methods (intentional, not a deprecation) |
 | Empty function bodies | **Clean** | None found (TypeScript constructor shorthands only) |
 | CLI test coverage | **Gap** | Zero test files in `packages/cli/` (see P7-A) |
-| Compiler semantic diagnostics | **Gap** | ir-compiler emits ONLY parser errors, zero semantic validations (see NC-8) |
-| ConcurrencyConflict return path | **Broken** | Field declared on CommandResult but never assigned (see NC-9) |
+| Compiler semantic diagnostics | **Fixed** | ✅ Semantic diagnostic infrastructure added (NC-8) |
+| ConcurrencyConflict return path | **Fixed** | ✅ Properly populated on version mismatch (NC-3/NC-9) |
 | SQL injection risk in stores.node.ts | **Minor** | `stores.node.ts:65-72` CREATE TABLE uses string-interpolated tableName (see NC-10) |
 | Entity-scoped events | **Incomplete** | `ir-compiler.ts:216` comment: "Entity-scoped events not supported in current syntax" (see NC-11) |
 | Hardcoded legacy store mapping | **Minor** | `ir-compiler.ts:152` maps `filesystem` → `localStorage` without extensibility (see NC-12) |
@@ -583,11 +579,11 @@ Independent verification of all plan items via automated codebase exploration (6
 |------|-------------------|--------|--------|
 | NC-1 | `grep "validateConstraintCodeUniqueness" ir-compiler.ts` | Method at lines 319-341; called from transformEntity/transformCommand | ✅ COMPLETED |
 | NC-2 | Read `22-override-authorization.results.json` | 4 test cases; Test 2 asserts only `RecordProcessed` event, zero OverrideApplied assertions | Open |
-| NC-3/NC-9 | `grep "concurrencyConflict:" runtime-engine.ts` | Zero assignment locations; field at ir.ts:119 declared only; updateInstance() return discarded at line 1442-1448 | Open |
+| NC-3/NC-9 | Fixture `54-concurrency-conflict-return.manifest` | 4 test cases verifying all 5 ConcurrencyConflict fields; runtime tracking in `runtime-engine.ts` | ✅ COMPLETED |
 | NC-4 | `ls expected/02-relationships.results.json` | File does not exist | Open |
 | NC-5 | `ls expected/20-blog-app.results.json` | File does not exist | Open |
 | NC-6 | Read `runtime-engine.test.ts:709-752` | Test 1 uses `requireValidProvenance: false`; Test 2 checks structural presence only | Open |
-| NC-7 | `find fixtures/ -name "39-*"` | Fixture 39 exists with .manifest and .diagnostics.json | ✅ 1/4 complete (52-54 remain) |
+| NC-7 | Fixtures 39, 54 exist | Fixtures 39 and 54 complete with expected outputs | ✅ 2/4 complete (52-53 remain) |
 | NC-8 | `grep "emitDiagnostic" ir-compiler.ts` | Private method at lines 106-113; semantic error check at lines 147-149 | ✅ COMPLETED |
 
 ### P Items — All Confirmed Missing
@@ -603,8 +599,8 @@ Independent verification of all plan items via automated codebase exploration (6
 ### Baseline Verification
 | Check | Method | Result |
 |-------|--------|--------|
-| Test count | `npm test` output | **490 passed** (8 test files) — updated 2026-02-14 |
-| Conformance tests | conformance.test.ts output | **157 tests** (39 fixtures) |
+| Test count | `npm test` output | **495 passed** (8 test files) — updated 2026-02-14 |
+| Conformance tests | conformance.test.ts output | **162 tests** (40 fixtures: 39 existing + fixture 54) |
 | Unit tests | ir-compiler.test.ts, runtime-engine.test.ts, etc. | **312 tests** (+7 from NC-1, NC-8) |
 | Projection tests | nextjs-projection.test.ts | **21 tests** |
 | Skipped tests | `grep ".skip\|.only" *.test.ts` | Zero matches |
@@ -617,15 +613,16 @@ Independent verification of all plan items via automated codebase exploration (6
 - **NC-12**: Hardcoded `filesystem` → `localStorage` mapping (`ir-compiler.ts:152`)
 
 ### Expected Output File Counts (Updated 2026-02-14)
-- `.ir.json` files: **28** out of 39 fixtures (11 are diagnostic-only)
-- `.diagnostics.json` files: **17** out of 39 fixtures (+1 from fixture 39)
-- `.results.json` files: **25** out of 39 fixtures (2 runtime fixtures missing: 02, 20; 11 diagnostic-only; 1 structural-only)
+- `.ir.json` files: **29** out of 40 fixtures (11 are diagnostic-only)
+- `.diagnostics.json` files: **17** out of 40 fixtures
+- `.results.json` files: **26** out of 40 fixtures (2 runtime fixtures missing: 02, 20; 11 diagnostic-only; 1 structural-only)
 
 ### Conclusion (Updated 2026-02-14)
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → **490** (suite grew by 23 tests total). Three new minor findings added (NC-10, NC-11, NC-12). Implementation order and dependency chains remain valid.
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → **495** (suite grew by 28 tests total). Three new minor findings added (NC-10, NC-11, NC-12). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
 - NC-1: Constraint code uniqueness validation with fixture 39
-- Test suite: +8 tests (7 unit tests in ir-compiler.test.ts, 1 conformance test for fixture 39)
-- Phase 1, Steps 1-2: ✅ Complete
+- NC-3/NC-9: ConcurrencyConflict return path fix with fixture 54
+- Test suite: +13 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9)
+- Phase 1, Steps 1-3: ✅ Complete
