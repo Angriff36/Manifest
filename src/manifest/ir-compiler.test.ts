@@ -1308,6 +1308,141 @@ describe('IRCompiler', () => {
     });
   });
 
+  describe('Semantic Diagnostics', () => {
+    describe('Constraint Code Uniqueness', () => {
+      it('should emit error for duplicate constraint codes within an entity', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Account {
+            property balance: number
+            constraint balanceCheck: self.balance >= 0
+            constraint balanceCheck: self.balance <= 1000000
+          }
+        `);
+
+        expect(result.ir).toBeNull();
+        expect(result.diagnostics.length).toBeGreaterThan(0);
+        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        expect(errorDiag).toBeDefined();
+        expect(errorDiag!.message).toContain("Duplicate constraint code 'balanceCheck'");
+        expect(errorDiag!.message).toContain("entity 'Account'");
+      });
+
+      it('should emit error for duplicate explicit codes within an entity', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Account {
+            property balance: number
+            constraint checkLow {
+              code: BALANCE_CHECK
+              expression: self.balance >= 0
+            }
+            constraint checkHigh {
+              code: BALANCE_CHECK
+              expression: self.balance <= 1000000
+            }
+          }
+        `);
+
+        expect(result.ir).toBeNull();
+        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        expect(errorDiag).toBeDefined();
+        expect(errorDiag!.message).toContain("Duplicate constraint code 'BALANCE_CHECK'");
+        expect(errorDiag!.message).toContain("entity 'Account'");
+      });
+
+      it('should emit error for duplicate constraint codes within a command', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Payment {
+            property amount: number
+            command transfer(amount: number) {
+              constraint amountLimit:block input.amount <= 10000
+              constraint amountLimit:block input.amount >= 1
+              mutate amount = input.amount
+            }
+          }
+        `);
+
+        expect(result.ir).toBeNull();
+        const errorDiag = result.diagnostics.find(d => d.severity === 'error');
+        expect(errorDiag).toBeDefined();
+        expect(errorDiag!.message).toContain("Duplicate constraint code 'amountLimit'");
+        expect(errorDiag!.message).toContain("command 'Payment.transfer'");
+      });
+
+      it('should allow same constraint code in different entities', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Account {
+            property balance: number
+            constraint check: self.balance >= 0
+          }
+          entity Wallet {
+            property balance: number
+            constraint check: self.balance >= 0
+          }
+        `);
+
+        expect(result.ir).not.toBeNull();
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      });
+
+      it('should allow same constraint code in entity and command scopes', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Payment {
+            property amount: number
+            constraint amountCheck: self.amount >= 0
+            command transfer(amount: number) {
+              constraint amountCheck:block input.amount <= 10000
+              mutate amount = input.amount
+            }
+          }
+        `);
+
+        expect(result.ir).not.toBeNull();
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      });
+
+      it('should detect multiple duplicates and emit one error per duplicate', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Account {
+            property balance: number
+            property status: string
+            constraint check: self.balance >= 0
+            constraint check: self.balance <= 1000000
+            constraint check: self.status != "closed"
+          }
+        `);
+
+        expect(result.ir).toBeNull();
+        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        // Two duplicates: the second and third "check" constraints
+        expect(errors).toHaveLength(2);
+        errors.forEach(e => {
+          expect(e.message).toContain("Duplicate constraint code 'check'");
+        });
+      });
+
+      it('should allow unique constraint codes within an entity', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Account {
+            property balance: number
+            constraint minBalance: self.balance >= 0
+            constraint maxBalance: self.balance <= 1000000
+          }
+        `);
+
+        expect(result.ir).not.toBeNull();
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        expect(result.ir!.entities[0].constraints).toHaveLength(2);
+      });
+    });
+  });
+
   describe('Convenience Function', () => {
     it('should export compileToIR convenience function', async () => {
       const result = await compileToIR('entity User {}');

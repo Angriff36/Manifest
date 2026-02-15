@@ -2,8 +2,8 @@
 
 **Date**: 2026-02-14 (verified)
 **Version**: v0.3.8
-**Status**: Active Planning
-**Baseline**: 482/482 tests passing (156 conformance + 305 unit + 21 projection)
+**Status**: Active Implementation
+**Baseline**: 490/490 tests passing (157 conformance + 312 unit + 21 projection)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
 **Ultimate Goal**: Zero trial-and-error debugging of configuration issues
 
@@ -16,20 +16,18 @@
 Items where existing implementation contradicts `docs/spec/*` (the constitutional source of truth).
 Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` > `adapters.md` > `conformance.md`.
 
-### NC-1: Constraint Code Uniqueness Diagnostic [MISSING]
+### NC-1: Constraint Code Uniqueness Diagnostic [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Constraint Blocks section)
 - **Rule**: "Within a single entity, `code` values MUST be unique. Within a single command's `constraints` array, `code` values MUST be unique. Compiler MUST emit diagnostic error on duplicates."
-- **Status**: `ir-compiler.ts:279` transforms `code: c.code || c.name` but performs NO duplicate detection across entity-scoped or command-scoped constraints. Searched entire compilation pipeline (lexer, parser, ir-compiler) — zero uniqueness validation found.
-- **Root cause**: The IR compiler (`ir-compiler.ts`) is a **pure structural transformation** layer. It has exactly ONE location where diagnostics are pushed (`ir-compiler.ts:117-124`) and that only forwards parser errors. Zero semantic validations exist in the compiler. Adding duplicate detection requires adding the compiler's first semantic diagnostic capability.
-- **Runtime impact**: `runtime-engine.ts:1846` uses `overrideRequests.find(o => o.constraintCode === constraint.code)` — duplicate codes cause `.find()` to match only the first constraint, silently ignoring subsequent ones with the same code.
-- **Impact**: Duplicate constraint codes silently compile, producing ambiguous override targeting and diagnostics at runtime
-- **Fix**:
-  - Add duplicate code detection in `ir-compiler.ts` during entity and command constraint transformation
-  - Track seen codes with `Set<string>` per entity and per command scope
-  - Emit diagnostic error (severity: error) on collision with file location
-  - Add conformance fixture `39-duplicate-constraint-codes.manifest` with `.diagnostics.json` (shouldFail: true)
-- **Files**: `src/manifest/ir-compiler.ts`, new fixture in `src/manifest/conformance/`
-- **Spec reference**: `docs/spec/manifest-vnext.md` status table: "NOT_IMPLEMENTED"
+- **Status**: ✅ **COMPLETED** — Implemented in `ir-compiler.ts:319-341`
+- **Implementation**:
+  - Added `validateConstraintCodeUniqueness()` method using `Map<string, number>` to track seen codes per scope
+  - Emits error diagnostic on collision with format: `"Duplicate constraint code '<code>' in <scope>. First defined at constraint '<name>'."`
+  - Called from `transformEntity()` (entity-scoped constraints) and `transformCommand()` (command-scoped constraints)
+  - Created conformance fixture `39-duplicate-constraint-codes.manifest` with `.diagnostics.json` (shouldFail: true)
+  - 7 new unit tests in `ir-compiler.test.ts` (Semantic Diagnostics > Constraint Code Uniqueness)
+- **Test coverage**: 490/490 passing (+8 tests: +7 unit, +1 conformance)
+- **Files**: `src/manifest/ir-compiler.ts`, `src/manifest/conformance/fixtures/39-duplicate-constraint-codes.manifest`
 
 ### NC-2: Override OverrideApplied Event Conformance [PARTIAL]
 - **Spec**: `docs/spec/manifest-vnext.md` (Override Mechanism section) and `docs/spec/semantics.md`
@@ -110,31 +108,30 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
   - (e) `RuntimeEngine.create()` returns `{ valid: true }` for valid IR
 - **Files**: `src/manifest/runtime-engine.test.ts`
 
-### NC-7: vnext Required Future Fixtures Missing [MISSING]
+### NC-7: vnext Required Future Fixtures Missing [PARTIAL]
 - **Spec**: `docs/spec/manifest-vnext.md` (Conformance Additions section, "Required Future Fixtures" table)
 - **Rule**: The vnext spec explicitly lists 4 required fixtures as "Not yet added":
-  - `39-duplicate-constraint-codes.manifest` — Compiler diagnostic on duplicate constraint codes (overlaps NC-1)
+  - ✅ `39-duplicate-constraint-codes.manifest` — **COMPLETED** (see NC-1)
   - `52-override-allowed.manifest` — Override authorization with OverrideApplied event (overlaps NC-2)
   - `53-override-denied.manifest` — Override rejection for non-overrideable constraints (overlaps NC-2)
   - `54-concurrency-conflict.manifest` — Version mismatch returns ConcurrencyConflict (overlaps NC-3)
-- **Status**: ALL FOUR are missing. None exist in `src/manifest/conformance/fixtures/`. Searched for `39-*`, `52-*`, `53-*`, `54-*` — zero matches.
+- **Status**: 1 of 4 complete. Fixtures 52-54 remain missing.
 - **Impact**: The vnext spec explicitly requires these fixtures for conformance. Their absence means the vnext features lack the executable semantics evidence demanded by `docs/spec/conformance.md`.
-- **Fix**: Create all 4 fixtures with appropriate `.manifest`, `.ir.json`, `.diagnostics.json`, and/or `.results.json` files
+- **Fix**: Create remaining 3 fixtures (52-54) with appropriate `.manifest`, `.ir.json`, `.diagnostics.json`, and/or `.results.json` files
 - **Note**: Fixtures 52-54 provide dedicated focused tests vs. enriching existing fixtures 22/24. Both approaches have merit — dedicated fixtures are cleaner; enriching existing ones avoids duplication. Recommend creating dedicated fixtures per vnext spec, then consider whether enriching 22/24 is also warranted.
 
-### NC-8: IR Compiler Has No Semantic Diagnostic Infrastructure [STRUCTURAL]
+### NC-8: IR Compiler Has No Semantic Diagnostic Infrastructure [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` requires compiler to emit diagnostics for constraint code duplicates; `docs/spec/conformance.md` requires diagnostics to be testable via `.diagnostics.json` files
 - **Rule**: The compiler must be able to emit semantic diagnostics (not just parser errors) to fulfill NC-1 and future validation requirements
-- **Status**: `ir-compiler.ts` has exactly ONE diagnostic emission point (`ir-compiler.ts:117-124`) which only forwards parser errors. The `diagnostics` array is populated solely from `Parser.parse()` error output. All transformation methods (`transformEntity`, `transformCommand`, `transformPolicy`, etc.) are pure structural transforms with zero validation logic.
-- **Verified**: Grep for `this.diagnostics.push` in `ir-compiler.ts` returns exactly 1 location (line 118). No semantic validation of any kind exists.
-- **Impact**: This is a **structural prerequisite** for NC-1. The compiler cannot emit constraint code uniqueness diagnostics because it has no mechanism to generate semantic diagnostics at all.
-- **Fix**: Before NC-1 can be implemented, the compiler needs semantic diagnostic capability:
-  - Add a method like `emitDiagnostic(severity, message, line?, column?)` to the compiler
-  - Call it during transformation passes where semantic rules must be enforced
-  - NC-1 (duplicate constraint codes) will be the first consumer
-  - Future: relationship target validation, policy reference validation, etc.
+- **Status**: ✅ **COMPLETED** — Semantic diagnostic infrastructure added to `ir-compiler.ts`
+- **Implementation**:
+  - Added `emitDiagnostic()` private method at `ir-compiler.ts:106-113` for generating semantic diagnostics
+  - Added post-transformation semantic error check at `ir-compiler.ts:147-149`: after `transformProgram()`, checks if any error-severity diagnostics were emitted during transformation and returns `ir: null` if so
+  - This is the compiler's first semantic validation capability beyond parser error forwarding
+  - NC-1 (constraint code uniqueness) is the first consumer
+  - Future extensions: relationship target validation, policy reference validation, etc.
+- **Test coverage**: 7 new unit tests in `ir-compiler.test.ts` (Semantic Diagnostics > Constraint Code Uniqueness)
 - **Files**: `src/manifest/ir-compiler.ts`
-- **Note**: This is not a spec violation per se but a structural gap that blocks NC-1 and future semantic diagnostics. Listed here because the spec requires the compiler to emit diagnostics that it currently cannot.
 
 ### NC-9: ConcurrencyConflict Return Path Dead Code [BROKEN]
 - **Spec**: `docs/spec/manifest-vnext.md` (Entity Concurrency section), `docs/spec/semantics.md`
@@ -404,7 +401,7 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] Storage adapters: memory, localStorage, postgres, supabase
 - [x] Next.js projection (App Router) with Clerk/NextAuth/custom/none auth
 - [x] CLI: init, compile, generate, build, validate, check commands (6 of 7; scan missing)
-- [x] 482/482 tests passing (156 conformance + 305 unit + 21 projection)
+- [x] 490/490 tests passing (157 conformance + 312 unit + 21 projection)
 - [x] Zero TODO/FIXME/HACK markers in source code (confirmed by search)
 - [x] Zero skipped tests (confirmed: no .skip(), .only(), xit(), xdescribe() in test files)
 - [x] Zero @ts-ignore / @ts-nocheck / @ts-expect-error suppressions in src/ (one justified `@ts-expect-error` in `test-setup.ts:33` for Node.js localStorage mock)
@@ -417,8 +414,8 @@ Items confirmed as fully implemented and passing with conformance evidence:
 Recommended order based on dependencies, spec conformance priority, and impact toward the ultimate goal:
 
 ### Phase 1: Conformance Debt (spec violations first)
-1. **NC-8**: Add semantic diagnostic infrastructure to `ir-compiler.ts` (prerequisite for NC-1)
-2. **NC-1**: Constraint code uniqueness diagnostic in `ir-compiler.ts` + fixture 39
+1. ✅ **NC-8**: Add semantic diagnostic infrastructure to `ir-compiler.ts` (prerequisite for NC-1) — **COMPLETED**
+2. ✅ **NC-1**: Constraint code uniqueness diagnostic in `ir-compiler.ts` + fixture 39 — **COMPLETED**
 3. **NC-3/NC-9**: Fix ConcurrencyConflict return path in `runtime-engine.ts` (wire `updateInstance()` result through `executeAction()`, populate `CommandResult.concurrencyConflict`)
 4. **NC-2**: Extend fixture 22 results.json with OverrideApplied event payload verification
 5. **NC-4**: Add `02-relationships.results.json` for relationship runtime traversal
@@ -464,11 +461,11 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | Time from "add entity" to "working API" | Unknown | **< 5 minutes** | P2-A, P2-B, P2-C |
 | Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
 | Conformance fixtures with runtime evidence | 25/38 (.results.json) | **38/38+** | NC-4, NC-5, NC-7, phase 1 |
-| vnext required fixtures created | 0/4 | **4/4** | NC-1, NC-7 |
+| vnext required fixtures created | **1/4** (fixture 39 ✅) | **4/4** | NC-7 (52-54 remain) |
 | Provenance verification test cases | 0 meaningful | **5+** | NC-6 |
 | ConcurrencyConflict return populated | **0** (dead code) | **Always** (on version mismatch) | NC-3/NC-9 |
 | CLI command test coverage | **0%** (zero test files) | **>80%** | P7-A |
-| Compiler semantic diagnostics | **0** (parser-only) | **1+** (constraint code uniqueness) | NC-8, NC-1 |
+| Compiler semantic diagnostics | **1** (constraint code uniqueness ✅) | **1+** (extensible) | ✅ NC-8, NC-1 complete |
 
 ---
 
@@ -514,7 +511,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 36 | constraint-severity | Y | | Y | |
 | 37 | allowed-duplicate-command-names | Y | Y | | Structural test; runtime N/A |
 | 38 | state-transitions | Y | | Y | |
-| 39 | (planned) duplicate-constraint-codes | | | | NC-1: needs fixture + compiler diagnostic |
+| 39 | duplicate-constraint-codes | | Y | | ✅ **COMPLETED** (NC-1): diagnostic-only (shouldFail=true) |
 | 52 | (planned) override-allowed | | | | NC-7: vnext required fixture |
 | 53 | (planned) override-denied | | | | NC-7: vnext required fixture |
 | 54 | (planned) concurrency-conflict | | | | NC-7: vnext required fixture |
@@ -581,17 +578,17 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 
 Independent verification of all plan items via automated codebase exploration (6 parallel agents):
 
-### NC Items — All Confirmed
-| Item | Verification Method | Result |
-|------|-------------------|--------|
-| NC-1 | `grep "uniqueness\|duplicate" ir-compiler.ts` | Zero matches; constraint code `c.code \|\| c.name` at line 279 with no Set tracking |
-| NC-2 | Read `22-override-authorization.results.json` | 4 test cases; Test 2 asserts only `RecordProcessed` event, zero OverrideApplied assertions |
-| NC-3/NC-9 | `grep "concurrencyConflict:" runtime-engine.ts` | Zero assignment locations; field at ir.ts:119 declared only; updateInstance() return discarded at line 1442-1448 |
-| NC-4 | `ls expected/02-relationships.results.json` | File does not exist |
-| NC-5 | `ls expected/20-blog-app.results.json` | File does not exist |
-| NC-6 | Read `runtime-engine.test.ts:709-752` | Test 1 uses `requireValidProvenance: false`; Test 2 checks structural presence only |
-| NC-7 | `find fixtures/ -name "39-*" -o -name "52-*" -o -name "53-*" -o -name "54-*"` | Zero results; latest fixture is 38-state-transitions |
-| NC-8 | `grep -c "this.diagnostics.push" ir-compiler.ts` | Exactly 1 location (line 118); forwards parser errors only |
+### NC Items — Verification Status
+| Item | Verification Method | Result | Status |
+|------|-------------------|--------|--------|
+| NC-1 | `grep "validateConstraintCodeUniqueness" ir-compiler.ts` | Method at lines 319-341; called from transformEntity/transformCommand | ✅ COMPLETED |
+| NC-2 | Read `22-override-authorization.results.json` | 4 test cases; Test 2 asserts only `RecordProcessed` event, zero OverrideApplied assertions | Open |
+| NC-3/NC-9 | `grep "concurrencyConflict:" runtime-engine.ts` | Zero assignment locations; field at ir.ts:119 declared only; updateInstance() return discarded at line 1442-1448 | Open |
+| NC-4 | `ls expected/02-relationships.results.json` | File does not exist | Open |
+| NC-5 | `ls expected/20-blog-app.results.json` | File does not exist | Open |
+| NC-6 | Read `runtime-engine.test.ts:709-752` | Test 1 uses `requireValidProvenance: false`; Test 2 checks structural presence only | Open |
+| NC-7 | `find fixtures/ -name "39-*"` | Fixture 39 exists with .manifest and .diagnostics.json | ✅ 1/4 complete (52-54 remain) |
+| NC-8 | `grep "emitDiagnostic" ir-compiler.ts` | Private method at lines 106-113; semantic error check at lines 147-149 | ✅ COMPLETED |
 
 ### P Items — All Confirmed Missing
 | Item | Verification Method | Result |
@@ -606,8 +603,10 @@ Independent verification of all plan items via automated codebase exploration (6
 ### Baseline Verification
 | Check | Method | Result |
 |-------|--------|--------|
-| Test count | `npm test` output | **482 passed** (8 test files, 514ms) |
-| Conformance tests | conformance.test.ts output | **156 tests** (38 fixtures) |
+| Test count | `npm test` output | **490 passed** (8 test files) — updated 2026-02-14 |
+| Conformance tests | conformance.test.ts output | **157 tests** (39 fixtures) |
+| Unit tests | ir-compiler.test.ts, runtime-engine.test.ts, etc. | **312 tests** (+7 from NC-1, NC-8) |
+| Projection tests | nextjs-projection.test.ts | **21 tests** |
 | Skipped tests | `grep ".skip\|.only" *.test.ts` | Zero matches |
 | TODO/FIXME/HACK | `grep "TODO\|FIXME\|HACK" src/manifest/*.ts` | Zero matches |
 | TS suppressions | `grep "@ts-ignore\|@ts-nocheck\|@ts-expect-error" src/manifest/*.ts` | Zero matches |
@@ -617,10 +616,16 @@ Independent verification of all plan items via automated codebase exploration (6
 - **NC-11**: Entity-scoped events silently ignored (`ir-compiler.ts:216` comment)
 - **NC-12**: Hardcoded `filesystem` → `localStorage` mapping (`ir-compiler.ts:152`)
 
-### Expected Output File Counts (Confirmed)
-- `.ir.json` files: **28** out of 38 fixtures (10 are diagnostic-only)
-- `.diagnostics.json` files: **16** out of 38 fixtures
-- `.results.json` files: **25** out of 38 fixtures (2 runtime fixtures missing: 02, 20; 10 diagnostic-only; 1 structural-only)
+### Expected Output File Counts (Updated 2026-02-14)
+- `.ir.json` files: **28** out of 39 fixtures (11 are diagnostic-only)
+- `.diagnostics.json` files: **17** out of 39 fixtures (+1 from fixture 39)
+- `.results.json` files: **25** out of 39 fixtures (2 runtime fixtures missing: 02, 20; 11 diagnostic-only; 1 structural-only)
 
-### Conclusion
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count corrected from 467 → 482 (test suite grew by 15 tests since plan was first written). Three new minor findings added (NC-10, NC-11, NC-12). Implementation order and dependency chains remain valid.
+### Conclusion (Updated 2026-02-14)
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → **490** (suite grew by 23 tests total). Three new minor findings added (NC-10, NC-11, NC-12). Implementation order and dependency chains remain valid.
+
+**Completed Since Last Update**:
+- NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
+- NC-1: Constraint code uniqueness validation with fixture 39
+- Test suite: +8 tests (7 unit tests in ir-compiler.test.ts, 1 conformance test for fixture 39)
+- Phase 1, Steps 1-2: ✅ Complete

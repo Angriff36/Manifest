@@ -98,6 +98,20 @@ export class IRCompiler {
     this.cache = cache ?? globalIRCache;
   }
 
+  /**
+   * Emit a semantic diagnostic during IR compilation.
+   * This is the compiler's mechanism for reporting semantic errors
+   * beyond what the parser catches (e.g., duplicate constraint codes).
+   */
+  private emitDiagnostic(
+    severity: 'error' | 'warning',
+    message: string,
+    line?: number,
+    column?: number,
+  ): void {
+    this.diagnostics.push({ severity, message, line, column });
+  }
+
   async compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
@@ -128,6 +142,11 @@ export class IRCompiler {
     }
 
     const ir = await this.transformProgram(program, source);
+
+    // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
+    if (this.diagnostics.some(d => d.severity === 'error')) {
+      return { ir: null, diagnostics: this.diagnostics };
+    }
 
     // vNext: Cache the compiled IR
     if (useCache && ir) {
@@ -222,6 +241,8 @@ export class IRCompiler {
   }
 
   private transformEntity(e: EntityNode, moduleName?: string): IREntity {
+    const constraints = e.constraints.map(c => this.transformConstraint(c));
+    this.validateConstraintCodeUniqueness(constraints, e.constraints, `entity '${e.name}'`);
     return {
       name: e.name,
       module: moduleName,
@@ -229,7 +250,7 @@ export class IRCompiler {
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
       commands: e.commands.map(c => c.name),
-      constraints: e.constraints.map(c => this.transformConstraint(c)),
+      constraints,
       policies: e.policies.map(p => p.name),
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
@@ -291,6 +312,39 @@ export class IRCompiler {
     };
   }
 
+  /**
+   * Validate that constraint codes are unique within a scope (entity or command).
+   * Per spec (manifest-vnext.md, Constraint Blocks): "Within a single entity,
+   * code values MUST be unique. Within a single command's constraints array,
+   * code values MUST be unique. Compiler MUST emit diagnostic error on duplicates."
+   *
+   * Uses the AST nodes for source location (line/column) and IR constraints
+   * for the resolved code values (which default to name if not explicit).
+   */
+  private validateConstraintCodeUniqueness(
+    irConstraints: IRConstraint[],
+    astConstraints: ConstraintNode[],
+    scope: string,
+  ): void {
+    const seen = new Map<string, number>(); // code → first occurrence index
+    for (let i = 0; i < irConstraints.length; i++) {
+      const code = irConstraints[i].code;
+      const firstIdx = seen.get(code);
+      if (firstIdx !== undefined) {
+        // Duplicate found — emit error at the duplicate's location
+        const astNode = astConstraints[i];
+        this.emitDiagnostic(
+          'error',
+          `Duplicate constraint code '${code}' in ${scope}. First defined at constraint '${irConstraints[firstIdx].name}'.`,
+          astNode.position?.line,
+          astNode.position?.column,
+        );
+      } else {
+        seen.set(code, i);
+      }
+    }
+  }
+
   private transformStore(s: StoreNode): IRStore {
     const config: Record<string, IRValue> = {};
     if (s.config) {
@@ -326,13 +380,18 @@ export class IRCompiler {
   }
 
   private transformCommand(c: CommandNode, moduleName?: string, entityName?: string): IRCommand {
+    const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
+    if (c.constraints && c.constraints.length > 0) {
+      const scope = entityName ? `command '${entityName}.${c.name}'` : `command '${c.name}'`;
+      this.validateConstraintCodeUniqueness(constraints, c.constraints, scope);
+    }
     return {
       name: c.name,
       module: moduleName,
       entity: entityName,
       parameters: c.parameters.map(p => this.transformParameter(p)),
       guards: (c.guards || []).map(g => this.transformExpression(g)),
-      constraints: (c.constraints || []).map(c => this.transformConstraint(c)), // vNext
+      constraints,
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,

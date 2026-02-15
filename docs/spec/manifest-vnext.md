@@ -269,7 +269,7 @@ Every command failure MUST include sufficient information for the caller to iden
 
 | Fixture (proposed name) | Feature | Status |
 |-------------------------|---------|--------|
-| `39-duplicate-constraint-codes.manifest` | Compiler diagnostic on duplicate constraint codes within an entity | Not yet added |
+| `39-duplicate-constraint-codes.manifest` | Compiler diagnostic on duplicate constraint codes within an entity | **Implemented** |
 | `52-override-allowed.manifest` | Override authorization with OverrideApplied event | Not yet added |
 | `53-override-denied.manifest` | Override rejection for non-overrideable constraints | Not yet added |
 | `54-concurrency-conflict.manifest` | Version mismatch returns ConcurrencyConflict | Not yet added |

@@ -1,0 +1,9 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Duplicate constraint code 'balanceCheck' in entity 'Account'. First defined at constraint 'balanceCheck'."
+    }
+  ]
+}

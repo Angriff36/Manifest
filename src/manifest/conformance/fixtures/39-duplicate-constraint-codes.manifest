@@ -1,0 +1,17 @@
+// Fixture 39: Duplicate constraint codes
+// Tests that the compiler emits a diagnostic error when constraint codes
+// are duplicated within an entity or within a command's constraints array.
+// Per manifest-vnext.md (Constraint Blocks): "Within a single entity,
+// code values MUST be unique. Within a single command's constraints array,
+// code values MUST be unique. Compiler MUST emit diagnostic error on duplicates."
+
+entity Account {
+  property balance: number
+  property status: string
+
+  // First constraint with code "balanceCheck" (code defaults to name)
+  constraint balanceCheck: self.balance >= 0
+
+  // Duplicate: same code "balanceCheck" — compiler MUST emit error
+  constraint balanceCheck: self.balance <= 1000000
+}
