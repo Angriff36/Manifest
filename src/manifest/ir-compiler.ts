@@ -258,7 +258,7 @@ export class IRCompiler {
         ...m.entities.flatMap(e => e.commands.map(c => c.name)),
       ],
       stores: m.stores.map(s => s.entity),
-      events: m.events.map(e => e.name), // Entity-scoped events not supported in current syntax
+      events: m.events.map(e => e.name), // Entity-scoped events emit parser warning
       policies: [
         ...m.policies.map(p => p.name),
         ...m.entities.flatMap(e => e.policies.map(p => p.name)),

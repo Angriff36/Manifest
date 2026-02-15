@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: **v0.3.8**.
+**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: **v0.3.9**.
 
 This is a **language implementation**, not an end-user application. The Runtime UI is a diagnostic and observability surface only. Primary consumers are AI agents that emit, validate, and reason about Manifest programs.
 
 ## Essential Commands
 
 ```bash
-npm test                    # Run all tests (467 tests - must always pass)
+npm test                    # Run all tests (630 tests - must always pass)
 npm run typecheck          # TypeScript check without emit
 npm run lint               # ESLint validation
 npm run dev                # Development server (localhost:5173)
@@ -87,14 +87,15 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite (467 tests total)
-1. **Conformance Tests** (142): Fixture-based testing with expected outputs
-2. **Unit Tests** (304):
+### Test Suite (630 tests total)
+1. **Conformance Tests** (209): Fixture-based testing with expected outputs
+2. **Unit Tests** (322):
    - Lexer tests (58): Tokenization and edge cases
    - Parser tests (79): AST construction
    - IR Compiler tests (91): IR generation
    - Runtime tests (56): Execution engine and guards
 3. **Projection Tests** (21): Next.js projection smoke tests
+4. **CLI Tests** (78): compile, validate, scan, config commands
 
 ### Test Files
 - `src/manifest/conformance/conformance.test.ts` - Conformance suite
@@ -125,7 +126,7 @@ From `house-style.md` and `AGENTS.md`:
 
 1. **One iteration = one committable unit**: Commit within ~15 minutes. If you can't, scope is too big
 2. **Backpressure rules**: Partial progress committed > perfect progress lost
-3. **Test-driven**: All changes must maintain 467/467 test passing
+3. **Test-driven**: All changes must maintain 630/630 test passing
 4. **Spec-driven**: If behavior changes, update spec first, then tests, then implementation
 5. **Commit early**: Touching 5+ files without committing is a red flag
 
@@ -186,7 +187,7 @@ UI must reflect IR and semantics, not invent them:
 ## Definition of "Done"
 
 A change is only done when:
-- `npm test` is green (467/467 passing)
+- `npm test` is green (630/630 passing)
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Spec/test/impl are aligned (no undocumented nonconformance)

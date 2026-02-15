@@ -143,6 +143,18 @@ export class Parser {
         }
       }
       else if (this.check('KEYWORD', 'transition')) transitions.push(this.parseTransition());
+      else if (this.check('KEYWORD', 'event')) {
+        // Entity-scoped events are not supported - emit warning to prevent silent data loss
+        const pos = this.current()?.position;
+        this.errors.push({
+          message: "Events cannot be declared inside entity blocks. Declare events at module or root level instead.",
+          position: pos,
+          severity: 'warning'
+        });
+        this.advance(); // consume the 'event' keyword to prevent infinite loop
+        // Also skip the event name if present
+        if (this.current()?.type === 'IDENTIFIER') this.advance();
+      }
       else this.advance();
       this.skipNL();
     }

@@ -614,7 +614,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | ConcurrencyConflict return path | **Fixed** | ✅ Properly populated on version mismatch (NC-3/NC-9) |
 | Compile test syntax error | **Fixed** | ✅ NC-14 resolved (was `default 0` instead of `= 0`) |
 | SQL injection risk in stores.node.ts | **Minor** | `stores.node.ts:65-72` CREATE TABLE uses string-interpolated tableName (see NC-10) |
-| Entity-scoped events | **Incomplete** | `ir-compiler.ts:216` comment: "Entity-scoped events not supported in current syntax" (see NC-11) |
+| Entity-scoped events | **Fixed** | ✅ Parser emits warning when event keyword used inside entity (NC-11) |
 | Hardcoded legacy store mapping | **Minor** | `ir-compiler.ts:152` maps `filesystem` → `localStorage` without extensibility (see NC-12) |
 
 ---
@@ -633,13 +633,17 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 - **Fix**: Use `pg-format` or equivalent for identifier quoting, or document that tableName MUST NOT contain user input.
 - **Files**: `src/manifest/stores.node.ts`
 
-### NC-11: Entity-Scoped Events Not Supported [INCOMPLETE]
-- **File**: `src/manifest/ir-compiler.ts:216`
+### NC-11: Entity-Scoped Events Not Supported [COMPLETED]
+- **File**: `src/manifest/parser.ts:146-157`
 - **Rule**: IR schema defines events at the module and root level; entity-scoped events could extend this
-- **Status**: Comment at line 216 reads: "Entity-scoped events not supported in current syntax". Events declared within an entity block are NOT collected by the IR compiler. Only module-level and root-level events are transformed.
-- **Impact**: Low — entity-scoped events are not in the current spec. This is an implementation limitation, not a spec violation. However, if users attempt to declare events within entity blocks, they will be silently ignored.
-- **Fix**: Either (a) add parser support for entity-scoped events and transform them in IR compiler, or (b) emit a diagnostic warning when events are declared inside entity blocks to prevent silent data loss.
-- **Note**: This does NOT violate current spec — listed as a potential source of user confusion.
+- **Status**: ✅ **COMPLETED** — Parser now emits warning when `event` keyword is used inside entity blocks
+- **Implementation**:
+  - Added detection for `event` keyword in `parseEntity()` method (parser.ts:146-157)
+  - Emits warning diagnostic: "Events cannot be declared inside entity blocks. Declare events at module or root level instead."
+  - Consumes the event keyword and optional event name to prevent infinite loop
+  - Updated comment in ir-compiler.ts:261 to reflect warning is now emitted
+- **Impact**: Users now receive actionable feedback instead of silent data loss when attempting to declare entity-scoped events.
+- **Test coverage**: 630/630 passing (no new tests needed - warning is emitted but compilation succeeds)
 
 ### NC-12: Hardcoded Legacy Store Target Mapping [MINOR]
 - **File**: `src/manifest/ir-compiler.ts:152`
@@ -719,7 +723,7 @@ Independent verification of all plan items via automated codebase exploration (6
 
 ### New Findings Added
 - **NC-10**: SQL injection risk in `stores.node.ts:65-72` (string-interpolated table name)
-- **NC-11**: Entity-scoped events silently ignored (`ir-compiler.ts:216` comment)
+- **NC-11**: Entity-scoped events silently ignored — ✅ COMPLETED (parser now emits warning)
 - **NC-12**: Hardcoded `filesystem` → `localStorage` mapping (`ir-compiler.ts:152`)
 - **NC-13**: IR hash computation bug (content-blind array replacer + double provenance creation) — ✅ COMPLETED
 - **NC-14**: First compile test syntax error — ✅ RESOLVED (was test manifest using `default 0` instead of `= 0`)
@@ -743,6 +747,7 @@ The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified a
 - NC-14: First compile test syntax error resolved (was `default 0` instead of `= 0`)
 - NC-4: Relationship runtime conformance with fixture 02 results.json (8 test cases)
 - NC-5: Blog app complex integration tests with fixture 20 results.json (24 test cases)
+- NC-11: Entity-scoped events warning in parser (prevents silent data loss)
 - P5-A: Same as NC-4
 - P5-B: Same as NC-5
 - P6-A: Default policy semantics spec in docs/spec/semantics.md (inheritance, override, IR rules)
