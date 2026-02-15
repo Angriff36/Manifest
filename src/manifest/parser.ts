@@ -33,7 +33,7 @@ export class Parser {
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
         else if (this.check('KEYWORD', 'expose')) program.exposures.push(this.parseExpose());
         else if (this.check('KEYWORD', 'compose')) program.compositions.push(this.parseComposition());
-        else if (this.check('KEYWORD', 'policy')) program.policies.push(this.parsePolicy());
+        else if (this.check('KEYWORD', 'policy')) program.policies.push(this.parsePolicy(false));
         else if (this.check('KEYWORD', 'store')) program.stores.push(this.parseStore());
         else if (this.check('KEYWORD', 'event')) program.events.push(this.parseOutboxEvent());
         else this.advance();
@@ -58,7 +58,7 @@ export class Parser {
       if (this.check('PUNCTUATION', '}')) break;
       if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
-      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy());
+      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
       else if (this.check('KEYWORD', 'event')) events.push(this.parseOutboxEvent());
       else this.advance();
@@ -91,7 +91,16 @@ export class Parser {
       else if (this.check('KEYWORD', 'behavior') || this.check('KEYWORD', 'on')) behaviors.push(this.parseBehavior());
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
-      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy());
+      else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
+      else if (this.check('KEYWORD', 'default')) {
+        // Default policy syntax: "default policy execute: ..."
+        this.advance(); // consume 'default'
+        if (this.check('KEYWORD', 'policy')) {
+          policies.push(this.parsePolicy(true));
+        } else {
+          throw new Error("Expected 'policy' after 'default'");
+        }
+      }
       else if (this.check('KEYWORD', 'store')) {
         // Check the syntax variant
         const nextToken = this.tokens[this.pos + 1];
@@ -302,7 +311,7 @@ export class Parser {
     };
   }
 
-  private parsePolicy(): PolicyNode {
+  private parsePolicy(isDefault = false): PolicyNode {
     this.consume('KEYWORD', 'policy');
     const name = this.consumeIdentifier().value;
     let action: PolicyNode['action'] = 'all';
@@ -313,7 +322,7 @@ export class Parser {
     this.skipNL();
     const expression = this.parseExpr();
     const message = this.check('STRING') ? this.advance().value : undefined;
-    return { type: 'Policy', name, action, expression, message };
+    return { type: 'Policy', name, action, expression, message, isDefault };
   }
 
   private parseStore(): StoreNode {

@@ -1,0 +1,195 @@
+{
+  "testCases": [
+    {
+      "name": "authenticated user can complete task assigned to them (default policy passes)",
+      "context": {
+        "user": { "id": "user-1", "role": "staff" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-1", "title": "Test Task", "status": "pending", "assigneeId": "user-1" }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Task",
+        "instanceId": "task-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "completed",
+        "emittedEvents": [
+          {
+            "name": "TaskCompleted",
+            "channel": "task.completed",
+            "payload": { "result": "completed" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-1",
+        "title": "Test Task",
+        "status": "completed",
+        "assigneeId": "user-1"
+      }
+    },
+    {
+      "name": "unauthenticated user is denied by default policy",
+      "context": {
+        "user": {}
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-2", "title": "Secure Task", "status": "pending", "assigneeId": "user-1" }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Task",
+        "instanceId": "task-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Authentication required",
+        "deniedBy": "RequireAuth",
+        "emittedEvents": []
+      },
+      "expectedPolicyDenial": {
+        "policyName": "RequireAuth",
+        "expression": "user.id != null"
+      }
+    },
+    {
+      "name": "admin can complete any task (default policy passes, guard passes)",
+      "context": {
+        "user": { "id": "admin-1", "role": "admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-3", "title": "Admin Task", "status": "pending", "assigneeId": "other-user" }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Task",
+        "instanceId": "task-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "completed",
+        "emittedEvents": [
+          {
+            "name": "TaskCompleted",
+            "channel": "task.completed",
+            "payload": { "result": "completed" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "task-3",
+        "title": "Admin Task",
+        "status": "completed",
+        "assigneeId": "other-user"
+      }
+    },
+    {
+      "name": "manager can reassign task (default policy passes, guard passes)",
+      "context": {
+        "user": { "id": "manager-1", "role": "manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-4", "title": "Reassign Task", "status": "pending", "assigneeId": "user-1" }
+        }
+      },
+      "command": {
+        "name": "reassign",
+        "entityName": "Task",
+        "instanceId": "task-4",
+        "input": { "newAssigneeId": "user-2" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "user-2",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "task-4",
+        "title": "Reassign Task",
+        "status": "pending",
+        "assigneeId": "user-2"
+      }
+    },
+    {
+      "name": "unauthenticated user cannot reassign task (default policy denies)",
+      "context": {
+        "user": {}
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Task",
+          "data": { "id": "task-5", "title": "Protected Task", "status": "pending", "assigneeId": "user-1" }
+        }
+      },
+      "command": {
+        "name": "reassign",
+        "entityName": "Task",
+        "instanceId": "task-5",
+        "input": { "newAssigneeId": "user-2" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Authentication required",
+        "deniedBy": "RequireAuth",
+        "emittedEvents": []
+      },
+      "expectedPolicyDenial": {
+        "policyName": "RequireAuth",
+        "expression": "user.id != null"
+      }
+    },
+    {
+      "name": "PublicDoc post works without authentication (no default policy)",
+      "context": {
+        "user": {}
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "PublicDoc",
+          "data": { "id": "doc-1", "content": "Hello World" }
+        }
+      },
+      "command": {
+        "name": "post",
+        "entityName": "PublicDoc",
+        "instanceId": "doc-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "Hello World",
+        "emittedEvents": [
+          {
+            "name": "DocPosted",
+            "channel": "doc.posted",
+            "payload": { "result": "Hello World" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "doc-1",
+        "content": "Hello World"
+      }
+    }
+  ]
+}

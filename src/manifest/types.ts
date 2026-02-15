@@ -100,6 +100,7 @@ export interface PolicyNode extends ASTNode {
   action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: ExpressionNode;
   message?: string;
+  isDefault?: boolean; // True if this is an entity-level default policy (vNext)
 }
 
 export interface StoreNode extends ASTNode {

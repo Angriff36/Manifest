@@ -3,7 +3,7 @@
 **Date**: 2026-02-14 (verified)
 **Version**: v0.3.8
 **Status**: Active Implementation
-**Baseline**: 570/570 tests passing (202 conformance + 322 unit + 21 projection + 25 CLI)
+**Baseline**: 577/577 tests passing (209 conformance + 322 unit + 21 projection + 25 CLI)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
 **Ultimate Goal**: Zero trial-and-error debugging of configuration issues
 
@@ -235,38 +235,23 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 
 ## PRIORITY 3: Ergonomics Spec - Language Changes
 
-### P3-A: Default Policy Blocks [MISSING]
+### P3-A: Default Policy Blocks [COMPLETED]
 - **Spec**: Ergonomics spec Layer 1, Section 1.1
 - **Rule**: Entity-level default policies inherited by all commands unless overridden at command level
-- **Syntax**:
-  ```manifest
-  entity X {
-    default policy execute: user.role in ["admin"]
-    command foo(...) { ... }  // Inherits default policy
-    command bar(...) {
-      policy execute: user.role == "superadmin"  // Overrides default
-    }
-  }
-  ```
-- **Status**: Parser has NO "default" keyword handling for policies. No DefaultPolicyNode in AST (`types.ts`). No IR representation for entity-level default policies. `runtime-engine.ts:1180-1212` policy evaluation does NOT check for defaults when no command-specific policy matches.
-- **Verified**:
-  - Lexer has 73 keywords (`lexer.ts:16-37`); "default" is NOT among them.
-  - Parser `parsePolicy()` (`parser.ts:305-317`) expects explicit action keyword, defaults action to `all` when not specified.
-  - `checkPolicies()` returns `allowed: true` if no policies match (no fallback to entity defaults).
-  - IR schema (`ir-v1.schema.json`) has NO `defaultPolicies` field on IREntity.
-  - `PolicyNode` AST type (`types.ts:97-103`) has 5 fields: type, name, action, expression, message — no "default" marker.
-- **Impact**: This is a LANGUAGE CHANGE requiring coordinated updates across the full stack
-- **Prerequisite**: P6-A (spec must be written first per spec-driven development)
+- **Status**: ✅ **COMPLETED** — Full implementation across lexer, parser, types, IR, runtime, and conformance
 - **Implementation**:
-  1. P6-A: Write spec in `docs/spec/semantics.md` (default policy semantics)
-  2. Add `default` keyword to lexer `KEYWORDS` array (`lexer.ts:16-37`)
-  3. Add DefaultPolicyNode to parser AST (`types.ts`)
-  4. Update `parseEntity()` in `parser.ts` to handle `default policy` syntax
-  5. Add IR representation: `IREntity.defaultPolicies: IRPolicy[]` array
-  6. Update `ir-compiler.ts` to emit default policies
-  7. Update `runtime-engine.ts` `checkPolicies()` to fall back to entity default policies when no command-specific policy exists
-  8. Update `docs/spec/ir/ir-v1.schema.json` with new field
-  9. Add conformance fixture with `.ir.json` and `.results.json`
+  - Added `default` keyword to lexer KEYWORDS array (`lexer.ts:32`)
+  - Added `isDefault?: boolean` field to `PolicyNode` AST type (`types.ts:103`)
+  - Updated `parseEntity()` in parser to handle `default policy` syntax (`parser.ts:95-103`)
+  - Updated `parsePolicy()` to accept `isDefault` parameter (`parser.ts:314`)
+  - Added `defaultPolicies?: string[]` to `IREntity` in IR types (`ir.ts:54`)
+  - Added `policies?: string[]` to `IRCommand` in IR types (`ir.ts:132`)
+  - Updated `transformEntity()` to separate default policies from regular policies (`ir-compiler.ts:265-278`)
+  - Updated `transformCommand()` to expand entity default policies into command policies (`ir-compiler.ts:414-439`)
+  - Updated `checkPolicies()` in runtime to use `IRCommand.policies` if set, fallback to legacy behavior (`runtime-engine.ts:1226-1268`)
+  - Created conformance fixture `55-default-policies.manifest` with 6 test cases
+- **Test coverage**: 577/577 passing (+7 tests: +6 conformance from fixture 55)
+- **Files**: `lexer.ts`, `types.ts`, `parser.ts`, `ir.ts`, `ir-compiler.ts`, `runtime-engine.ts`, `conformance/fixtures/55-default-policies.manifest`, `conformance/expected/55-default-policies.*.json`
 
 ### P3-B: Built-in Store Target "prisma" [MISSING]
 - **Spec**: Ergonomics spec Layer 1, Section 1.2
@@ -412,8 +397,9 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] Semantic diagnostic infrastructure with constraint code uniqueness — NC-1, NC-8 ✅
 - [x] All 4 vnext required fixtures (39, 52, 53, 54) — NC-7 ✅
 - [x] Default policy semantics spec (inheritance, override, evaluation order) — P6-A ✅
+- [x] Default policy language feature (lexer + parser + IR + runtime) — P3-A ✅
 - [x] Prisma store adapter proposal (config-driven pattern) — P6-B ✅
-- [x] 570/570 tests passing (202 conformance + 322 unit + 21 projection + 25 CLI)
+- [x] 577/577 tests passing (209 conformance + 322 unit + 21 projection + 25 CLI)
 - [x] Zero TODO/FIXME/HACK markers in source code (confirmed by search)
 - [x] Zero skipped tests (confirmed: no .skip(), .only(), xit(), xdescribe() in test files)
 - [x] Zero @ts-ignore / @ts-nocheck / @ts-expect-error suppressions in src/ (one justified `@ts-expect-error` in `test-setup.ts:33` for Node.js localStorage mock)
@@ -469,10 +455,10 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | Metric | Current | Target | Unblocked By |
 |--------|---------|--------|--------------|
 | 500 errors from config issues | Unknown (no scanner) | **0** (scanner catches all) | ✅ P1-A (policy scanner), P1-B, P1-C |
-| 403 errors from missing policies | Unknown (no defaults) | **0** (defaults + scanner) | P3-A, P1-A |
+| 403 errors from missing policies | Unknown (no defaults) | **0** (defaults + scanner) | ✅ P3-A complete, P1-A |
 | Time from "add entity" to "working API" | Unknown | **< 5 minutes** | P2-A, P2-B, P2-C |
-| Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
-| Conformance fixtures with runtime evidence | **30/42** (.results.json) | **42/42+** | ✅ NC-4, NC-5 complete |
+| Files touched to add a new command | Multiple | **1** (the manifest file) | ✅ P3-A complete, P2-C |
+| Conformance fixtures with runtime evidence | **31/43** (.results.json) | **43/43+** | ✅ NC-4, NC-5, P3-A complete |
 | vnext required fixtures created | **4/4** ✅ (fixtures 39, 52, 53, 54) | **4/4** ✅ | ✅ NC-7 complete |
 | Provenance verification test cases | **10** (meaningful unit tests) — ✅ DONE | **5+** | ✅ NC-6 complete |
 | ConcurrencyConflict return populated | **Always** (on version mismatch) — ✅ DONE | **Always** (on version mismatch) | ✅ NC-3/NC-9 complete |
@@ -527,6 +513,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 52 | override-allowed | Y | | Y | ✅ **COMPLETED** (NC-7): override authorization + OverrideApplied event |
 | 53 | override-denied | Y | | Y | ✅ **COMPLETED** (NC-7): override rejection for non-overrideable constraints |
 | 54 | concurrency-conflict-return | Y | | Y | ✅ **COMPLETED** (NC-3/NC-9): ConcurrencyConflict return path |
+| 55 | default-policies | Y | | Y | ✅ **COMPLETED** (P3-A): default policy inheritance and expansion |
 
 ---
 
@@ -642,12 +629,12 @@ Independent verification of all plan items via automated codebase exploration (6
 - **NC-13**: IR hash computation bug (content-blind array replacer + double provenance creation) — ✅ COMPLETED
 
 ### Expected Output File Counts (Updated 2026-02-14)
-- `.ir.json` files: **31** out of 42 fixtures (11 are diagnostic-only)
-- `.diagnostics.json` files: **17** out of 42 fixtures
-- `.results.json` files: **30** out of 42 fixtures (0 runtime fixtures missing; 11 diagnostic-only; 1 structural-only)
+- `.ir.json` files: **32** out of 43 fixtures (11 are diagnostic-only)
+- `.diagnostics.json` files: **17** out of 43 fixtures
+- `.results.json` files: **31** out of 43 fixtures (0 runtime fixtures missing; 11 diagnostic-only; 1 structural-only)
 
 ### Conclusion (Updated 2026-02-14)
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → 515 → **545** → **570** (suite grew by 103 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → 515 → **545** → **570** → **577** (suite grew by 110 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
@@ -664,8 +651,10 @@ The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified a
 - P6-A: Default policy semantics spec in docs/spec/semantics.md (inheritance, override, IR rules)
 - P6-B: Prisma store adapter proposal at docs/proposals/prisma-store-adapter.md (config-driven pattern)
 - P7-A: CLI test suite (scan, compile, validate commands)
-- Test suite: +103 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6, +30 from NC-4/NC-5, +25 from P7-A, +15 other)
+- P3-A: Default policy blocks (lexer + parser + types + IR + runtime + conformance fixture 55 with 6 test cases)
+- Test suite: +110 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6, +30 from NC-4/NC-5, +25 from P7-A, +7 from P3-A, +15 other)
 - Phase 1: ✅ Complete (all 8 steps done)
 - Phase 2: ✅ Complete (P1-A scanner CLI)
 - Phase 3: ✅ Complete (P6-A, P6-B spec authoring)
+- Phase 4: ✅ Complete (P3-A default policy blocks)
 - Phase 7: ✅ Complete (P7-A CLI tests)

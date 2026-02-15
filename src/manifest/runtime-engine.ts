@@ -1227,11 +1227,21 @@ export class RuntimeEngine {
     command: IRCommand,
     evalContext: Record<string, unknown>
   ): Promise<{ allowed: boolean; denial?: PolicyDenial }> {
-    const relevantPolicies = this.ir.policies.filter(p => {
-      if (p.entity && command.entity && p.entity !== command.entity) return false;
-      if (p.action !== 'all' && p.action !== 'execute') return false;
-      return true;
-    });
+    // If command has explicit policies (expanded from entity defaults or declared),
+    // evaluate only those policies by name
+    let relevantPolicies: IRPolicy[];
+    if (command.policies && command.policies.length > 0) {
+      // Filter by policy names specified on the command
+      const policyNames = new Set(command.policies);
+      relevantPolicies = this.ir.policies.filter(p => policyNames.has(p.name));
+    } else {
+      // Fallback: filter by entity match and action type (legacy behavior)
+      relevantPolicies = this.ir.policies.filter(p => {
+        if (p.entity && command.entity && p.entity !== command.entity) return false;
+        if (p.action !== 'all' && p.action !== 'execute') return false;
+        return true;
+      });
+    }
 
     for (const policy of relevantPolicies) {
       const result = await this.evaluateExpression(policy.expression, evalContext);

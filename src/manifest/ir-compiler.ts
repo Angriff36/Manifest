@@ -206,8 +206,16 @@ export class IRCompiler {
     const commands: IRCommand[] = [
       ...program.commands.map(c => this.transformCommand(c)),
       ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
-      ...program.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, undefined, e.name))),
-      ...program.modules.flatMap(m => m.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, m.name, e.name)))),
+      ...program.entities.flatMap(e => {
+        // Get default policies from entity for expansion
+        const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+        return e.commands.map(c => this.transformCommand(c, undefined, e.name, defaultPolicies));
+      }),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => {
+        // Get default policies from entity for expansion
+        const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+        return e.commands.map(c => this.transformCommand(c, m.name, e.name, defaultPolicies));
+      })),
     ];
     const policies: IRPolicy[] = [
       ...program.policies.map(p => this.transformPolicy(p)),
@@ -261,6 +269,11 @@ export class IRCompiler {
   private transformEntity(e: EntityNode, moduleName?: string): IREntity {
     const constraints = e.constraints.map(c => this.transformConstraint(c));
     this.validateConstraintCodeUniqueness(constraints, e.constraints, `entity '${e.name}'`);
+
+    // Separate default policies from regular policies
+    const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+    const regularPolicies = e.policies.filter(p => !p.isDefault).map(p => p.name);
+
     return {
       name: e.name,
       module: moduleName,
@@ -269,7 +282,8 @@ export class IRCompiler {
       relationships: e.relationships.map(r => this.transformRelationship(r)),
       commands: e.commands.map(c => c.name),
       constraints,
-      policies: e.policies.map(p => p.name),
+      policies: regularPolicies,
+      ...(defaultPolicies.length > 0 ? { defaultPolicies } : {}),
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
@@ -397,12 +411,19 @@ export class IRCompiler {
     };
   }
 
-  private transformCommand(c: CommandNode, moduleName?: string, entityName?: string): IRCommand {
+  private transformCommand(c: CommandNode, moduleName?: string, entityName?: string, entityDefaultPolicies?: string[]): IRCommand {
     const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
     if (c.constraints && c.constraints.length > 0) {
       const scope = entityName ? `command '${entityName}.${c.name}'` : `command '${c.name}'`;
       this.validateConstraintCodeUniqueness(constraints, c.constraints, scope);
     }
+
+    // Expand entity default policies into command policies
+    // Per spec: commands without explicit policies inherit entity defaults
+    const commandPolicies = entityDefaultPolicies && entityDefaultPolicies.length > 0
+      ? [...entityDefaultPolicies]
+      : undefined;
+
     return {
       name: c.name,
       module: moduleName,
@@ -410,6 +431,7 @@ export class IRCompiler {
       parameters: c.parameters.map(p => this.transformParameter(p)),
       guards: (c.guards || []).map(g => this.transformExpression(g)),
       constraints,
+      ...(commandPolicies ? { policies: commandPolicies } : {}),
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,

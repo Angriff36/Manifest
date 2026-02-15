@@ -50,6 +50,8 @@ export interface IREntity {
   commands: string[];
   constraints: IRConstraint[];
   policies: string[];
+  /** Policy names inherited by all commands unless overridden (vNext) */
+  defaultPolicies?: string[];
   /** Name of version field for optimistic concurrency control */
   versionProperty?: string;
   /** Name of timestamp field for version tracking */
@@ -126,6 +128,8 @@ export interface IRCommand {
   guards: IRExpression[];
   /** Command-level constraints (pre-execution validation) */
   constraints?: IRConstraint[];
+  /** Policy names for authorization (explicit or inherited from entity defaults) */
+  policies?: string[];
   actions: IRAction[];
   emits: string[];
   returns?: IRType;

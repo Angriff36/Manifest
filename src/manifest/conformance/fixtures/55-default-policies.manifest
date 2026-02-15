@@ -1,0 +1,50 @@
+// Fixture: Default Policies (vNext)
+// Tests entity-level default policies inherited by commands
+// Per spec: commands without explicit policies inherit entity default policies
+
+entity Task {
+  property required title: string
+  property status: string = "pending"
+  property assigneeId: string
+
+  // Default policy: all commands require authenticated user
+  default policy RequireAuth execute: user.id != null "Authentication required"
+
+  // Regular (non-default) policy for admin-only operations
+  policy AdminOnly execute: user.role == "admin" "Admin access required"
+
+  // Command that inherits default policy (RequireAuth)
+  command complete() {
+    guard self.assigneeId == user.id or user.role == "admin"
+    mutate status = "completed"
+    emit TaskCompleted
+  }
+
+  // Command that also inherits default policy (RequireAuth)
+  command reassign(newAssigneeId: string) {
+    guard user.role == "admin" or user.role == "manager"
+    mutate assigneeId = newAssigneeId
+  }
+}
+
+entity PublicDoc {
+  property required content: string
+
+  // No default policy - commands have no policy protection
+
+  command post() {
+    mutate content = content
+    emit DocPosted
+  }
+}
+
+store Task in memory
+store PublicDoc in memory
+
+event TaskCompleted: "task.completed" {
+  taskId: string
+}
+
+event DocPosted: "doc.posted" {
+  docId: string
+}

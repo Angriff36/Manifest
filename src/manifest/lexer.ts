@@ -28,6 +28,8 @@ export const KEYWORDS = new Set([
   'read', 'write', 'delete', 'execute', 'all', 'override', 'allow', 'deny',
   'and', 'or', 'not', 'is', 'in', 'contains',
   'user', 'self', 'context',
+  // vNext default policy keyword
+  'default',
   // vNext constraint keywords
   'overrideable', 'ok', 'warn', 'block',
   // vNext optimistic concurrency keywords

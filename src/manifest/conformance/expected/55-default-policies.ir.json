@@ -1,0 +1,341 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "4d57fb62445ead17e81fba59f4f0a6ebd6322d14b5736dc7d60cceeff39cefca",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Task",
+      "properties": [
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "assigneeId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "complete",
+        "reassign"
+      ],
+      "constraints": [],
+      "policies": [
+        "AdminOnly"
+      ],
+      "defaultPolicies": [
+        "RequireAuth"
+      ]
+    },
+    {
+      "name": "PublicDoc",
+      "properties": [
+        {
+          "name": "content",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "post"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Task",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "PublicDoc",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "TaskCompleted",
+      "channel": "task.completed",
+      "payload": [
+        {
+          "name": "taskId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DocPosted",
+      "channel": "doc.posted",
+      "payload": [
+        {
+          "name": "docId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "complete",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "assigneeId"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "id"
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "admin"
+              }
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "policies": [
+        "RequireAuth"
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TaskCompleted"
+      ]
+    },
+    {
+      "name": "reassign",
+      "entity": "Task",
+      "parameters": [
+        {
+          "name": "newAssigneeId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "or",
+          "left": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "admin"
+              }
+            }
+          },
+          "right": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "user"
+              },
+              "property": "role"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "manager"
+              }
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "policies": [
+        "RequireAuth"
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "assigneeId",
+          "expression": {
+            "kind": "identifier",
+            "name": "newAssigneeId"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "post",
+      "entity": "PublicDoc",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "content",
+          "expression": {
+            "kind": "identifier",
+            "name": "content"
+          }
+        }
+      ],
+      "emits": [
+        "DocPosted"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "RequireAuth",
+      "entity": "Task",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "!=",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "id"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "null"
+          }
+        }
+      },
+      "message": "Authentication required"
+    },
+    {
+      "name": "AdminOnly",
+      "entity": "Task",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      },
+      "message": "Admin access required"
+    }
+  ]
+}
