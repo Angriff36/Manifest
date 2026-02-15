@@ -31,7 +31,7 @@ export class Parser {
                 else if (this.check('KEYWORD', 'compose'))
                     program.compositions.push(this.parseComposition());
                 else if (this.check('KEYWORD', 'policy'))
-                    program.policies.push(this.parsePolicy());
+                    program.policies.push(this.parsePolicy(false));
                 else if (this.check('KEYWORD', 'store'))
                     program.stores.push(this.parseStore());
                 else if (this.check('KEYWORD', 'event'))
@@ -61,7 +61,7 @@ export class Parser {
             else if (this.check('KEYWORD', 'command'))
                 commands.push(this.parseCommand());
             else if (this.check('KEYWORD', 'policy'))
-                policies.push(this.parsePolicy());
+                policies.push(this.parsePolicy(false));
             else if (this.check('KEYWORD', 'store'))
                 stores.push(this.parseStore());
             else if (this.check('KEYWORD', 'event'))
@@ -101,7 +101,17 @@ export class Parser {
             else if (this.check('KEYWORD', 'constraint'))
                 constraints.push(this.parseConstraint());
             else if (this.check('KEYWORD', 'policy'))
-                policies.push(this.parsePolicy());
+                policies.push(this.parsePolicy(false));
+            else if (this.check('KEYWORD', 'default')) {
+                // Default policy syntax: "default policy execute: ..."
+                this.advance(); // consume 'default'
+                if (this.check('KEYWORD', 'policy')) {
+                    policies.push(this.parsePolicy(true));
+                }
+                else {
+                    throw new Error("Expected 'policy' after 'default'");
+                }
+            }
             else if (this.check('KEYWORD', 'store')) {
                 // Check the syntax variant
                 const nextToken = this.tokens[this.pos + 1];
@@ -146,6 +156,19 @@ export class Parser {
             }
             else if (this.check('KEYWORD', 'transition'))
                 transitions.push(this.parseTransition());
+            else if (this.check('KEYWORD', 'event')) {
+                // Entity-scoped events are not supported - emit warning to prevent silent data loss
+                const pos = this.current()?.position;
+                this.errors.push({
+                    message: "Events cannot be declared inside entity blocks. Declare events at module or root level instead.",
+                    position: pos,
+                    severity: 'warning'
+                });
+                this.advance(); // consume the 'event' keyword to prevent infinite loop
+                // Also skip the event name if present
+                if (this.current()?.type === 'IDENTIFIER')
+                    this.advance();
+            }
             else
                 this.advance();
             this.skipNL();
@@ -334,7 +357,7 @@ export class Parser {
             returns
         };
     }
-    parsePolicy() {
+    parsePolicy(isDefault = false) {
         this.consume('KEYWORD', 'policy');
         const name = this.consumeIdentifier().value;
         let action = 'all';
@@ -345,7 +368,7 @@ export class Parser {
         this.skipNL();
         const expression = this.parseExpr();
         const message = this.check('STRING') ? this.advance().value : undefined;
-        return { type: 'Policy', name, action, expression, message };
+        return { type: 'Policy', name, action, expression, message, isDefault };
     }
     parseStore() {
         this.consume('KEYWORD', 'store');

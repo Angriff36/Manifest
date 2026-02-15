@@ -215,8 +215,10 @@ export class RuntimeEngine {
                     default: {
                         // Exhaustive check for valid IR store targets
                         const _unsupportedTarget = storeConfig.target;
+                        const isPrisma = _unsupportedTarget === 'prisma';
                         throw new Error(`Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
-                            `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.`);
+                            `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.` +
+                            (isPrisma ? ` For Prisma, use storeProvider in manifest.config.ts - see docs/proposals/prisma-store-adapter.md` : ''));
                     }
                 }
             }
@@ -405,8 +407,19 @@ export class RuntimeEngine {
                 ...this.ir,
                 provenance: provenanceWithoutIrHash,
             };
-            // Use deterministic JSON serialization (same as compiler)
-            const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+            // Use deterministic JSON serialization with recursive key sorting (same as compiler).
+            // A replacer function sorts object keys at every nesting level to ensure
+            // the recomputed hash matches the compiler's hash for unmodified IR.
+            const json = JSON.stringify(canonical, (_key, value) => {
+                if (value && typeof value === 'object' && !Array.isArray(value)) {
+                    const sorted = {};
+                    for (const k of Object.keys(value).sort()) {
+                        sorted[k] = value[k];
+                    }
+                    return sorted;
+                }
+                return value;
+            });
             const encoder = new TextEncoder();
             const data = encoder.encode(json);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -778,10 +791,12 @@ export class RuntimeEngine {
                 }
                 if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
                     const currentInstance = await this.getInstance(options.entityName, options.instanceId);
+                    // Enrich re-fetched instance with _entity for relationship resolution
+                    const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
                     // Refresh both self/this bindings and spread instance properties into evalContext
-                    evalContext.self = currentInstance;
-                    evalContext.this = currentInstance;
-                    Object.assign(evalContext, currentInstance);
+                    evalContext.self = enriched;
+                    evalContext.this = enriched;
+                    Object.assign(evalContext, enriched);
                 }
                 result = actionResult;
             }
@@ -836,28 +851,40 @@ export class RuntimeEngine {
         }
     }
     buildEvalContext(input, instance, entityName) {
+        // Enrich instance with _entity metadata so relationship resolution works
+        // when the member expression handler reads _entity from self/this
+        const enrichedInstance = (instance && entityName)
+            ? { ...instance, _entity: entityName }
+            : instance;
         const baseContext = {
-            ...(instance || {}),
+            ...(enrichedInstance || {}),
             ...input,
-            self: instance ?? null,
-            this: instance ?? null,
+            self: enrichedInstance ?? null,
+            this: enrichedInstance ?? null,
             user: this.context.user ?? null,
             context: this.context ?? {},
         };
-        // Add entity name metadata for relationship resolution
-        if (instance && entityName) {
-            baseContext._entity = entityName;
-        }
         return baseContext;
     }
     async checkPolicies(command, evalContext) {
-        const relevantPolicies = this.ir.policies.filter(p => {
-            if (p.entity && command.entity && p.entity !== command.entity)
-                return false;
-            if (p.action !== 'all' && p.action !== 'execute')
-                return false;
-            return true;
-        });
+        // If command has explicit policies (expanded from entity defaults or declared),
+        // evaluate only those policies by name
+        let relevantPolicies;
+        if (command.policies && command.policies.length > 0) {
+            // Filter by policy names specified on the command
+            const policyNames = new Set(command.policies);
+            relevantPolicies = this.ir.policies.filter(p => policyNames.has(p.name));
+        }
+        else {
+            // Fallback: filter by entity match and action type (legacy behavior)
+            relevantPolicies = this.ir.policies.filter(p => {
+                if (p.entity && command.entity && p.entity !== command.entity)
+                    return false;
+                if (p.action !== 'all' && p.action !== 'execute')
+                    return false;
+                return true;
+            });
+        }
         for (const policy of relevantPolicies) {
             const result = await this.evaluateExpression(policy.expression, evalContext);
             if (!result) {
@@ -903,14 +930,15 @@ export class RuntimeEngine {
      */
     async validateConstraints(entity, instanceData) {
         const outcomes = [];
-        // Build evaluation context with self/this pointing to the instance
+        // Enrich instance with _entity metadata so relationship resolution works
+        // when the member expression handler reads _entity from self/this
+        const enrichedData = { ...instanceData, _entity: entity.name };
         const evalContext = {
-            ...instanceData,
-            self: instanceData,
-            this: instanceData,
+            ...enrichedData,
+            self: enrichedData,
+            this: enrichedData,
             user: this.context.user ?? null,
             context: this.context ?? {},
-            _entity: entity.name,
         };
         // Use evaluateConstraint to build proper ConstraintOutcome objects
         for (const constraint of entity.constraints) {
@@ -1350,14 +1378,16 @@ export class RuntimeEngine {
                 }
             }
         }
+        // Enrich instance with _entity metadata so relationship resolution works
+        // when the member expression handler reads _entity from self/this
+        const enrichedInstance = { ...instance, _entity: entity.name };
         const context = {
-            self: instance,
-            this: instance,
-            ...instance,
+            self: enrichedInstance,
+            this: enrichedInstance,
+            ...enrichedInstance,
             ...computedValues,
             user: this.context.user ?? null,
             context: this.context ?? {},
-            _entity: entity.name,
         };
         return await this.evaluateExpression(computed.expression, context);
     }

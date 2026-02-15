@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { AlertCircle, AlertTriangle, Info, Play, FileText, Search, Filter, CheckCircle, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertCircle, AlertTriangle, Info, Search, Filter, CheckCircle, X, Folder, RefreshCw } from 'lucide-react';
+import { scanFile, scanAll, listFiles, checkHealth, type ManifestFile } from '../../lib/api';
 
 type IssueSeverity = 'error' | 'warning' | 'info';
 
@@ -8,200 +9,128 @@ interface Issue {
   severity: IssueSeverity;
   type: 'policy' | 'store' | 'property' | 'route' | 'constraint' | 'other';
   message: string;
-  location?: {
-    entity?: string;
-    command?: string;
-    line?: number;
-  };
+  file: string;
+  line?: number;
+  entity?: string;
+  command?: string;
   suggestion: string;
 }
 
-// Parse source for issues - simplified version of scanner logic
-function parseSourceForIssues(source: string): Issue[] {
-  const issues: Issue[] = [];
-  let issueId = 1;
-
-  if (!source.trim()) {
-    return issues;
-  }
-
-  // Find entities
-  const entityRegex = /entity\s+(\w+)\s*\{/g;
-  const entityMatches: Array<{ name: string; start: number; end: number }> = [];
-  let match;
-
-  while ((match = entityRegex.exec(source)) !== null) {
-    const name = match[1];
-    const start = match.index;
-    let braceCount = 0;
-    let end = start;
-    for (let i = start; i < source.length; i++) {
-      if (source[i] === '{') braceCount++;
-      if (source[i] === '}') braceCount--;
-      if (braceCount === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-    entityMatches.push({ name, start, end });
-  }
-
-  // Find policies
-  const policies = new Set<string>();
-  const policyRegex = /policy\s+(\w+)\s+/g;
-  while ((match = policyRegex.exec(source)) !== null) {
-    policies.add(match[1]);
-  }
-
-  // Check each entity for issues
-  for (const em of entityMatches) {
-    const entitySource = source.slice(em.start, em.end);
-
-    // Find commands in entity
-    const commandRegex = /command\s+(\w+)\s*\(/g;
-    const commandNames: string[] = [];
-    while ((match = commandRegex.exec(entitySource)) !== null) {
-      commandNames.push(match[1]);
-    }
-
-    // Check each command for policy coverage
-    for (const cmdName of commandNames) {
-      const hasPolicy = Array.from(policies).some(p =>
-        p.toLowerCase().includes(em.name.toLowerCase()) ||
-        p.toLowerCase().includes(cmdName.toLowerCase())
-      );
-
-      if (!hasPolicy) {
-        issues.push({
-          id: `issue-${issueId++}`,
-          severity: 'error',
-          type: 'policy',
-          message: `Command '${em.name}.${cmdName}' has no policy`,
-          location: { entity: em.name, command: cmdName },
-          suggestion: `Add a policy:\n  policy ${em.name}Can${cmdName.charAt(0).toUpperCase() + cmdName.slice(1)} execute: user.role in ["admin"]\n\nOr set entity defaults:\n  default policy execute: user.authenticated`,
-        });
-      }
-    }
-
-    // Check store targets
-    const storeRegex = /store\s+(\w+)\s+in\s+(\w+)/g;
-    while ((match = storeRegex.exec(entitySource)) !== null) {
-      const [, entityName, target] = match;
-      if (entityName === em.name) {
-        const validTargets = ['memory', 'localStorage', 'postgres', 'supabase'];
-        if (!validTargets.includes(target)) {
-          issues.push({
-            id: `issue-${issueId++}`,
-            severity: 'warning',
-            type: 'store',
-            message: `Store target '${target}' is not a built-in target`,
-            location: { entity: em.name },
-            suggestion: `Valid built-in targets: ${validTargets.join(', ')}\n\nFor custom stores, bind in manifest.config.ts`,
-          });
-        }
-      }
-    }
-
-    // Check for constraints
-    const constraintRegex = /constraint\s+(\w+)\s+/g;
-    const constraints: string[] = [];
-    while ((match = constraintRegex.exec(entitySource)) !== null) {
-      constraints.push(match[1]);
-    }
-
-    // Check for duplicate constraint codes (within entity)
-    if (constraints.length > 1) {
-      // Simplified check - just warn if multiple constraints exist
-      issues.push({
-        id: `issue-${issueId++}`,
-        severity: 'info',
-        type: 'constraint',
-        message: `Entity '${em.name}' has ${constraints.length} constraints`,
-        location: { entity: em.name },
-        suggestion: 'Ensure constraint codes are unique within the entity',
-      });
-    }
-  }
-
-  // Check for missing entities with potential relationships
-  const hasRelationships = /hasMany|hasOne|belongsTo|ref=/.test(source);
-  if (entityMatches.length > 1 && hasRelationships) {
-    // Check if all relationships reference existing entities
-    const entityNames = new Set(entityMatches.map(e => e.name));
-    const relationshipRegex = /(hasMany|hasOne|belongsTo|ref)\s*:\s*(\w+)/g;
-
-    while ((match = relationshipRegex.exec(source)) !== null) {
-      const targetEntity = match[2];
-      if (!entityNames.has(targetEntity)) {
-        issues.push({
-          id: `issue-${issueId++}`,
-          severity: 'error',
-          type: 'other',
-          message: `Relationship references non-existent entity '${targetEntity}'`,
-          suggestion: `Ensure entity '${targetEntity}' is defined`,
-        });
-      }
-    }
-  }
-
-  return issues;
-}
-
 export default function IssueTrackerPage() {
-  const [source, setSource] = useState<string>(`entity User {
-  property id: string
-  property name: string
-  property email: string
-  property role: string
-
-  store User in memory
-
-  // No policies defined - commands will be flagged!
-  command create(params: { name: string, email: string }) {
-    guards: user.authenticated
-    emit UserCreated({ userId: self.id })
-  }
-
-  command update(params: { name: string }) {
-    guards: user.id == self.id
-  }
-
-  // No policy - will be flagged as error
-  command delete()
-}
-
-entity Post {
-  property id: string
-  property title: string
-  property authorId: string
-  property status: string
-
-  store Post in postgres
-
-  // This policy covers read operations
-  policy postRead execute: user.authenticated
-  policy postWrite execute: user.role == "author" || user.role == "admin"
-
-  command create(params: { title: string }) {
-    guards: user.authenticated
-  }
-
-  // Custom store - will be flagged as warning
-  store CustomCache in redis
-}`);
-
+  const [files, setFiles] = useState<ManifestFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string>('');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [filter, setFilter] = useState<IssueSeverity | 'all'>('all');
   const [isScanning, setIsScanning] = useState(false);
   const [resolved, setResolved] = useState<Set<string>>(new Set());
+  const [serverStatus, setServerStatus] = useState<{connected: boolean; root: string} | null>(null);
+  const [error, setError] = useState<string>('');
+
+  // Check server health on mount
+  useEffect(() => {
+    checkHealth()
+      .then(status => {
+        setServerStatus({ connected: true, root: status.manifestRoot });
+        loadFiles();
+      })
+      .catch(() => {
+        setServerStatus({ connected: false, root: '' });
+        setError('API server not available. Run: npm run server');
+      });
+  }, []);
+
+  const loadFiles = async () => {
+    try {
+      const result = await listFiles();
+      setFiles(result.files);
+      if (result.files.length > 0 && !selectedFile) {
+        setSelectedFile(result.files[0].path);
+      }
+      setError('');
+    } catch (err) {
+      setError(`Failed to load files: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   const handleScan = async () => {
+    if (!selectedFile) {
+      setError('Please select a file to scan');
+      return;
+    }
+
     setIsScanning(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
+    setError('');
     try {
-      const foundIssues = parseSourceForIssues(source);
-      setIssues(foundIssues);
+      const result = await scanFile(selectedFile);
+      
+      // Convert scan result to issues format
+      const newIssues: Issue[] = [
+        ...result.errors.map((e, i) => ({
+          id: `error-${i}`,
+          severity: 'error' as const,
+          type: 'policy' as const,
+          message: e.message,
+          file: e.file,
+          line: e.line,
+          entity: e.entityName,
+          command: e.commandName,
+          suggestion: e.suggestion,
+        })),
+        ...result.warnings.map((w, i) => ({
+          id: `warning-${i}`,
+          severity: 'warning' as const,
+          type: (w.message.includes('property') ? 'property' : 
+               w.message.includes('route') ? 'route' : 'store') as Issue['type'],
+          message: w.message,
+          file: w.file,
+          line: w.line,
+          suggestion: w.suggestion || '',
+        })),
+      ];
+      
+      setIssues(newIssues);
       setResolved(new Set());
+    } catch (err) {
+      setError(`Scan failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleScanAll = async () => {
+    setIsScanning(true);
+    setError('');
+    try {
+      const result = await scanAll();
+      
+      const newIssues: Issue[] = [
+        ...result.errors.map((e, i) => ({
+          id: `error-${i}`,
+          severity: 'error' as const,
+          type: 'policy' as const,
+          message: e.message,
+          file: e.file,
+          line: e.line,
+          entity: e.entityName,
+          command: e.commandName,
+          suggestion: e.suggestion,
+        })),
+        ...result.warnings.map((w, i) => ({
+          id: `warning-${i}`,
+          severity: 'warning' as const,
+          type: (w.message.includes('property') ? 'property' : 
+               w.message.includes('route') ? 'route' : 'store') as Issue['type'],
+          message: w.message,
+          file: w.file,
+          line: w.line,
+          suggestion: w.suggestion || '',
+        })),
+      ];
+      
+      setIssues(newIssues);
+      setResolved(new Set());
+    } catch (err) {
+      setError(`Scan failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsScanning(false);
     }
@@ -259,38 +188,83 @@ entity Post {
           Issue Tracker
         </h1>
         <p className="text-slate-400">
-          Mirror of manifest scan output - track and resolve configuration issues.
+          Real-time manifest scan output from your project files.
         </p>
+        {serverStatus && (
+          <div className={`mt-2 flex items-center gap-2 text-sm ${serverStatus.connected ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className={`w-2 h-2 rounded-full ${serverStatus.connected ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            {serverStatus.connected ? `Connected to: ${serverStatus.root}` : 'Server disconnected'}
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Source Input */}
+      {error && (
+        <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* File Selection */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-              <FileText size={16} />
-              Manifest Source
+              <Folder size={16} />
+              Manifest Files
             </label>
             <button
-              onClick={handleScan}
-              disabled={isScanning || !source.trim()}
-              className="px-4 py-1.5 bg-accent text-slate-900 text-sm font-medium rounded-md hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              onClick={loadFiles}
+              className="p-1 text-slate-400 hover:text-slate-200"
+              title="Refresh file list"
             >
-              <Search size={14} />
-              {isScanning ? 'Scanning...' : 'Scan'}
+              <RefreshCw size={14} />
             </button>
           </div>
-          <textarea
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="w-full h-96 bg-surface-lighter border border-surface-border rounded-lg p-4 text-sm font-mono text-slate-300 resize-none focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
-            placeholder="Paste your manifest code here..."
-            spellCheck={false}
-          />
+          
+          <div className="bg-surface-lighter border border-surface-border rounded-lg max-h-96 overflow-y-auto">
+            {files.length === 0 ? (
+              <div className="p-4 text-center text-slate-500 text-sm">
+                No .manifest files found
+              </div>
+            ) : (
+              files.map(file => (
+                <button
+                  key={file.path}
+                  onClick={() => setSelectedFile(file.path)}
+                  className={`w-full text-left px-4 py-2 text-sm border-b border-surface-border last:border-0 ${
+                    selectedFile === file.path
+                      ? 'bg-accent/10 text-accent'
+                      : 'text-slate-300 hover:bg-surface'
+                  }`}
+                >
+                  <div className="font-medium">{file.name}</div>
+                  <div className="text-xs text-slate-500 truncate">{file.relative}</div>
+                </button>
+              ))
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleScan}
+              disabled={isScanning || !selectedFile}
+              className="flex-1 px-4 py-2 bg-accent text-slate-900 text-sm font-medium rounded-md hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+            >
+              <Search size={14} />
+              {isScanning ? 'Scanning...' : 'Scan Selected'}
+            </button>
+            <button
+              onClick={handleScanAll}
+              disabled={isScanning}
+              className="px-4 py-2 bg-surface-lighter text-slate-200 text-sm font-medium rounded-md hover:bg-surface-lighter/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Scan All
+            </button>
+          </div>
         </div>
 
         {/* Issues List */}
-        <div className="space-y-3">
+        <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <Filter size={16} />
@@ -346,12 +320,12 @@ entity Post {
             </div>
           </div>
 
-          <div className="bg-surface-lighter border border-surface-border rounded-lg p-4 min-h-[200px] max-h-[500px] overflow-y-auto">
+          <div className="bg-surface-lighter border border-surface-border rounded-lg p-4 min-h-[400px] max-h-[600px] overflow-y-auto">
             {issues.length === 0 && (
               <div className="h-full flex items-center justify-center text-slate-500">
                 <div className="text-center">
                   <Search size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Click "Scan" to find issues</p>
+                  <p className="text-sm">Select a file and click "Scan" to find issues</p>
                 </div>
               </div>
             )}
@@ -403,13 +377,12 @@ entity Post {
 
                     <p className="text-sm text-slate-200 mb-1">{issue.message}</p>
 
-                    {issue.location && (
-                      <p className="text-xs text-slate-500 mb-2">
-                        {issue.location.entity && `Entity: ${issue.location.entity}`}
-                        {issue.location.command && `, Command: ${issue.location.command}`}
-                        {issue.location.line && `, Line: ${issue.location.line}`}
-                      </p>
-                    )}
+                    <p className="text-xs text-slate-500 mb-2">
+                      {issue.file}
+                      {issue.line && `:${issue.line}`}
+                      {issue.entity && ` • Entity: ${issue.entity}`}
+                      {issue.command && ` • Command: ${issue.command}`}
+                    </p>
 
                     <div className="bg-surface rounded p-2 mt-2">
                       <p className="text-xs text-slate-400 font-medium mb-1">Suggestion:</p>

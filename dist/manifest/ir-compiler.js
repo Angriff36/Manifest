@@ -36,8 +36,22 @@ async function computeIRHash(ir) {
         ...irWithoutProvenance,
         provenance: provenanceWithoutIrHash,
     };
-    // Use deterministic JSON serialization
-    const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+    // Use deterministic JSON serialization with recursive key sorting.
+    // A replacer function sorts object keys at every nesting level to ensure
+    // identical IR always produces the same hash regardless of property insertion order.
+    // NOTE: An array replacer (Object.keys().sort()) would only whitelist those key
+    // names at ALL levels, silently dropping nested properties — a subtle JSON.stringify
+    // pitfall that would make the hash blind to content changes within entities/commands.
+    const json = JSON.stringify(canonical, (_key, value) => {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const sorted = {};
+            for (const k of Object.keys(value).sort()) {
+                sorted[k] = value[k];
+            }
+            return sorted;
+        }
+        return value;
+    });
     const encoder = new TextEncoder();
     const data = encoder.encode(json);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -125,8 +139,16 @@ export class IRCompiler {
         const commands = [
             ...program.commands.map(c => this.transformCommand(c)),
             ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
-            ...program.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, undefined, e.name))),
-            ...program.modules.flatMap(m => m.entities.flatMap(e => e.commands.map(c => this.transformCommand(c, m.name, e.name)))),
+            ...program.entities.flatMap(e => {
+                // Get default policies from entity for expansion
+                const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+                return e.commands.map(c => this.transformCommand(c, undefined, e.name, defaultPolicies));
+            }),
+            ...program.modules.flatMap(m => m.entities.flatMap(e => {
+                // Get default policies from entity for expansion
+                const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+                return e.commands.map(c => this.transformCommand(c, m.name, e.name, defaultPolicies));
+            })),
         ];
         const policies = [
             ...program.policies.map(p => this.transformPolicy(p)),
@@ -135,10 +157,14 @@ export class IRCompiler {
             ...program.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, undefined, e.name))),
             ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
         ];
-        // Create IR without irHash first, then compute hash and add to provenance
+        // Create provenance once (single timestamp) then compute hash and stamp irHash.
+        // Provenance is created WITHOUT irHash first so the hash covers the entire IR
+        // except the irHash field itself. We reuse the same provenance object (same
+        // compiledAt) to ensure the runtime can reproduce the hash exactly.
+        const provenance = await createProvenance(source);
         const irWithoutHash = {
             version: '1.0',
-            provenance: await createProvenance(source),
+            provenance,
             modules,
             entities,
             stores,
@@ -146,11 +172,11 @@ export class IRCompiler {
             commands,
             policies,
         };
-        // Compute the IR hash and create final IR with hash in provenance
+        // Compute the IR hash and add it to the existing provenance
         const irHash = await computeIRHash(irWithoutHash);
         return {
             ...irWithoutHash,
-            provenance: await createProvenance(source, irHash),
+            provenance: { ...provenance, irHash },
         };
     }
     transformModule(m) {
@@ -162,7 +188,7 @@ export class IRCompiler {
                 ...m.entities.flatMap(e => e.commands.map(c => c.name)),
             ],
             stores: m.stores.map(s => s.entity),
-            events: m.events.map(e => e.name), // Entity-scoped events not supported in current syntax
+            events: m.events.map(e => e.name), // Entity-scoped events emit parser warning
             policies: [
                 ...m.policies.map(p => p.name),
                 ...m.entities.flatMap(e => e.policies.map(p => p.name)),
@@ -172,6 +198,9 @@ export class IRCompiler {
     transformEntity(e, moduleName) {
         const constraints = e.constraints.map(c => this.transformConstraint(c));
         this.validateConstraintCodeUniqueness(constraints, e.constraints, `entity '${e.name}'`);
+        // Separate default policies from regular policies
+        const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
+        const regularPolicies = e.policies.filter(p => !p.isDefault).map(p => p.name);
         return {
             name: e.name,
             module: moduleName,
@@ -180,7 +209,8 @@ export class IRCompiler {
             relationships: e.relationships.map(r => this.transformRelationship(r)),
             commands: e.commands.map(c => c.name),
             constraints,
-            policies: e.policies.map(p => p.name),
+            policies: regularPolicies,
+            ...(defaultPolicies.length > 0 ? { defaultPolicies } : {}),
             versionProperty: e.versionProperty,
             versionAtProperty: e.versionAtProperty,
             ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
@@ -290,12 +320,17 @@ export class IRCompiler {
             payload: this.transformType(e.payload),
         };
     }
-    transformCommand(c, moduleName, entityName) {
+    transformCommand(c, moduleName, entityName, entityDefaultPolicies) {
         const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
         if (c.constraints && c.constraints.length > 0) {
             const scope = entityName ? `command '${entityName}.${c.name}'` : `command '${c.name}'`;
             this.validateConstraintCodeUniqueness(constraints, c.constraints, scope);
         }
+        // Expand entity default policies into command policies
+        // Per spec: commands without explicit policies inherit entity defaults
+        const commandPolicies = entityDefaultPolicies && entityDefaultPolicies.length > 0
+            ? [...entityDefaultPolicies]
+            : undefined;
         return {
             name: c.name,
             module: moduleName,
@@ -303,6 +338,7 @@ export class IRCompiler {
             parameters: c.parameters.map(p => this.transformParameter(p)),
             guards: (c.guards || []).map(g => this.transformExpression(g)),
             constraints,
+            ...(commandPolicies ? { policies: commandPolicies } : {}),
             actions: c.actions.map(a => this.transformAction(a)),
             emits: c.emits || [],
             returns: c.returns ? this.transformType(c.returns) : undefined,
