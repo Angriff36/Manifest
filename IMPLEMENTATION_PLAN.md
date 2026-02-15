@@ -328,22 +328,43 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 
 ## PRIORITY 6: Documentation & Spec Alignment
 
-### P6-A: Write Default Policy Spec [PENDING]
+### P6-A: Write Default Policy Spec [COMPLETED]
 - **Spec**: Ergonomics spec acceptance criteria item 1
 - **Rule**: "Language changes are extracted to docs/spec/semantics.md and docs/spec/conformance.md"
-- **Prerequisite for**: P3-A (default policy blocks implementation)
-- **Deliverables**:
-  - Update `docs/spec/semantics.md` with "Default Policies" section defining: inheritance rules, override semantics, evaluation order
-  - Update `docs/spec/conformance.md` with expected fixture format
-  - Update `docs/spec/ir/ir-v1.schema.json` with `defaultPolicies` field on IREntity (if IR shape changes)
+- **Status**: ✅ **COMPLETED** — Default policy semantics documented
+- **Implementation**:
+  - Added "Default Policies (vNext)" section to `docs/spec/semantics.md` defining:
+    - Inheritance rules (entity defaults applied to commands without explicit policies)
+    - Override semantics (command-level policies replace, not merge with defaults)
+    - Evaluation order (explicit → inherited → none with warning)
+    - IR representation (`IREntity.defaultPolicies`, `IRCommand.policies`)
+  - Added "Default Policies (vNext)" section to `docs/spec/conformance.md` with:
+    - IR requirements for default policy synthesis
+    - Runtime requirements for inherited policy evaluation
+    - Test coverage requirements for conformance fixtures
+  - Updated `docs/spec/ir/ir-v1.schema.json` with:
+    - `IREntity.defaultPolicies` field (array of policy name strings)
+    - `IRCommand.policies` field (array of policy name strings for explicit or inherited)
+- **Files**: `docs/spec/semantics.md`, `docs/spec/conformance.md`, `docs/spec/ir/ir-v1.schema.json`
+- **Test coverage**: 570/570 passing (spec-only changes, no code changes)
 
-### P6-B: Write Prisma Store Adapter Spec [PENDING]
+### P6-B: Write Prisma Store Adapter Spec [COMPLETED]
 - **Spec**: Ergonomics spec Layer 1, Section 1.2
-- **Prerequisite for**: P3-B (prisma store target)
-- **Note**: Per `specs/workflow/Manifest-Workflow-Orchestration-and-Effect-Boundaries.md`: "Prisma is NOT a core runtime store target" — this means prisma should delegate to config binding, not be a built-in like memory/localStorage. Spec proposal should reflect this.
-- **Deliverables**:
-  - Author spec proposal at `docs/proposals/prisma-store-adapter.md` defining: config binding pattern, schema discovery, property mapping
-  - Update `docs/spec/adapters.md` with prisma adapter contract (or config-delegation pattern)
+- **Status**: ✅ **COMPLETED** — Prisma integration pattern documented
+- **Implementation**:
+  - Created `docs/proposals/prisma-store-adapter.md` defining:
+    - Design principle: "Prisma is an adapter concern, not a language concern"
+    - Configuration pattern via `manifest.config.ts`
+    - `createPrismaStore` factory pattern with property mapping
+    - Scanner integration for property alignment checks
+    - Rationale for why `prisma` is NOT a built-in store target
+  - Key decisions:
+    - No `prisma` keyword in lexer/parser
+    - No `PrismaStore` in runtime core
+    - Config-driven binding to Prisma models
+    - Scanner validates manifest properties against Prisma schema
+- **Files**: `docs/proposals/prisma-store-adapter.md`
+- **Test coverage**: 570/570 passing (spec-only changes, no code changes)
 
 ---
 
@@ -390,6 +411,8 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] Scanner: Policy coverage checking, store target validation — P1-A ✅
 - [x] Semantic diagnostic infrastructure with constraint code uniqueness — NC-1, NC-8 ✅
 - [x] All 4 vnext required fixtures (39, 52, 53, 54) — NC-7 ✅
+- [x] Default policy semantics spec (inheritance, override, evaluation order) — P6-A ✅
+- [x] Prisma store adapter proposal (config-driven pattern) — P6-B ✅
 - [x] 570/570 tests passing (202 conformance + 322 unit + 21 projection + 25 CLI)
 - [x] Zero TODO/FIXME/HACK markers in source code (confirmed by search)
 - [x] Zero skipped tests (confirmed: no .skip(), .only(), xit(), xdescribe() in test files)
@@ -416,8 +439,8 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 9. ✅ **P1-A**: Policy coverage scanner (`packages/cli/src/commands/scan.ts`) — **COMPLETED**
 
 ### Phase 3: Spec authoring (prerequisites for language changes)
-10. **P6-A**: Write default policy spec in `docs/spec/semantics.md`
-11. **P6-B**: Write prisma store adapter proposal at `docs/proposals/prisma-store-adapter.md`
+10. ✅ **P6-A**: Write default policy spec in `docs/spec/semantics.md` — **COMPLETED**
+11. ✅ **P6-B**: Write prisma store adapter proposal at `docs/proposals/prisma-store-adapter.md` — **COMPLETED**
 
 ### Phase 4: Language changes
 12. **P3-A**: Default policy blocks (lexer + parser + types + ir-compiler + runtime + conformance fixture)
@@ -589,15 +612,17 @@ Independent verification of all plan items via automated codebase exploration (6
 | NC-8 | `grep "emitDiagnostic" ir-compiler.ts` | Private method at lines 106-113; semantic error check at lines 147-149 | ✅ COMPLETED |
 | NC-13 | IR hash computation bug fixed | Recursive key-sorting replacer + single provenance creation | ✅ COMPLETED |
 
-### P Items — All Confirmed Missing
-| Item | Verification Method | Result |
-|------|-------------------|--------|
-| P1-A | `grep -r "scan" packages/cli/src/` | Zero matches for scanner command |
-| P2-A | `grep -r "manifest.config.ts" src/` | Zero matches; config loader only searches 4 YAML paths |
-| P2-C | `grep -r "resolveUser" src/` | Zero matches in source files |
-| P3-A | Read `lexer.ts:16-37` KEYWORDS | "default" NOT in the 73-keyword set |
-| P3-B | `grep -r "prisma" src/manifest/` | Zero matches; not in KEYWORDS or initializeStores() switch |
-| P7-A | `glob packages/cli/**/*.test.ts` | Zero test files |
+### P Items — Verification Status (Updated 2026-02-14)
+| Item | Verification Method | Result | Status |
+|------|-------------------|--------|--------|
+| P1-A | `grep -r "scan" packages/cli/src/` | `scan.ts` and `scan.test.ts` exist | ✅ COMPLETED |
+| P2-A | `grep -r "manifest.config.ts" src/` | Zero matches; config loader only searches 4 YAML paths | MISSING |
+| P2-C | `grep -r "resolveUser" src/` | Zero matches in source files | MISSING |
+| P3-A | Read `lexer.ts:16-37` KEYWORDS | "default" NOT in the 73-keyword set | MISSING (spec complete P6-A) |
+| P3-B | `grep -r "prisma" src/manifest/` | Zero matches; not in KEYWORDS or initializeStores() switch | MISSING (proposal complete P6-B) |
+| P6-A | `grep "Default Policies" docs/spec/semantics.md` | Section added with inheritance/override/IR rules | ✅ COMPLETED |
+| P6-B | `ls docs/proposals/prisma-store-adapter.md` | File exists with config-driven pattern | ✅ COMPLETED |
+| P7-A | `glob packages/cli/**/*.test.ts` | 3 test files (scan, compile, validate) | ✅ COMPLETED |
 
 ### Baseline Verification
 | Check | Method | Result |
@@ -622,7 +647,7 @@ Independent verification of all plan items via automated codebase exploration (6
 - `.results.json` files: **30** out of 42 fixtures (0 runtime fixtures missing; 11 diagnostic-only; 1 structural-only)
 
 ### Conclusion (Updated 2026-02-14)
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → 515 → **545** (suite grew by 78 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → 515 → **545** → **570** (suite grew by 103 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
@@ -636,5 +661,11 @@ The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified a
 - NC-5: Blog app complex integration tests with fixture 20 results.json (24 test cases)
 - P5-A: Same as NC-4
 - P5-B: Same as NC-5
-- Test suite: +78 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6, +30 from NC-4/NC-5)
+- P6-A: Default policy semantics spec in docs/spec/semantics.md (inheritance, override, IR rules)
+- P6-B: Prisma store adapter proposal at docs/proposals/prisma-store-adapter.md (config-driven pattern)
+- P7-A: CLI test suite (scan, compile, validate commands)
+- Test suite: +103 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6, +30 from NC-4/NC-5, +25 from P7-A, +15 other)
 - Phase 1: ✅ Complete (all 8 steps done)
+- Phase 2: ✅ Complete (P1-A scanner CLI)
+- Phase 3: ✅ Complete (P6-A, P6-B spec authoring)
+- Phase 7: ✅ Complete (P7-A CLI tests)

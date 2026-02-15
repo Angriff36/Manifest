@@ -92,6 +92,11 @@
         "commands": { "type": "array", "items": { "type": "string" } },
         "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" } },
         "policies": { "type": "array", "items": { "type": "string" } },
+        "defaultPolicies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Policy names inherited by all commands unless overridden (vNext)"
+        },
         "versionProperty": { "type": "string", "description": "Name of version field for optimistic concurrency control" },
         "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" },
         "transitions": {
@@ -230,6 +235,7 @@
         "parameters": { "type": "array", "items": { "$ref": "#/definitions/IRParameter" } },
         "guards": { "type": "array", "items": { "$ref": "#/definitions/IRExpression" } },
         "constraints": { "type": "array", "items": { "$ref": "#/definitions/IRConstraint" }, "description": "Command-level constraints (pre-execution validation)" },
+        "policies": { "type": "array", "items": { "type": "string" }, "description": "Policy names for authorization (explicit or inherited from entity defaults)" },
         "actions": { "type": "array", "items": { "$ref": "#/definitions/IRAction" } },
         "emits": { "type": "array", "items": { "type": "string" } },
         "returns": { "$ref": "#/definitions/IRType" }

@@ -130,6 +130,57 @@ This document defines the runtime meaning of IR v1. The IR schema is authoritati
   - Policies with action `override` MUST be checked when authorizing constraint overrides (vNext).
 - A policy with an `entity` applies only to commands bound to that entity.
 
+### Default Policies (vNext)
+- Entities MAY define `defaultPolicies` — an array of policy names that apply to all commands bound to that entity unless overridden at the command level.
+- Default policies provide entity-level authorization baseline, reducing boilerplate for common authorization patterns.
+
+#### Inheritance Rules
+- When an entity defines `defaultPolicies`, those policies are implicitly applied to every command bound to that entity.
+- A command MAY override default policies by declaring its own `policies` array. When command-level policies are declared, default policies are NOT merged — the command's explicit policies replace the defaults entirely.
+- If a command declares no policies and the entity has no `defaultPolicies`, the command has no policy protection (scanner SHOULD warn).
+
+#### Evaluation Order
+- When evaluating policies for a command:
+  1. If the command has explicit policies declared, evaluate only those policies.
+  2. If the command has no explicit policies but the entity has `defaultPolicies`, evaluate the entity's default policies.
+  3. If neither command nor entity has policies, no policy check is performed (scanner SHOULD warn about missing policy coverage).
+
+#### Override Semantics
+- Default policies are a compile-time convenience, not a runtime construct.
+- The IR compiler MUST expand entity `defaultPolicies` into each command's effective policy list during transformation.
+- The runtime evaluates the command's expanded policy list exactly as if the policies were declared directly on the command.
+- This means:
+  - A command that overrides defaults by declaring its own policies has a different IR representation than one that inherits defaults.
+  - Scanner tools can detect inherited vs. declared policies by comparing source AST to IR output.
+
+#### IR Representation
+- `IREntity.defaultPolicies`: Array of policy name strings (references to policies in `IR.policies`).
+- `IRCommand.policies`: Array of policy name strings (explicitly declared or expanded from entity defaults).
+- When compiling, if a command has no declared policies and the entity has `defaultPolicies`, the compiler MUST copy the entity's `defaultPolicies` into the command's `policies` array.
+- This expansion ensures runtime behavior is consistent regardless of whether policies were inherited or declared.
+
+#### Example
+```manifest
+entity InventoryItem {
+  // Default policy: all commands require kitchen staff role
+  default policy execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
+
+  command consume(...) { ... }  // Inherits default policy
+
+  command adjust(...) {
+    // Override: managers only
+    policy execute: user.role in ["kitchen_lead", "manager", "admin"]
+    ...
+  }
+}
+```
+
+In this example:
+- `consume` inherits the default policy (kitchen staff and above)
+- `adjust` overrides with a stricter policy (kitchen lead and above)
+- The IR for `consume` will have `policies: ["InventoryItem_Execute_Default"]` (synthesized name)
+- The IR for `adjust` will have `policies: [explicit declared policy]`
+
 ## Commands
 - The IR root `commands` array is the authoritative command definition list.
 - `IREntity.commands` is a list of command names that reference definitions in the root `commands` array.

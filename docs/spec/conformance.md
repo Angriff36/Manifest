@@ -49,6 +49,29 @@ When testing instance creation behavior:
 - Explicit empty strings (`""`) are treated as provided values and do not trigger defaults.
 - Test fixtures verify that defaults apply correctly when properties are omitted (see `18-empty-string-defaults.manifest`).
 
+### Default Policies (vNext)
+
+When testing default policy behavior:
+
+**IR Requirements**:
+- Entities with `default policy` declarations MUST have `defaultPolicies` array in IR
+- Commands without explicit policies MUST have `policies` array populated from entity defaults
+- Commands with explicit policies MUST NOT inherit entity defaults (override, not merge)
+- Default policy synthesis creates named policies with pattern: `{EntityName}_Default_Execute` or similar
+
+**Runtime Requirements**:
+- Commands with inherited policies evaluate the synthesized default policy
+- Commands with overridden policies evaluate only the declared policies
+- Policy denial message indicates whether policy was inherited or declared
+
+**Test Coverage**:
+- Fixture should verify:
+  1. Command without policies inherits entity default
+  2. Command with explicit policies does not inherit default
+  3. Multiple commands share same default policy
+  4. Policy denial shows correct policy name for inherited defaults
+  5. IR expansion produces consistent policy references
+
 ## Determinism
 
 Conformance tests use deterministic time and ID generation. New tests MUST be
