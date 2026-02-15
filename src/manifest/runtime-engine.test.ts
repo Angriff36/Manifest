@@ -707,29 +707,21 @@ describe('RuntimeEngine', () => {
   });
 
   describe('Provenance Verification', () => {
-    it('should verify valid IR hash', async () => {
-      // IR with valid hash
-      const validIR: IR = {
-        version: '1.0',
-        provenance: {
-          contentHash: 'test-content-hash',
-          irHash: 'valid-hash',
-          compilerVersion: COMPILER_VERSION,
-          schemaVersion: '1.0',
-          compiledAt: new Date().toISOString(),
-        },
-        modules: [],
-        entities: [],
-        stores: [],
-        events: [],
-        commands: [],
-        policies: [],
-      };
-
-      const runtime = new RuntimeEngine(validIR, {}, { requireValidProvenance: false });
-      // When hash verification is disabled, should not throw
-      expect(runtime.getIR()).toBeDefined();
-    });
+    // Helper: compile a simple manifest to get IR with valid irHash from the compiler.
+    // Uses useCache: false to avoid shared-object mutation between tests
+    // (e.g., delete irHash in one test corrupting the cached object for later tests).
+    async function compileValidIR(): Promise<IR> {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Item {
+          property name: string
+        }
+      `, { useCache: false });
+      if (!result.ir) {
+        throw new Error(`Compilation failed: ${result.diagnostics.map(d => d.message).join(', ')}`);
+      }
+      return result.ir;
+    }
 
     it('should include provenance in emitted events', async () => {
       const ir = await compileToIR(`
@@ -748,6 +740,143 @@ describe('RuntimeEngine', () => {
       expect(result.emittedEvents[0].provenance).toBeDefined();
       expect(result.emittedEvents[0].provenance?.compilerVersion).toBeDefined();
       expect(result.emittedEvents[0].provenance?.contentHash).toBeDefined();
+    });
+
+    it('verifyIRHash() returns true for compiler-produced IR with valid irHash', async () => {
+      // Compiler sets irHash via computeIRHash — the runtime's verifyIRHash
+      // must reproduce the same hash and confirm integrity.
+      const ir = await compileValidIR();
+      expect(ir.provenance.irHash).toBeDefined();
+
+      const runtime = new RuntimeEngine(ir);
+      const isValid = await runtime.verifyIRHash();
+      expect(isValid).toBe(true);
+    });
+
+    it('verifyIRHash() returns false when IR has been tampered with after compilation', async () => {
+      // Tampering: change IR content after compilation so hash no longer matches.
+      // This is the core integrity guarantee — if someone modifies the IR
+      // (e.g., injects a malicious entity), the hash check catches it.
+      const ir = await compileValidIR();
+      const originalHash = ir.provenance.irHash;
+      expect(originalHash).toBeDefined();
+
+      // Tamper: add an entity that wasn't in the original compilation
+      ir.entities.push({
+        name: 'Injected',
+        properties: [{ name: 'evil', type: { name: 'string', nullable: false }, modifiers: [] }],
+        computedProperties: [],
+        relationships: [],
+        commands: [],
+        constraints: [],
+        policies: [],
+      });
+
+      const runtime = new RuntimeEngine(ir);
+      const isValid = await runtime.verifyIRHash();
+      expect(isValid).toBe(false);
+    });
+
+    it('verifyIRHash() returns false when irHash is absent from provenance', async () => {
+      // If provenance exists but irHash is missing, verification cannot succeed.
+      const ir = await compileValidIR();
+      delete (ir.provenance as unknown as Record<string, unknown>).irHash;
+
+      const runtime = new RuntimeEngine(ir);
+      const isValid = await runtime.verifyIRHash();
+      expect(isValid).toBe(false);
+    });
+
+    it('verifyIRHash() accepts an external expectedHash that matches', async () => {
+      // Callers can supply an expected hash (e.g., from a deployment manifest)
+      // instead of trusting the IR's self-reported irHash.
+      const ir = await compileValidIR();
+      const correctHash = ir.provenance.irHash!;
+
+      const runtime = new RuntimeEngine(ir);
+      const isValid = await runtime.verifyIRHash(correctHash);
+      expect(isValid).toBe(true);
+    });
+
+    it('verifyIRHash() rejects an external expectedHash that does not match', async () => {
+      const ir = await compileValidIR();
+
+      const runtime = new RuntimeEngine(ir);
+      const isValid = await runtime.verifyIRHash('0000000000000000000000000000000000000000000000000000000000000000');
+      expect(isValid).toBe(false);
+    });
+
+    it('assertValidProvenance() throws when requireValidProvenance is true and IR is tampered', async () => {
+      // Spec: "A runtime MUST NOT silently execute IR with mismatched provenance
+      // when requireValidProvenance is enabled" (manifest-vnext.md § Provenance)
+      const ir = await compileValidIR();
+
+      // Tamper with the IR
+      ir.entities[0].properties.push({
+        name: 'injected',
+        type: { name: 'number', nullable: false },
+        modifiers: [],
+      });
+
+      const runtime = new RuntimeEngine(ir, {}, { requireValidProvenance: true });
+      await expect(runtime.assertValidProvenance()).rejects.toThrow(
+        'IR provenance verification failed'
+      );
+    });
+
+    it('assertValidProvenance() does not throw when requireValidProvenance is false', async () => {
+      // Even with tampered IR, if verification is disabled, no throw occurs.
+      const ir = await compileValidIR();
+      ir.entities[0].properties.push({
+        name: 'injected',
+        type: { name: 'number', nullable: false },
+        modifiers: [],
+      });
+
+      const runtime = new RuntimeEngine(ir, {}, { requireValidProvenance: false });
+      // Should not throw — verification is opt-in
+      await expect(runtime.assertValidProvenance()).resolves.toBeUndefined();
+    });
+
+    it('assertValidProvenance() succeeds when requireValidProvenance is true and IR is valid', async () => {
+      const ir = await compileValidIR();
+
+      const runtime = new RuntimeEngine(ir, {}, { requireValidProvenance: true });
+      await expect(runtime.assertValidProvenance()).resolves.toBeUndefined();
+    });
+
+    it('RuntimeEngine.create() returns { valid: true } for untampered compiler-produced IR', async () => {
+      // The static factory verifies provenance when requireValidProvenance is true
+      const ir = await compileValidIR();
+
+      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: true });
+      expect(result.valid).toBe(true);
+      expect(result.error).toBeUndefined();
+      expect(runtime).toBeInstanceOf(RuntimeEngine);
+    });
+
+    it('RuntimeEngine.create() returns { valid: false } for tampered IR', async () => {
+      const ir = await compileValidIR();
+
+      // Tamper: modify a property name
+      ir.entities[0].properties[0].name = 'tampered';
+
+      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: true });
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('IR hash verification failed');
+      // Runtime is still created (caller decides whether to use it)
+      expect(runtime).toBeInstanceOf(RuntimeEngine);
+    });
+
+    it('RuntimeEngine.create() skips verification when requireValidProvenance is false', async () => {
+      // In development mode, verification is disabled — even tampered IR passes
+      const ir = await compileValidIR();
+      ir.entities[0].properties[0].name = 'tampered';
+
+      const [runtime, result] = await RuntimeEngine.create(ir, {}, { requireValidProvenance: false });
+      expect(result.valid).toBe(true);
+      expect(result.error).toBeUndefined();
+      expect(runtime).toBeInstanceOf(RuntimeEngine);
     });
   });
 

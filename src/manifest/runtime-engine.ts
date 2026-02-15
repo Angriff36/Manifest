@@ -677,8 +677,19 @@ export class RuntimeEngine {
         provenance: provenanceWithoutIrHash,
       };
 
-      // Use deterministic JSON serialization (same as compiler)
-      const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+      // Use deterministic JSON serialization with recursive key sorting (same as compiler).
+      // A replacer function sorts object keys at every nesting level to ensure
+      // the recomputed hash matches the compiler's hash for unmodified IR.
+      const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const sorted: Record<string, unknown> = {};
+          for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+            sorted[k] = (value as Record<string, unknown>)[k];
+          }
+          return sorted;
+        }
+        return value;
+      });
       const encoder = new TextEncoder();
       const data = encoder.encode(json);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);

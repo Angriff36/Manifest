@@ -3,7 +3,7 @@
 **Date**: 2026-02-14 (verified)
 **Version**: v0.3.8
 **Status**: Active Implementation
-**Baseline**: 505/505 tests passing (172 conformance + 312 unit + 21 projection)
+**Baseline**: 515/515 tests passing (172 conformance + 322 unit + 21 projection)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
 **Ultimate Goal**: Zero trial-and-error debugging of configuration issues
 
@@ -78,29 +78,18 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
 - **Impact**: The most complex real-world fixture has zero runtime conformance evidence. Guards, policies, mutations, events, and computed properties are untested.
 - **Fix**: Add `20-blog-app.results.json` with test cases covering: user registration, post creation/publishing/archiving, comment operations, cross-entity authorization, computed property evaluation
 
-### NC-6: Provenance Verification Lacks Conformance Evidence [PARTIAL]
+### NC-6: Provenance Verification Lacks Conformance Evidence [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Provenance and IR Integrity section)
 - **Rule**: "Runtimes MUST NOT silently execute IR with mismatched provenance when requireValidProvenance is enabled"
-- **Status**: Code EXISTS and is substantial:
-  - `runtime-engine.ts:54` — `requireValidProvenance` option in RuntimeOptions interface
-  - `runtime-engine.ts:655-701` — `verifyIRHash()` computes SHA-256 and compares
-  - `runtime-engine.ts:707-717` — `assertValidProvenance()` throws on mismatch
-  - `runtime-engine.ts:2056-2080` — `RuntimeEngine.create()` factory with production-mode auto-enable
-  - `runtime-engine.ts:25-33` — `isProductionMode()` helper
-- **Test coverage is effectively zero**: Two "tests" exist (runtime-engine.test.ts:709-752) but:
-  - Test 1 ("should verify valid IR hash") creates IR with `requireValidProvenance: false` — does NOT test actual hash verification, just checks `getIR()` returns defined
-  - Test 2 ("should include provenance in emitted events") checks event `.provenance?.compilerVersion` and `.provenance?.contentHash` exist — NOT hash verification, just structural presence
-  - NO test calls `verifyIRHash()` with actual hash comparison
-  - NO test calls `assertValidProvenance()` to verify throw behavior
-  - NO test exercises `RuntimeEngine.create()` factory
-  - NO test for tampered IR hash rejection
-- **Fix**: Add unit tests to `runtime-engine.test.ts` for:
-  - (a) `verifyIRHash()` returns true for valid IR
-  - (b) `verifyIRHash()` returns false for tampered IR
-  - (c) `assertValidProvenance()` throws when `requireValidProvenance=true` and hash mismatches
-  - (d) `RuntimeEngine.create()` returns `{ valid: false }` for tampered IR
-  - (e) `RuntimeEngine.create()` returns `{ valid: true }` for valid IR
-- **Files**: `src/manifest/runtime-engine.test.ts`
+- **Status**: ✅ **COMPLETED** — 10 meaningful provenance verification tests added (replacing 2 hollow tests)
+- **Implementation**:
+  - Replaced 2 hollow tests with 10 comprehensive tests in `runtime-engine.test.ts` (Provenance Verification section)
+  - Tests cover: `verifyIRHash()` valid/tampered/absent/external-hash scenarios, `assertValidProvenance()` throw/no-throw, `RuntimeEngine.create()` factory valid/tampered/disabled
+  - **BUGFIX**: Fixed critical hash computation bug in both `ir-compiler.ts:computeIRHash()` and `runtime-engine.ts:verifyIRHash()` — the `JSON.stringify` array replacer (`Object.keys().sort()`) only whitelisted top-level key names at ALL nesting levels, silently dropping nested properties (entity names, types, constraints etc.) from the hash. Replaced with recursive key-sorting replacer function that correctly serializes all content at all levels.
+  - **BUGFIX**: Fixed double-provenance-creation in `ir-compiler.ts:transformProgram()` — `createProvenance()` was called twice with different `compiledAt` timestamps, causing hash mismatch between compiler and runtime. Now creates provenance once and stamps irHash on the same object.
+  - Regenerated all 42 conformance fixture `.ir.json` files (irHash values changed due to hash algorithm fix)
+- **Test coverage**: 515/515 passing (+10 net new tests: +10 provenance, -2 hollow tests replaced)
+- **Files**: `src/manifest/runtime-engine.test.ts`, `src/manifest/ir-compiler.ts`, `src/manifest/runtime-engine.ts`, all `src/manifest/conformance/expected/*.ir.json`
 
 ### NC-7: vnext Required Future Fixtures Missing [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Conformance Additions section, "Required Future Fixtures" table)
@@ -317,16 +306,11 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 - Fixture 20 is the largest and most realistic fixture (3 entities, 15+ commands). Compiles cleanly. No results.json.
 - Add `.results.json` testing command execution, guard evaluation, event emission, computed properties
 
-### P5-C: Provenance Verification Conformance [MISSING]
-- Same as NC-6
-- Code exists but test coverage is effectively zero. Add meaningful unit tests for verifyIRHash, assertValidProvenance, and RuntimeEngine.create.
+### P5-C: Provenance Verification Conformance [COMPLETED]
+- ✅ **COMPLETED** — See NC-6.
 
-### P5-D: vnext Required Fixtures 52-54 [MISSING]
-- Same as NC-7
-- Create dedicated conformance fixtures per vnext spec requirements:
-  - `52-override-allowed.manifest` with `.results.json`
-  - `53-override-denied.manifest` with `.results.json`
-  - `54-concurrency-conflict.manifest` with `.results.json`
+### P5-D: vnext Required Fixtures 52-54 [COMPLETED]
+- ✅ **COMPLETED** — See NC-7.
 
 ---
 
@@ -363,12 +347,8 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
   - `scan` command: (add alongside P1-A implementation)
 - **Files**: `packages/cli/src/commands/*.test.ts` (new files)
 
-### P7-B: Hollow Provenance Tests [INCOMPLETE]
-- Same as NC-6 but framed as test quality issue
-- Two existing tests in `runtime-engine.test.ts:709-752` appear to test provenance but actually test nothing meaningful:
-  - Test 1 sets `requireValidProvenance: false` which skips verification entirely
-  - Test 2 checks structural presence of `.provenance` on events, not hash verification
-- **Fix**: Replace or supplement with meaningful tests (see NC-6 fix list)
+### P7-B: Hollow Provenance Tests [COMPLETED]
+- ✅ **COMPLETED** — Hollow tests replaced with 10 meaningful provenance verification tests covering verifyIRHash, assertValidProvenance, and RuntimeEngine.create. See NC-6.
 
 ---
 
@@ -386,7 +366,7 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] Idempotency store and key deduplication — Fixture 23
 - [x] Workflow metadata (emitIndex, correlationId, causationId) — Fixture 27
 - [x] Effect boundary enforcement (deterministicMode + ManifestEffectBoundaryError)
-- [x] Provenance tracking (contentHash, irHash, verifyIRHash, assertValidProvenance, RuntimeEngine.create) — code exists and is substantial, conformance untested (NC-6)
+- [x] Provenance tracking (contentHash, irHash, verifyIRHash, assertValidProvenance, RuntimeEngine.create) — 10 unit tests ✅
 - [x] Bounded complexity limits (maxExpressionDepth: 64, maxEvaluationSteps: 10000) — 8 unit tests
 - [x] Built-in functions: now(), uuid()
 - [x] Lambda expressions with parentheses syntax (shorthand `x => ...` NOT supported)
@@ -395,7 +375,7 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] CLI: init, compile, generate, build, validate, check commands (6 of 7; scan missing)
 - [x] Semantic diagnostic infrastructure with constraint code uniqueness — NC-1, NC-8 ✅
 - [x] All 4 vnext required fixtures (39, 52, 53, 54) — NC-7 ✅
-- [x] 505/505 tests passing (172 conformance + 312 unit + 21 projection)
+- [x] 515/515 tests passing (172 conformance + 322 unit + 21 projection)
 - [x] Zero TODO/FIXME/HACK markers in source code (confirmed by search)
 - [x] Zero skipped tests (confirmed: no .skip(), .only(), xit(), xdescribe() in test files)
 - [x] Zero @ts-ignore / @ts-nocheck / @ts-expect-error suppressions in src/ (one justified `@ts-expect-error` in `test-setup.ts:33` for Node.js localStorage mock)
@@ -414,7 +394,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 4. ✅ **NC-2**: Override OverrideApplied event conformance in runtime engine + fixtures 52-53 — **COMPLETED**
 5. **NC-4**: Add `02-relationships.results.json` for relationship runtime traversal
 6. **NC-5**: Add `20-blog-app.results.json` for multi-entity runtime conformance
-7. **NC-6**: Add provenance verification unit tests (verifyIRHash valid/tampered, assertValidProvenance throw, RuntimeEngine.create factory)
+7. ✅ **NC-6**: Add provenance verification unit tests (verifyIRHash valid/tampered, assertValidProvenance throw, RuntimeEngine.create factory) — **COMPLETED**
 8. ✅ **NC-7**: Add vnext required fixtures 52-53 (override-allowed, override-denied) — **COMPLETED**
 
 ### Phase 2: Scanner CLI (highest ergonomics impact, no language changes needed)
@@ -456,7 +436,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
 | Conformance fixtures with runtime evidence | **28/42** (.results.json) | **42/42+** | NC-4, NC-5 |
 | vnext required fixtures created | **4/4** ✅ (fixtures 39, 52, 53, 54) | **4/4** ✅ | ✅ NC-7 complete |
-| Provenance verification test cases | 0 meaningful | **5+** | NC-6 |
+| Provenance verification test cases | **10** (meaningful unit tests) — ✅ DONE | **5+** | ✅ NC-6 complete |
 | ConcurrencyConflict return populated | **Always** (on version mismatch) — ✅ DONE | **Always** (on version mismatch) | ✅ NC-3/NC-9 complete |
 | CLI command test coverage | **0%** (zero test files) | **>80%** | P7-A |
 | Compiler semantic diagnostics | **1** (constraint code uniqueness ✅) | **1+** (extensible) | ✅ NC-8, NC-1 complete |
@@ -566,6 +546,15 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 - **Impact**: Minimal — this is backward-compatible behavior. The risk is silent conversion without user awareness.
 - **Fix**: Consider emitting a deprecation diagnostic when `filesystem` is encountered, or document the mapping in adapters.md.
 
+### NC-13: IR Hash Computation Was Content-Blind [COMPLETED]
+- **File**: `src/manifest/ir-compiler.ts:85` and `src/manifest/runtime-engine.ts:681`
+- **Rule**: Provenance irHash must cover the full IR content for integrity verification to be meaningful
+- **Status**: ✅ **COMPLETED** — Fixed as part of NC-6
+- **Root cause**: `JSON.stringify(obj, Object.keys(obj).sort())` uses an array replacer that acts as a property whitelist at ALL nesting levels. Only top-level key names (entities, commands, etc.) were included from nested objects — all actual content (entity names, property types, constraint expressions) was silently excluded. This made the hash change only when top-level array lengths changed, not when content was modified.
+- **Additional bug**: `ir-compiler.ts:transformProgram()` called `createProvenance()` twice with different `compiledAt` timestamps, causing guaranteed hash mismatch between compiler and runtime even for unmodified IR.
+- **Fix**: Replaced array replacer with recursive key-sorting replacer function in both compiler and runtime. Reused single provenance object in compiler.
+- **Impact**: All 42 conformance fixture `.ir.json` files regenerated with corrected irHash values.
+
 ---
 
 ## VERIFICATION LOG (2026-02-14)
@@ -580,9 +569,10 @@ Independent verification of all plan items via automated codebase exploration (6
 | NC-3/NC-9 | Fixture `54-concurrency-conflict-return.manifest` | 4 test cases verifying all 5 ConcurrencyConflict fields; runtime tracking in `runtime-engine.ts` | ✅ COMPLETED |
 | NC-4 | `ls expected/02-relationships.results.json` | File does not exist | Open |
 | NC-5 | `ls expected/20-blog-app.results.json` | File does not exist | Open |
-| NC-6 | Read `runtime-engine.test.ts:709-752` | Test 1 uses `requireValidProvenance: false`; Test 2 checks structural presence only | Open |
+| NC-6 | 10 meaningful provenance verification tests | verifyIRHash, assertValidProvenance, RuntimeEngine.create all tested | ✅ COMPLETED |
 | NC-7 | Fixtures 39, 52, 53, 54 exist | All 4 vnext required fixtures complete with expected outputs | ✅ COMPLETED (4/4) |
 | NC-8 | `grep "emitDiagnostic" ir-compiler.ts` | Private method at lines 106-113; semantic error check at lines 147-149 | ✅ COMPLETED |
+| NC-13 | IR hash computation bug fixed | Recursive key-sorting replacer + single provenance creation | ✅ COMPLETED |
 
 ### P Items — All Confirmed Missing
 | Item | Verification Method | Result |
@@ -597,9 +587,9 @@ Independent verification of all plan items via automated codebase exploration (6
 ### Baseline Verification
 | Check | Method | Result |
 |-------|--------|--------|
-| Test count | `npm test` output | **505 passed** (8 test files) — updated 2026-02-14 |
+| Test count | `npm test` output | **515 passed** (8 test files) — updated 2026-02-14 |
 | Conformance tests | conformance.test.ts output | **172 tests** (42 fixtures: 39 existing + fixtures 52, 53, 54) |
-| Unit tests | ir-compiler.test.ts, runtime-engine.test.ts, etc. | **312 tests** (+7 from NC-1, NC-8) |
+| Unit tests | ir-compiler.test.ts, runtime-engine.test.ts, etc. | **322 tests** (+7 from NC-1, NC-8, +10 from NC-6) |
 | Projection tests | nextjs-projection.test.ts | **21 tests** |
 | Skipped tests | `grep ".skip\|.only" *.test.ts` | Zero matches |
 | TODO/FIXME/HACK | `grep "TODO\|FIXME\|HACK" src/manifest/*.ts` | Zero matches |
@@ -609,6 +599,7 @@ Independent verification of all plan items via automated codebase exploration (6
 - **NC-10**: SQL injection risk in `stores.node.ts:65-72` (string-interpolated table name)
 - **NC-11**: Entity-scoped events silently ignored (`ir-compiler.ts:216` comment)
 - **NC-12**: Hardcoded `filesystem` → `localStorage` mapping (`ir-compiler.ts:152`)
+- **NC-13**: IR hash computation bug (content-blind array replacer + double provenance creation) — ✅ COMPLETED
 
 ### Expected Output File Counts (Updated 2026-02-14)
 - `.ir.json` files: **31** out of 42 fixtures (11 are diagnostic-only)
@@ -616,7 +607,7 @@ Independent verification of all plan items via automated codebase exploration (6
 - `.results.json` files: **28** out of 42 fixtures (2 runtime fixtures missing: 02, 20; 11 diagnostic-only; 1 structural-only)
 
 ### Conclusion (Updated 2026-02-14)
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → **505** (suite grew by 38 tests total). Three new minor findings added (NC-10, NC-11, NC-12). Implementation order and dependency chains remain valid.
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → **515** (suite grew by 48 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
@@ -624,5 +615,7 @@ The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified a
 - NC-3/NC-9: ConcurrencyConflict return path fix with fixture 54
 - NC-2: Override OverrideApplied event conformance in runtime engine
 - NC-7: vnext required fixtures 52-53 (override-allowed, override-denied)
-- Test suite: +23 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7)
-- Phase 1, Steps 1-4 and Step 8: ✅ Complete
+- NC-6: Provenance verification with 10 meaningful unit tests (replaced hollow tests)
+- NC-13: IR hash computation bug fixed (content-blind replacer + double provenance)
+- Test suite: +33 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6)
+- Phase 1, Steps 1-4, 7, and 8: ✅ Complete

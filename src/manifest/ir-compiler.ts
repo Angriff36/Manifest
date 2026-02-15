@@ -81,8 +81,22 @@ async function computeIRHash(ir: IR): Promise<string> {
     provenance: provenanceWithoutIrHash,
   };
 
-  // Use deterministic JSON serialization
-  const json = JSON.stringify(canonical, Object.keys(canonical).sort());
+  // Use deterministic JSON serialization with recursive key sorting.
+  // A replacer function sorts object keys at every nesting level to ensure
+  // identical IR always produces the same hash regardless of property insertion order.
+  // NOTE: An array replacer (Object.keys().sort()) would only whitelist those key
+  // names at ALL levels, silently dropping nested properties — a subtle JSON.stringify
+  // pitfall that would make the hash blind to content changes within entities/commands.
+  const json = JSON.stringify(canonical, (_key: string, value: unknown) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const sorted: Record<string, unknown> = {};
+      for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+        sorted[k] = (value as Record<string, unknown>)[k];
+      }
+      return sorted;
+    }
+    return value;
+  });
   const encoder = new TextEncoder();
   const data = encoder.encode(json);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -203,10 +217,14 @@ export class IRCompiler {
       ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
     ];
 
-    // Create IR without irHash first, then compute hash and add to provenance
+    // Create provenance once (single timestamp) then compute hash and stamp irHash.
+    // Provenance is created WITHOUT irHash first so the hash covers the entire IR
+    // except the irHash field itself. We reuse the same provenance object (same
+    // compiledAt) to ensure the runtime can reproduce the hash exactly.
+    const provenance = await createProvenance(source);
     const irWithoutHash: IR = {
       version: '1.0',
-      provenance: await createProvenance(source),
+      provenance,
       modules,
       entities,
       stores,
@@ -215,11 +233,11 @@ export class IRCompiler {
       policies,
     };
 
-    // Compute the IR hash and create final IR with hash in provenance
+    // Compute the IR hash and add it to the existing provenance
     const irHash = await computeIRHash(irWithoutHash);
     return {
       ...irWithoutHash,
-      provenance: await createProvenance(source, irHash),
+      provenance: { ...provenance, irHash },
     };
   }
 
