@@ -674,6 +674,18 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 - **Impact**: This was NOT a race condition or test infrastructure issue, but a test authoring error. The test was using outdated manifest syntax that became invalid after P3-A added `default` as a keyword.
 - **Note**: All 630 tests now pass consistently
 
+### NC-15: DevTools Server CLI Execution Broken (RESOLVED)
+- **Files**: `tools/manifest-devtools/project/server.js`, `packages/cli/src/commands/scan.ts`
+- **Rule**: DevTools server should be able to execute CLI scan commands
+- **Status**: ✅ **RESOLVED** — Fixed module resolution and CLI invocation
+- **Root cause**:
+  1. server.js used invalid `npm exec --manifest` syntax instead of direct node call
+  2. scan.ts used `@manifest/runtime/ir-compiler` import which requires workspace linking (pnpm)
+- **Resolution**:
+  1. Changed server.js to use `node "${manifestCli}" scan` with direct CLI binary path
+  2. Changed scan.ts to use relative import `../../../../dist/manifest/ir-compiler.js`
+- **Impact**: DevTools server now correctly executes scan commands from the manifest repo
+
 ---
 
 ## VERIFICATION LOG (2026-02-14)
