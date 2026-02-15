@@ -39,6 +39,15 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
   private generateId: () => string;
   private initialized: boolean = false;
 
+  /**
+   * Quotes a PostgreSQL identifier to prevent SQL injection.
+   * Wraps the identifier in double quotes and escapes any existing quotes.
+   */
+  private quoteIdentifier(identifier: string): string {
+    // Quote the identifier and escape any embedded quotes
+    return `"${identifier.replace(/"/g, '""')}"`;
+  }
+
   constructor(config: PostgresConfig, generateId?: () => string) {
     this.generateId = generateId || (() => crypto.randomUUID());
     this.tableName = config.tableName || 'entities';
@@ -61,14 +70,15 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
 
     const client = await this.pool.connect();
     try {
+      const quotedTable = this.quoteIdentifier(this.tableName);
       await client.query(`
-        CREATE TABLE IF NOT EXISTS ${this.tableName} (
+        CREATE TABLE IF NOT EXISTS ${quotedTable} (
           id TEXT PRIMARY KEY,
           data JSONB NOT NULL,
           created_at TIMESTAMP DEFAULT NOW(),
           updated_at TIMESTAMP DEFAULT NOW()
         );
-        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${this.tableName} USING gin(data);
+        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${quotedTable} USING gin(data);
       `);
       this.initialized = true;
     } finally {
@@ -90,14 +100,16 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
 
   async getAll(): Promise<T[]> {
     return this.withConnection(async (client) => {
-      const result = await client.query(`SELECT data FROM ${this.tableName} ORDER BY created_at`);
+      const quotedTable = this.quoteIdentifier(this.tableName);
+      const result = await client.query(`SELECT data FROM ${quotedTable} ORDER BY created_at`);
       return result.rows.map((row) => row.data as T);
     });
   }
 
   async getById(id: string): Promise<T | undefined> {
     return this.withConnection(async (client) => {
-      const result = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+      const quotedTable = this.quoteIdentifier(this.tableName);
+      const result = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
       return result.rows.length > 0 ? (result.rows[0].data as T) : undefined;
     });
   }
@@ -107,8 +119,9 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     const item = { ...data, id } as T;
 
     return this.withConnection(async (client) => {
+      const quotedTable = this.quoteIdentifier(this.tableName);
       await client.query(
-        `INSERT INTO ${this.tableName} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
+        `INSERT INTO ${quotedTable} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
         [id, JSON.stringify(item)]
       );
       return item;
@@ -117,14 +130,15 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
 
   async update(id: string, data: Partial<T>): Promise<T | undefined> {
     return this.withConnection(async (client) => {
-      const selectResult = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+      const quotedTable = this.quoteIdentifier(this.tableName);
+      const selectResult = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
       if (selectResult.rows.length === 0) return undefined;
 
       const existing = selectResult.rows[0].data as T;
       const updated = { ...existing, ...data, id };
 
       await client.query(
-        `UPDATE ${this.tableName} SET data = $1, updated_at = NOW() WHERE id = $2`,
+        `UPDATE ${quotedTable} SET data = $1, updated_at = NOW() WHERE id = $2`,
         [JSON.stringify(updated), id]
       );
       return updated;
@@ -133,14 +147,16 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
 
   async delete(id: string): Promise<boolean> {
     return this.withConnection(async (client) => {
-      const result = await client.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [id]);
+      const quotedTable = this.quoteIdentifier(this.tableName);
+      const result = await client.query(`DELETE FROM ${quotedTable} WHERE id = $1`, [id]);
       return (result.rowCount ?? 0) > 0;
     });
   }
 
   async clear(): Promise<void> {
     return this.withConnection(async (client) => {
-      await client.query(`DELETE FROM ${this.tableName}`);
+      const quotedTable = this.quoteIdentifier(this.tableName);
+      await client.query(`DELETE FROM ${quotedTable}`);
     });
   }
 

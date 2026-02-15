@@ -23,8 +23,12 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
   return acc;
 }, {});
 
-const PORT = parseInt(args.port || '3001', 10);
-const MANIFEST_ROOT = args['manifest-root'] || process.cwd();
+const PORT = parseInt(args.port || '8765', 10);
+// Change this to your Capsule-Pro modules directory:
+const DEFAULT_MANIFEST_ROOT = process.platform === 'win32' 
+  ? 'C:/projects/capsule-pro/packages/manifest-adapters/manifests'  // Windows
+  : '/c/projects/capsule-pro/packages/manifest-adapters/manifests'; // Git Bash/WSL
+const MANIFEST_ROOT = args['manifest-root'] || DEFAULT_MANIFEST_ROOT;
 
 const app = express();
 app.use(cors());
@@ -90,9 +94,12 @@ app.post('/api/scan', async (req, res) => {
     const { execSync } = await import('child_process');
     const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
     
+    // Run from manifest repo root so node_modules resolution works
+    const manifestRepoRoot = path.join(__dirname, '../../../..');
     const output = execSync(`node "${manifestCli}" scan "${filePath}" --format json`, {
       encoding: 'utf-8',
-      cwd: MANIFEST_ROOT
+      cwd: manifestRepoRoot,
+      env: { ...process.env, NODE_PATH: path.join(manifestRepoRoot, 'node_modules') }
     });
 
     const result = JSON.parse(output);
@@ -114,9 +121,12 @@ app.post('/api/scan-all', async (req, res) => {
     const { execSync } = await import('child_process');
     const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
     
+    // Run from manifest repo root so node_modules resolution works
+    const manifestRepoRoot = path.join(__dirname, '../../../..');
     const output = execSync(`node "${manifestCli}" scan "${MANIFEST_ROOT}" --format json`, {
       encoding: 'utf-8',
-      cwd: MANIFEST_ROOT
+      cwd: manifestRepoRoot,
+      env: { ...process.env, NODE_PATH: path.join(manifestRepoRoot, 'node_modules') }
     });
 
     const result = JSON.parse(output);

@@ -1,5 +1,5 @@
 // API client for DevTools backend
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = 'http://localhost:8765/api';
 
 export interface ScanResult {
   errors: Array<{

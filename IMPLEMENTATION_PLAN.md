@@ -1,7 +1,7 @@
 # IMPLEMENTATION PLAN
 
-**Date**: 2026-02-14 (verified)
-**Version**: v0.3.8
+**Date**: 2026-02-15 (verified)
+**Version**: v0.3.22
 **Status**: Active Implementation
 **Baseline**: 630/630 tests passing (209 conformance + 322 unit + 21 projection + 78 CLI)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
@@ -613,24 +613,24 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | Compiler semantic diagnostics | **Fixed** | ✅ Semantic diagnostic infrastructure added (NC-8) |
 | ConcurrencyConflict return path | **Fixed** | ✅ Properly populated on version mismatch (NC-3/NC-9) |
 | Compile test syntax error | **Fixed** | ✅ NC-14 resolved (was `default 0` instead of `= 0`) |
-| SQL injection risk in stores.node.ts | **Minor** | `stores.node.ts:65-72` CREATE TABLE uses string-interpolated tableName (see NC-10) |
+| SQL injection risk in stores.node.ts | **Fixed** | ✅ Proper identifier quoting added (NC-10) |
 | Entity-scoped events | **Fixed** | ✅ Parser emits warning when event keyword used inside entity (NC-11) |
 | Hardcoded legacy store mapping | **Minor** | `ir-compiler.ts:152` maps `filesystem` → `localStorage` without extensibility (see NC-12) |
 
 ---
 
-## ADDITIONAL FINDINGS (Updated 2026-02-14)
+## ADDITIONAL FINDINGS (Updated 2026-02-15)
 
-### NC-10: SQL Injection Risk in PostgresStore [MINOR]
+### NC-10: SQL Injection Risk in PostgresStore [COMPLETED]
 - **File**: `src/manifest/stores.node.ts:65-72`
 - **Rule**: `docs/spec/adapters.md` — Stores MUST handle errors; parameterized queries are a security best practice
-- **Status**: The `PostgresStore` CREATE TABLE query uses string interpolation for `tableName`:
-  ```typescript
-  CREATE TABLE IF NOT EXISTS "${this.tableName}" (...)
-  ```
-  This is not parameterized. While the table name originates from the entity name in the manifest (trusted source), if `storeProvider` is used with user-derived entity names, this could be exploitable.
-- **Impact**: Low risk in practice (table names come from manifest compilation, not user input), but violates defense-in-depth principle. Also applies to all subsequent queries using `this.tableName`.
-- **Fix**: Use `pg-format` or equivalent for identifier quoting, or document that tableName MUST NOT contain user input.
+- **Status**: ✅ **COMPLETED** — Added proper identifier quoting to prevent SQL injection
+- **Implementation**:
+  - Added `quoteIdentifier()` method that wraps identifiers in double quotes and escapes embedded quotes
+  - Applied quoting to all 8 SQL queries in PostgresStore: ensureInitialized, getAll, getById, create, update, delete, clear
+  - Index name still uses raw tableName (idx_${tableName}_data_gin) since indexes are secondary identifiers
+- **Impact**: Table names are now properly quoted in all SQL queries, preventing potential SQL injection if user-derived entity names are used via storeProvider.
+- **Test coverage**: 630/630 passing
 - **Files**: `src/manifest/stores.node.ts`
 
 ### NC-11: Entity-Scoped Events Not Supported [COMPLETED]
@@ -722,21 +722,22 @@ Independent verification of all plan items via automated codebase exploration (6
 | TS suppressions | `grep "@ts-ignore\|@ts-nocheck\|@ts-expect-error" src/manifest/*.ts` | Zero matches |
 
 ### New Findings Added
-- **NC-10**: SQL injection risk in `stores.node.ts:65-72` (string-interpolated table name)
+- **NC-10**: SQL injection risk in `stores.node.ts:65-72` (string-interpolated table name) — ✅ COMPLETED (proper identifier quoting added)
 - **NC-11**: Entity-scoped events silently ignored — ✅ COMPLETED (parser now emits warning)
 - **NC-12**: Hardcoded `filesystem` → `localStorage` mapping (`ir-compiler.ts:152`)
 - **NC-13**: IR hash computation bug (content-blind array replacer + double provenance creation) — ✅ COMPLETED
 - **NC-14**: First compile test syntax error — ✅ RESOLVED (was test manifest using `default 0` instead of `= 0`)
 
-### Expected Output File Counts (Updated 2026-02-14)
+### Expected Output File Counts (Updated 2026-02-15)
 - `.ir.json` files: **32** out of 43 fixtures (11 are diagnostic-only)
 - `.diagnostics.json` files: **17** out of 43 fixtures
 - `.results.json` files: **31** out of 43 fixtures (0 runtime fixtures missing; 11 diagnostic-only; 1 structural-only)
 
-### Conclusion (Updated 2026-02-14)
+### Conclusion (Updated 2026-02-15)
 The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. Test count progression: 467 -> 482 -> 490 -> 495 -> 505 -> 515 -> **545** -> **570** -> **577** -> **606/607** -> **630/630** (suite grew by 163 tests total). Five new findings added (NC-10, NC-11, NC-12, NC-13, NC-14 - now resolved). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
+- NC-10: SQL injection risk in PostgresStore fixed (added quoteIdentifier() method for proper SQL identifier quoting)
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
 - NC-1: Constraint code uniqueness validation with fixture 39
 - NC-3/NC-9: ConcurrencyConflict return path fix with fixture 54
