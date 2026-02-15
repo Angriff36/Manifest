@@ -1,0 +1,118 @@
+{
+  "testCases": [
+    {
+      "name": "create Author with required name",
+      "createInstance": {
+        "entity": "Author",
+        "data": { "id": "author-1", "name": "Jane Austen" }
+      },
+      "expectedInstance": {
+        "id": "author-1",
+        "name": "Jane Austen"
+      }
+    },
+    {
+      "name": "create Book with default year",
+      "createInstance": {
+        "entity": "Book",
+        "data": { "id": "book-1", "title": "Pride and Prejudice" }
+      },
+      "expectedInstance": {
+        "id": "book-1",
+        "title": "Pride and Prejudice",
+        "year": 2024
+      }
+    },
+    {
+      "name": "create Book with explicit year",
+      "createInstance": {
+        "entity": "Book",
+        "data": { "id": "book-2", "title": "Emma", "year": 1815 }
+      },
+      "expectedInstance": {
+        "id": "book-2",
+        "title": "Emma",
+        "year": 1815
+      }
+    },
+    {
+      "name": "bookCount is 0 when Author has no books (empty hasMany)",
+      "setup": {
+        "createInstance": {
+          "entity": "Author",
+          "data": { "id": "author-lonely", "name": "No Books Author" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Author",
+        "instanceId": "author-lonely",
+        "property": "bookCount"
+      },
+      "expectedValue": 0
+    },
+    {
+      "name": "bookCount reflects linked books via hasMany/belongsTo",
+      "setup": {
+        "createInstances": [
+          { "entity": "Author", "data": { "id": "author-2", "name": "George Orwell" } },
+          { "entity": "Book", "data": { "id": "book-3", "title": "1984", "year": 1949, "authorId": "author-2" } },
+          { "entity": "Book", "data": { "id": "book-4", "title": "Animal Farm", "year": 1945, "authorId": "author-2" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Author",
+        "instanceId": "author-2",
+        "property": "bookCount"
+      },
+      "expectedValue": 2
+    },
+    {
+      "name": "bookCount excludes books belonging to other authors",
+      "setup": {
+        "createInstances": [
+          { "entity": "Author", "data": { "id": "author-a", "name": "Author A" } },
+          { "entity": "Author", "data": { "id": "author-b", "name": "Author B" } },
+          { "entity": "Book", "data": { "id": "book-5", "title": "Book by A", "authorId": "author-a" } },
+          { "entity": "Book", "data": { "id": "book-6", "title": "Book by B", "authorId": "author-b" } },
+          { "entity": "Book", "data": { "id": "book-7", "title": "Another by A", "authorId": "author-a" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Author",
+        "instanceId": "author-a",
+        "property": "bookCount"
+      },
+      "expectedValue": 2
+    },
+    {
+      "name": "bookCount is 1 for author with single book",
+      "setup": {
+        "createInstances": [
+          { "entity": "Author", "data": { "id": "author-single", "name": "One Hit Wonder" } },
+          { "entity": "Book", "data": { "id": "book-8", "title": "The Only Book", "year": 2000, "authorId": "author-single" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Author",
+        "instanceId": "author-single",
+        "property": "bookCount"
+      },
+      "expectedValue": 1
+    },
+    {
+      "name": "Book without authorId has no relationship link",
+      "setup": {
+        "createInstances": [
+          { "entity": "Author", "data": { "id": "author-orphan", "name": "Orphan Author" } },
+          { "entity": "Book", "data": { "id": "book-orphan", "title": "Orphaned Book", "year": 2023 } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Author",
+        "instanceId": "author-orphan",
+        "property": "bookCount"
+      },
+      "expectedValue": 0
+    }
+  ]
+}

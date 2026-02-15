@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "312f607cfe2731b7a4296cd55b215c5787dff595d9900d2193979570ea6a4523",
+    "irHash": "bfd4d243a4a0f6eb5519b459ee65e85130731ffa1846a92bee6149d252ab37fa",
     "compilerVersion": "0.3.8",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -23,7 +23,28 @@
           ]
         }
       ],
-      "computedProperties": [],
+      "computedProperties": [
+        {
+          "name": "bookCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "books"
+            },
+            "property": "length"
+          },
+          "dependencies": []
+        }
+      ],
       "relationships": [
         {
           "name": "books",

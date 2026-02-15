@@ -1141,10 +1141,12 @@ export class RuntimeEngine {
 
       if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
         const currentInstance = await this.getInstance(options.entityName, options.instanceId);
+        // Enrich re-fetched instance with _entity for relationship resolution
+        const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
         // Refresh both self/this bindings and spread instance properties into evalContext
-        evalContext.self = currentInstance;
-        evalContext.this = currentInstance;
-        Object.assign(evalContext, currentInstance);
+        evalContext.self = enriched;
+        evalContext.this = enriched;
+        Object.assign(evalContext, enriched);
       }
       result = actionResult;
     }
@@ -1204,19 +1206,19 @@ export class RuntimeEngine {
     instance?: EntityInstance,
     entityName?: string
   ): Record<string, unknown> {
+    // Enrich instance with _entity metadata so relationship resolution works
+    // when the member expression handler reads _entity from self/this
+    const enrichedInstance = (instance && entityName)
+      ? { ...instance, _entity: entityName }
+      : instance;
     const baseContext = {
-      ...(instance || {}),
+      ...(enrichedInstance || {}),
       ...input,
-      self: instance ?? null,
-      this: instance ?? null,
+      self: enrichedInstance ?? null,
+      this: enrichedInstance ?? null,
       user: this.context.user ?? null,
       context: this.context ?? {},
     };
-
-    // Add entity name metadata for relationship resolution
-    if (instance && entityName) {
-      (baseContext as Record<string, unknown>)._entity = entityName;
-    }
 
     return baseContext;
   }
@@ -1282,14 +1284,15 @@ export class RuntimeEngine {
   ): Promise<ConstraintOutcome[]> {
     const outcomes: ConstraintOutcome[] = [];
 
-    // Build evaluation context with self/this pointing to the instance
+    // Enrich instance with _entity metadata so relationship resolution works
+    // when the member expression handler reads _entity from self/this
+    const enrichedData = { ...instanceData, _entity: entity.name };
     const evalContext = {
-      ...instanceData,
-      self: instanceData,
-      this: instanceData,
+      ...enrichedData,
+      self: enrichedData,
+      this: enrichedData,
       user: this.context.user ?? null,
       context: this.context ?? {},
-      _entity: entity.name,
     };
 
     // Use evaluateConstraint to build proper ConstraintOutcome objects
@@ -1769,14 +1772,16 @@ export class RuntimeEngine {
       }
     }
 
+    // Enrich instance with _entity metadata so relationship resolution works
+    // when the member expression handler reads _entity from self/this
+    const enrichedInstance = { ...instance, _entity: entity.name };
     const context = {
-      self: instance,
-      this: instance,
-      ...instance,
+      self: enrichedInstance,
+      this: enrichedInstance,
+      ...enrichedInstance,
       ...computedValues,
       user: this.context.user ?? null,
       context: this.context ?? {},
-      _entity: entity.name,
     };
 
     return await this.evaluateExpression(computed.expression, context);

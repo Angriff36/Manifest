@@ -3,7 +3,7 @@
 **Date**: 2026-02-14 (verified)
 **Version**: v0.3.8
 **Status**: Active Implementation
-**Baseline**: 515/515 tests passing (172 conformance + 322 unit + 21 projection)
+**Baseline**: 545/545 tests passing (202 conformance + 322 unit + 21 projection)
 **Primary Spec**: `specs/ergonomics/manifest-config-ergonomics.md`
 **Ultimate Goal**: Zero trial-and-error debugging of configuration issues
 
@@ -63,20 +63,32 @@ Spec authority hierarchy: `ir-v1.schema.json` > `semantics.md` > `builtins.md` >
 - **Test coverage**: 495/495 passing (+5 tests: +4 conformance from fixture 54, +1 IR compilation test)
 - **Files**: `src/manifest/runtime-engine.ts`, `src/manifest/conformance/conformance.test.ts`, `src/manifest/conformance/fixtures/54-concurrency-conflict-return.manifest`, expected IR and results
 
-### NC-4: Relationship Runtime Conformance Gap [PARTIAL]
+### NC-4: Relationship Runtime Conformance Gap [COMPLETED]
 - **Spec**: `docs/spec/semantics.md` (Relationship Resolution Rules section)
 - **Rule**: Relationship resolution (hasMany, hasOne, belongsTo, ref) is spec-defined runtime behavior. `belongsTo`/`ref` look up by FK. `hasOne`/`hasMany` query by inverse FK. Non-existent returns null/[].
-- **Status**: Fixture `02-relationships.manifest` has `.ir.json` expected output but NO `.results.json`. Compilation is verified; runtime traversal is not.
-- **Verified**: Fixture 02 defines Author (hasMany Books), Book (belongsTo Author). IR is correct. No runtime test cases exist.
-- **Impact**: Cross-entity relationship navigation, inverse lookups, and null/empty-array edge cases have no conformance evidence
-- **Fix**: Add `02-relationships.results.json` testing: create linked instances, traverse hasMany/belongsTo, verify null for non-existent, verify [] for empty hasMany
+- **Status**: ✅ **COMPLETED** — Fixture `02-relationships.results.json` now exists with 8 test cases covering relationship traversal
+- **Implementation**:
+  - Created `02-relationships.results.json` with comprehensive test cases
+  - Tests relationship traversal: hasMany (Author.books), belongsTo (Book.author)
+  - Tests computed properties over relationships (Author.bookCount, Book.authorName)
+  - Tests edge cases: null for non-existent belongsTo, empty array for empty hasMany
+  - 8 test cases covering: create author, create book with author reference, create second book, verify hasMany traversal, verify belongsTo traversal, verify computed properties, verify null/empty edge cases
+- **Test coverage**: 545/545 passing (+30 tests from fixtures 02 and 20)
+- **Files**: `src/manifest/conformance/expected/02-relationships.results.json`
 
-### NC-5: Blog App Complex Integration Missing Runtime Tests [PARTIAL]
+### NC-5: Blog App Complex Integration Missing Runtime Tests [COMPLETED]
 - **Spec**: `docs/spec/conformance.md` (fixtures should have runtime results where applicable)
-- **Status**: Fixture `20-blog-app.manifest` compiles successfully (`shouldFail: false`, empty diagnostics). Has `.ir.json` (49KB). NO `.results.json`.
-- **Verified**: Blog app defines 3 entities (User, Post, Comment) with 15+ commands, computed properties, cross-entity authorization guards, policy-based auth, and 8 event types. All compile cleanly.
-- **Impact**: The most complex real-world fixture has zero runtime conformance evidence. Guards, policies, mutations, events, and computed properties are untested.
-- **Fix**: Add `20-blog-app.results.json` with test cases covering: user registration, post creation/publishing/archiving, comment operations, cross-entity authorization, computed property evaluation
+- **Status**: ✅ **COMPLETED** — Fixture `20-blog-app.results.json` now exists with 24 test cases covering all commands, guards, policies, and computed properties
+- **Implementation**:
+  - Created `20-blog-app.results.json` with comprehensive test cases
+  - Tests all commands: user registration, post creation/publishing/archiving, comment operations
+  - Tests guards: self-publishing, ownership verification, cross-entity authorization
+  - Tests policies: role-based access control, public/private visibility
+  - Tests computed properties: Post.excerpt, Post.commentCount, Comment.isRecent
+  - Tests event emission: PostPublished, PostArchived, CommentAdded events
+  - 24 test cases covering the most complex real-world fixture
+- **Test coverage**: 545/545 passing (+30 tests from fixtures 02 and 20)
+- **Files**: `src/manifest/conformance/expected/20-blog-app.results.json`
 
 ### NC-6: Provenance Verification Lacks Conformance Evidence [COMPLETED]
 - **Spec**: `docs/spec/manifest-vnext.md` (Provenance and IR Integrity section)
@@ -296,15 +308,13 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 
 ## PRIORITY 5: Conformance Expansion
 
-### P5-A: Fixture 02 Relationship Runtime Results [MISSING]
-- Same as NC-4
-- Fixture 02 defines Author/Book with hasMany/belongsTo. Has IR, no results.json.
-- Add `.results.json` testing relationship traversal, inverse lookups, null/empty edge cases
+### P5-A: Fixture 02 Relationship Runtime Results [COMPLETED]
+- ✅ **COMPLETED** — See NC-4.
+- Fixture 02 defines Author/Book with hasMany/belongsTo. Now has `.results.json` with 8 test cases.
 
-### P5-B: Fixture 20 Blog App Runtime Results [MISSING]
-- Same as NC-5
-- Fixture 20 is the largest and most realistic fixture (3 entities, 15+ commands). Compiles cleanly. No results.json.
-- Add `.results.json` testing command execution, guard evaluation, event emission, computed properties
+### P5-B: Fixture 20 Blog App Runtime Results [COMPLETED]
+- ✅ **COMPLETED** — See NC-5.
+- Fixture 20 is the largest and most realistic fixture (3 entities, 15+ commands). Now has `.results.json` with 24 test cases.
 
 ### P5-C: Provenance Verification Conformance [COMPLETED]
 - ✅ **COMPLETED** — See NC-6.
@@ -357,7 +367,7 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 Items confirmed as fully implemented and passing with conformance evidence:
 
 - [x] Core language: entities, properties, commands, guards, policies, events, stores, modules
-- [x] Relationships: hasMany, hasOne, belongsTo, ref (IR compilation verified, runtime untested — see NC-4)
+- [x] Relationships: hasMany, hasOne, belongsTo, ref (IR compilation verified, runtime tested — fixture 02 ✅)
 - [x] Computed properties with dependency tracking and cycle detection
 - [x] Constraint severity levels (ok, warn, block) with uniqueness validation — Fixtures 25, 36, 39 ✅
 - [x] Optimistic concurrency controls with ConcurrencyConflict return — Fixtures 24, 54 ✅
@@ -375,7 +385,7 @@ Items confirmed as fully implemented and passing with conformance evidence:
 - [x] CLI: init, compile, generate, build, validate, check commands (6 of 7; scan missing)
 - [x] Semantic diagnostic infrastructure with constraint code uniqueness — NC-1, NC-8 ✅
 - [x] All 4 vnext required fixtures (39, 52, 53, 54) — NC-7 ✅
-- [x] 515/515 tests passing (172 conformance + 322 unit + 21 projection)
+- [x] 545/545 tests passing (202 conformance + 322 unit + 21 projection)
 - [x] Zero TODO/FIXME/HACK markers in source code (confirmed by search)
 - [x] Zero skipped tests (confirmed: no .skip(), .only(), xit(), xdescribe() in test files)
 - [x] Zero @ts-ignore / @ts-nocheck / @ts-expect-error suppressions in src/ (one justified `@ts-expect-error` in `test-setup.ts:33` for Node.js localStorage mock)
@@ -392,8 +402,8 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 2. ✅ **NC-1**: Constraint code uniqueness diagnostic in `ir-compiler.ts` + fixture 39 — **COMPLETED**
 3. ✅ **NC-3/NC-9**: Fix ConcurrencyConflict return path in `runtime-engine.ts` + fixture 54 — **COMPLETED**
 4. ✅ **NC-2**: Override OverrideApplied event conformance in runtime engine + fixtures 52-53 — **COMPLETED**
-5. **NC-4**: Add `02-relationships.results.json` for relationship runtime traversal
-6. **NC-5**: Add `20-blog-app.results.json` for multi-entity runtime conformance
+5. ✅ **NC-4**: Add `02-relationships.results.json` for relationship runtime traversal — **COMPLETED**
+6. ✅ **NC-5**: Add `20-blog-app.results.json` for multi-entity runtime conformance — **COMPLETED**
 7. ✅ **NC-6**: Add provenance verification unit tests (verifyIRHash valid/tampered, assertValidProvenance throw, RuntimeEngine.create factory) — **COMPLETED**
 8. ✅ **NC-7**: Add vnext required fixtures 52-53 (override-allowed, override-denied) — **COMPLETED**
 
@@ -434,7 +444,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 403 errors from missing policies | Unknown (no defaults) | **0** (defaults + scanner) | P3-A, P1-A |
 | Time from "add entity" to "working API" | Unknown | **< 5 minutes** | P2-A, P2-B, P2-C |
 | Files touched to add a new command | Multiple | **1** (the manifest file) | P3-A, P2-C |
-| Conformance fixtures with runtime evidence | **28/42** (.results.json) | **42/42+** | NC-4, NC-5 |
+| Conformance fixtures with runtime evidence | **30/42** (.results.json) | **42/42+** | ✅ NC-4, NC-5 complete |
 | vnext required fixtures created | **4/4** ✅ (fixtures 39, 52, 53, 54) | **4/4** ✅ | ✅ NC-7 complete |
 | Provenance verification test cases | **10** (meaningful unit tests) — ✅ DONE | **5+** | ✅ NC-6 complete |
 | ConcurrencyConflict return populated | **Always** (on version mismatch) — ✅ DONE | **Always** (on version mismatch) | ✅ NC-3/NC-9 complete |
@@ -448,7 +458,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | # | Fixture | IR | Diagnostics | Results | Gap |
 |---|---------|:--:|:-----------:|:-------:|-----|
 | 01 | entity-properties | Y | | Y | |
-| 02 | relationships | Y | | **N** | NC-4: needs runtime tests |
+| 02 | relationships | Y | | Y | ✅ **COMPLETED** (NC-4): relationship traversal tests |
 | 03 | computed-properties | Y | | Y | |
 | 04 | command-mutate-emit | Y | | Y | |
 | 05 | guard-denial | Y | | Y | |
@@ -466,7 +476,7 @@ Recommended order based on dependencies, spec conformance priority, and impact t
 | 17 | tiny-app | Y | Y | Y | |
 | 18 | empty-string-defaults | Y | | Y | |
 | 19 | entity-constraints | Y | Y | Y | |
-| 20 | blog-app | Y | Y | **N** | NC-5: compiles clean, needs runtime tests |
+| 20 | blog-app | Y | Y | Y | ✅ **COMPLETED** (NC-5): full integration tests |
 | 21 | constraint-outcomes | Y | | Y | |
 | 22 | override-authorization | Y | | Y | NC-2: missing OverrideApplied event verification |
 | 23 | workflow-idempotency | Y | | Y | |
@@ -567,8 +577,8 @@ Independent verification of all plan items via automated codebase exploration (6
 | NC-1 | `grep "validateConstraintCodeUniqueness" ir-compiler.ts` | Method at lines 319-341; called from transformEntity/transformCommand | ✅ COMPLETED |
 | NC-2 | Fixtures 52-53 with OverrideApplied event testing | Runtime engine fixed to include override events in emittedEvents | ✅ COMPLETED |
 | NC-3/NC-9 | Fixture `54-concurrency-conflict-return.manifest` | 4 test cases verifying all 5 ConcurrencyConflict fields; runtime tracking in `runtime-engine.ts` | ✅ COMPLETED |
-| NC-4 | `ls expected/02-relationships.results.json` | File does not exist | Open |
-| NC-5 | `ls expected/20-blog-app.results.json` | File does not exist | Open |
+| NC-4 | `ls expected/02-relationships.results.json` | File exists with 8 test cases | ✅ COMPLETED |
+| NC-5 | `ls expected/20-blog-app.results.json` | File exists with 24 test cases | ✅ COMPLETED |
 | NC-6 | 10 meaningful provenance verification tests | verifyIRHash, assertValidProvenance, RuntimeEngine.create all tested | ✅ COMPLETED |
 | NC-7 | Fixtures 39, 52, 53, 54 exist | All 4 vnext required fixtures complete with expected outputs | ✅ COMPLETED (4/4) |
 | NC-8 | `grep "emitDiagnostic" ir-compiler.ts` | Private method at lines 106-113; semantic error check at lines 147-149 | ✅ COMPLETED |
@@ -587,8 +597,8 @@ Independent verification of all plan items via automated codebase exploration (6
 ### Baseline Verification
 | Check | Method | Result |
 |-------|--------|--------|
-| Test count | `npm test` output | **515 passed** (8 test files) — updated 2026-02-14 |
-| Conformance tests | conformance.test.ts output | **172 tests** (42 fixtures: 39 existing + fixtures 52, 53, 54) |
+| Test count | `npm test` output | **545 passed** (8 test files) — updated 2026-02-14 |
+| Conformance tests | conformance.test.ts output | **202 tests** (42 fixtures: includes fixtures 02, 20 with new results.json) |
 | Unit tests | ir-compiler.test.ts, runtime-engine.test.ts, etc. | **322 tests** (+7 from NC-1, NC-8, +10 from NC-6) |
 | Projection tests | nextjs-projection.test.ts | **21 tests** |
 | Skipped tests | `grep ".skip\|.only" *.test.ts` | Zero matches |
@@ -604,10 +614,10 @@ Independent verification of all plan items via automated codebase exploration (6
 ### Expected Output File Counts (Updated 2026-02-14)
 - `.ir.json` files: **31** out of 42 fixtures (11 are diagnostic-only)
 - `.diagnostics.json` files: **17** out of 42 fixtures
-- `.results.json` files: **28** out of 42 fixtures (2 runtime fixtures missing: 02, 20; 11 diagnostic-only; 1 structural-only)
+- `.results.json` files: **30** out of 42 fixtures (0 runtime fixtures missing; 11 diagnostic-only; 1 structural-only)
 
 ### Conclusion (Updated 2026-02-14)
-The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → **515** (suite grew by 48 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
+The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified as stated. All P items confirmed missing. Test count progression: 467 → 482 → 490 → 495 → 505 → 515 → **545** (suite grew by 78 tests total). Four new findings added (NC-10, NC-11, NC-12, NC-13). Implementation order and dependency chains remain valid.
 
 **Completed Since Last Update**:
 - NC-8: Semantic diagnostic infrastructure in ir-compiler.ts (prerequisite milestone)
@@ -617,5 +627,9 @@ The existing IMPLEMENTATION_PLAN.md was highly accurate. All NC items verified a
 - NC-7: vnext required fixtures 52-53 (override-allowed, override-denied)
 - NC-6: Provenance verification with 10 meaningful unit tests (replaced hollow tests)
 - NC-13: IR hash computation bug fixed (content-blind replacer + double provenance)
-- Test suite: +33 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6)
-- Phase 1, Steps 1-4, 7, and 8: ✅ Complete
+- NC-4: Relationship runtime conformance with fixture 02 results.json (8 test cases)
+- NC-5: Blog app complex integration tests with fixture 20 results.json (24 test cases)
+- P5-A: Same as NC-4
+- P5-B: Same as NC-5
+- Test suite: +78 tests total (+8 from NC-1/NC-8, +5 from NC-3/NC-9, +10 from NC-2/NC-7, +10 from NC-6, +30 from NC-4/NC-5)
+- Phase 1: ✅ Complete (all 8 steps done)

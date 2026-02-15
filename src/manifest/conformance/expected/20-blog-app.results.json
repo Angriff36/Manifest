@@ -1,0 +1,594 @@
+{
+  "testCases": [
+    {
+      "name": "register user as admin succeeds",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "user-1", "username": "", "email": "", "role": "author", "createdAt": 0 }
+        }
+      },
+      "command": {
+        "name": "register",
+        "entityName": "User",
+        "instanceId": "user-1",
+        "input": { "userId": "user-1", "name": "Alice", "emailAddr": "alice@example.com" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1000000000000,
+        "emittedEvents": [
+          {
+            "name": "UserRegistered",
+            "channel": "user.registered",
+            "payload": { "userId": "user-1", "name": "Alice", "emailAddr": "alice@example.com", "result": 1000000000000 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "user-1",
+        "username": "Alice",
+        "email": "alice@example.com",
+        "role": "author",
+        "createdAt": 1000000000000
+      }
+    },
+    {
+      "name": "register denied for author-role user by global policy",
+      "context": { "user": { "id": "author-1", "role": "author" } },
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "user-2", "username": "", "email": "", "role": "author", "createdAt": 0 }
+        }
+      },
+      "command": {
+        "name": "register",
+        "entityName": "User",
+        "instanceId": "user-2",
+        "input": { "userId": "user-2", "name": "Bob", "emailAddr": "bob@example.com" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only editors and admins can publish posts",
+        "deniedBy": "CanPublishPost",
+        "emittedEvents": []
+      },
+      "expectedPolicyDenial": {
+        "policyName": "CanPublishPost",
+        "expression": "user.role == \"editor\" or user.role == \"admin\""
+      }
+    },
+    {
+      "name": "promoteRole to editor succeeds as admin",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "user-3", "username": "Carol", "email": "carol@example.com", "role": "author", "createdAt": 0 }
+        }
+      },
+      "command": {
+        "name": "promoteRole",
+        "entityName": "User",
+        "instanceId": "user-3",
+        "input": { "newRole": "editor" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "editor",
+        "emittedEvents": [
+          {
+            "name": "RolePromoted",
+            "channel": "user.promoted",
+            "payload": { "newRole": "editor", "result": "editor" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "user-3",
+        "username": "Carol",
+        "email": "carol@example.com",
+        "role": "editor",
+        "createdAt": 0
+      }
+    },
+    {
+      "name": "promoteRole fails for non-admin user (guard failure)",
+      "context": { "user": { "id": "editor-1", "role": "editor" } },
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "user-4", "username": "Dave", "email": "dave@example.com", "role": "author", "createdAt": 0 }
+        }
+      },
+      "command": {
+        "name": "promoteRole",
+        "entityName": "User",
+        "instanceId": "user-4",
+        "input": { "newRole": "editor" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'promoteRole'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "user.role == \"admin\""
+      }
+    },
+    {
+      "name": "promoteRole fails for invalid role (guard failure)",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "user-5", "username": "Eve", "email": "eve@example.com", "role": "author", "createdAt": 0 }
+        }
+      },
+      "command": {
+        "name": "promoteRole",
+        "entityName": "User",
+        "instanceId": "user-5",
+        "input": { "newRole": "viewer" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'promoteRole'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 1,
+        "expression": "newRole == \"editor\" or newRole == \"admin\""
+      }
+    },
+    {
+      "name": "createPost succeeds as admin",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-1", "title": "", "content": "", "authorId": "", "status": "draft", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "createPost",
+        "entityName": "Post",
+        "instanceId": "post-1",
+        "input": { "postId": "post-1", "titleText": "My First Post", "contentText": "Hello world", "author": "admin-1" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "draft",
+        "emittedEvents": [
+          {
+            "name": "PostCreated",
+            "channel": "post.created",
+            "payload": { "postId": "post-1", "titleText": "My First Post", "contentText": "Hello world", "author": "admin-1", "result": "draft" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "post-1",
+        "title": "My First Post",
+        "content": "Hello world",
+        "authorId": "admin-1",
+        "status": "draft",
+        "createdAt": 1000000000000,
+        "publishedAt": 0,
+        "viewCount": 0
+      }
+    },
+    {
+      "name": "publishPost succeeds for admin on draft post",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-2", "title": "Draft Post", "content": "Content", "authorId": "admin-1", "status": "draft", "createdAt": 500000000000, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "publishPost",
+        "entityName": "Post",
+        "instanceId": "post-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1000000000000,
+        "emittedEvents": [
+          {
+            "name": "PostPublished",
+            "channel": "post.published",
+            "payload": { "result": 1000000000000 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "post-2",
+        "title": "Draft Post",
+        "content": "Content",
+        "authorId": "admin-1",
+        "status": "published",
+        "createdAt": 500000000000,
+        "publishedAt": 1000000000000,
+        "viewCount": 0
+      }
+    },
+    {
+      "name": "publishPost fails on already published post (guard failure)",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-3", "title": "Published Post", "content": "Content", "authorId": "admin-1", "status": "published", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "publishPost",
+        "entityName": "Post",
+        "instanceId": "post-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'publishPost'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 1,
+        "expression": "self.status == \"draft\""
+      }
+    },
+    {
+      "name": "publishPost denied for author-role user by policy",
+      "context": { "user": { "id": "author-1", "role": "author" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-4", "title": "Draft", "content": "Content", "authorId": "author-1", "status": "draft", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "publishPost",
+        "entityName": "Post",
+        "instanceId": "post-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Only editors and admins can publish posts",
+        "deniedBy": "CanPublishPost",
+        "emittedEvents": []
+      },
+      "expectedPolicyDenial": {
+        "policyName": "CanPublishPost",
+        "expression": "user.role == \"editor\" or user.role == \"admin\""
+      }
+    },
+    {
+      "name": "incrementViews succeeds without guards",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-5", "title": "Popular Post", "content": "Content", "authorId": "admin-1", "status": "published", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "incrementViews",
+        "entityName": "Post",
+        "instanceId": "post-5",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "post-5",
+        "title": "Popular Post",
+        "content": "Content",
+        "authorId": "admin-1",
+        "status": "published",
+        "createdAt": 0,
+        "publishedAt": 0,
+        "viewCount": 1
+      }
+    },
+    {
+      "name": "archivePost succeeds for admin on published post",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-6", "title": "Old Post", "content": "Content", "authorId": "admin-1", "status": "published", "createdAt": 0, "publishedAt": 0, "viewCount": 10 }
+        }
+      },
+      "command": {
+        "name": "archivePost",
+        "entityName": "Post",
+        "instanceId": "post-6",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "archived",
+        "emittedEvents": [
+          {
+            "name": "PostArchived",
+            "channel": "post.archived",
+            "payload": { "result": "archived" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "post-6",
+        "title": "Old Post",
+        "content": "Content",
+        "authorId": "admin-1",
+        "status": "archived",
+        "createdAt": 0,
+        "publishedAt": 0,
+        "viewCount": 10
+      }
+    },
+    {
+      "name": "archivePost fails on already archived post (guard failure)",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "post-7", "title": "Archived Post", "content": "Content", "authorId": "admin-1", "status": "archived", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "command": {
+        "name": "archivePost",
+        "entityName": "Post",
+        "instanceId": "post-7",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'archivePost'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 1,
+        "expression": "self.status != \"archived\""
+      }
+    },
+    {
+      "name": "addComment succeeds as admin",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comment-1", "postId": "", "authorId": "", "content": "", "createdAt": 0, "status": "visible" }
+        }
+      },
+      "command": {
+        "name": "addComment",
+        "entityName": "Comment",
+        "instanceId": "comment-1",
+        "input": { "commentId": "comment-1", "post": "post-1", "author": "admin-1", "text": "Great post!" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "visible",
+        "emittedEvents": [
+          {
+            "name": "CommentAdded",
+            "channel": "comment.added",
+            "payload": { "commentId": "comment-1", "post": "post-1", "author": "admin-1", "text": "Great post!", "result": "visible" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "comment-1",
+        "postId": "post-1",
+        "authorId": "admin-1",
+        "content": "Great post!",
+        "createdAt": 1000000000000,
+        "status": "visible"
+      }
+    },
+    {
+      "name": "hideComment succeeds as admin on visible comment",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comment-2", "postId": "post-1", "authorId": "admin-1", "content": "Hidden content", "createdAt": 0, "status": "visible" }
+        }
+      },
+      "command": {
+        "name": "hideComment",
+        "entityName": "Comment",
+        "instanceId": "comment-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "hidden",
+        "emittedEvents": [
+          {
+            "name": "CommentHidden",
+            "channel": "comment.hidden",
+            "payload": { "result": "hidden" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "comment-2",
+        "postId": "post-1",
+        "authorId": "admin-1",
+        "content": "Hidden content",
+        "createdAt": 0,
+        "status": "hidden"
+      }
+    },
+    {
+      "name": "removeComment succeeds as admin",
+      "context": { "user": { "id": "admin-1", "role": "admin" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comment-3", "postId": "post-1", "authorId": "user-1", "content": "Spam comment", "createdAt": 0, "status": "visible" }
+        }
+      },
+      "command": {
+        "name": "removeComment",
+        "entityName": "Comment",
+        "instanceId": "comment-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "deleted",
+        "emittedEvents": [
+          {
+            "name": "CommentDeleted",
+            "channel": "comment.deleted",
+            "payload": { "result": "deleted" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "comment-3",
+        "postId": "post-1",
+        "authorId": "user-1",
+        "content": "Spam comment",
+        "createdAt": 0,
+        "status": "deleted"
+      }
+    },
+    {
+      "name": "removeComment fails for editor (guard: admin only)",
+      "context": { "user": { "id": "editor-1", "role": "editor" } },
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comment-4", "postId": "post-1", "authorId": "user-1", "content": "Normal comment", "createdAt": 0, "status": "visible" }
+        }
+      },
+      "command": {
+        "name": "removeComment",
+        "entityName": "Comment",
+        "instanceId": "comment-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'removeComment'",
+        "emittedEvents": []
+      },
+      "expectedGuardFailure": {
+        "index": 2,
+        "expression": "user.role == \"admin\""
+      }
+    },
+    {
+      "name": "User isAuthor computed property (role=author)",
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "comp-user-1", "username": "Test", "email": "test@example.com", "role": "author", "createdAt": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "User",
+        "instanceId": "comp-user-1",
+        "property": "isAuthor"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "User canPublish computed property (role=author, cannot publish)",
+      "setup": {
+        "createInstance": {
+          "entity": "User",
+          "data": { "id": "comp-user-2", "username": "Author", "email": "author@example.com", "role": "author", "createdAt": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "User",
+        "instanceId": "comp-user-2",
+        "property": "canPublish"
+      },
+      "expectedValue": false
+    },
+    {
+      "name": "Post isDraft computed property (status=draft)",
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "comp-post-1", "title": "Draft Post", "content": "Content", "authorId": "u1", "status": "draft", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Post",
+        "instanceId": "comp-post-1",
+        "property": "isDraft"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "Post isPublished computed property (status=published)",
+      "setup": {
+        "createInstance": {
+          "entity": "Post",
+          "data": { "id": "comp-post-2", "title": "Published Post", "content": "Content", "authorId": "u1", "status": "published", "createdAt": 0, "publishedAt": 0, "viewCount": 0 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Post",
+        "instanceId": "comp-post-2",
+        "property": "isPublished"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "Comment isVisible computed property (status=visible)",
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comp-comment-1", "postId": "p1", "authorId": "u1", "content": "Hi", "createdAt": 0, "status": "visible" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Comment",
+        "instanceId": "comp-comment-1",
+        "property": "isVisible"
+      },
+      "expectedValue": true
+    },
+    {
+      "name": "Comment isHidden computed property (status=hidden)",
+      "setup": {
+        "createInstance": {
+          "entity": "Comment",
+          "data": { "id": "comp-comment-2", "postId": "p1", "authorId": "u1", "content": "Hidden", "createdAt": 0, "status": "hidden" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Comment",
+        "instanceId": "comp-comment-2",
+        "property": "isHidden"
+      },
+      "expectedValue": true
+    }
+  ]
+}

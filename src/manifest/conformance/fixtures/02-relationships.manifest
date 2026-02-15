@@ -1,6 +1,7 @@
 entity Author {
   property required name: string
   hasMany books: Book
+  computed bookCount: number = self.books.length
 }
 
 entity Book {

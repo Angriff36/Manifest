@@ -57,6 +57,10 @@ interface CommandTestCase {
       entity: string;
       data: Record<string, unknown>;
     };
+    createInstances?: Array<{
+      entity: string;
+      data: Record<string, unknown>;
+    }>;
   };
   command: {
     name: string;
@@ -103,10 +107,14 @@ interface CommandTestCase {
 interface ComputedTestCase {
   name: string;
   setup: {
-    createInstance: {
+    createInstance?: {
       entity: string;
       data: Record<string, unknown>;
     };
+    createInstances?: Array<{
+      entity: string;
+      data: Record<string, unknown>;
+    }>;
   };
   computedProperty: {
     entity: string;
@@ -280,6 +288,11 @@ describe('Manifest Conformance Tests', () => {
                   tc.setup.createInstance.data as EntityInstance
                 );
               }
+              if (tc.setup?.createInstances) {
+                for (const inst of tc.setup.createInstances) {
+                  await engine.createInstance(inst.entity, inst.data as EntityInstance);
+                }
+              }
 
               const result = await engine.runCommand(
                 tc.command.name,
@@ -362,10 +375,17 @@ describe('Manifest Conformance Tests', () => {
               const context = (testCase as unknown as { context?: Record<string, unknown> }).context ?? {};
               const engine = new RuntimeEngine(ir!, context, createDeterministicOptions());
 
-              await engine.createInstance(
-                tc.setup.createInstance.entity,
-                tc.setup.createInstance.data as EntityInstance
-              );
+              if (tc.setup.createInstance) {
+                await engine.createInstance(
+                  tc.setup.createInstance.entity,
+                  tc.setup.createInstance.data as EntityInstance
+                );
+              }
+              if (tc.setup.createInstances) {
+                for (const inst of tc.setup.createInstances) {
+                  await engine.createInstance(inst.entity, inst.data as EntityInstance);
+                }
+              }
 
               const value = await engine.evaluateComputed(
                 tc.computedProperty.entity,

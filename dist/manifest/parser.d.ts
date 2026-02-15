@@ -10,6 +10,7 @@ export declare class Parser {
     private parseModule;
     private parseEntity;
     private parseProperty;
+    private parseTransition;
     private parseComputedProperty;
     private extractDependencies;
     private parseRelationship;

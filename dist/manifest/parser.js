@@ -80,6 +80,7 @@ export class Parser {
         this.skipNL();
         const properties = [], computedProperties = [], relationships = [];
         const behaviors = [], commands = [], constraints = [], policies = [];
+        const transitions = [];
         let store;
         let versionProperty;
         let versionAtProperty;
@@ -143,12 +144,14 @@ export class Parser {
                     this.advance(); // consume type name
                 }
             }
+            else if (this.check('KEYWORD', 'transition'))
+                transitions.push(this.parseTransition());
             else
                 this.advance();
             this.skipNL();
         }
         this.consume('PUNCTUATION', '}');
-        return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, store, versionProperty, versionAtProperty };
+        return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, transitions, store, versionProperty, versionAtProperty };
     }
     parseProperty() {
         this.consume('KEYWORD', 'property');
@@ -165,6 +168,32 @@ export class Parser {
             defaultValue = this.parseExpr();
         }
         return { type: 'Property', name, dataType, defaultValue, modifiers };
+    }
+    parseTransition() {
+        // Syntax: transition <property> from "<value>" to ["<value>", "<value>"]
+        this.consume('KEYWORD', 'transition');
+        const property = this.consumeIdentifier().value;
+        this.consume('KEYWORD', 'from');
+        const fromToken = this.advance(); // consume the "from" value (string literal)
+        const from = fromToken.type === 'STRING' ? fromToken.value : fromToken.value;
+        this.consume('KEYWORD', 'to');
+        const to = [];
+        if (this.check('PUNCTUATION', '[')) {
+            this.advance(); // consume '['
+            while (!this.check('PUNCTUATION', ']') && !this.isEnd()) {
+                const valToken = this.advance();
+                to.push(valToken.type === 'STRING' ? valToken.value : valToken.value);
+                if (this.check('PUNCTUATION', ','))
+                    this.advance(); // consume ','
+            }
+            this.consume('PUNCTUATION', ']');
+        }
+        else {
+            // Single value: transition status from "draft" to "review"
+            const valToken = this.advance();
+            to.push(valToken.type === 'STRING' ? valToken.value : valToken.value);
+        }
+        return { type: 'Transition', property, from, to };
     }
     parseComputedProperty() {
         this.advance();
