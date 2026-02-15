@@ -454,9 +454,11 @@ export class RuntimeEngine {
           default: {
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
+            const isPrisma = _unsupportedTarget === 'prisma';
             throw new Error(
               `Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
-              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.`
+              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.` +
+              (isPrisma ? ` For Prisma, use storeProvider in manifest.config.ts - see docs/proposals/prisma-store-adapter.md` : '')
             );
           }
         }

@@ -307,23 +307,28 @@ The ergonomics spec defines a scanner that catches all configuration issues befo
 - **Test coverage**: 577/577 passing (+7 tests: +6 conformance from fixture 55)
 - **Files**: `lexer.ts`, `types.ts`, `parser.ts`, `ir.ts`, `ir-compiler.ts`, `runtime-engine.ts`, `conformance/fixtures/55-default-policies.manifest`, `conformance/expected/55-default-policies.*.json`
 
-### P3-B: Built-in Store Target "prisma" [MISSING]
+### P3-B: Built-in Store Target "prisma" [BY DESIGN - Config-Driven]
 - **Spec**: Ergonomics spec Layer 1, Section 1.2
 - **Rule**: `prisma` is a recognized built-in store target alongside memory, localStorage, postgres, supabase
-- **Status**: Parser accepts any identifier as store target (3 syntax variants in `parseEntity()` lines 95-115). IR has `target: string`. Runtime `initializeStores()` validates known targets at `runtime-engine.ts:428-458` (exhaustive switch). "prisma" is NOT in the recognized list and would hit the default/error case.
+- **Status**: ✅ **RESOLVED BY DESIGN** — Per workflow spec and P6-B proposal, Prisma integration is config-driven, not built-in
+- **Decision Rationale**:
+  - Workflow spec explicitly states: "Prisma is NOT a core runtime store target"
+  - P6-B proposal defines: "Prisma is an adapter concern, not a language concern"
+  - Config-driven approach (P2-B) provides better flexibility and follows separation of concerns
+- **Current Behavior**:
+  - Parser accepts any identifier as store target (including "prisma")
+  - Runtime throws helpful error with guidance: "Valid targets are: memory, localStorage, postgres, supabase. For Prisma, use storeProvider in manifest.config.ts"
 - **Verified**:
   - Lexer KEYWORDS include `memory`, `postgres`, `supabase`, `localStorage` but NOT `prisma` (`lexer.ts:27`)
   - `initializeStores()` switch handles memory, localStorage, postgres, supabase only (`runtime-engine.ts:428-458`)
   - IR schema `ir-v1.schema.json` defines store target enum as: `memory`, `localStorage`, `postgres`, `supabase` — no prisma
   - Zero references to "prisma" in any source file under src/
-- **Impact**: `store X in prisma` compiles to IR successfully (parser accepts any identifier) but fails at runtime initialization
+- **Impact**: `store X in prisma` compiles to IR successfully (parser accepts any identifier) but fails at runtime with clear guidance to use config binding
 - **Implementation**:
-  - Add "prisma" to IR schema store target enum in `ir-v1.schema.json`
-  - Add "prisma" to lexer KEYWORDS (or verify it already parses as identifier)
-  - Add `'prisma'` case in `initializeStores()` switch in `runtime-engine.ts`
-  - Implement PrismaStore adapter in `stores.node.ts` (or route through config binding from P2-B)
-  - Update `docs/spec/adapters.md` with prisma adapter contract
-  - Per workflow spec (`specs/workflow/Manifest-Workflow-Orchestration-and-Effect-Boundaries.md`): "Prisma is NOT a core runtime store target" — implementation should delegate to config binding, not be a built-in adapter
+  - ✅ P6-B proposal created with config-driven pattern (`docs/proposals/prisma-store-adapter.md`)
+  - ✅ P2-B store implementation binding (`createStoreProvider()`) enables Prisma integration
+  - ✅ P1-B property alignment scanner validates manifest properties against Prisma schema
+  - Runtime error message updated to suggest config approach for Prisma
 
 ---
 

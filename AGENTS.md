@@ -16,7 +16,7 @@
 If any implementation behavior differs, it must be called out as
 **Nonconformance** in the spec docs, then fixed via spec → tests → code.
 
-**USE PLANNING WITH FILES SKILL!**
+“Prisma is NOT a core runtime store target… should delegate to config binding, not be a built-in adapter”
 
 ## Validation Commands (Backpressure)
 
