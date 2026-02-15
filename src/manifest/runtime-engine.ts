@@ -1049,7 +1049,9 @@ export class RuntimeEngine {
     }
 
     // vNext: Evaluate command constraints (after policies, before guards)
-    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests);
+    // Pass command context so OverrideApplied events include commandName/entityName/instanceId per spec
+    const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
+    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext);
     if (!constraintResult.allowed) {
       // Find the blocking constraint for the error message
       const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
@@ -1086,9 +1088,12 @@ export class RuntimeEngine {
       }
     }
 
-    const emittedEvents: EmittedEvent[] = [];
+    // Include any OverrideApplied events from constraint evaluation
+    // Per spec: OverrideApplied events are included in CommandResult.emittedEvents
+    // alongside command-declared events (override events come first)
+    const emittedEvents: EmittedEvent[] = [...constraintResult.overrideEvents];
     let result: unknown;
-    const emitCounter = { value: 0 };
+    const emitCounter = { value: emittedEvents.length };
     const workflowMeta = {
       correlationId: options.correlationId,
       causationId: options.causationId,
@@ -1855,14 +1860,18 @@ export class RuntimeEngine {
 
   /**
    * vNext: Evaluate command constraints with override support
-   * Returns allowed flag and all constraint outcomes
+   * Returns allowed flag, all constraint outcomes, and any OverrideApplied events.
+   * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+   * OverrideApplied events MUST be included in CommandResult.emittedEvents.
    */
   private async evaluateCommandConstraints(
     command: IRCommand,
     evalContext: Record<string, unknown>,
-    overrideRequests?: OverrideRequest[]
-  ): Promise<{ allowed: boolean; outcomes: ConstraintOutcome[] }> {
+    overrideRequests?: OverrideRequest[],
+    commandContext?: { commandName: string; entityName?: string; instanceId?: string }
+  ): Promise<{ allowed: boolean; outcomes: ConstraintOutcome[]; overrideEvents: EmittedEvent[] }> {
     const outcomes: ConstraintOutcome[] = [];
+    const overrideEvents: EmittedEvent[] = [];
 
     for (const constraint of command.constraints || []) {
       const outcome = await this.evaluateConstraint(constraint, evalContext);
@@ -1877,7 +1886,10 @@ export class RuntimeEngine {
             if (authorized) {
               outcome.overridden = true;
               outcome.overriddenBy = overrideReq.authorizedBy;
-              await this.emitOverrideAppliedEvent(constraint, overrideReq, outcome);
+              const event = this.buildOverrideAppliedEvent(constraint, overrideReq, commandContext);
+              overrideEvents.push(event);
+              this.eventLog.push(event);
+              this.notifyListeners(event);
             }
           }
         }
@@ -1900,11 +1912,11 @@ export class RuntimeEngine {
 
       // Block execution if non-passing constraint is not overridden
       if (!outcome.passed && !outcome.overridden && outcome.severity === 'block') {
-        return { allowed: false, outcomes };
+        return { allowed: false, outcomes, overrideEvents };
       }
     }
 
-    return { allowed: true, outcomes };
+    return { allowed: true, outcomes, overrideEvents };
   }
 
   /**
@@ -1940,30 +1952,38 @@ export class RuntimeEngine {
   }
 
   /**
-   * vNext: Emit OverrideApplied event for auditing
+   * vNext: Build OverrideApplied event for auditing.
+   * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+   * payload MUST contain: constraintCode, reason, authorizedBy, timestamp, commandName,
+   * and optionally entityName, instanceId.
+   * The event is a runtime-synthesized event included in CommandResult.emittedEvents.
    */
-  private async emitOverrideAppliedEvent(
+  private buildOverrideAppliedEvent(
     constraint: IRConstraint,
     overrideReq: OverrideRequest,
-    outcome: ConstraintOutcome
-  ): Promise<void> {
-    const event: EmittedEvent = {
+    commandContext?: { commandName: string; entityName?: string; instanceId?: string }
+  ): EmittedEvent {
+    const payload: Record<string, unknown> = {
+      constraintCode: constraint.code,
+      reason: overrideReq.reason,
+      authorizedBy: overrideReq.authorizedBy,
+      timestamp: this.getNow(),
+      commandName: commandContext?.commandName || '',
+    };
+    if (commandContext?.entityName) {
+      payload.entityName = commandContext.entityName;
+    }
+    if (commandContext?.instanceId) {
+      payload.instanceId = commandContext.instanceId;
+    }
+
+    return {
       name: 'OverrideApplied',
       channel: 'system',
-      payload: {
-        constraintCode: constraint.code,
-        constraintName: constraint.name,
-        originalSeverity: outcome.severity,
-        reason: overrideReq.reason,
-        authorizedBy: overrideReq.authorizedBy,
-        timestamp: this.getNow(),
-      },
+      payload,
       timestamp: this.getNow(),
       provenance: this.getProvenanceInfo(),
     };
-
-    this.eventLog.push(event);
-    this.notifyListeners(event);
   }
 
   /**

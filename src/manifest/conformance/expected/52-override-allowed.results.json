@@ -1,0 +1,160 @@
+{
+  "testCases": [
+    {
+      "name": "submit under budget limit succeeds without override",
+      "context": {
+        "user": { "id": "user-1", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Expense",
+          "data": { "id": "exp-1", "amount": 300, "description": "Office supplies" }
+        }
+      },
+      "command": {
+        "name": "submit",
+        "entityName": "Expense",
+        "instanceId": "exp-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "ExpenseSubmitted",
+            "channel": "expense.submitted",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "exp-1",
+        "amount": 300,
+        "description": "Office supplies",
+        "status": "submitted"
+      }
+    },
+    {
+      "name": "submit over budget limit fails without override request",
+      "context": {
+        "user": { "id": "user-2", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Expense",
+          "data": { "id": "exp-2", "amount": 750, "description": "Conference travel" }
+        }
+      },
+      "command": {
+        "name": "submit",
+        "entityName": "Expense",
+        "instanceId": "exp-2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Expenses over 500 require approval override",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "exp-2",
+        "amount": 750,
+        "description": "Conference travel",
+        "status": "draft"
+      }
+    },
+    {
+      "name": "submit over budget limit succeeds with authorized override and emits OverrideApplied",
+      "context": {
+        "user": { "id": "mgr-1", "role": "manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Expense",
+          "data": { "id": "exp-3", "amount": 750, "description": "Conference travel" }
+        }
+      },
+      "command": {
+        "name": "submit",
+        "entityName": "Expense",
+        "instanceId": "exp-3",
+        "input": {},
+        "overrideRequests": [
+          {
+            "constraintCode": "budgetLimit",
+            "reason": "Pre-approved conference travel",
+            "authorizedBy": "mgr-1",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "OverrideApplied",
+            "channel": "system",
+            "payload": {
+              "constraintCode": "budgetLimit",
+              "reason": "Pre-approved conference travel",
+              "authorizedBy": "mgr-1",
+              "timestamp": 1000000000000,
+              "commandName": "submit",
+              "entityName": "Expense",
+              "instanceId": "exp-3"
+            },
+            "timestamp": 1000000000000
+          },
+          {
+            "name": "ExpenseSubmitted",
+            "channel": "expense.submitted",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "exp-3",
+        "amount": 750,
+        "description": "Conference travel",
+        "status": "submitted"
+      }
+    },
+    {
+      "name": "submit over budget limit fails with unauthorized override request",
+      "context": {
+        "user": { "id": "user-3", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Expense",
+          "data": { "id": "exp-4", "amount": 750, "description": "Equipment" }
+        }
+      },
+      "command": {
+        "name": "submit",
+        "entityName": "Expense",
+        "instanceId": "exp-4",
+        "input": {},
+        "overrideRequests": [
+          {
+            "constraintCode": "budgetLimit",
+            "reason": "Needed urgently",
+            "authorizedBy": "user-3",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Expenses over 500 require approval override",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "exp-4",
+        "amount": 750,
+        "description": "Equipment",
+        "status": "draft"
+      }
+    }
+  ]
+}

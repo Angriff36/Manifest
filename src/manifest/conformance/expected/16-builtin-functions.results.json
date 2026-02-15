@@ -50,7 +50,6 @@
           {
             "name": "ItemGenerated",
             "channel": "item.generated",
-            "payload": {},
             "timestamp": 1000000000000
           }
         ]
@@ -81,7 +80,6 @@
           {
             "name": "ItemGenerated",
             "channel": "item.generated",
-            "payload": {},
             "timestamp": 1000000000000
           }
         ]

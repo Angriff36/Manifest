@@ -52,12 +52,6 @@
           {
             "name": "TaskCreated",
             "channel": "tasks.created",
-            "payload": {
-              "id": "task-1",
-              "title": "New Task",
-              "status": "todo",
-              "createdAt": 1000000000000
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -106,12 +100,6 @@
           {
             "name": "TaskStatusUpdated",
             "channel": "tasks.updated",
-            "payload": {
-              "id": "task-2",
-              "oldStatus": "todo",
-              "newStatus": "in-progress",
-              "updatedAt": 1000000000000
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -206,11 +194,6 @@
           {
             "name": "TaskAssigned",
             "channel": "tasks.assigned",
-            "payload": {
-              "id": "task-4",
-              "assigneeId": "user-2",
-              "assignedAt": 1000000000000
-            },
             "timestamp": 1000000000000
           }
         ]

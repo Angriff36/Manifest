@@ -48,10 +48,6 @@
           {
             "name": "WorkflowPaused",
             "channel": "workflow.paused",
-            "payload": {
-              "workflowId": "wf-002",
-              "previousStatus": "active"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -99,10 +95,6 @@
           {
             "name": "WorkflowPaused",
             "channel": "workflow.paused",
-            "payload": {
-              "workflowId": "wf-003",
-              "previousStatus": "active"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -150,10 +142,6 @@
           {
             "name": "WorkflowLocked",
             "channel": "workflow.locked",
-            "payload": {
-              "workflowId": "wf-004",
-              "newVersion": 2
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -247,10 +235,6 @@
           {
             "name": "WorkflowUnlocked",
             "channel": "workflow.unlocked",
-            "payload": {
-              "workflowId": "wf-006",
-              "newVersion": 6
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -299,10 +283,6 @@
           {
             "name": "WorkflowResumed",
             "channel": "workflow.resumed",
-            "payload": {
-              "workflowId": "wf-007",
-              "previousStatus": "paused"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -350,10 +330,6 @@
           {
             "name": "WorkflowPaused",
             "channel": "workflow.paused",
-            "payload": {
-              "workflowId": "wf-008",
-              "previousStatus": "active"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -395,10 +371,6 @@
           {
             "name": "WorkflowCompleted",
             "channel": "workflow.completed",
-            "payload": {
-              "workflowId": "wf-009",
-              "finalStatus": "completed"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -446,10 +418,6 @@
           {
             "name": "WorkflowPaused",
             "channel": "workflow.paused",
-            "payload": {
-              "workflowId": "wf-010",
-              "previousStatus": "active"
-            },
             "timestamp": 1000000000000
           }
         ]
@@ -498,10 +466,6 @@
           {
             "name": "WorkflowLocked",
             "channel": "workflow.locked",
-            "payload": {
-              "workflowId": "wf-011",
-              "newVersion": 10
-            },
             "timestamp": 1000000000000
           }
         ]

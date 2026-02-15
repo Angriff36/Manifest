@@ -159,7 +159,6 @@
           {
             "name": "TaskArchived",
             "channel": "task.archived",
-            "payload": { "result": null },
             "timestamp": 1000000000000
           }
         ]

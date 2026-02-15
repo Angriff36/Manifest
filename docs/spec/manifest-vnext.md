@@ -270,9 +270,9 @@ Every command failure MUST include sufficient information for the caller to iden
 | Fixture (proposed name) | Feature | Status |
 |-------------------------|---------|--------|
 | `39-duplicate-constraint-codes.manifest` | Compiler diagnostic on duplicate constraint codes within an entity | **Implemented** |
-| `52-override-allowed.manifest` | Override authorization with OverrideApplied event | Not yet added |
-| `53-override-denied.manifest` | Override rejection for non-overrideable constraints | Not yet added |
-| `54-concurrency-conflict.manifest` | Version mismatch returns ConcurrencyConflict | Not yet added |
+| `52-override-allowed.manifest` | Override authorization with OverrideApplied event | **Implemented** |
+| `53-override-denied.manifest` | Override rejection for non-overrideable constraints | **Implemented** |
+| `54-concurrency-conflict.manifest` | Version mismatch returns ConcurrencyConflict | **Implemented** |
 
 Note: Workflow metadata (correlationId, causationId, emitIndex), deterministicMode, and idempotency features require runtime configuration options that cannot be expressed in `.manifest` source files. These features are tested via unit tests with explicit `RuntimeEngine` construction, not conformance fixtures.
 
@@ -285,9 +285,9 @@ This section lists vNext items that are declared in this specification but not y
 | Item | Spec Reference | Status | Notes |
 |------|---------------|--------|-------|
 | Bounded complexity limits | This document, "Diagnostics" | IMPLEMENTED | `EvaluationLimits` (maxExpressionDepth, maxEvaluationSteps) enforced via `RuntimeOptions.evaluationLimits`. Defaults: 64 depth, 10K steps. Budget tracked across all entry points (`runCommand`, `createInstance`, `updateInstance`, `checkConstraints`, `evaluateComputed`). 8 unit tests added. |
-| Constraint code uniqueness diagnostic | This document, "Constraint Blocks" | NOT_IMPLEMENTED | Compiler does not yet emit a diagnostic for duplicate constraint codes. Fixture `39-duplicate-constraint-codes` to be added. |
-| Override conformance fixtures | This document, "Override Mechanism" | NOT_IMPLEMENTED | Fixtures 52-53 not yet added. Runtime implementation exists but lacks fixture evidence. |
-| Concurrency conflict fixture | This document, "Concurrency Controls" | NOT_IMPLEMENTED | Fixture 54 not yet added. Runtime implementation exists but lacks fixture evidence. |
+| Constraint code uniqueness diagnostic | This document, "Constraint Blocks" | IMPLEMENTED | Compiler emits error diagnostic on duplicate constraint codes. Fixture `39-duplicate-constraint-codes` implemented. |
+| Override conformance fixtures | This document, "Override Mechanism" | IMPLEMENTED | Fixtures 52 (override-allowed) and 53 (override-denied) implemented. OverrideApplied event included in CommandResult.emittedEvents per spec. |
+| Concurrency conflict fixture | This document, "Concurrency Controls" | IMPLEMENTED | Fixture 54 (concurrency-conflict-return) implemented. ConcurrencyConflict return path fully wired. |
 | Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | NOT_IMPLEMENTED | No runtime code enforces `requireValidProvenance`. The MUST NOT statement applies only when the option is enabled; the option itself does not yet exist. |
 | Diagnostics completeness | This document, "Diagnostics" | PARTIAL | Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness. |
 | Performance guardrails | This document, "Diagnostics" | NOT_IMPLEMENTED | No instrumentation counters for step-count verification. Advisory only. |

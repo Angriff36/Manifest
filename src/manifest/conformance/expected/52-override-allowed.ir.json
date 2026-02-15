@@ -1,0 +1,209 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Expense",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "description",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": [
+            "required"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "submit"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Expense",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ExpenseSubmitted",
+      "channel": "expense.submitted",
+      "payload": [
+        {
+          "name": "expenseId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "submit",
+      "entity": "Expense",
+      "parameters": [],
+      "guards": [],
+      "constraints": [
+        {
+          "name": "budgetLimit",
+          "code": "budgetLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 500
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Expenses over 500 require approval override",
+          "overrideable": true,
+          "overridePolicyRef": "canOverrideBudget"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "submitted"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "ExpenseSubmitted"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "canOverrideBudget",
+      "action": "override",
+      "expression": {
+        "kind": "binary",
+        "operator": "or",
+        "left": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "manager"
+            }
+          }
+        },
+        "right": {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "user"
+            },
+            "property": "role"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "finance"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

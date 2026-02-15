@@ -1,0 +1,145 @@
+{
+  "testCases": [
+    {
+      "name": "transfer under all limits succeeds",
+      "context": {
+        "user": { "id": "user-1", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Transfer",
+          "data": { "id": "tx-1", "amount": 3000, "fromAccount": "A", "toAccount": "B" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Transfer",
+        "instanceId": "tx-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "TransferExecuted",
+            "channel": "transfer.executed",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "tx-1",
+        "amount": 3000,
+        "fromAccount": "A",
+        "toAccount": "B",
+        "status": "executed"
+      }
+    },
+    {
+      "name": "override attempt on non-overrideable constraint is rejected",
+      "context": {
+        "user": { "id": "mgr-1", "role": "manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Transfer",
+          "data": { "id": "tx-2", "amount": 15000, "fromAccount": "A", "toAccount": "B" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Transfer",
+        "instanceId": "tx-2",
+        "input": {},
+        "overrideRequests": [
+          {
+            "constraintCode": "nonOverrideableLimit",
+            "reason": "Executive order",
+            "authorizedBy": "mgr-1",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Transfers over 10000 are prohibited",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "tx-2",
+        "amount": 15000,
+        "fromAccount": "A",
+        "toAccount": "B",
+        "status": "pending"
+      }
+    },
+    {
+      "name": "soft limit blocks without override for non-manager",
+      "context": {
+        "user": { "id": "user-2", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Transfer",
+          "data": { "id": "tx-3", "amount": 7500, "fromAccount": "A", "toAccount": "B" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Transfer",
+        "instanceId": "tx-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Transfers over 5000 require manager approval",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "tx-3",
+        "amount": 7500,
+        "fromAccount": "A",
+        "toAccount": "B",
+        "status": "pending"
+      }
+    },
+    {
+      "name": "override with wrong constraint code is ignored and soft limit blocks",
+      "context": {
+        "user": { "id": "user-4", "role": "employee" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Transfer",
+          "data": { "id": "tx-4", "amount": 7500, "fromAccount": "A", "toAccount": "B" }
+        }
+      },
+      "command": {
+        "name": "process",
+        "entityName": "Transfer",
+        "instanceId": "tx-4",
+        "input": {},
+        "overrideRequests": [
+          {
+            "constraintCode": "wrongCode",
+            "reason": "Wrong code attempt",
+            "authorizedBy": "user-4",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Transfers over 5000 require manager approval",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "tx-4",
+        "amount": 7500,
+        "fromAccount": "A",
+        "toAccount": "B",
+        "status": "pending"
+      }
+    }
+  ]
+}

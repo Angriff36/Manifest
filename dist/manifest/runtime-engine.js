@@ -14,6 +14,36 @@ function isProductionMode() {
     // for safety. Users can explicitly set requireValidProvenance in browser apps.
     return false;
 }
+/**
+ * Thrown when an adapter action (persist/publish/effect) is executed in deterministicMode.
+ * This is a programming error, not a domain failure.
+ * See docs/spec/adapters.md for the normative exception to default no-op behavior.
+ */
+export class ManifestEffectBoundaryError extends Error {
+    actionKind;
+    constructor(actionKind) {
+        super(`Action '${actionKind}' is not allowed in deterministicMode. ` +
+            `Adapter actions (persist/publish/effect) must be handled externally. ` +
+            `See docs/spec/adapters.md.`);
+        this.name = 'ManifestEffectBoundaryError';
+        this.actionKind = actionKind;
+    }
+}
+/**
+ * Thrown when expression evaluation exceeds configured depth or step limits.
+ * This is a domain failure (caught and converted to CommandResult), not a programming error.
+ * See docs/spec/manifest-vnext.md § "Diagnostic Payload Bounding".
+ */
+export class EvaluationBudgetExceededError extends Error {
+    limitType;
+    limit;
+    constructor(limitType, limit) {
+        super(`Evaluation budget exceeded: ${limitType} limit ${limit} reached`);
+        this.name = 'EvaluationBudgetExceededError';
+        this.limitType = limitType;
+        this.limit = limit;
+    }
+}
 class MemoryStore {
     items = new Map();
     generateId;
@@ -116,6 +146,32 @@ export class RuntimeEngine {
     versionIncrementedForCommand = false;
     /** Track instances that were just created (to prevent version increment on subsequent mutate actions) */
     justCreatedInstanceIds = new Set();
+    /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
+    lastTransitionError = null;
+    /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
+    lastConcurrencyConflict = null;
+    /** Per-entry-point evaluation budget for bounded complexity enforcement */
+    evalBudget = null;
+    /**
+     * Initialize evaluation budget if not already active (re-entrant safe).
+     * Returns true if this call initialized the budget (caller must clear it in finally).
+     * Returns false if budget was already active (caller should NOT clear it).
+     */
+    initEvalBudget() {
+        if (this.evalBudget)
+            return false; // Already active — re-entrant call
+        this.evalBudget = {
+            depth: 0,
+            steps: 0,
+            maxDepth: this.options.evaluationLimits?.maxExpressionDepth ?? 64,
+            maxSteps: this.options.evaluationLimits?.maxEvaluationSteps ?? 10_000,
+        };
+        return true;
+    }
+    /** Clear evaluation budget (only call if initEvalBudget returned true) */
+    clearEvalBudget() {
+        this.evalBudget = null;
+    }
     constructor(ir, context = {}, options = {}) {
         this.ir = ir;
         this.context = context;
@@ -433,55 +489,69 @@ export class RuntimeEngine {
         const entity = this.getEntity(entityName);
         if (!entity)
             return [];
-        const outcomes = await this.validateConstraints(entity, data);
-        // Return only failed constraints for backwards compatibility with test patterns
-        // (Callers can still see all outcomes by using validateConstraints directly)
-        return outcomes.filter(o => !o.passed);
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+            const outcomes = await this.validateConstraints(entity, data);
+            // Return only failed constraints for backwards compatibility with test patterns
+            // (Callers can still see all outcomes by using validateConstraints directly)
+            return outcomes.filter(o => !o.passed);
+        }
+        finally {
+            if (ownsEvalBudget)
+                this.clearEvalBudget();
+        }
     }
     async createInstance(entityName, data) {
         const entity = this.getEntity(entityName);
         if (!entity)
             return undefined;
-        const defaults = {};
-        for (const prop of entity.properties) {
-            if (prop.defaultValue) {
-                defaults[prop.name] = this.irValueToJs(prop.defaultValue);
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+            const defaults = {};
+            for (const prop of entity.properties) {
+                if (prop.defaultValue) {
+                    defaults[prop.name] = this.irValueToJs(prop.defaultValue);
+                }
+                else {
+                    defaults[prop.name] = this.getDefaultForType(prop.type);
+                }
             }
-            else {
-                defaults[prop.name] = this.getDefaultForType(prop.type);
+            const mergedData = { ...defaults, ...data };
+            // Handle version properties for optimistic concurrency control
+            if (entity.versionProperty) {
+                mergedData[entity.versionProperty] = 1;
             }
+            if (entity.versionAtProperty) {
+                mergedData[entity.versionAtProperty] = this.getNow();
+            }
+            // Validate entity constraints
+            const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+            // Only block on severity='block' constraints that failed
+            const blockingFailures = constraintOutcomes.filter(o => !o.passed && o.severity === 'block');
+            if (blockingFailures.length > 0) {
+                // Log blocking constraint failures for diagnostics
+                console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
+                return undefined;
+            }
+            // Log non-blocking outcomes (warn/ok) for diagnostics
+            const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+            if (nonBlockingOutcomes.length > 0) {
+                console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
+            }
+            const store = this.stores.get(entityName);
+            if (!store)
+                return undefined;
+            const result = await store.create(mergedData);
+            // Track newly created instance to prevent version increment on subsequent mutate actions
+            if (result && result.id) {
+                this.justCreatedInstanceIds.add(result.id);
+            }
+            return result;
         }
-        const mergedData = { ...defaults, ...data };
-        // Handle version properties for optimistic concurrency control
-        if (entity.versionProperty) {
-            mergedData[entity.versionProperty] = 1;
+        finally {
+            if (ownsEvalBudget)
+                this.clearEvalBudget();
         }
-        if (entity.versionAtProperty) {
-            mergedData[entity.versionAtProperty] = this.getNow();
-        }
-        // Validate entity constraints
-        const constraintOutcomes = await this.validateConstraints(entity, mergedData);
-        // Only block on severity='block' constraints that failed
-        const blockingFailures = constraintOutcomes.filter(o => !o.passed && o.severity === 'block');
-        if (blockingFailures.length > 0) {
-            // Log blocking constraint failures for diagnostics
-            console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
-            return undefined;
-        }
-        // Log non-blocking outcomes (warn/ok) for diagnostics
-        const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
-        if (nonBlockingOutcomes.length > 0) {
-            console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
-        }
-        const store = this.stores.get(entityName);
-        if (!store)
-            return undefined;
-        const result = await store.create(mergedData);
-        // Track newly created instance to prevent version increment on subsequent mutate actions
-        if (result && result.id) {
-            this.justCreatedInstanceIds.add(result.id);
-        }
-        return result;
     }
     async updateInstance(entityName, id, data) {
         const entity = this.getEntity(entityName);
@@ -491,53 +561,107 @@ export class RuntimeEngine {
         const existing = await store.getById(id);
         if (!existing)
             return undefined;
-        // Optimistic concurrency control: check version if entity has versionProperty
-        if (entity.versionProperty) {
-            const existingVersion = existing[entity.versionProperty];
-            const providedVersion = data[entity.versionProperty];
-            if (existingVersion !== undefined && providedVersion !== undefined) {
-                if (existingVersion !== providedVersion) {
-                    // Concurrency conflict - emit event and return undefined to indicate failure
-                    await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
-                    return undefined;
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+            // Optimistic concurrency control: check version if entity has versionProperty
+            if (entity.versionProperty) {
+                const existingVersion = existing[entity.versionProperty];
+                const providedVersion = data[entity.versionProperty];
+                if (existingVersion !== undefined && providedVersion !== undefined) {
+                    if (existingVersion !== providedVersion) {
+                        // Concurrency conflict - store structured details, emit event, and return undefined
+                        this.lastConcurrencyConflict = {
+                            entityType: entityName,
+                            entityId: id,
+                            expectedVersion: providedVersion,
+                            actualVersion: existingVersion,
+                            conflictCode: 'VERSION_MISMATCH',
+                        };
+                        await this.emitConcurrencyConflictEvent(entityName, id, providedVersion, existingVersion);
+                        return undefined;
+                    }
+                }
+                // Auto-increment version on successful update
+                // Only increment once per command execution to handle commands with multiple mutate actions
+                // If version is explicitly provided in data, use that (for optimistic concurrency checks)
+                // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
+                const wasJustCreated = this.justCreatedInstanceIds.has(id);
+                if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
+                    data[entity.versionProperty] = (existingVersion || 0) + 1;
+                    this.versionIncrementedForCommand = true;
                 }
             }
-            // Auto-increment version on successful update
-            // Only increment once per command execution to handle commands with multiple mutate actions
-            // If version is explicitly provided in data, use that (for optimistic concurrency checks)
-            // Skip increment for instances that were just created in the same command (e.g., create command's mutate actions)
-            const wasJustCreated = this.justCreatedInstanceIds.has(id);
-            if (providedVersion === undefined && !this.versionIncrementedForCommand && !wasJustCreated) {
-                data[entity.versionProperty] = (existingVersion || 0) + 1;
-                this.versionIncrementedForCommand = true;
+            // Update versionAt timestamp if present
+            if (entity.versionAtProperty) {
+                data[entity.versionAtProperty] = this.getNow();
             }
+            const mergedData = { ...existing, ...data };
+            // Validate state transitions if entity declares them
+            if (entity.transitions && entity.transitions.length > 0) {
+                for (const [prop, newValue] of Object.entries(data)) {
+                    const rules = entity.transitions.filter(t => t.property === prop);
+                    if (rules.length === 0)
+                        continue;
+                    const currentValue = existing[prop];
+                    if (currentValue === undefined)
+                        continue;
+                    const matchingRule = rules.find(t => t.from === String(currentValue));
+                    if (matchingRule && !matchingRule.to.includes(String(newValue))) {
+                        const allowed = matchingRule.to.map(v => `'${v}'`).join(', ');
+                        this.lastTransitionError = `Invalid state transition for '${prop}': '${currentValue}' -> '${newValue}' is not allowed. Allowed from '${currentValue}': [${allowed}]`;
+                        return undefined;
+                    }
+                }
+            }
+            // Validate entity constraints
+            const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+            // Only block on severity='block' constraints that failed
+            const blockingFailures = constraintOutcomes.filter(o => !o.passed && o.severity === 'block');
+            if (blockingFailures.length > 0) {
+                // Log blocking constraint failures for diagnostics
+                console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
+                return undefined;
+            }
+            // Log non-blocking outcomes (warn/ok) for diagnostics
+            const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+            if (nonBlockingOutcomes.length > 0) {
+                console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
+            }
+            return await store.update(id, data);
         }
-        // Update versionAt timestamp if present
-        if (entity.versionAtProperty) {
-            data[entity.versionAtProperty] = this.getNow();
+        finally {
+            if (ownsEvalBudget)
+                this.clearEvalBudget();
         }
-        const mergedData = { ...existing, ...data };
-        // Validate entity constraints
-        const constraintOutcomes = await this.validateConstraints(entity, mergedData);
-        // Only block on severity='block' constraints that failed
-        const blockingFailures = constraintOutcomes.filter(o => !o.passed && o.severity === 'block');
-        if (blockingFailures.length > 0) {
-            // Log blocking constraint failures for diagnostics
-            console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
-            return undefined;
-        }
-        // Log non-blocking outcomes (warn/ok) for diagnostics
-        const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
-        if (nonBlockingOutcomes.length > 0) {
-            console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
-        }
-        return await store.update(id, data);
     }
     async deleteInstance(entityName, id) {
         const store = this.stores.get(entityName);
         return store ? await store.delete(id) : false;
     }
     async runCommand(commandName, input, options = {}) {
+        // Idempotency short-circuit (before ANY evaluation)
+        if (this.options.idempotencyStore) {
+            if (options.idempotencyKey === undefined) {
+                return {
+                    success: false,
+                    error: 'IdempotencyStore is configured but no idempotencyKey was provided',
+                    emittedEvents: [],
+                };
+            }
+            const cached = await this.options.idempotencyStore.get(options.idempotencyKey);
+            if (cached !== undefined) {
+                return cached;
+            }
+        }
+        // Full command execution
+        const result = await this._executeCommandInternal(commandName, input, options);
+        // Cache result (success OR failure)
+        if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
+            await this.options.idempotencyStore.set(options.idempotencyKey, result);
+        }
+        return result;
+    }
+    async _executeCommandInternal(commandName, input, options) {
         // Clear relationship memoization cache at the start of each command execution
         // to ensure fresh data after any mutations
         this.clearMemoCache();
@@ -545,100 +669,171 @@ export class RuntimeEngine {
         this.versionIncrementedForCommand = false;
         // Clear just-created instance tracking
         this.justCreatedInstanceIds.clear();
-        const command = this.getCommand(commandName, options.entityName);
-        if (!command) {
-            return {
-                success: false,
-                error: `Command '${commandName}' not found`,
-                emittedEvents: [],
-            };
-        }
-        const instance = options.instanceId && options.entityName
-            ? await this.getInstance(options.entityName, options.instanceId)
-            : undefined;
-        const evalContext = this.buildEvalContext(input, instance, options.entityName);
-        const policyResult = await this.checkPolicies(command, evalContext);
-        if (!policyResult.allowed) {
-            return {
-                success: false,
-                error: policyResult.denial?.message,
-                deniedBy: policyResult.denial?.policyName,
-                policyDenial: policyResult.denial,
-                emittedEvents: [],
-            };
-        }
-        // vNext: Evaluate command constraints (after policies, before guards)
-        const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests);
-        if (!constraintResult.allowed) {
-            // Find the blocking constraint for the error message
-            const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
-            return {
-                success: false,
-                error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
-                constraintOutcomes: constraintResult.outcomes,
-                overrideRequests: options.overrideRequests,
-                emittedEvents: [],
-            };
-        }
-        for (let i = 0; i < command.guards.length; i += 1) {
-            const guard = command.guards[i];
-            const result = await this.evaluateExpression(guard, evalContext);
-            if (!result) {
+        // Clear transition error tracking
+        this.lastTransitionError = null;
+        // Clear concurrency conflict tracking
+        this.lastConcurrencyConflict = null;
+        // Initialize evaluation budget for bounded complexity enforcement
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+            const command = this.getCommand(commandName, options.entityName);
+            if (!command) {
                 return {
                     success: false,
-                    error: `Guard condition failed for command '${commandName}'`,
-                    guardFailure: {
-                        index: i + 1,
-                        expression: guard,
-                        formatted: this.formatExpression(guard),
-                        resolved: await this.resolveExpressionValues(guard, evalContext),
-                    },
-                    // Include constraint outcomes even if guards fail
-                    constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+                    error: `Command '${commandName}' not found`,
+                    ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+                    ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
                     emittedEvents: [],
                 };
             }
-        }
-        const emittedEvents = [];
-        let result;
-        for (const action of command.actions) {
-            const actionResult = await this.executeAction(action, evalContext, options);
-            if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
-                const currentInstance = await this.getInstance(options.entityName, options.instanceId);
-                // Refresh both self/this bindings and spread instance properties into evalContext
-                evalContext.self = currentInstance;
-                evalContext.this = currentInstance;
-                Object.assign(evalContext, currentInstance);
+            const instance = options.instanceId && options.entityName
+                ? await this.getInstance(options.entityName, options.instanceId)
+                : undefined;
+            const evalContext = this.buildEvalContext(input, instance, options.entityName);
+            const policyResult = await this.checkPolicies(command, evalContext);
+            if (!policyResult.allowed) {
+                return {
+                    success: false,
+                    error: policyResult.denial?.message,
+                    deniedBy: policyResult.denial?.policyName,
+                    policyDenial: policyResult.denial,
+                    ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+                    ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+                    emittedEvents: [],
+                };
             }
-            result = actionResult;
-        }
-        for (const eventName of command.emits) {
-            const event = this.ir.events.find(e => e.name === eventName);
-            const prov = this.ir.provenance;
-            const emitted = {
-                name: eventName,
-                channel: event?.channel || eventName,
-                payload: { ...input, result },
-                timestamp: this.getNow(),
-                ...(prov ? {
-                    provenance: {
-                        contentHash: prov.contentHash,
-                        compilerVersion: prov.compilerVersion,
-                        schemaVersion: prov.schemaVersion,
-                    },
-                } : {}),
+            // vNext: Evaluate command constraints (after policies, before guards)
+            // Pass command context so OverrideApplied events include commandName/entityName/instanceId per spec
+            const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
+            const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext);
+            if (!constraintResult.allowed) {
+                // Find the blocking constraint for the error message
+                const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
+                return {
+                    success: false,
+                    error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
+                    constraintOutcomes: constraintResult.outcomes,
+                    overrideRequests: options.overrideRequests,
+                    ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+                    ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+                    emittedEvents: [],
+                };
+            }
+            for (let i = 0; i < command.guards.length; i += 1) {
+                const guard = command.guards[i];
+                const result = await this.evaluateExpression(guard, evalContext);
+                if (!result) {
+                    return {
+                        success: false,
+                        error: `Guard condition failed for command '${commandName}'`,
+                        guardFailure: {
+                            index: i + 1,
+                            expression: guard,
+                            formatted: this.formatExpression(guard),
+                            resolved: await this.resolveExpressionValues(guard, evalContext),
+                        },
+                        // Include constraint outcomes even if guards fail
+                        constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+                        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+                        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+                        emittedEvents: [],
+                    };
+                }
+            }
+            // Include any OverrideApplied events from constraint evaluation
+            // Per spec: OverrideApplied events are included in CommandResult.emittedEvents
+            // alongside command-declared events (override events come first)
+            const emittedEvents = [...constraintResult.overrideEvents];
+            let result;
+            const emitCounter = { value: emittedEvents.length };
+            const workflowMeta = {
+                correlationId: options.correlationId,
+                causationId: options.causationId,
             };
-            emittedEvents.push(emitted);
-            this.eventLog.push(emitted);
-            this.notifyListeners(emitted);
+            for (const action of command.actions) {
+                const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta);
+                // Check for transition validation errors after mutate/compute actions
+                if (this.lastTransitionError) {
+                    return {
+                        success: false,
+                        error: this.lastTransitionError,
+                        ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+                        ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+                        emittedEvents: [],
+                    };
+                }
+                // Check for concurrency conflict after mutate/compute actions
+                // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
+                if (this.lastConcurrencyConflict) {
+                    const conflict = this.lastConcurrencyConflict;
+                    this.lastConcurrencyConflict = null;
+                    return {
+                        success: false,
+                        error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
+                        concurrencyConflict: conflict,
+                        ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+                        ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+                        emittedEvents: [],
+                    };
+                }
+                if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
+                    const currentInstance = await this.getInstance(options.entityName, options.instanceId);
+                    // Refresh both self/this bindings and spread instance properties into evalContext
+                    evalContext.self = currentInstance;
+                    evalContext.this = currentInstance;
+                    Object.assign(evalContext, currentInstance);
+                }
+                result = actionResult;
+            }
+            for (const eventName of command.emits) {
+                const event = this.ir.events.find(e => e.name === eventName);
+                const prov = this.ir.provenance;
+                const emitted = {
+                    name: eventName,
+                    channel: event?.channel || eventName,
+                    payload: { ...input, result },
+                    timestamp: this.getNow(),
+                    ...(prov ? {
+                        provenance: {
+                            contentHash: prov.contentHash,
+                            compilerVersion: prov.compilerVersion,
+                            schemaVersion: prov.schemaVersion,
+                        },
+                    } : {}),
+                    ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+                    ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+                    emitIndex: emitCounter.value++,
+                };
+                emittedEvents.push(emitted);
+                this.eventLog.push(emitted);
+                this.notifyListeners(emitted);
+            }
+            return {
+                success: true,
+                result,
+                // Include constraint outcomes in successful result
+                constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+                ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+                ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+                emittedEvents,
+            };
         }
-        return {
-            success: true,
-            result,
-            // Include constraint outcomes in successful result
-            constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
-            emittedEvents,
-        };
+        catch (e) {
+            if (e instanceof EvaluationBudgetExceededError) {
+                return {
+                    success: false,
+                    error: e.message,
+                    ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+                    ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+                    emittedEvents: [],
+                };
+            }
+            throw e; // re-throw other errors (ManifestEffectBoundaryError, etc.)
+        }
+        finally {
+            if (ownsEvalBudget)
+                this.clearEvalBudget();
+        }
     }
     buildEvalContext(input, instance, entityName) {
         const baseContext = {
@@ -880,7 +1075,12 @@ export class RuntimeEngine {
         await walk(expr);
         return entries;
     }
-    async executeAction(action, evalContext, options) {
+    async executeAction(action, evalContext, options, emitCounter, workflowMeta) {
+        // Effect boundary enforcement: in deterministicMode, adapter actions hard-error
+        if (this.options.deterministicMode &&
+            (action.kind === 'persist' || action.kind === 'publish' || action.kind === 'effect')) {
+            throw new ManifestEffectBoundaryError(action.kind);
+        }
         const value = await this.evaluateExpression(action.expression, evalContext);
         switch (action.kind) {
             case 'mutate':
@@ -905,6 +1105,9 @@ export class RuntimeEngine {
                             schemaVersion: prov.schemaVersion,
                         },
                     } : {}),
+                    ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+                    ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+                    emitIndex: emitCounter.value++,
                 };
                 this.eventLog.push(event);
                 this.notifyListeners(event);
@@ -925,99 +1128,117 @@ export class RuntimeEngine {
         }
     }
     async evaluateExpression(expr, context) {
-        switch (expr.kind) {
-            case 'literal':
-                return this.irValueToJs(expr.value);
-            case 'identifier': {
-                const name = expr.name;
-                if (name in context)
-                    return context[name];
-                if (name === 'true')
-                    return true;
-                if (name === 'false')
-                    return false;
-                if (name === 'null')
-                    return null;
-                return undefined;
+        // Bounded complexity enforcement
+        if (this.evalBudget) {
+            this.evalBudget.steps++;
+            if (this.evalBudget.steps > this.evalBudget.maxSteps) {
+                throw new EvaluationBudgetExceededError('steps', this.evalBudget.maxSteps);
             }
-            case 'member': {
-                const obj = await this.evaluateExpression(expr.object, context);
-                if (obj && typeof obj === 'object') {
-                    // Check if this is a relationship traversal on self/this
-                    if (expr.object.kind === 'identifier' &&
-                        (expr.object.name === 'self' || expr.object.name === 'this') &&
-                        'id' in obj &&
-                        typeof obj.id === 'string') {
-                        // Check if the property is a relationship
-                        const entityName = obj._entity;
-                        if (entityName) {
-                            const relKey = `${entityName}.${expr.property}`;
-                            if (this.relationshipIndex.has(relKey)) {
-                                // Resolve the relationship
-                                return await this.resolveRelationship(entityName, obj, expr.property);
+            this.evalBudget.depth++;
+            if (this.evalBudget.depth > this.evalBudget.maxDepth) {
+                throw new EvaluationBudgetExceededError('depth', this.evalBudget.maxDepth);
+            }
+        }
+        try {
+            switch (expr.kind) {
+                case 'literal':
+                    return this.irValueToJs(expr.value);
+                case 'identifier': {
+                    const name = expr.name;
+                    if (name in context)
+                        return context[name];
+                    if (name === 'true')
+                        return true;
+                    if (name === 'false')
+                        return false;
+                    if (name === 'null')
+                        return null;
+                    return undefined;
+                }
+                case 'member': {
+                    const obj = await this.evaluateExpression(expr.object, context);
+                    if (obj && typeof obj === 'object') {
+                        // Check if this is a relationship traversal on self/this
+                        if (expr.object.kind === 'identifier' &&
+                            (expr.object.name === 'self' || expr.object.name === 'this') &&
+                            'id' in obj &&
+                            typeof obj.id === 'string') {
+                            // Check if the property is a relationship
+                            const entityName = obj._entity;
+                            if (entityName) {
+                                const relKey = `${entityName}.${expr.property}`;
+                                if (this.relationshipIndex.has(relKey)) {
+                                    // Resolve the relationship
+                                    return await this.resolveRelationship(entityName, obj, expr.property);
+                                }
                             }
                         }
+                        // Use hasOwnProperty check to prevent prototype pollution
+                        return Object.prototype.hasOwnProperty.call(obj, expr.property)
+                            ? obj[expr.property]
+                            : undefined;
                     }
-                    // Use hasOwnProperty check to prevent prototype pollution
-                    return Object.prototype.hasOwnProperty.call(obj, expr.property)
-                        ? obj[expr.property]
-                        : undefined;
+                    return undefined;
                 }
-                return undefined;
-            }
-            case 'binary': {
-                const left = await this.evaluateExpression(expr.left, context);
-                const right = await this.evaluateExpression(expr.right, context);
-                return this.evaluateBinaryOp(expr.operator, left, right);
-            }
-            case 'unary': {
-                const operand = await this.evaluateExpression(expr.operand, context);
-                return this.evaluateUnaryOp(expr.operator, operand);
-            }
-            case 'call': {
-                // Check if callee is a built-in function identifier
-                const calleeExpr = expr.callee;
-                if (calleeExpr.kind === 'identifier') {
-                    const builtins = this.getBuiltins();
-                    if (calleeExpr.name in builtins) {
-                        const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
-                        return builtins[calleeExpr.name](...args);
+                case 'binary': {
+                    const left = await this.evaluateExpression(expr.left, context);
+                    const right = await this.evaluateExpression(expr.right, context);
+                    return this.evaluateBinaryOp(expr.operator, left, right);
+                }
+                case 'unary': {
+                    const operand = await this.evaluateExpression(expr.operand, context);
+                    return this.evaluateUnaryOp(expr.operator, operand);
+                }
+                case 'call': {
+                    // Check if callee is a built-in function identifier
+                    const calleeExpr = expr.callee;
+                    if (calleeExpr.kind === 'identifier') {
+                        const builtins = this.getBuiltins();
+                        if (calleeExpr.name in builtins) {
+                            const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
+                            return builtins[calleeExpr.name](...args);
+                        }
                     }
+                    // Default: evaluate callee and call as function
+                    const callee = await this.evaluateExpression(expr.callee, context);
+                    const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
+                    if (typeof callee === 'function') {
+                        return callee(...args);
+                    }
+                    return undefined;
                 }
-                // Default: evaluate callee and call as function
-                const callee = await this.evaluateExpression(expr.callee, context);
-                const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
-                if (typeof callee === 'function') {
-                    return callee(...args);
+                case 'conditional': {
+                    const condition = await this.evaluateExpression(expr.condition, context);
+                    return condition
+                        ? await this.evaluateExpression(expr.consequent, context)
+                        : await this.evaluateExpression(expr.alternate, context);
                 }
-                return undefined;
-            }
-            case 'conditional': {
-                const condition = await this.evaluateExpression(expr.condition, context);
-                return condition
-                    ? await this.evaluateExpression(expr.consequent, context)
-                    : await this.evaluateExpression(expr.alternate, context);
-            }
-            case 'array':
-                return await Promise.all(expr.elements.map(e => this.evaluateExpression(e, context)));
-            case 'object': {
-                const result = {};
-                for (const prop of expr.properties) {
-                    result[prop.key] = await this.evaluateExpression(prop.value, context);
+                case 'array':
+                    return await Promise.all(expr.elements.map(e => this.evaluateExpression(e, context)));
+                case 'object': {
+                    const result = {};
+                    for (const prop of expr.properties) {
+                        result[prop.key] = await this.evaluateExpression(prop.value, context);
+                    }
+                    return result;
                 }
-                return result;
+                case 'lambda': {
+                    return (...args) => {
+                        const localContext = { ...context };
+                        expr.params.forEach((p, i) => {
+                            localContext[p] = args[i];
+                        });
+                        return this.evaluateExpression(expr.body, localContext);
+                    };
+                }
+                default:
+                    return undefined;
             }
-            case 'lambda': {
-                return (...args) => {
-                    const localContext = { ...context };
-                    expr.params.forEach((p, i) => {
-                        localContext[p] = args[i];
-                    });
-                    return this.evaluateExpression(expr.body, localContext);
-                };
+        }
+        finally {
+            if (this.evalBudget) {
+                this.evalBudget.depth--;
             }
-            default:
-                return undefined;
         }
     }
     evaluateBinaryOp(op, left, right) {
@@ -1104,7 +1325,14 @@ export class RuntimeEngine {
         const instance = await this.getInstance(entityName, instanceId);
         if (!instance)
             return undefined;
-        return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+            return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+        }
+        finally {
+            if (ownsEvalBudget)
+                this.clearEvalBudget();
+        }
     }
     async evaluateComputedInternal(entity, instance, propertyName, visited) {
         if (visited.has(propertyName))
@@ -1206,10 +1434,13 @@ export class RuntimeEngine {
     }
     /**
      * vNext: Evaluate command constraints with override support
-     * Returns allowed flag and all constraint outcomes
+     * Returns allowed flag, all constraint outcomes, and any OverrideApplied events.
+     * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+     * OverrideApplied events MUST be included in CommandResult.emittedEvents.
      */
-    async evaluateCommandConstraints(command, evalContext, overrideRequests) {
+    async evaluateCommandConstraints(command, evalContext, overrideRequests, commandContext) {
         const outcomes = [];
+        const overrideEvents = [];
         for (const constraint of command.constraints || []) {
             const outcome = await this.evaluateConstraint(constraint, evalContext);
             // Check for override if constraint failed and is overrideable
@@ -1222,7 +1453,10 @@ export class RuntimeEngine {
                         if (authorized) {
                             outcome.overridden = true;
                             outcome.overriddenBy = overrideReq.authorizedBy;
-                            await this.emitOverrideAppliedEvent(constraint, overrideReq, outcome);
+                            const event = this.buildOverrideAppliedEvent(constraint, overrideReq, commandContext);
+                            overrideEvents.push(event);
+                            this.eventLog.push(event);
+                            this.notifyListeners(event);
                         }
                     }
                 }
@@ -1242,10 +1476,10 @@ export class RuntimeEngine {
             outcomes.push(outcome);
             // Block execution if non-passing constraint is not overridden
             if (!outcome.passed && !outcome.overridden && outcome.severity === 'block') {
-                return { allowed: false, outcomes };
+                return { allowed: false, outcomes, overrideEvents };
             }
         }
-        return { allowed: true, outcomes };
+        return { allowed: true, outcomes, overrideEvents };
     }
     /**
      * vNext: Validate override authorization via policy or default admin check
@@ -1273,25 +1507,33 @@ export class RuntimeEngine {
         return user?.role === 'admin' || false;
     }
     /**
-     * vNext: Emit OverrideApplied event for auditing
+     * vNext: Build OverrideApplied event for auditing.
+     * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+     * payload MUST contain: constraintCode, reason, authorizedBy, timestamp, commandName,
+     * and optionally entityName, instanceId.
+     * The event is a runtime-synthesized event included in CommandResult.emittedEvents.
      */
-    async emitOverrideAppliedEvent(constraint, overrideReq, outcome) {
-        const event = {
+    buildOverrideAppliedEvent(constraint, overrideReq, commandContext) {
+        const payload = {
+            constraintCode: constraint.code,
+            reason: overrideReq.reason,
+            authorizedBy: overrideReq.authorizedBy,
+            timestamp: this.getNow(),
+            commandName: commandContext?.commandName || '',
+        };
+        if (commandContext?.entityName) {
+            payload.entityName = commandContext.entityName;
+        }
+        if (commandContext?.instanceId) {
+            payload.instanceId = commandContext.instanceId;
+        }
+        return {
             name: 'OverrideApplied',
             channel: 'system',
-            payload: {
-                constraintCode: constraint.code,
-                constraintName: constraint.name,
-                originalSeverity: outcome.severity,
-                reason: overrideReq.reason,
-                authorizedBy: overrideReq.authorizedBy,
-                timestamp: this.getNow(),
-            },
+            payload,
             timestamp: this.getNow(),
             provenance: this.getProvenanceInfo(),
         };
-        this.eventLog.push(event);
-        this.notifyListeners(event);
     }
     /**
      * vNext: Emit ConcurrencyConflict event

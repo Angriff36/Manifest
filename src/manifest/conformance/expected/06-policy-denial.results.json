@@ -115,7 +115,6 @@
           {
             "name": "DocumentDeleted",
             "channel": "document.deleted",
-            "payload": { "result": null },
             "timestamp": 1000000000000
           }
         ]

@@ -1,0 +1,226 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "0.3.8",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "Transfer",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "fromAccount",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "toAccount",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": [
+            "required"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "process"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Transfer",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "TransferExecuted",
+      "channel": "transfer.executed",
+      "payload": [
+        {
+          "name": "transferId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "process",
+      "entity": "Transfer",
+      "parameters": [],
+      "guards": [],
+      "constraints": [
+        {
+          "name": "nonOverrideableLimit",
+          "code": "nonOverrideableLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 10000
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Transfers over 10000 are prohibited",
+          "overrideable": false
+        },
+        {
+          "name": "softLimit",
+          "code": "softLimit",
+          "expression": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 5000
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Transfers over 5000 require manager approval",
+          "overrideable": true,
+          "overridePolicyRef": "canApproveTransfer"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "executed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TransferExecuted"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "name": "canApproveTransfer",
+      "action": "override",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "manager"
+          }
+        }
+      }
+    }
+  ]
+}

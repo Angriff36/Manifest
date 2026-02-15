@@ -1,0 +1,29 @@
+entity Expense {
+  property required id: string
+  property required amount: number = 0
+  property required description: string = ""
+  property required status: string = "draft"
+
+  command submit() {
+    constraint overrideable budgetLimit {
+      expression: self.amount <= 500
+      severity: block
+      message: "Expenses over 500 require approval override"
+      overridePolicy: canOverrideBudget
+    }
+
+    mutate status = "submitted"
+    emit ExpenseSubmitted
+  }
+}
+
+store Expense in memory
+
+event ExpenseSubmitted: "expense.submitted" {
+  expenseId: string
+  amount: number
+}
+
+policy canOverrideBudget override:
+  user.role == "manager" or user.role == "finance"
+  "Only managers and finance can override budget limits"

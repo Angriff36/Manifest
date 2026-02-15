@@ -63,6 +63,12 @@ interface CommandTestCase {
     entityName?: string;
     instanceId?: string;
     input: Record<string, unknown>;
+    overrideRequests?: Array<{
+      constraintCode: string;
+      reason: string;
+      authorizedBy: string;
+      timestamp: number;
+    }>;
   };
   expectedResult: {
     success: boolean;
@@ -281,6 +287,7 @@ describe('Manifest Conformance Tests', () => {
                 {
                   entityName: tc.command.entityName,
                   instanceId: tc.command.instanceId,
+                  overrideRequests: tc.command.overrideRequests,
                 }
               );
 
@@ -332,6 +339,10 @@ describe('Manifest Conformance Tests', () => {
                 expect(actualEvent.name).toBe(expectedEvent.name);
                 expect(actualEvent.channel).toBe(expectedEvent.channel);
                 expect(actualEvent.timestamp).toBe(expectedEvent.timestamp);
+                // Compare event payload when specified in expected results
+                if (expectedEvent.payload !== undefined) {
+                  expect(actualEvent.payload).toEqual(expectedEvent.payload);
+                }
               });
 
               if (tc.expectedInstanceState && tc.command.entityName && tc.command.instanceId) {

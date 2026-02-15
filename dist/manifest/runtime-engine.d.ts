@@ -53,6 +53,16 @@ export interface RuntimeOptions {
      * ```
      */
     storeProvider?: (entityName: string) => Store | undefined;
+    /** Caller-provided idempotency store for command deduplication */
+    idempotencyStore?: IdempotencyStore;
+    /**
+     * If true, adapter actions (persist/publish/effect) throw ManifestEffectBoundaryError
+     * instead of the default no-op behavior. Use for conformance testing and replay validation.
+     * See docs/spec/adapters.md for the normative exception.
+     */
+    deterministicMode?: boolean;
+    /** Optional complexity limits for expression evaluation */
+    evaluationLimits?: EvaluationLimits;
 }
 export interface EntityInstance {
     id: string;
@@ -75,6 +85,10 @@ export interface CommandResult {
     overrideRequests?: OverrideRequest[];
     /** Concurrency conflict details (vNext) */
     concurrencyConflict?: ConcurrencyConflict;
+    /** Caller-supplied correlation ID grouping related events across a workflow */
+    correlationId?: string;
+    /** Caller-supplied ID of the event/command that caused this command execution */
+    causationId?: string;
     emittedEvents: EmittedEvent[];
 }
 export interface GuardFailure {
@@ -114,6 +128,12 @@ export interface EmittedEvent {
         compilerVersion: string;
         schemaVersion: string;
     };
+    /** Caller-supplied correlation ID grouping related events across a workflow */
+    correlationId?: string;
+    /** Caller-supplied ID of the event/command that caused this emission */
+    causationId?: string;
+    /** Zero-based index of this event within the current runCommand invocation. Per-command only. */
+    emitIndex?: number;
 }
 export interface Store<T extends EntityInstance = EntityInstance> {
     getAll(): Promise<T[]>;
@@ -122,6 +142,43 @@ export interface Store<T extends EntityInstance = EntityInstance> {
     update(id: string, data: Partial<T>): Promise<T | undefined>;
     delete(id: string): Promise<boolean>;
     clear(): Promise<void>;
+}
+export interface IdempotencyStore {
+    /** Check if a command with this key has already been executed */
+    has(key: string): Promise<boolean>;
+    /** Record a command result for an idempotency key */
+    set(key: string, result: CommandResult): Promise<void>;
+    /** Retrieve the cached result for an idempotency key */
+    get(key: string): Promise<CommandResult | undefined>;
+}
+/**
+ * Thrown when an adapter action (persist/publish/effect) is executed in deterministicMode.
+ * This is a programming error, not a domain failure.
+ * See docs/spec/adapters.md for the normative exception to default no-op behavior.
+ */
+export declare class ManifestEffectBoundaryError extends Error {
+    readonly actionKind: string;
+    constructor(actionKind: string);
+}
+/**
+ * Thrown when expression evaluation exceeds configured depth or step limits.
+ * This is a domain failure (caught and converted to CommandResult), not a programming error.
+ * See docs/spec/manifest-vnext.md § "Diagnostic Payload Bounding".
+ */
+export declare class EvaluationBudgetExceededError extends Error {
+    readonly limitType: 'depth' | 'steps';
+    readonly limit: number;
+    constructor(limitType: 'depth' | 'steps', limit: number);
+}
+/**
+ * Optional complexity limits for expression evaluation.
+ * Defaults are permissive — no existing programs should be affected.
+ */
+export interface EvaluationLimits {
+    /** Maximum expression nesting depth. Default: 64 */
+    maxExpressionDepth?: number;
+    /** Maximum total evaluation steps per entry point. Default: 10_000 */
+    maxEvaluationSteps?: number;
 }
 type EventListener = (event: EmittedEvent) => void;
 export interface ProvenanceVerificationResult {
@@ -145,6 +202,20 @@ export declare class RuntimeEngine {
     private versionIncrementedForCommand;
     /** Track instances that were just created (to prevent version increment on subsequent mutate actions) */
     private justCreatedInstanceIds;
+    /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
+    private lastTransitionError;
+    /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
+    private lastConcurrencyConflict;
+    /** Per-entry-point evaluation budget for bounded complexity enforcement */
+    private evalBudget;
+    /**
+     * Initialize evaluation budget if not already active (re-entrant safe).
+     * Returns true if this call initialized the budget (caller must clear it in finally).
+     * Returns false if budget was already active (caller should NOT clear it).
+     */
+    private initEvalBudget;
+    /** Clear evaluation budget (only call if initEvalBudget returned true) */
+    private clearEvalBudget;
     constructor(ir: IR, context?: RuntimeContext, options?: RuntimeOptions);
     private initializeStores;
     /**
@@ -215,7 +286,14 @@ export declare class RuntimeEngine {
         entityName?: string;
         instanceId?: string;
         overrideRequests?: OverrideRequest[];
+        /** Correlation ID for workflow event grouping */
+        correlationId?: string;
+        /** Causation ID linking this command to its trigger */
+        causationId?: string;
+        /** Caller-provided idempotency key for dedup. Required if idempotencyStore is configured. */
+        idempotencyKey?: string;
     }): Promise<CommandResult>;
+    private _executeCommandInternal;
     private buildEvalContext;
     private checkPolicies;
     /**
@@ -266,7 +344,9 @@ export declare class RuntimeEngine {
     private evaluateConstraint;
     /**
      * vNext: Evaluate command constraints with override support
-     * Returns allowed flag and all constraint outcomes
+     * Returns allowed flag, all constraint outcomes, and any OverrideApplied events.
+     * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+     * OverrideApplied events MUST be included in CommandResult.emittedEvents.
      */
     private evaluateCommandConstraints;
     /**
@@ -274,9 +354,13 @@ export declare class RuntimeEngine {
      */
     private validateOverrideAuthorization;
     /**
-     * vNext: Emit OverrideApplied event for auditing
+     * vNext: Build OverrideApplied event for auditing.
+     * Per spec (manifest-vnext.md § OverrideApplied Event Shape):
+     * payload MUST contain: constraintCode, reason, authorizedBy, timestamp, commandName,
+     * and optionally entityName, instanceId.
+     * The event is a runtime-synthesized event included in CommandResult.emittedEvents.
      */
-    private emitOverrideAppliedEvent;
+    private buildOverrideAppliedEvent;
     /**
      * vNext: Emit ConcurrencyConflict event
      */

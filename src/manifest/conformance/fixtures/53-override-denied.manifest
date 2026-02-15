@@ -1,0 +1,36 @@
+entity Transfer {
+  property required id: string
+  property required amount: number = 0
+  property required fromAccount: string = ""
+  property required toAccount: string = ""
+  property required status: string = "pending"
+
+  command process() {
+    constraint nonOverrideableLimit {
+      expression: self.amount <= 10000
+      severity: block
+      message: "Transfers over 10000 are prohibited"
+    }
+
+    constraint overrideable softLimit {
+      expression: self.amount <= 5000
+      severity: block
+      message: "Transfers over 5000 require manager approval"
+      overridePolicy: canApproveTransfer
+    }
+
+    mutate status = "executed"
+    emit TransferExecuted
+  }
+}
+
+store Transfer in memory
+
+event TransferExecuted: "transfer.executed" {
+  transferId: string
+  amount: number
+}
+
+policy canApproveTransfer override:
+  user.role == "manager"
+  "Only managers can approve large transfers"
