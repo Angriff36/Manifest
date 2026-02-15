@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: **v0.3.9**.
+**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: **v0.3.21**.
 
 This is a **language implementation**, not an end-user application. The Runtime UI is a diagnostic and observability surface only. Primary consumers are AI agents that emit, validate, and reason about Manifest programs.
 

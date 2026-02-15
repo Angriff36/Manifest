@@ -1,6 +1,6 @@
 {
   "name": "@manifest/runtime",
-  "version": "0.3.9",
+  "version": "0.3.21",
   "type": "module",
   "main": "./dist/manifest/runtime-engine.js",
   "types": "./dist/manifest/runtime-engine.d.ts",
