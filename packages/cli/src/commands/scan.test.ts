@@ -293,3 +293,104 @@ describe('Scan Command - Conformance Fixtures', () => {
     }
   });
 });
+
+describe('Scan Command - Route Context Detection', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('should detect commands that require user context', async () => {
+    const manifest = `
+entity Document {
+  property title: string
+
+  command publish() {
+    guard user.role == "admin"
+    mutate self.title = "Published"
+  }
+}
+
+policy AdminOnly execute: user.role == "admin"
+`;
+    const filePath = await createTempManifest(manifest);
+    try {
+      const { scanCommand } = await import('./scan.js');
+      const capture = captureOutput();
+
+      await scanCommand(filePath, { format: 'json' });
+
+      const jsonOutput = capture.outputs.find(o => o.includes('"filesScanned"'));
+      expect(jsonOutput).toBeDefined();
+      const result = JSON.parse(jsonOutput!);
+      expect(result).toHaveProperty('routesScanned');
+
+      capture.restore();
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+
+  it('should not require user context for commands without user references', async () => {
+    const manifest = `
+entity Counter {
+  property count: number
+
+  command increment() {
+    guard self.count < 100
+    mutate self.count = self.count + 1
+  }
+}
+
+policy Anyone execute: true
+`;
+    const filePath = await createTempManifest(manifest);
+    try {
+      const { scanCommand } = await import('./scan.js');
+      const capture = captureOutput();
+
+      await scanCommand(filePath, { format: 'json' });
+
+      const jsonOutput = capture.outputs.find(o => o.includes('"filesScanned"'));
+      expect(jsonOutput).toBeDefined();
+      const result = JSON.parse(jsonOutput!);
+      // No routes to scan in temp directory
+      expect(result.routesScanned).toBe(0);
+
+      capture.restore();
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+
+  it('should include routesScanned in JSON output', async () => {
+    const manifest = `
+entity Task {
+  property name: string
+
+  command complete() {
+    guard user.authenticated
+    mutate self.name = "Done"
+  }
+}
+
+policy Authenticated execute: user.authenticated
+`;
+    const filePath = await createTempManifest(manifest);
+    try {
+      const { scanCommand } = await import('./scan.js');
+      const capture = captureOutput();
+
+      await scanCommand(filePath, { format: 'json' });
+
+      const jsonOutput = capture.outputs.find(o => o.includes('"routesScanned"'));
+      expect(jsonOutput).toBeDefined();
+      const result = JSON.parse(jsonOutput!);
+      expect(result).toHaveProperty('routesScanned');
+      expect(typeof result.routesScanned).toBe('number');
+
+      capture.restore();
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+});

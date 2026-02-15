@@ -29,6 +29,10 @@ export interface ManifestConfig {
   src?: string;
   output?: string;
 
+  // Optional: Path to Prisma schema file for property alignment checks
+  // Defaults to: prisma/schema.prisma, schema.prisma, or db/schema.prisma
+  prismaSchema?: string;
+
   // Optional: Projection settings for code generation
   projections?: Record<string, {
     output?: string;
@@ -613,5 +617,184 @@ export function hasUserResolver(config: ManifestRuntimeConfig | null): boolean {
   return typeof config?.resolveUser === 'function';
 }
 
-// Re-export types for consumers
-export type { StoreBinding, UserContext, AuthContext };
+// ============================================================================
+// Prisma Schema Parser (for P1-B Property Alignment Scanner)
+// ============================================================================
+
+/**
+ * Represents a field in a Prisma model
+ */
+export interface PrismaField {
+  name: string;
+  type: string;
+  isOptional: boolean;
+  isList: boolean;
+  isId: boolean;
+  isGenerated: boolean;
+  defaultValue?: unknown;
+}
+
+/**
+ * Represents a Prisma model extracted from a schema
+ */
+export interface PrismaModel {
+  name: string;
+  fields: PrismaField[];
+}
+
+/**
+ * Parsed Prisma schema
+ */
+export interface PrismaSchema {
+  models: PrismaModel[];
+  datasources?: Array<{ name: string; url: string }>;
+}
+
+/**
+ * Find Prisma schema file in the project
+ *
+ * Searches in order:
+ * 1. Config-specified path: config.build.prismaSchema
+ * 2. Default: prisma/schema.prisma
+ * 3. Alternative: schema.prisma
+ */
+export async function findPrismaSchemaPath(cwd: string, config: ManifestConfig | null): Promise<string | null> {
+  // Check config-specified path first
+  if (config?.prismaSchema) {
+    const configPath = path.resolve(cwd, config.prismaSchema);
+    try {
+      await fs.access(configPath);
+      return configPath;
+    } catch {
+      // Config path doesn't exist, continue to defaults
+    }
+  }
+
+  // Default locations
+  const defaultPaths = [
+    'prisma/schema.prisma',
+    'schema.prisma',
+    'db/schema.prisma',
+  ];
+
+  for (const schemaPath of defaultPaths) {
+    const fullPath = path.resolve(cwd, schemaPath);
+    try {
+      await fs.access(fullPath);
+      return fullPath;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse a Prisma schema file and extract models and fields
+ *
+ * This is a simple parser that handles common Prisma schema patterns.
+ * It extracts model names and their field definitions.
+ */
+export async function parsePrismaSchema(schemaPath: string): Promise<PrismaSchema> {
+  const content = await fs.readFile(schemaPath, 'utf-8');
+  const models: PrismaModel[] = [];
+
+  // Remove comments
+  const cleanedContent = content
+    .replace(/\/\/.*$/gm, '')  // Remove single-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, '');  // Remove multi-line comments
+
+  // Match model blocks
+  const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
+  let match;
+
+  while ((match = modelRegex.exec(cleanedContent)) !== null) {
+    const modelName = match[1];
+    const modelBody = match[2].trim();
+    const fields: PrismaField[] = [];
+
+    // Parse each field (line by line)
+    const fieldLines = modelBody.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    for (const fieldLine of fieldLines) {
+      // Skip block attributes like @@id, @@index, etc.
+      if (fieldLine.startsWith('@@')) continue;
+
+      // Parse field: name type options*
+      const fieldMatch = fieldLine.match(/^(\w+)\s+(\w+)(\?|\[])?(\s+@.*)?$/);
+      if (fieldMatch) {
+        const [, fieldName, fieldType, modifier] = fieldMatch;
+
+        // Check for @id attribute
+        const hasId = /@id/.test(fieldLine);
+        const hasDefault = /@default\(/.test(fieldLine);
+        const isGenerated = /@default\(autoincrement\)|@updatedAt|@createdAt/.test(fieldLine);
+
+        fields.push({
+          name: fieldName,
+          type: fieldType,
+          isOptional: modifier === '?',
+          isList: modifier === '[]',
+          isId: hasId,
+          isGenerated,
+          defaultValue: undefined, // Would need more complex parsing
+        });
+      }
+    }
+
+    if (fields.length > 0) {
+      models.push({ name: modelName, fields });
+    }
+  }
+
+  return { models };
+}
+
+/**
+ * Get Prisma model by name (case-insensitive search)
+ */
+export function getPrismaModel(schema: PrismaSchema, modelName: string): PrismaModel | undefined {
+  // Exact match first
+  let model = schema.models.find(m => m.name === modelName);
+
+  if (!model) {
+    // Case-insensitive search
+    model = schema.models.find(m => m.name.toLowerCase() === modelName.toLowerCase());
+  }
+
+  return model;
+}
+
+/**
+ * Check if a property exists in a Prisma model
+ * Considers both exact name and property mapping
+ */
+export function propertyExistsInModel(
+  model: PrismaModel,
+  propertyName: string,
+  propertyMapping?: Record<string, string>
+): boolean {
+  // Check if property name matches a field
+  const hasDirectMatch = model.fields.some(f => f.name === propertyName);
+
+  if (hasDirectMatch) return true;
+
+  // Check if there's a mapping from this property to a field
+  if (propertyMapping) {
+    for (const [manifestProp, dbField] of Object.entries(propertyMapping)) {
+      if (manifestProp === propertyName && model.fields.some(f => f.name === dbField)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get Prisma field names for a model
+ */
+export function getPrismaFieldNames(model: PrismaModel): string[] {
+  return model.fields.map(f => f.name);
+}

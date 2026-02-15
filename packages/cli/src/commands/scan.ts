@@ -7,8 +7,8 @@
  * Checks performed:
  * - Policy coverage: Every command has a policy
  * - Store consistency: Store targets are recognized
- * - (Future) Property alignment: Manifest properties match store schema
- * - (Future) Route context: All required context fields are passed
+ * - Route context: Generated routes pass required user context
+ * - Property alignment: Manifest properties match Prisma schema (when configured)
  */
 
 import fs from 'fs/promises';
@@ -16,7 +16,7 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
-import { loadAllConfigs, getStoreBindingsInfo, ManifestRuntimeConfig } from '../utils/config.js';
+import { loadAllConfigs, getStoreBindingsInfo, ManifestRuntimeConfig, hasUserResolver, findPrismaSchemaPath, parsePrismaSchema, getPrismaModel, propertyExistsInModel, getPrismaFieldNames, PrismaSchema, ManifestConfig } from '../utils/config.js';
 
 // Import from the main Manifest package
 async function loadCompiler() {
@@ -51,6 +51,174 @@ interface ScanResult {
   warnings: ScanWarning[];
   filesScanned: number;
   commandsChecked: number;
+  routesScanned: number;
+}
+
+/**
+ * Check if an expression string references user context
+ */
+function expressionReferencesUser(expression: string): boolean {
+  // Match user.* patterns (user.id, user.role, user.tenantId, etc.)
+  return /\buser\.[a-zA-Z_]/.test(expression);
+}
+
+/**
+ * Check if a command requires user context based on its guards and policies
+ */
+function commandRequiresUserContext(
+  command: { guards?: Array<{ expression: string }>; policies?: string[] },
+  policies: Array<{ name: string; expression?: string }>
+): boolean {
+  // Check guards for user references
+  for (const guard of command.guards || []) {
+    if (expressionReferencesUser(guard.expression)) {
+      return true;
+    }
+  }
+
+  // Check policies for user references
+  const policyMap = new Map(policies.map(p => [p.name, p]));
+  for (const policyName of command.policies || []) {
+    const policy = policyMap.get(policyName);
+    if (policy?.expression && expressionReferencesUser(policy.expression)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Scan a route file to check if it properly passes user context
+ */
+async function scanRouteFile(
+  filePath: string,
+  commandsRequiringUserContext: Set<string>
+): Promise<{ warnings: ScanWarning[]; routesScanned: number }> {
+  const warnings: ScanWarning[] = [];
+  let routesScanned = 0;
+
+  const content = await fs.readFile(filePath, 'utf-8');
+
+  // Check if this is a command route (POST handler that uses createManifestRuntime)
+  const isCommandRoute = /createManifestRuntime|runCommand/.test(content);
+  if (!isCommandRoute) {
+    return { warnings, routesScanned: 0 };
+  }
+
+  routesScanned = 1;
+
+  // Extract entity and command from the route file path or content
+  // Routes typically follow: app/api/{entity}/{command}/route.ts pattern
+  const pathParts = filePath.split(/[/\\]/);
+  const apiIndex = pathParts.findIndex(p => p === 'api');
+  let entityName: string | null = null;
+  let commandName: string | null = null;
+
+  if (apiIndex >= 0 && pathParts.length > apiIndex + 2) {
+    entityName = pathParts[apiIndex + 1];
+    // Check if this is a command route (not a list route)
+    const possibleCommand = pathParts[apiIndex + 2];
+    if (possibleCommand !== 'list' && possibleCommand !== 'route.ts') {
+      commandName = possibleCommand;
+    }
+  }
+
+  // Also try to extract from content
+  const entityMatch = content.match(/entityName:\s*["']([^"']+)["']/);
+  const commandMatch = content.match(/runCommand\(\s*["']([^"']+)["']/);
+
+  if (entityMatch) entityName = entityMatch[1];
+  if (commandMatch) commandName = commandMatch[1];
+
+  if (!entityName || !commandName) {
+    return { warnings, routesScanned };
+  }
+
+  const commandKey = `${entityName}.${commandName}`;
+
+  // Only check routes for commands that require user context
+  if (!commandsRequiringUserContext.has(commandKey)) {
+    return { warnings, routesScanned };
+  }
+
+  // Check if the route passes user context
+  const passesUserContext = /user:\s*\{|user:\s*userId|user:\s*{\s*id:\s*userId/.test(content);
+
+  if (!passesUserContext) {
+    warnings.push({
+      file: filePath,
+      message: `Route for '${commandKey}' does not pass user context, but command requires it.`,
+      suggestion: `Ensure the route passes user context to createManifestRuntime:\n  const runtime = await createManifestRuntime({ user: { id: userId, ... } });\n\n  Or configure resolveUser in manifest.config.ts for auto-injection.`,
+    });
+  }
+
+  return { warnings, routesScanned };
+}
+
+/**
+ * Scan project for route files
+ */
+async function scanRoutes(
+  projectRoot: string,
+  ir: any,
+  spinner: Ora
+): Promise<{ warnings: ScanWarning[]; routesScanned: number }> {
+  const warnings: ScanWarning[] = [];
+  let routesScanned = 0;
+
+  // Build set of commands requiring user context
+  const commandsRequiringUserContext = new Set<string>();
+
+  for (const command of ir.commands || []) {
+    if (!command.entity || !command.name) continue;
+
+    if (commandRequiresUserContext(command, ir.policies || [])) {
+      commandsRequiringUserContext.add(`${command.entity}.${command.name}`);
+    }
+  }
+
+  // If no commands require user context, skip route scanning
+  if (commandsRequiringUserContext.size === 0) {
+    return { warnings, routesScanned: 0 };
+  }
+
+  // Find route files (Next.js App Router pattern)
+  const routePatterns = [
+    'app/api/**/route.ts',
+    'app/api/**/route.js',
+    'src/app/api/**/route.ts',
+    'src/app/api/**/route.js',
+    'apps/*/app/api/**/route.ts',
+    'apps/*/app/api/**/route.js',
+  ];
+
+  const routeFiles: string[] = [];
+  for (const pattern of routePatterns) {
+    const files = await glob(pattern, {
+      cwd: projectRoot,
+      ignore: ['**/node_modules/**', '**/.next/**'],
+      absolute: true
+    });
+    routeFiles.push(...files);
+  }
+
+  if (routeFiles.length === 0) {
+    // No route files found - informational warning
+    if (commandsRequiringUserContext.size > 0) {
+      spinner.info(`No route files found. ${commandsRequiringUserContext.size} command(s) require user context.`);
+    }
+    return { warnings, routesScanned: 0 };
+  }
+
+  // Scan each route file
+  for (const routeFile of routeFiles) {
+    const result = await scanRouteFile(routeFile, commandsRequiringUserContext);
+    warnings.push(...result.warnings);
+    routesScanned += result.routesScanned;
+  }
+
+  return { warnings, routesScanned };
 }
 
 /**
@@ -146,11 +314,12 @@ async function scanFile(
   filePath: string,
   spinner: Ora,
   runtimeConfig: ManifestRuntimeConfig | null
-): Promise<{ errors: ScanError[]; warnings: ScanWarning[]; commandsChecked: number }> {
+): Promise<{ errors: ScanError[]; warnings: ScanWarning[]; commandsChecked: number; ir: any | null }> {
   const compileToIR = await loadCompiler();
   const errors: ScanError[] = [];
   const warnings: ScanWarning[] = [];
   let commandsChecked = 0;
+  let ir: any | null = null;
 
   spinner.text = `Scanning ${path.relative(process.cwd(), filePath)}`;
 
@@ -178,16 +347,16 @@ async function scanFile(
 
     // If there are compilation errors, return early
     if (errors.length > 0) {
-      return { errors, warnings, commandsChecked: 0 };
+      return { errors, warnings, commandsChecked: 0, ir: null };
     }
   }
 
   // No IR means nothing to scan
   if (!result.ir) {
-    return { errors, warnings, commandsChecked: 0 };
+    return { errors, warnings, commandsChecked: 0, ir: null };
   }
 
-  const ir = result.ir;
+  ir = result.ir;
 
   // Build a map of entity name → entity for command lookup
   const entityMap = new Map<string, { name: string; commands: string[] }>();
@@ -250,7 +419,7 @@ async function scanFile(
     }
   }
 
-  return { errors, warnings, commandsChecked };
+  return { errors, warnings, commandsChecked, ir };
 }
 
 /**
@@ -258,6 +427,198 @@ async function scanFile(
  */
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// ============================================================================
+// Property Alignment Scanner (P1-B)
+// ============================================================================
+
+/**
+ * Levenshtein distance between two strings
+ * Used for "Did you mean X?" suggestions
+ */
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Find closest matching Prisma field names for suggestions
+ */
+function findClosestFields(
+  propertyName: string,
+  fieldNames: string[],
+  maxDistance: number = 3
+): string[] {
+  const suggestions: Array<{ name: string; distance: number }> = [];
+
+  for (const fieldName of fieldNames) {
+    const distance = levenshteinDistance(propertyName.toLowerCase(), fieldName.toLowerCase());
+    if (distance <= maxDistance) {
+      suggestions.push({ name: fieldName, distance });
+    }
+  }
+
+  // Sort by distance and return names
+  return suggestions
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 3)
+    .map(s => s.name);
+}
+
+/**
+ * Scan an entity's properties against a Prisma model for alignment issues
+ */
+function scanPropertyAlignment(
+  entityName: string,
+  entityProperties: Array<{ name: string; type: string }>,
+  prismaSchema: PrismaSchema,
+  prismaModelName: string,
+  propertyMapping?: Record<string, string>
+): ScanWarning[] {
+  const warnings: ScanWarning[] = [];
+  const model = getPrismaModel(prismaSchema, prismaModelName);
+
+  if (!model) {
+    warnings.push({
+      file: '',
+      message: `Entity '${entityName}' references Prisma model '${prismaModelName}' but model not found in schema.`,
+      suggestion: `Available models: ${prismaSchema.models.map(m => m.name).join(', ')}`,
+    });
+    return warnings;
+  }
+
+  const fieldNames = getPrismaFieldNames(model);
+
+  for (const prop of entityProperties) {
+    const exists = propertyExistsInModel(model, prop.name, propertyMapping);
+
+    if (!exists) {
+      // Find suggestions
+      const suggestions = findClosestFields(prop.name, fieldNames);
+
+      let suggestionMsg = '';
+      if (suggestions.length > 0) {
+        suggestionMsg = `\n  Did you mean: ${suggestions.join(', ')}?`;
+      }
+
+      // Check if property might need mapping
+      const hasMapping = propertyMapping && Object.values(propertyMapping).includes(prop.name);
+      if (hasMapping) {
+        continue; // Property is mapped, skip warning
+      }
+
+      warnings.push({
+        file: '',
+        message: `Entity '${entityName}' property '${prop.name}' (${prop.type}) not found in Prisma model '${prismaModelName}'.`,
+        suggestion: `Add field to Prisma model or configure property mapping in manifest.config.ts.${suggestionMsg}`,
+      });
+    }
+  }
+
+  return warnings;
+}
+
+/**
+ * Scan all entities for property alignment issues using Prisma schema
+ */
+async function scanPropertyAlignmentForIR(
+  ir: any,
+  runtimeConfig: ManifestRuntimeConfig | null,
+  buildConfig: ManifestConfig | null,
+  projectRoot: string
+): Promise<ScanWarning[]> {
+  const warnings: ScanWarning[] = [];
+
+  // Find Prisma schema
+  const schemaPath = await findPrismaSchemaPath(projectRoot, buildConfig);
+  if (!schemaPath) {
+    // No Prisma schema found - skip this check
+    return warnings;
+  }
+
+  // Parse schema
+  let prismaSchema: PrismaSchema;
+  try {
+    prismaSchema = await parsePrismaSchema(schemaPath);
+  } catch (error) {
+    warnings.push({
+      file: schemaPath,
+      message: `Failed to parse Prisma schema: ${error instanceof Error ? error.message : String(error)}`,
+    });
+    return warnings;
+  }
+
+  if (prismaSchema.models.length === 0) {
+    warnings.push({
+      file: schemaPath,
+      message: 'Prisma schema found but contains no models.',
+    });
+    return warnings;
+  }
+
+  // Get store bindings for property mapping
+  const storeBindingsInfo = getStoreBindingsInfo(runtimeConfig);
+
+  // Check each entity
+  for (const entity of ir.entities || []) {
+    if (!entity.name || !entity.properties) continue;
+
+    // Get the Prisma model name from config binding
+    const prismaModelName = storeBindingsInfo.getPrismaModel(entity.name);
+    if (!prismaModelName) {
+      // Entity has no Prisma model binding - skip
+      continue;
+    }
+
+    // Get property mapping if configured
+    const propertyMapping = storeBindingsInfo.getPropertyMapping(entity.name);
+
+    // Scan properties
+    const entityWarnings = scanPropertyAlignment(
+      entity.name,
+      entity.properties.map((p: any) => ({ name: p.name, type: p.type })),
+      prismaSchema,
+      prismaModelName,
+      propertyMapping
+    );
+
+    // Add file context to warnings
+    for (const warning of entityWarnings) {
+      warnings.push({
+        ...warning,
+        message: `[${entity.name}] ${warning.message}`,
+      });
+    }
+  }
+
+  return warnings;
 }
 
 /**
@@ -301,7 +662,11 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
       warnings: [],
       filesScanned: files.length,
       commandsChecked: 0,
+      routesScanned: 0,
     };
+
+    // Collect all IRs for route scanning
+    const allIRs: any[] = [];
 
     for (const file of files) {
       const fileSpinner = ora().start();
@@ -310,6 +675,11 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
         result.errors.push(...fileResult.errors);
         result.warnings.push(...fileResult.warnings);
         result.commandsChecked += fileResult.commandsChecked;
+
+        // Collect IR for route scanning
+        if (fileResult.ir) {
+          allIRs.push(fileResult.ir);
+        }
 
         if (fileResult.errors.length === 0 && fileResult.warnings.length === 0) {
           fileSpinner.succeed(`${formatPath(file)} - OK`);
@@ -327,6 +697,65 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
           message: error.message,
           suggestion: 'Check the file for syntax errors.',
         });
+      }
+    }
+
+    // Scan routes for context issues (if no compilation errors)
+    if (result.errors.length === 0 && allIRs.length > 0) {
+      const routeSpinner = ora('Scanning routes for context issues').start();
+      try {
+        // Merge all IRs for route scanning
+        const mergedIR = {
+          commands: allIRs.flatMap(ir => ir.commands || []),
+          policies: allIRs.flatMap(ir => ir.policies || []),
+        };
+
+        const routeResult = await scanRoutes(process.cwd(), mergedIR, routeSpinner);
+        result.warnings.push(...routeResult.warnings);
+        result.routesScanned = routeResult.routesScanned;
+
+        if (routeResult.warnings.length === 0 && routeResult.routesScanned > 0) {
+          routeSpinner.succeed(`Scanned ${routeResult.routesScanned} route(s) - OK`);
+        } else if (routeResult.warnings.length > 0) {
+          routeSpinner.warn(`Found ${routeResult.warnings.length} route context issue(s)`);
+        } else {
+          routeSpinner.info('No route files found to scan');
+        }
+      } catch (error: any) {
+        routeSpinner.info(`Route scanning skipped: ${error.message}`);
+      }
+    }
+
+    // Scan property alignment (Prisma schema validation) - P1-B
+    if (result.errors.length === 0 && allIRs.length > 0) {
+      const propertySpinner = ora('Scanning property alignment with Prisma schema').start();
+      try {
+        // Get build config for schema path
+        const configs = await loadAllConfigs(process.cwd());
+
+        // Merge all IRs for property scanning
+        const mergedIR = {
+          entities: allIRs.flatMap(ir => ir.entities || []),
+          commands: allIRs.flatMap(ir => ir.commands || []),
+          policies: allIRs.flatMap(ir => ir.policies || []),
+        };
+
+        const propertyWarnings = await scanPropertyAlignmentForIR(
+          mergedIR,
+          runtimeConfig,
+          configs.build,
+          process.cwd()
+        );
+
+        result.warnings.push(...propertyWarnings);
+
+        if (propertyWarnings.length === 0) {
+          propertySpinner.succeed('Property alignment check passed');
+        } else {
+          propertySpinner.warn(`Found ${propertyWarnings.length} property alignment issue(s)`);
+        }
+      } catch (error: any) {
+        propertySpinner.info(`Property alignment scanning skipped: ${error.message}`);
       }
     }
 
@@ -383,6 +812,9 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
     console.log(chalk.bold('SUMMARY:'));
     console.log(`  Files scanned: ${result.filesScanned}`);
     console.log(`  Commands checked: ${result.commandsChecked}`);
+    if (result.routesScanned > 0) {
+      console.log(`  Routes scanned: ${result.routesScanned}`);
+    }
 
     if (result.errors.length === 0 && result.warnings.length === 0) {
       spinner.succeed('Scan passed - no issues found');

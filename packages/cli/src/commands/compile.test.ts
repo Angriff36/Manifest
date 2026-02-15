@@ -57,14 +57,13 @@ function captureOutput() {
 }
 
 describe('Compile Command - Basic Compilation', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
+  // Note: Intentionally NOT using vi.resetModules() to avoid race conditions
+  // with dynamic imports in the compile command
 
   it('should compile a simple entity to IR', async () => {
     const manifest = `
 entity Counter {
-  property count: number default 0
+  property count: number = 0
   property name: string
 }
 `;
@@ -132,9 +131,7 @@ entity Book {
 });
 
 describe('Compile Command - Output Options', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
+  // Note: Intentionally NOT using vi.resetModules() to avoid race conditions
 
   it('should output pretty JSON when requested', async () => {
     const manifest = `
@@ -189,9 +186,7 @@ entity Counter {
 });
 
 describe('Compile Command - Error Handling', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
+  // Note: Intentionally NOT using vi.resetModules() to avoid race conditions
 
   it('should report error for missing file', async () => {
     const { compileCommand } = await import('./compile.js');
@@ -234,9 +229,7 @@ describe('Compile Command - Error Handling', () => {
 });
 
 describe('Compile Command - Conformance Fixtures', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
+  // Note: Intentionally NOT using vi.resetModules() to avoid race conditions
 
   it('should compile existing conformance fixtures', async () => {
     // Use existing conformance fixtures that are known to work

@@ -12,6 +12,7 @@ import { buildCommand } from './commands/build.js';
 import { validateCommand } from './commands/validate.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
+import { scanCommand } from './commands/scan.js';
 import { getConfig } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize } from 'node:path';
@@ -146,6 +147,26 @@ program
         options.output = config.output;
     }
     await checkCommand(source, options);
+});
+/**
+ * manifest scan [source]
+ *
+ * Scan .manifest files for configuration issues before runtime.
+ * Primary goal: "If scan passes, the code works."
+ *
+ * Checks:
+ * - Policy coverage: Every command has a policy
+ * - Store consistency: Store targets are recognized
+ */
+program
+    .command('scan')
+    .description('Scan manifest files for configuration issues')
+    .argument('[source]', 'Source .manifest file or directory')
+    .option('-g, --glob <pattern>', 'Glob pattern for manifest files', '**/*.manifest')
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .option('--strict', 'Fail on warnings', false)
+    .action(async (source, options = {}) => {
+    await scanCommand(source, options);
 });
 /**
  * Run the CLI
