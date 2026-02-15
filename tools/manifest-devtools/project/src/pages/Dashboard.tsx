@@ -7,6 +7,9 @@ import {
   ArrowRight,
   Terminal,
   Star,
+  Search,
+  Shield,
+  AlertCircle,
 } from 'lucide-react';
 import type { ToolId } from '../components/Layout';
 
@@ -24,6 +27,36 @@ const TOOLS: Array<{
   status: string;
   color: string;
 }> = [
+  {
+    id: 'entity-scanner',
+    name: 'Entity Scanner',
+    description: 'Scan manifest code for entity status, policy coverage, and configuration issues before runtime.',
+    icon: <Search size={24} />,
+    impact: 5,
+    phase: 'P4-A',
+    status: 'Ready',
+    color: 'from-violet-500/10 to-transparent border-violet-500/20',
+  },
+  {
+    id: 'policy-coverage',
+    name: 'Policy Coverage Matrix',
+    description: 'Visual grid showing which commands have policy coverage and which are unprotected.',
+    icon: <Shield size={24} />,
+    impact: 5,
+    phase: 'P4-A',
+    status: 'Ready',
+    color: 'from-emerald-500/10 to-transparent border-emerald-500/20',
+  },
+  {
+    id: 'issue-tracker',
+    name: 'Issue Tracker',
+    description: 'Mirror of manifest scan output - track and resolve configuration issues with suggested fixes.',
+    icon: <AlertCircle size={24} />,
+    impact: 5,
+    phase: 'P4-A',
+    status: 'Ready',
+    color: 'from-rose-500/10 to-transparent border-rose-500/20',
+  },
   {
     id: 'guard-debugger',
     name: 'Guard Expression Debugger',

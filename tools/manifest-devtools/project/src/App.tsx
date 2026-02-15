@@ -6,6 +6,9 @@ import FixtureGeneratorPage from './tools/fixture-generator/FixtureGeneratorPage
 import ProfilerPage from './tools/profiler/ProfilerPage';
 import IRVerifierPage from './tools/ir-verifier/IRVerifierPage';
 import MigrationPage from './tools/migration/MigrationPage';
+import EntityScannerPage from './tools/entity-scanner/EntityScannerPage';
+import PolicyCoveragePage from './tools/policy-coverage/PolicyCoveragePage';
+import IssueTrackerPage from './tools/issue-tracker/IssueTrackerPage';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<ToolId>('dashboard');
@@ -13,6 +16,9 @@ export default function App() {
   return (
     <Layout activeTool={activeTool} onNavigate={setActiveTool}>
       {activeTool === 'dashboard' && <Dashboard onNavigate={setActiveTool} />}
+      {activeTool === 'entity-scanner' && <EntityScannerPage />}
+      {activeTool === 'policy-coverage' && <PolicyCoveragePage />}
+      {activeTool === 'issue-tracker' && <IssueTrackerPage />}
       {activeTool === 'guard-debugger' && <GuardDebuggerPage />}
       {activeTool === 'fixture-generator' && <FixtureGeneratorPage />}
       {activeTool === 'profiler' && <ProfilerPage />}
