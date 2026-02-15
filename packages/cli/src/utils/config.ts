@@ -1,13 +1,29 @@
 /**
  * Configuration management for Manifest CLI
  *
- * Handles loading, creating, and validating manifest.config.yaml
+ * Handles loading, creating, and validating manifest.config.yaml and manifest.config.ts
+ *
+ * Config precedence: manifest.config.ts > manifest.config.js > manifest.config.yaml
+ *
+ * YAML config: Build-level settings (src, output, projections)
+ * TS/JS config: Runtime bindings (stores, resolveUser)
  */
 
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
+import { createRequire } from 'module';
+import { pathToFileURL } from 'url';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/**
+ * Build-level configuration (YAML-based)
+ *
+ * These settings control compilation and code generation.
+ */
 export interface ManifestConfig {
   $schema?: string;
   src?: string;
@@ -16,9 +32,94 @@ export interface ManifestConfig {
   // Optional: Projection settings for code generation
   projections?: Record<string, {
     output?: string;
-    options?: Record<string, any>;
+    options?: Record<string, unknown>;
   }>;
 }
+
+/**
+ * Store binding configuration for an entity
+ */
+export interface StoreBinding {
+  /** Store implementation class or factory function */
+  implementation: unknown;
+  /** Optional: Prisma model name for property alignment checks */
+  prismaModel?: string;
+  /** Optional: Property mapping (manifest property -> database column) */
+  propertyMapping?: Record<string, string>;
+}
+
+/**
+ * User context resolved from authentication
+ */
+export interface UserContext {
+  id: string;
+  role?: string;
+  tenantId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Authentication context from request
+ */
+export interface AuthContext {
+  userId?: string;
+  claims?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  [key: string]: unknown;
+}
+
+/**
+ * Runtime-level configuration (TypeScript-based)
+ *
+ * These settings control store bindings and user resolution at runtime.
+ */
+export interface ManifestRuntimeConfig {
+  /**
+   * Store implementation bindings per entity
+   *
+   * Example:
+   * ```ts
+   * stores: {
+   *   User: { implementation: PrismaUserStore, prismaModel: 'User' },
+   *   Order: { implementation: PrismaOrderStore, prismaModel: 'orders' },
+   * }
+   * ```
+   */
+  stores?: Record<string, StoreBinding>;
+
+  /**
+   * User resolution function
+   *
+   * Called by generated routes to extract user context from authentication.
+   * This eliminates per-route user context boilerplate.
+   *
+   * Example:
+   * ```ts
+   * resolveUser: async (auth) => {
+   *   const session = await getSession(auth.headers);
+   *   return { id: session.userId, role: session.role, tenantId: session.orgId };
+   * }
+   * ```
+   */
+  resolveUser?: (auth: AuthContext) => Promise<UserContext | null>;
+
+  /**
+   * Build-level settings (shared with YAML config)
+   */
+  build?: ManifestConfig;
+}
+
+/**
+ * Combined configuration (build + runtime)
+ */
+export interface CombinedConfig {
+  build: ManifestConfig;
+  runtime: ManifestRuntimeConfig | null;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
 
 const DEFAULT_CONFIG: ManifestConfig = {
   $schema: 'https://manifest.dev/config.schema.json',
@@ -26,24 +127,37 @@ const DEFAULT_CONFIG: ManifestConfig = {
   output: 'ir/',
 };
 
-const CONFIG_PATHS = [
+// Config paths in precedence order (highest to lowest)
+const TS_CONFIG_PATHS = [
+  'manifest.config.ts',
+  'manifest.config.js',
+];
+
+const YAML_CONFIG_PATHS = [
   'manifest.config.yaml',
   'manifest.config.yml',
   '.manifestrc.yaml',
   '.manifestrc.yml',
 ];
 
+// All config paths for existence checking
+const ALL_CONFIG_PATHS = [...TS_CONFIG_PATHS, ...YAML_CONFIG_PATHS];
+
+// ============================================================================
+// YAML Config Loading
+// ============================================================================
+
 /**
- * Find and load the config file
+ * Load YAML configuration file
  */
-export async function loadConfig(cwd: string = process.cwd()): Promise<ManifestConfig | null> {
-  for (const configFile of CONFIG_PATHS) {
+async function loadYamlConfig(cwd: string): Promise<ManifestConfig | null> {
+  for (const configFile of YAML_CONFIG_PATHS) {
     const configPath = path.resolve(cwd, configFile);
     try {
       const content = await fs.readFile(configPath, 'utf-8');
       const config = yaml.load(content) as ManifestConfig;
       return config;
-    } catch (error) {
+    } catch {
       // File doesn't exist or can't be read - try next one
       continue;
     }
@@ -52,13 +166,94 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<ManifestC
   return null;
 }
 
+// ============================================================================
+// TypeScript/JavaScript Config Loading
+// ============================================================================
+
 /**
- * Get config with defaults applied
+ * Load TypeScript/JavaScript configuration file using jiti
+ *
+ * jiti provides runtime TypeScript support with caching, making it ideal
+ * for config file loading without a build step.
  */
-export async function getConfig(cwd: string = process.cwd()): Promise<ManifestConfig> {
-  const userConfig = await loadConfig(cwd);
-  return mergeConfig(DEFAULT_CONFIG, userConfig);
+async function loadTsConfig(cwd: string): Promise<ManifestRuntimeConfig | null> {
+  for (const configFile of TS_CONFIG_PATHS) {
+    const configPath = path.resolve(cwd, configFile);
+
+    try {
+      // Check if file exists
+      await fs.access(configPath);
+    } catch {
+      continue;
+    }
+
+    try {
+      // Use dynamic import with jiti for TS/JS support
+      const config = await loadModule(configPath);
+
+      if (config && typeof config === 'object') {
+        // Handle both default export and named export
+        const runtimeConfig = config.default ?? config;
+
+        if (isValidRuntimeConfig(runtimeConfig)) {
+          return runtimeConfig;
+        }
+      }
+    } catch (error) {
+      // Provide helpful error message for config loading failures
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to load config from ${configFile}: ${message}`);
+    }
+  }
+
+  return null;
 }
+
+/**
+ * Load a module dynamically, handling both ESM and CommonJS
+ */
+async function loadModule(modulePath: string): Promise<unknown> {
+  // Try jiti first for TypeScript support
+  try {
+    const jiti = await import('jiti').then(m => m.default || m);
+    const load = jiti(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
+      esmResolve: true,
+      interopDefault: true,
+      requireCache: false, // Always reload config
+    });
+
+    const module = load(modulePath);
+    return module;
+  } catch {
+    // Fall back to dynamic import for ESM
+    const url = pathToFileURL(modulePath).href;
+    const module = await import(url);
+    return module;
+  }
+}
+
+/**
+ * Validate that an object is a valid runtime config
+ */
+function isValidRuntimeConfig(config: unknown): config is ManifestRuntimeConfig {
+  if (!config || typeof config !== 'object') {
+    return false;
+  }
+
+  const c = config as Record<string, unknown>;
+
+  // At least one of these should be defined for a runtime config
+  const hasStores = c.stores && typeof c.stores === 'object';
+  const hasResolveUser = typeof c.resolveUser === 'function';
+  const hasBuild = c.build && typeof c.build === 'object';
+
+  // Allow empty config objects that just have build settings
+  return hasStores || hasResolveUser || hasBuild || Object.keys(c).length === 0;
+}
+
+// ============================================================================
+// Config Merging
+// ============================================================================
 
 /**
  * Merge user config with defaults
@@ -75,7 +270,71 @@ function mergeConfig(defaults: ManifestConfig, user: ManifestConfig | null): Man
 }
 
 /**
- * Save config to file
+ * Merge build config from runtime config with YAML config
+ * Runtime config's build settings take precedence over YAML.
+ */
+function mergeBuildConfig(
+  yamlConfig: ManifestConfig | null,
+  runtimeBuildConfig: ManifestConfig | undefined
+): ManifestConfig {
+  return mergeConfig(
+    mergeConfig(DEFAULT_CONFIG, yamlConfig),
+    runtimeBuildConfig ?? null
+  );
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Find and load all configuration files
+ *
+ * Returns both build (YAML) and runtime (TS/JS) configs separately.
+ */
+export async function loadAllConfigs(cwd: string = process.cwd()): Promise<CombinedConfig> {
+  const [yamlConfig, tsConfig] = await Promise.all([
+    loadYamlConfig(cwd),
+    loadTsConfig(cwd),
+  ]);
+
+  const build = mergeBuildConfig(yamlConfig, tsConfig?.build);
+
+  return {
+    build,
+    runtime: tsConfig,
+  };
+}
+
+/**
+ * Load only the YAML configuration (backward compatible)
+ */
+export async function loadConfig(cwd: string = process.cwd()): Promise<ManifestConfig | null> {
+  return loadYamlConfig(cwd);
+}
+
+/**
+ * Get config with defaults applied (backward compatible)
+ *
+ * For new code, prefer loadAllConfigs() which includes runtime config.
+ */
+export async function getConfig(cwd: string = process.cwd()): Promise<ManifestConfig> {
+  const userConfig = await loadConfig(cwd);
+  return mergeConfig(DEFAULT_CONFIG, userConfig);
+}
+
+/**
+ * Get the runtime configuration
+ */
+export async function getRuntimeConfig(cwd: string = process.cwd()): Promise<ManifestRuntimeConfig | null> {
+  return loadTsConfig(cwd);
+}
+
+/**
+ * Save config to YAML file
+ *
+ * Note: This only saves build-level settings to YAML.
+ * Runtime config (TS/JS) must be managed manually.
  */
 export async function saveConfig(
   config: ManifestConfig,
@@ -92,10 +351,37 @@ export async function saveConfig(
 }
 
 /**
- * Check if config exists
+ * Check if any config file exists (YAML or TS/JS)
  */
 export async function configExists(cwd: string = process.cwd()): Promise<boolean> {
-  return (await loadConfig(cwd)) !== null;
+  for (const configFile of ALL_CONFIG_PATHS) {
+    const configPath = path.resolve(cwd, configFile);
+    try {
+      await fs.access(configPath);
+      return true;
+    } catch {
+      continue;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check which config file is being used
+ */
+export async function getActiveConfigPath(cwd: string = process.cwd()): Promise<string | null> {
+  for (const configFile of ALL_CONFIG_PATHS) {
+    const configPath = path.resolve(cwd, configFile);
+    try {
+      await fs.access(configPath);
+      return configPath;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -113,20 +399,20 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
   deletedAtProperty: string;
   appDir: string;
 }> {
-  const config = await getConfig(cwd);
-  const options = config.projections?.nextjs?.options || config.projections?.['nextjs']?.options || {};
+  const { build } = await loadAllConfigs(cwd);
+  const options = build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
 
   return {
-    authProvider: options.authProvider || 'clerk',
-    authImportPath: options.authImportPath || '@/lib/auth',
-    databaseImportPath: options.databaseImportPath || '@/lib/database',
-    runtimeImportPath: options.runtimeImportPath || '@/lib/manifest-runtime',
-    responseImportPath: options.responseImportPath || '@/lib/manifest-response',
-    includeTenantFilter: options.includeTenantFilter ?? true,
-    includeSoftDeleteFilter: options.includeSoftDeleteFilter ?? true,
-    tenantIdProperty: options.tenantIdProperty || 'tenantId',
-    deletedAtProperty: options.deletedAtProperty || 'deletedAt',
-    appDir: options.appDir || 'app',
+    authProvider: options.authProvider as string || 'clerk',
+    authImportPath: options.authImportPath as string || '@/lib/auth',
+    databaseImportPath: options.databaseImportPath as string || '@/lib/database',
+    runtimeImportPath: options.runtimeImportPath as string || '@/lib/manifest-runtime',
+    responseImportPath: options.responseImportPath as string || '@/lib/manifest-response',
+    includeTenantFilter: options.includeTenantFilter as boolean ?? true,
+    includeSoftDeleteFilter: options.includeSoftDeleteFilter as boolean ?? true,
+    tenantIdProperty: options.tenantIdProperty as string || 'tenantId',
+    deletedAtProperty: options.deletedAtProperty as string || 'deletedAt',
+    appDir: options.appDir as string || 'app',
   };
 }
 
@@ -137,10 +423,13 @@ export async function getOutputPaths(cwd: string = process.cwd()): Promise<{
   irOutput: string;
   codeOutput: string;
 }> {
-  const config = await getConfig(cwd);
+  const { build } = await loadAllConfigs(cwd);
 
   return {
-    irOutput: config.output || 'ir/',
-    codeOutput: config.projections?.nextjs?.output || config.projections?.['nextjs']?.output || 'generated/',
+    irOutput: build.output || 'ir/',
+    codeOutput: build.projections?.nextjs?.output || build.projections?.['nextjs']?.output || 'generated/',
   };
 }
+
+// Re-export types for consumers
+export type { StoreBinding, UserContext, AuthContext };

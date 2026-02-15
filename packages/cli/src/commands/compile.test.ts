@@ -81,7 +81,8 @@ entity Counter {
       expect(irExists).toBe(true);
 
       // Check IR content
-      const irContent = JSON.parse(await fs.readFile(irPath, 'utf-8'));
+      const rawContent = await fs.readFile(irPath, 'utf-8');
+      const irContent = JSON.parse(rawContent);
       expect(irContent).toHaveProperty('entities');
       expect(irContent.entities).toHaveLength(1);
       expect(irContent.entities[0].name).toBe('Counter');

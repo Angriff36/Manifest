@@ -174,8 +174,9 @@ entity Counter {
       const jsonOutput = capture.outputs.find(o => o.includes('"warnings"'));
       expect(jsonOutput).toBeDefined();
       const result = JSON.parse(jsonOutput!);
+
       const storeWarnings = result.warnings?.filter(
-        (w: any) => w.message?.includes('not a built-in target')
+        (w: any) => w.message?.includes('is not a built-in target')
       ) || [];
       expect(storeWarnings.length).toBeGreaterThan(0);
       expect(storeWarnings[0].message).toContain('customStore');
