@@ -42,8 +42,8 @@ app.get('/api/health', (req, res) => {
 // List all .manifest files
 app.get('/api/files', async (req, res) => {
   try {
-    const pattern = path.join(MANIFEST_ROOT, '**/*.manifest');
-    const files = await glob(pattern);
+    const pattern = path.join(MANIFEST_ROOT, '**/*.manifest').replace(/\\/g, '/');
+    const files = await glob(pattern, { windowsPathsNoEscape: true });
     res.json({ 
       files: files.map(f => ({
         path: f,
@@ -92,14 +92,14 @@ app.post('/api/scan', async (req, res) => {
 
     // Run the scan command
     const { execSync } = await import('child_process');
+
+    // Use the CLI binary directly from the repo root
     const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
-    
-    // Run from manifest repo root so node_modules resolution works
-    const manifestRepoRoot = path.join(__dirname, '../../../..');
+    const manifestRepoRoot = path.resolve(__dirname, '../../../..');
     const output = execSync(`node "${manifestCli}" scan "${filePath}" --format json`, {
       encoding: 'utf-8',
       cwd: manifestRepoRoot,
-      env: { ...process.env, NODE_PATH: path.join(manifestRepoRoot, 'node_modules') }
+      env: { ...process.env }
     });
 
     const result = JSON.parse(output);
@@ -118,15 +118,16 @@ app.post('/api/scan', async (req, res) => {
 // Scan all files
 app.post('/api/scan-all', async (req, res) => {
   try {
+    // Run the scan command
     const { execSync } = await import('child_process');
+
+    // Use the CLI binary directly from the repo root
     const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
-    
-    // Run from manifest repo root so node_modules resolution works
-    const manifestRepoRoot = path.join(__dirname, '../../../..');
+    const manifestRepoRoot = path.resolve(__dirname, '../../../..');
     const output = execSync(`node "${manifestCli}" scan "${MANIFEST_ROOT}" --format json`, {
       encoding: 'utf-8',
       cwd: manifestRepoRoot,
-      env: { ...process.env, NODE_PATH: path.join(manifestRepoRoot, 'node_modules') }
+      env: { ...process.env }
     });
 
     const result = JSON.parse(output);

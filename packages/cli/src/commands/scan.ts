@@ -18,9 +18,10 @@ import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import { loadAllConfigs, getStoreBindingsInfo, ManifestRuntimeConfig, hasUserResolver, findPrismaSchemaPath, parsePrismaSchema, getPrismaModel, propertyExistsInModel, getPrismaFieldNames, PrismaSchema, ManifestConfig } from '../utils/config.js';
 
-// Import from the main Manifest package
+// Import compiler from the monorepo root package
 async function loadCompiler() {
-  const module = await import('@manifest/runtime/ir-compiler');
+  // Resolve relative to this file: packages/cli/src/commands/ -> root dist/
+  const module = await import('../../../../dist/manifest/ir-compiler.js');
   return module.compileToIR;
 }
 
