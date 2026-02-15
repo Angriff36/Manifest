@@ -431,5 +431,187 @@ export async function getOutputPaths(cwd: string = process.cwd()): Promise<{
   };
 }
 
+// ============================================================================
+// Store Provider Factory (P2-B)
+// ============================================================================
+
+/**
+ * Store interface matching runtime-engine.ts
+ */
+export interface Store {
+  getAll(): Promise<unknown[]>;
+  getById(id: string): Promise<unknown | undefined>;
+  create(data: Partial<unknown>): Promise<unknown>;
+  update(id: string, data: Partial<unknown>): Promise<unknown | undefined>;
+  delete(id: string): Promise<boolean>;
+  clear(): Promise<void>;
+}
+
+/**
+ * Store provider function type matching runtime-engine.ts RuntimeOptions
+ */
+export type StoreProvider = (entityName: string) => Store | undefined;
+
+/**
+ * Cache for store instances to avoid recreating them on each call
+ */
+const storeCache = new Map<string, Store>();
+
+/**
+ * Create a store provider function from runtime config
+ *
+ * This enables config-driven store binding for the runtime engine.
+ * The returned function can be passed as `storeProvider` option to RuntimeEngine.
+ *
+ * @example
+ * ```typescript
+ * // manifest.config.ts
+ * export default {
+ *   stores: {
+ *     User: { implementation: PrismaUserStore },
+ *     Order: { implementation: new PostgresStore({ tableName: 'orders' }) },
+ *   }
+ * }
+ *
+ * // In your application
+ * const config = await getRuntimeConfig();
+ * const storeProvider = createStoreProvider(config);
+ * const runtime = new RuntimeEngine(ir, context, { storeProvider });
+ * ```
+ */
+export function createStoreProvider(config: ManifestRuntimeConfig | null): StoreProvider {
+  // Reset cache when creating a new provider
+  storeCache.clear();
+
+  return (entityName: string): Store | undefined => {
+    // Check cache first
+    const cached = storeCache.get(entityName);
+    if (cached) {
+      return cached;
+    }
+
+    // No config means no custom stores
+    if (!config?.stores) {
+      return undefined;
+    }
+
+    const binding = config.stores[entityName];
+    if (!binding) {
+      return undefined;
+    }
+
+    const { implementation } = binding;
+
+    // Handle different implementation types
+    let store: Store | undefined;
+
+    if (typeof implementation === 'function') {
+      // It's a constructor or factory function
+      try {
+        // Try calling as constructor (with new)
+        const instance = new (implementation as new () => Store)();
+        store = instance as Store;
+      } catch {
+        // If that fails, try calling as factory function (without new)
+        try {
+          const instance = (implementation as () => Store)();
+          store = instance as Store;
+        } catch {
+          // If both fail, return undefined
+          return undefined;
+        }
+      }
+    } else if (typeof implementation === 'object' && implementation !== null) {
+      // It's already an instance
+      store = implementation as Store;
+    }
+
+    if (store) {
+      // Cache for future calls
+      storeCache.set(entityName, store);
+    }
+
+    return store;
+  };
+}
+
+/**
+ * Clear the store cache (useful for testing)
+ */
+export function clearStoreCache(): void {
+  storeCache.clear();
+}
+
+/**
+ * Get store bindings info for validation/scanning
+ *
+ * Returns information about configured stores without instantiating them.
+ */
+export function getStoreBindingsInfo(config: ManifestRuntimeConfig | null): {
+  entityNames: string[];
+  hasStore: (entityName: string) => boolean;
+  getPrismaModel: (entityName: string) => string | undefined;
+  getPropertyMapping: (entityName: string) => Record<string, string> | undefined;
+} {
+  const entityNames = config?.stores ? Object.keys(config.stores) : [];
+
+  return {
+    entityNames,
+    hasStore: (entityName: string) => !!(config?.stores?.[entityName]),
+    getPrismaModel: (entityName: string) => config?.stores?.[entityName]?.prismaModel,
+    getPropertyMapping: (entityName: string) => config?.stores?.[entityName]?.propertyMapping,
+  };
+}
+
+// ============================================================================
+// User Context Resolution (P2-C)
+// ============================================================================
+
+/**
+ * Create a user resolver function from runtime config
+ *
+ * This enables config-driven user context resolution for routes and runtime.
+ * The returned function wraps the config's resolveUser with error handling.
+ *
+ * @example
+ * ```typescript
+ * // manifest.config.ts
+ * export default {
+ *   resolveUser: async (auth) => {
+ *     const session = await getSession(auth.headers);
+ *     return { id: session.userId, role: session.role };
+ *   }
+ * }
+ *
+ * // In your route handler
+ * const resolver = createUserResolver(config);
+ * const user = await resolver({ userId: session.user.id, headers: request.headers });
+ * const runtime = new RuntimeEngine(ir, { user, ...otherContext });
+ * ```
+ */
+export function createUserResolver(config: ManifestRuntimeConfig | null): (auth: AuthContext) => Promise<UserContext | null> {
+  if (!config?.resolveUser) {
+    // Return a pass-through resolver that returns null
+    return async () => null;
+  }
+
+  return async (auth: AuthContext): Promise<UserContext | null> => {
+    try {
+      return await config.resolveUser!(auth);
+    } catch (error) {
+      // Log error but don't throw - return null to indicate resolution failure
+      console.error('Failed to resolve user:', error instanceof Error ? error.message : error);
+      return null;
+    }
+  };
+}
+
+/**
+ * Check if a runtime config has user resolution configured
+ */
+export function hasUserResolver(config: ManifestRuntimeConfig | null): boolean {
+  return typeof config?.resolveUser === 'function';
+}
+
 // Re-export types for consumers
 export type { StoreBinding, UserContext, AuthContext };

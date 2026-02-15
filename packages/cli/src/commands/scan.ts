@@ -16,6 +16,7 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
+import { loadAllConfigs, getStoreBindingsInfo, ManifestRuntimeConfig } from '../utils/config.js';
 
 // Import from the main Manifest package
 async function loadCompiler() {
@@ -143,7 +144,8 @@ function findStoreLine(sourceLines: string[], entityName: string, target: string
  */
 async function scanFile(
   filePath: string,
-  spinner: Ora
+  spinner: Ora,
+  runtimeConfig: ManifestRuntimeConfig | null
 ): Promise<{ errors: ScanError[]; warnings: ScanWarning[]; commandsChecked: number }> {
   const compileToIR = await loadCompiler();
   const errors: ScanError[] = [];
@@ -227,15 +229,24 @@ async function scanFile(
   }
 
   // Check store targets are recognized
+  const storeBindingsInfo = getStoreBindingsInfo(runtimeConfig);
+
   for (const store of ir.stores || []) {
-    if (!BUILTIN_STORE_TARGETS.includes(store.target)) {
+    const isBuiltin = BUILTIN_STORE_TARGETS.includes(store.target);
+    const hasConfigBinding = storeBindingsInfo.hasStore(store.entity);
+
+    if (!isBuiltin && !hasConfigBinding) {
+      // Custom store target without config binding
       const lineNum = findStoreLine(sourceLines, store.entity, store.target);
       warnings.push({
         file: filePath,
         line: lineNum,
-        message: `Store target '${store.target}' is not a built-in target.`,
+        message: `Store target '${store.target}' is not a built-in target and has no config binding.`,
         suggestion: `Built-in targets: ${BUILTIN_STORE_TARGETS.join(', ')}\n  \n  If using a custom store, bind it in manifest.config.ts:\n    stores: { ${store.entity}: { implementation: YourStoreClass } }`,
       });
+    } else if (!isBuiltin && hasConfigBinding) {
+      // Custom store target WITH config binding - just informational
+      // This is valid usage, no warning needed
     }
   }
 
@@ -263,6 +274,15 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
   const spinner = ora('Scanning manifest files').start();
 
   try {
+    // Load runtime config for store binding validation
+    let runtimeConfig: ManifestRuntimeConfig | null = null;
+    try {
+      const configs = await loadAllConfigs(process.cwd());
+      runtimeConfig = configs.runtime;
+    } catch {
+      // Config loading failed - continue without config validation
+    }
+
     // Get manifest files
     const files = await getManifestFiles(source || '', options);
 
@@ -286,7 +306,7 @@ export async function scanCommand(source: string | undefined, options: ScanOptio
     for (const file of files) {
       const fileSpinner = ora().start();
       try {
-        const fileResult = await scanFile(file, fileSpinner);
+        const fileResult = await scanFile(file, fileSpinner, runtimeConfig);
         result.errors.push(...fileResult.errors);
         result.warnings.push(...fileResult.warnings);
         result.commandsChecked += fileResult.commandsChecked;
