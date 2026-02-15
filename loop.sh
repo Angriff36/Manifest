@@ -34,11 +34,18 @@ echo "Branch: $CURRENT_BRANCH"
 [ $MAX_ITERATIONS -gt 0 ] && echo "Max:    $MAX_ITERATIONS iterations"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Verify prompt file exists
-if [ ! -f "$PROMPT_FILE" ]; then
-    echo "Error: $PROMPT_FILE not found"
-    exit 1
-fi
+    # Verify prompt file exists
+    if [ ! -f "$PROMPT_FILE" ]; then
+        echo "Error: $PROMPT_FILE not found"
+        exit 1
+    fi
+
+    # Setup log file for this run (separate build vs plan logs)
+    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    LOG_FILE="loop-${MODE}-${TIMESTAMP}.log"
+
+    # Redirect all output to log AND terminal (tee shows output, exec redirects all subprocesses)
+    exec > >(tee "$LOG_FILE") 2>&1
 
 while true; do
     if [ $MAX_ITERATIONS -gt 0 ] && [ $ITERATION -ge $MAX_ITERATIONS ]; then

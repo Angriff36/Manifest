@@ -117,6 +117,10 @@ export interface CommandResult {
   overrideRequests?: OverrideRequest[];
   /** Concurrency conflict details (vNext) */
   concurrencyConflict?: ConcurrencyConflict;
+  /** Caller-supplied correlation ID grouping related events across a workflow */
+  correlationId?: string;
+  /** Caller-supplied ID of the event/command that caused this command execution */
+  causationId?: string;
   emittedEvents: EmittedEvent[];
 }
 
@@ -1006,6 +1010,8 @@ export class RuntimeEngine {
       return {
         success: false,
         error: `Command '${commandName}' not found`,
+        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
         emittedEvents: [],
       };
     }
@@ -1023,6 +1029,8 @@ export class RuntimeEngine {
         error: policyResult.denial?.message,
         deniedBy: policyResult.denial?.policyName,
         policyDenial: policyResult.denial,
+        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
         emittedEvents: [],
       };
     }
@@ -1037,6 +1045,8 @@ export class RuntimeEngine {
         error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
         constraintOutcomes: constraintResult.outcomes,
         overrideRequests: options.overrideRequests,
+        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
         emittedEvents: [],
       };
     }
@@ -1056,6 +1066,8 @@ export class RuntimeEngine {
           },
           // Include constraint outcomes even if guards fail
           constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+          ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+          ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
           emittedEvents: [],
         };
       }
@@ -1077,6 +1089,8 @@ export class RuntimeEngine {
         return {
           success: false,
           error: this.lastTransitionError,
+          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
           emittedEvents: [],
         };
       }
@@ -1120,6 +1134,8 @@ export class RuntimeEngine {
       result,
       // Include constraint outcomes in successful result
       constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+      ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+      ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
       emittedEvents,
     };
 
@@ -1128,6 +1144,8 @@ export class RuntimeEngine {
         return {
           success: false,
           error: e.message,
+          ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+          ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
           emittedEvents: [],
         };
       }
