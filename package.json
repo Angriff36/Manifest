@@ -21,6 +21,10 @@
       "types": "./dist/manifest/projections/nextjs/generator.d.ts",
       "import": "./dist/manifest/projections/nextjs/generator.js"
     },
+    "./projections/routes": {
+      "types": "./dist/manifest/projections/routes/generator.d.ts",
+      "import": "./dist/manifest/projections/routes/generator.js"
+    },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"

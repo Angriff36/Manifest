@@ -16,6 +16,7 @@ export default defineConfig({
       '@manifest/runtime/compiler': path.resolve(__dirname, './src/manifest/compiler.ts'),
       '@manifest/runtime/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
       '@manifest/runtime/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
+      '@manifest/runtime/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
       '@manifest/runtime': path.resolve(__dirname, './src/manifest/runtime-engine.ts'),
     },
   },

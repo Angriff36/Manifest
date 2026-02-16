@@ -11,6 +11,7 @@
 import type { ProjectionTarget } from './interface';
 import { registerProjection } from './registry.js';
 import { NextJsProjection } from './nextjs/generator.js';
+import { RoutesProjection } from './routes/generator.js';
 
 /**
  * Register all built-in projections.
@@ -24,6 +25,9 @@ import { NextJsProjection } from './nextjs/generator.js';
 export function registerBuiltinProjections(): void {
   // Next.js projection
   registerProjection(new NextJsProjection());
+
+  // Canonical routes projection (route surface artifact)
+  registerProjection(new RoutesProjection());
 
   // Future projections - ADD HERE:
   // import { HonoProjection } from './hono/generator';
@@ -47,6 +51,6 @@ export function registerBuiltinProjections(): void {
 export function listBuiltinProjections(): ProjectionTarget[] {
   return [
     new NextJsProjection(),
-    // Add new projections here as they're implemented
+    new RoutesProjection(),
   ];
 }

@@ -13,9 +13,10 @@ import {
   Shield,
   AlertCircle,
   FolderOpen,
+  Globe,
 } from 'lucide-react';
 
-export type ToolId = 'dashboard' | 'guard-debugger' | 'fixture-generator' | 'profiler' | 'ir-verifier' | 'migration' | 'entity-scanner' | 'policy-coverage' | 'issue-tracker';
+export type ToolId = 'dashboard' | 'guard-debugger' | 'fixture-generator' | 'profiler' | 'ir-verifier' | 'migration' | 'entity-scanner' | 'policy-coverage' | 'issue-tracker' | 'route-surface';
 
 interface NavItem {
   id: ToolId;
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'entity-scanner', label: 'Entity Scanner', icon: <Search size={18} />, phase: 'P4-A' },
   { id: 'policy-coverage', label: 'Policy Coverage', icon: <Shield size={18} />, phase: 'P4-A' },
   { id: 'issue-tracker', label: 'Issue Tracker', icon: <AlertCircle size={18} />, phase: 'P4-A' },
+  { id: 'route-surface', label: 'Route Surface', icon: <Globe size={18} />, phase: 'P5' },
   { id: 'guard-debugger', label: 'Guard Debugger', icon: <ShieldCheck size={18} />, phase: 'Phase 2' },
   { id: 'fixture-generator', label: 'Fixture Generator', icon: <FileCode2 size={18} />, phase: 'Phase 2' },
   { id: 'profiler', label: 'Profiler', icon: <Gauge size={18} />, phase: 'Phase 3' },

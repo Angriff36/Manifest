@@ -15,4 +15,14 @@ export * from './registry.js';
 
 // Re-export built-in projections for convenience
 export { NextJsProjection } from './nextjs/generator.js';
+export { RoutesProjection } from './routes/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
+
+// Re-export route surface types
+export type {
+  RouteEntry,
+  RouteManifest,
+  RouteParam,
+  RoutesProjectionOptions,
+  ManualRouteDeclaration,
+} from './routes/types.js';

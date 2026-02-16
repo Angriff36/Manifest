@@ -9,6 +9,7 @@ import MigrationPage from './tools/migration/MigrationPage';
 import EntityScannerPage from './tools/entity-scanner/EntityScannerPage';
 import PolicyCoveragePage from './tools/policy-coverage/PolicyCoveragePage';
 import IssueTrackerPage from './tools/issue-tracker/IssueTrackerPage';
+import RouteSurfacePage from './tools/route-surface/RouteSurfacePage';
 import { loadSavedRoot, setManifestRoot, saveRoot, pickDirectory } from './lib/api';
 
 export default function App() {
@@ -65,6 +66,7 @@ export default function App() {
       {activeTool === 'profiler' && <ProfilerPage />}
       {activeTool === 'ir-verifier' && <IRVerifierPage />}
       {activeTool === 'migration' && <MigrationPage />}
+      {activeTool === 'route-surface' && <RouteSurfacePage />}
     </Layout>
   );
 }

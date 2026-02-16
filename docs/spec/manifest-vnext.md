@@ -330,6 +330,114 @@ These patterns are advisory conventions. The normative workflow requirements (ev
 
 ---
 
+## Canonical Routes (Normative)
+
+The route surface is a **projection artifact**. Routes are not an application concern; they are a projection concern. The route surface MUST be derived strictly from IR + projection config, deterministic, represented as an artifact, and enforceable via CLI.
+
+### Route Surface Invariant
+
+A conforming Manifest projection MUST produce a **route manifest** — a canonical, deterministic description of all transport endpoints derived from the compiled IR.
+
+**Route manifest requirements**:
+
+- The route manifest MUST be derived exclusively from IR entities, IR commands, projection configuration, and the manual route registry. No filesystem scanning, no framework inference, no implicit discovery.
+- Given identical IR + identical projection config + identical manual routes, the route manifest MUST be byte-identical across invocations (determinism).
+- The route manifest MUST include: path template, HTTP method, parameter names and types, source (entity read, command, or manual), and auth/tenant expectations.
+
+### Client Route Usage
+
+- Clients MUST use generated route helpers (typed path builders) for all transport paths. Hardcoded transport paths are **non-conformant**.
+- A conforming toolchain MUST provide a `routes.ts` artifact containing typed path builder functions with proper parameter encoding (`encodeURIComponent`).
+- A conforming toolchain SHOULD provide a `manifest lint-routes` enforcement command that fails CI on hardcoded route strings in configured client directories.
+
+### Read vs Write Semantics
+
+Per `docs/patterns/external-projections.md`:
+
+- **Reads** (GET endpoints): MAY bypass runtime entirely. Projections may use direct storage queries or adapter-level abstractions for read paths.
+- **Writes** (POST/PUT/DELETE endpoints): MUST execute commands via `RuntimeEngine.runCommand()`. Bypassing runtime command execution bypasses guard/policy/constraint semantics.
+
+This distinction is reflected in the route manifest: each route entry declares whether it is a read (direct) or write (runtime) path.
+
+### Manual Route Registry
+
+Applications MAY declare manual routes that are not derived from IR entities or commands. Manual routes MUST be registered in the project configuration to be included in the route surface.
+
+**Manual route requirements**:
+
+- Each manual route MUST declare: path template, HTTP method, parameter names, and source identifier.
+- Manual routes MAY declare auth and tenant expectations.
+- Manual routes MUST be merged into the route manifest and typed path builders alongside IR-derived routes.
+- Unregistered manual routes are invisible to the route surface. If a route is not in the manifest, it does not exist from the platform's perspective.
+
+### Route Manifest Shape
+
+The route manifest (`routes.manifest.json`) MUST conform to this structure:
+
+```json
+{
+  "$schema": "https://manifest.lang/spec/routes-v1.schema.json",
+  "version": "1.0",
+  "generatedAt": "<ISO timestamp>",
+  "basePath": "/api",
+  "routes": [
+    {
+      "id": "<stable identifier>",
+      "path": "/api/recipe/list",
+      "method": "GET",
+      "params": [],
+      "source": { "kind": "entity-read", "entity": "Recipe" },
+      "auth": true,
+      "tenant": true
+    },
+    {
+      "id": "<stable identifier>",
+      "path": "/api/recipe/:id",
+      "method": "GET",
+      "params": [{ "name": "id", "type": "string", "location": "path" }],
+      "source": { "kind": "entity-read", "entity": "Recipe" },
+      "auth": true,
+      "tenant": true
+    },
+    {
+      "id": "<stable identifier>",
+      "path": "/api/recipe/create",
+      "method": "POST",
+      "params": [{ "name": "name", "type": "string", "location": "body" }],
+      "source": { "kind": "command", "entity": "Recipe", "command": "create" },
+      "auth": true,
+      "tenant": true
+    },
+    {
+      "id": "<stable identifier>",
+      "path": "/api/custom/health",
+      "method": "GET",
+      "params": [],
+      "source": { "kind": "manual", "id": "health-check" },
+      "auth": false,
+      "tenant": false
+    }
+  ]
+}
+```
+
+### Enforcement
+
+- A conforming toolchain MUST provide `manifest lint-routes` (or equivalent) that scans configured directories for hardcoded route strings.
+- The linter MUST support configuration: target directories, route prefixes to match, allowlisted paths, and file exclusion patterns.
+- The linter MUST exit non-zero when violations are found.
+- The linter SHOULD suggest the corresponding generated route helper for each violation.
+
+### Conformance
+
+| Fixture (proposed name) | Feature | Status |
+|-------------------------|---------|--------|
+| Route manifest determinism | Identical IR produces identical route manifest | **Required** |
+| Manual route merge | Manual routes appear in manifest alongside IR-derived routes | **Required** |
+| Linter correctness | Linter detects hardcoded routes and passes clean code | **Required** |
+
+---
+
 ## Cross-References
 
 | Topic | Authoritative Document |
@@ -341,3 +449,4 @@ These patterns are advisory conventions. The normative workflow requirements (ev
 | Conformance rules | `docs/spec/conformance.md` |
 | Documentation authority | `docs/DOCUMENTATION_GOVERNANCE.md` |
 | Compliance tracking | `docs/COMPLIANCE_MATRIX.md` |
+| Route surface boundary | `docs/patterns/external-projections.md` |
