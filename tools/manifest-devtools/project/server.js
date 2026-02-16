@@ -149,6 +149,68 @@ app.post('/api/compile', async (req, res) => {
   }
 });
 
+// Generate canonical route surface from all compiled IR
+app.post('/api/routes', async (req, res) => {
+  try {
+    const pattern = path.join(MANIFEST_ROOT, '**/*.manifest').replace(/\\/g, '/');
+    const files = await glob(pattern, { windowsPathsNoEscape: true });
+
+    const compilerPath = path.resolve(__dirname, '../../../dist/manifest/ir-compiler.js');
+    const { compileToIR } = await import(pathToFileURL(compilerPath).href);
+
+    const projectionPath = path.resolve(__dirname, '../../../dist/manifest/projections/routes/generator.js');
+    const { RoutesProjection } = await import(pathToFileURL(projectionPath).href);
+
+    const projection = new RoutesProjection();
+    const basePath = req.body?.basePath || '/api';
+    const allRoutes = [];
+    const allDiagnostics = [];
+    let filesCompiled = 0;
+
+    for (const filePath of files) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const result = await compileToIR(content);
+
+      if (!result.ir) {
+        allDiagnostics.push({
+          file: path.relative(MANIFEST_ROOT, filePath),
+          severity: 'error',
+          message: `Compilation failed`,
+        });
+        continue;
+      }
+
+      filesCompiled++;
+
+      const routeResult = projection.generate(result.ir, {
+        surface: 'routes.manifest',
+        options: { basePath, generatedAt: new Date().toISOString() },
+      });
+
+      if (routeResult.artifacts.length > 0) {
+        const manifest = JSON.parse(routeResult.artifacts[0].code);
+        allRoutes.push(...manifest.routes);
+      }
+
+      for (const d of routeResult.diagnostics) {
+        allDiagnostics.push({ file: path.relative(MANIFEST_ROOT, filePath), ...d });
+      }
+    }
+
+    res.json({
+      $schema: 'https://manifest.lang/spec/routes-v1.schema.json',
+      version: '1.0',
+      generatedAt: new Date().toISOString(),
+      basePath,
+      filesCompiled,
+      routes: allRoutes,
+      diagnostics: allDiagnostics,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Compile all manifest files and return combined IR
 app.post('/api/compile-all', async (req, res) => {
   try {
@@ -217,6 +279,7 @@ app.listen(PORT, () => {
 ║    GET  /api/files/:name      - Read a specific file     ║
 ║    POST /api/compile          - Compile file → IR        ║
 ║    POST /api/compile-all      - Compile all → IR         ║
+║    POST /api/routes           - Route surface manifest   ║
 ║    POST /api/scan             - Scan a single file       ║
 ║    POST /api/scan-all         - Scan all files           ║
 ╚══════════════════════════════════════════════════════════╝

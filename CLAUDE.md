@@ -157,6 +157,10 @@ Agents must treat these with explicit justification and verification:
 4. **Runtime behavior**: Command execution order is fixed (policies → guards → actions → emits → return)
 5. **Export templates**: Must stay aligned with real implementation
 
+## Platform Rules (Windows)
+
+- **NEVER use `2>&1`** in bash commands — on Windows it creates spurious `nul` files. Omit stderr redirection entirely; tool output captures both streams automatically.
+
 ## File Integrity Rules
 
 - Preserve UTF-8 **without BOM** for JSON fixtures

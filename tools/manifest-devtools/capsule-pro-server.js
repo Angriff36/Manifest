@@ -86,6 +86,69 @@ function runScan(targetPath) {
   return JSON.parse(output);
 }
 
+// Generate canonical route surface from all compiled IR
+app.post('/api/routes', async (req, res) => {
+  try {
+    const pattern = path.join(MANIFEST_SOURCE_DIR, '**/*.manifest');
+    const files = await glob(pattern);
+
+    const { pathToFileURL } = await import('url');
+    const compilerPath = path.resolve(MANIFEST_REPO_ROOT, 'dist/manifest/ir-compiler.js');
+    const { compileToIR } = await import(pathToFileURL(compilerPath).href);
+
+    const projectionPath = path.resolve(MANIFEST_REPO_ROOT, 'dist/manifest/projections/routes/generator.js');
+    const { RoutesProjection } = await import(pathToFileURL(projectionPath).href);
+
+    const projection = new RoutesProjection();
+    const basePath = req.body?.basePath || '/api';
+    const allRoutes = [];
+    const allDiagnostics = [];
+    let filesCompiled = 0;
+
+    for (const filePath of files) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const result = await compileToIR(content);
+
+      if (!result.ir) {
+        allDiagnostics.push({
+          file: path.relative(MANIFEST_SOURCE_DIR, filePath),
+          severity: 'error',
+          message: 'Compilation failed',
+        });
+        continue;
+      }
+
+      filesCompiled++;
+
+      const routeResult = projection.generate(result.ir, {
+        surface: 'routes.manifest',
+        options: { basePath, generatedAt: new Date().toISOString() },
+      });
+
+      if (routeResult.artifacts.length > 0) {
+        const manifest = JSON.parse(routeResult.artifacts[0].code);
+        allRoutes.push(...manifest.routes);
+      }
+
+      for (const d of routeResult.diagnostics) {
+        allDiagnostics.push({ file: path.relative(MANIFEST_SOURCE_DIR, filePath), ...d });
+      }
+    }
+
+    res.json({
+      $schema: 'https://manifest.lang/spec/routes-v1.schema.json',
+      version: '1.0',
+      generatedAt: new Date().toISOString(),
+      basePath,
+      filesCompiled,
+      routes: allRoutes,
+      diagnostics: allDiagnostics,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Scan a single file
 app.post('/api/scan', async (req, res) => {
   try {

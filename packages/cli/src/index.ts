@@ -16,6 +16,7 @@ import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
+import { routesCommand } from './commands/routes.js';
 import { getConfig } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize } from 'node:path';
@@ -183,6 +184,24 @@ program
   .option('--strict', 'Fail on warnings', false)
   .action(async (source, options = {}) => {
     await scanCommand(source, options);
+  });
+
+/**
+ * manifest routes
+ *
+ * Compile all .manifest files and output the canonical route manifest.
+ * Agent-accessible equivalent of the DevTools Route Surface tab.
+ *
+ * See docs/spec/manifest-vnext.md § "Canonical Routes (Normative)".
+ */
+program
+  .command('routes')
+  .description('Generate canonical route manifest from compiled IR')
+  .option('-s, --src <pattern>', 'Source glob pattern for .manifest files')
+  .option('-f, --format <format>', 'Output format (json, summary)', 'json')
+  .option('-b, --base-path <path>', 'Base path prefix for routes', '/api')
+  .action(async (options = {}) => {
+    await routesCommand(options);
   });
 
 /**
