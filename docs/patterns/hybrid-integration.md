@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
 ```typescript
 // app/api/recipes/[id]/publish/route.ts
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { Queue } from 'bullmq';
 
 const notificationQueue = new Queue('notifications');
@@ -319,7 +319,7 @@ Use projections for mutations, add event handlers for side effects.
 
 ```typescript
 // app/api/invoices/route.ts (projection-based)
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { setupEventHandlers } from '@/lib/event-handlers';
 
 export async function POST(request: Request) {
@@ -342,7 +342,7 @@ export async function POST(request: Request) {
 
 ```typescript
 // lib/event-handlers.ts
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { emailQueue, analyticsQueue, searchIndex } from './queues';
 
 export function setupEventHandlers(runtime: RuntimeEngine) {
@@ -382,7 +382,7 @@ Create runtime once per request, use across multiple operations.
 
 ```typescript
 // middleware/runtime.ts
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { NextRequest } from 'next/server';
 
 export async function withRuntime(
@@ -478,7 +478,7 @@ export async function POST(request: Request) {
 ```typescript
 // workers/report-worker.ts
 import { Worker } from 'bullmq';
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const worker = new Worker('reports', async (job) => {
   const { userId, tenantId, reportType, dateRange } = job.data;
@@ -538,7 +538,7 @@ type RecipeResult {
 ### Resolvers
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 export const resolvers = {
   Mutation: {

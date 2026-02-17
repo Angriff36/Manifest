@@ -15,7 +15,7 @@ Complete API reference for the Manifest runtime and compiler.
 Compiles Manifest source code to IR.
 
 ```typescript
-import { compileToIR } from '@manifest/runtime/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 const { ir, diagnostics } = await compileToIR(`
   entity Todo {
@@ -310,7 +310,7 @@ interface Store<T extends EntityInstance = EntityInstance> {
 In-memory store implementation (default).
 
 ```typescript
-import { MemoryStore } from '@manifest/runtime';
+import { MemoryStore } from '@angriff36/manifest';
 
 const store = new MemoryStore<Todo>();
 ```
@@ -320,7 +320,7 @@ const store = new MemoryStore<Todo>();
 Browser localStorage store.
 
 ```typescript
-import { LocalStorageStore } from '@manifest/runtime';
+import { LocalStorageStore } from '@angriff36/manifest';
 
 const store = new LocalStorageStore<Todo>('todos');
 ```
@@ -330,7 +330,7 @@ const store = new LocalStorageStore<Todo>('todos');
 PostgreSQL store (Node.js only).
 
 ```typescript
-import { PostgresStore } from '@manifest/runtime/node';
+import { PostgresStore } from '@angriff36/manifest/node';
 
 const store = new PostgresStore<Todo>({
   connectionString: process.env.DATABASE_URL,
@@ -343,7 +343,7 @@ const store = new PostgresStore<Todo>({
 Supabase store (Node.js only).
 
 ```typescript
-import { SupabaseStore } from '@manifest/runtime/node';
+import { SupabaseStore } from '@angriff36/manifest/node';
 
 const store = new SupabaseStore<Todo>({
   url: process.env.SUPABASE_URL,
@@ -381,7 +381,7 @@ interface ProjectionTarget {
 Register a projection target.
 
 ```typescript
-import { registerProjection } from '@manifest/runtime';
+import { registerProjection } from '@angriff36/manifest';
 
 registerProjection(new NextJsProjection());
 ```
@@ -443,7 +443,7 @@ See: `docs/spec/builtins.md` for complete list.
 Current Manifest compiler version.
 
 ```typescript
-import { COMPILER_VERSION } from '@manifest/runtime';
+import { COMPILER_VERSION } from '@angriff36/manifest';
 console.log(COMPILER_VERSION); // "0.3.8"
 ```
 
@@ -452,6 +452,6 @@ console.log(COMPILER_VERSION); // "0.3.8"
 IR schema version.
 
 ```typescript
-import { SCHEMA_VERSION } from '@manifest/runtime';
+import { SCHEMA_VERSION } from '@angriff36/manifest';
 console.log(SCHEMA_VERSION); // "1.0"
 ```

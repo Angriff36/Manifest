@@ -161,7 +161,7 @@ Manifest is NOT Prisma, TypeORM, or Drizzle.
 **You can use Manifest WITH any ORM:**
 
 ```typescript
-import { RuntimeEngine, Store } from '@manifest/runtime';
+import { RuntimeEngine, Store } from '@angriff36/manifest';
 import { PrismaClient } from '@prisma/client';
 
 class PrismaRecipeStore implements Store<Recipe> {

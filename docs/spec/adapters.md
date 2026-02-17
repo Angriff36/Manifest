@@ -52,7 +52,7 @@ interface Store<T extends EntityInstance = EntityInstance> {
 ### Using Custom Stores
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { MyCustomStore } from './my-custom-store';
 
 const runtime = new RuntimeEngine(ir, {

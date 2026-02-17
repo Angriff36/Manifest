@@ -12,7 +12,7 @@ Complete reference for all Manifest CLI commands.
 
 ```bash
 # Local project
-npm install @manifest/runtime
+npm install @angriff36/manifest
 
 # Global CLI
 npm install -g @manifest/cli
@@ -261,7 +261,7 @@ npx create-next-app@latest my-app
 cd my-app
 
 # 2. Install Manifest
-npm install @manifest/runtime
+npm install @angriff36/manifest
 
 # 3. Configure
 npx manifest init

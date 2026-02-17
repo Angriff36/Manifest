@@ -16,8 +16,8 @@ Normative semantics are defined in `docs/spec/semantics.md`. Workflow metadata i
 Before the patterns, here's how to configure the runtime features used throughout:
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
-import type { EvaluationLimits, IdempotencyStore } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
+import type { EvaluationLimits, IdempotencyStore } from '@angriff36/manifest';
 
 const engine = new RuntimeEngine(ir, {
   // Workflow metadata: callers supply correlationId/causationId per command
@@ -300,8 +300,8 @@ entity PrepTask {
 Kitchen staff might tap "claim" twice on a laggy tablet. Idempotency prevents double-claims:
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
-import type { IdempotencyStore, CommandResult } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
+import type { IdempotencyStore, CommandResult } from '@angriff36/manifest';
 
 // In-memory idempotency store (use Redis in production)
 class MemoryIdempotencyStore implements IdempotencyStore {
@@ -538,7 +538,7 @@ for (const event of allEvents) {
 After an event, verify that the recorded commands produce identical results. Uses `deterministicMode` to prevent side effects and `emitIndex` to verify determinism.
 
 ```typescript
-import { RuntimeEngine, ManifestEffectBoundaryError } from '@manifest/runtime';
+import { RuntimeEngine, ManifestEffectBoundaryError } from '@angriff36/manifest';
 
 interface RecordedCommand {
   commandName: string;
@@ -758,7 +758,7 @@ export async function reserveWithManagerOverride(
 When evaluating complex computed properties or deeply nested constraints (e.g., a recipe with many ingredients each with allergen checks), set limits to prevent runaway evaluation:
 
 ```typescript
-import { RuntimeEngine, EvaluationBudgetExceededError } from '@manifest/runtime';
+import { RuntimeEngine, EvaluationBudgetExceededError } from '@angriff36/manifest';
 
 // Tight limits for user-facing operations (fast failure on bad data)
 const kitchenEngine = new RuntimeEngine(ir, {

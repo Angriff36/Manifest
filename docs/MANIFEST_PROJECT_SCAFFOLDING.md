@@ -48,7 +48,7 @@ In your new project directory:
 
 ```bash
 # 3. Link Manifest into your project
-npm link @manifest/runtime
+npm link @angriff36/manifest
 ```
 
 See: [Using Manifest in a New Project](./tools/USING_MANIFEST_IN_NEW_PROJECT.md) for complete linking instructions.
@@ -65,7 +65,7 @@ npx create-next-app@latest my-app --typescript --tailwind --app
 cd my-app
 
 # Link Manifest (NOT npm install)
-npm link @manifest/runtime
+npm link @angriff36/manifest
 ```
 
 **Note**: Skip `npx manifest init` for now - it requires CLI setup. Use manual compilation instead.
@@ -392,8 +392,8 @@ my-app/
 If you prefer more control, generate routes manually:
 
 ```typescript
-import { compileToIR } from '@manifest/runtime/ir-compiler';
-import { NextJsProjection } from '@manifest/runtime/projections/nextjs';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { NextJsProjection } from '@angriff36/manifest/projections/nextjs';
 import fs from 'fs/promises';
 import path from 'path';
 

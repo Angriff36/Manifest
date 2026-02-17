@@ -32,7 +32,7 @@ Pass `tenantId` via runtime context.
 ### Basic Example
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, {
   userId: 'user-123',
@@ -109,7 +109,7 @@ model UserTenantMapping {
 ### Custom Tenant-Scoped Store
 
 ```typescript
-import { Store } from '@manifest/runtime';
+import { Store } from '@angriff36/manifest';
 import { PrismaClient } from '@prisma/client';
 
 export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
@@ -194,7 +194,7 @@ export class TenantScopedPrismaStore<T extends { id: string; tenantId: string }>
 ### Wire to Runtime
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, { userId, tenantId }, {
   storeProvider: (entityName) => {
@@ -336,7 +336,7 @@ Ensure generated routes enforce tenant boundaries.
 ```typescript
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 export async function GET(request: Request) {
   const { userId } = await auth();

@@ -11,7 +11,7 @@ Get up and running with Manifest in 5 minutes.
 ## Installation
 
 ```bash
-npm install @manifest/runtime
+npm install @angriff36/manifest
 ```
 
 Or use the standalone CLI:
@@ -59,7 +59,7 @@ entity Todo {
 ## Compile to IR
 
 ```typescript
-import { compileToIR } from '@manifest/runtime/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 const source = `
   entity Todo {
@@ -84,7 +84,7 @@ console.log('IR:', ir);
 ## Execute Commands
 
 ```typescript
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, {
   userId: 'user-123',
@@ -131,7 +131,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { database } from "@/lib/database";
 import { manifestSuccessResponse, manifestErrorResponse } from "@/lib/manifest-response";
-import { RuntimeEngine } from "@manifest/runtime";
+import { RuntimeEngine } from "@angriff36/manifest";
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
@@ -183,7 +183,7 @@ runtime.on('TodoCompleted', (event) => {
 Integrate with existing databases via the `Store` interface:
 
 ```typescript
-import { RuntimeEngine, Store } from '@manifest/runtime';
+import { RuntimeEngine, Store } from '@angriff36/manifest';
 
 class PrismaTodoStore implements Store<Todo> {
   async getAll() {

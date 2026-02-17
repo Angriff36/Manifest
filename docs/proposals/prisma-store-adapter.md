@@ -93,7 +93,7 @@ The entity declares the semantic intent (`postgres`), and the config provides th
 ```typescript
 // src/lib/stores/prisma-store.ts
 
-import type { Store, EntityInstance } from '@manifest/runtime';
+import type { Store, EntityInstance } from '@angriff36/manifest';
 
 interface PrismaStoreConfig {
   propertyMapping?: Record<string, string>; // manifest -> prisma

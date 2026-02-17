@@ -43,7 +43,7 @@ manifest compile
 #### Option A: Using `compileToIR` (Recommended)
 
 ```typescript
-import { compileToIR } from '@manifest/runtime/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 const source = `
   entity Recipe {
@@ -65,7 +65,7 @@ console.log('IR:', ir);
 #### Option B: Using `ManifestCompiler` class
 
 ```typescript
-import { ManifestCompiler } from '@manifest/runtime/compiler';
+import { ManifestCompiler } from '@angriff36/manifest/compiler';
 
 const compiler = new ManifestCompiler();
 const source = `entity Recipe { property id: string }`;
@@ -86,9 +86,9 @@ console.log('IR:', ir);
 
 | Import | What You Get |
 |--------|--------------|
-| `@manifest/runtime/ir-compiler` | `compileToIR()` function |
-| `@manifest/runtime/compiler` | `ManifestCompiler` class |
-| `@manifest/runtime` | `RuntimeEngine` class |
+| `@angriff36/manifest/ir-compiler` | `compileToIR()` function |
+| `@angriff36/manifest/compiler` | `ManifestCompiler` class |
+| `@angriff36/manifest` | `RuntimeEngine` class |
 
 **Note**: Context7 documentation may reference different paths. The paths above are **authoritative** as defined in `package.json` exports.
 
@@ -139,18 +139,18 @@ interface Diagnostic {
 
 ## Troubleshooting
 
-### "Cannot find module '@manifest/runtime/ir-compiler'"
+### "Cannot find module '@angriff36/manifest/ir-compiler'"
 
 **Cause**: Manifest not linked or not built.
 
 **Fix**:
 1. Run `npm run build:lib` in Manifest directory
 2. Run `npm link` in Manifest directory
-3. Run `npm link @manifest/runtime` in your project
+3. Run `npm link @angriff36/manifest` in your project
 
-### "Cannot find package '@manifest/runtime' from CLI"
+### "Cannot find package '@angriff36/manifest' from CLI"
 
-**Cause**: The CLI (in `packages/cli/dist/index.js`) requires `@manifest/runtime` but the symlink is missing.
+**Cause**: The CLI (in `packages/cli/dist/index.js`) requires `@angriff36/manifest` but the symlink is missing.
 
 **Fix**: Same as above. The CLI expects the runtime to be linked.
 

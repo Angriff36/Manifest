@@ -44,7 +44,7 @@ This creates the required distribution files:
 2. **Link into your project**:
    ```bash
    cd /path/to/your-project
-   npm link @manifest/runtime
+   npm link @angriff36/manifest
    ```
 
 ### Using pnpm
@@ -60,7 +60,7 @@ This creates the required distribution files:
 2. **Link into your project**:
    ```bash
    cd /path/to/your-project
-   pnpm link @manifest/runtime
+   pnpm link @angriff36/manifest
    ```
 
 ---
@@ -69,7 +69,7 @@ This creates the required distribution files:
 
 ```bash
 cd /path/to/your-project
-ls -la node_modules/@manifest/runtime
+ls -la node_modules/@angriff36/manifest
 # Should show symlink to manifest directory
 ```
 
@@ -77,27 +77,27 @@ ls -la node_modules/@manifest/runtime
 
 ## Troubleshooting
 
-### "Cannot find module '@manifest/runtime'"
+### "Cannot find module '@angriff36/manifest'"
 
 **Cause**: The `dist/` folder doesn't exist or wasn't built before linking.
 
 **Fix**: Run `npm run build:lib` in the Manifest directory first.
 
-### "Cannot find package '@manifest/runtime' from CLI"
+### "Cannot find package '@angriff36/manifest' from CLI"
 
-**Cause**: The CLI tries to import `@manifest/runtime` but the symlink is broken or missing.
+**Cause**: The CLI tries to import `@angriff36/manifest` but the symlink is broken or missing.
 
 **Fix**: Ensure you:
 1. Ran `npm run build:lib` in Manifest
 2. Ran `npm link` in Manifest directory
-3. Ran `npm link @manifest/runtime` in your project
+3. Ran `npm link @angriff36/manifest` in your project
 
 ### pnpm: Issues with workspace linking
 
 If using pnpm workspaces, you may need to disable workspace detection for external linking:
 
 ```bash
-pnpm link @manifest/runtime --ignore-workspace
+pnpm link @angriff36/manifest --ignore-workspace
 ```
 
 ---
@@ -108,10 +108,10 @@ Manifest uses **ESM (ES Modules)** exclusively. All imports must use `import` st
 
 ```typescript
 // ✅ Correct
-import { compileToIR } from '@manifest/runtime/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 // ❌ Incorrect (CommonJS)
-const { compileToIR } = require('@manifest/runtime/ir-compiler');
+const { compileToIR } = require('@angriff36/manifest/ir-compiler');
 ```
 
 Per [Node.js ESM documentation](https://nodejs.org/api/esm.html), import statements are only permitted in ES modules. Your project must either:
@@ -124,11 +124,11 @@ Per [Node.js ESM documentation](https://nodejs.org/api/esm.html), import stateme
 
 | Feature | Import Path | Export |
 |---------|-------------|--------|
-| IR Compiler | `@manifest/runtime/ir-compiler` | `compileToIR()` function |
-| Compiler | `@manifest/runtime/compiler` | `ManifestCompiler` class |
-| Runtime Engine | `@manifest/runtime` | `RuntimeEngine` class |
-| Next.js Projection | `@manifest/runtime/projections/nextjs` | `NextJsProjection` class |
-| TypeScript Types | `@manifest/runtime/ir` | IR type definitions |
+| IR Compiler | `@angriff36/manifest/ir-compiler` | `compileToIR()` function |
+| Compiler | `@angriff36/manifest/compiler` | `ManifestCompiler` class |
+| Runtime Engine | `@angriff36/manifest` | `RuntimeEngine` class |
+| Next.js Projection | `@angriff36/manifest/projections/nextjs` | `NextJsProjection` class |
+| TypeScript Types | `@angriff36/manifest/ir` | IR type definitions |
 
 ---
 

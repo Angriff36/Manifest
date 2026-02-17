@@ -22,7 +22,7 @@ interface Store<T extends EntityInstance = EntityInstance> {
 ## Wiring with `storeProvider`
 
 ```ts
-import { RuntimeEngine } from '@manifest/runtime';
+import { RuntimeEngine } from '@angriff36/manifest';
 import { MyStore } from './my-store';
 
 const runtime = new RuntimeEngine(ir, {

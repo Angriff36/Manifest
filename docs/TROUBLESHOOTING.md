@@ -20,7 +20,7 @@ Solutions to common problems when working with Manifest.
 - Use the lexer output to see how tokens are being parsed
 
 ```typescript
-import { lex } from '@manifest/runtime';
+import { lex } from '@angriff36/manifest';
 const tokens = lex(source);
 console.log(tokens);
 ```
@@ -227,7 +227,7 @@ npm run conformance:regen
 Cache compiled IR to avoid recompilation:
 
 ```typescript
-import { compileToIR } from '@manifest/runtime/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 import fs from 'fs/promises';
 
 // Check for cached IR

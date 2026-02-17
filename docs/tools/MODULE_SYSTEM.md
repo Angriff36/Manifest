@@ -14,11 +14,11 @@ Manifest is **ESM-only**. All imports must use `import` statements:
 
 ```typescript
 // ✅ Correct
-import { compileToIR } from '@manifest/runtime/ir-compiler';
-import { RuntimeEngine } from '@manifest/runtime';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { RuntimeEngine } from '@angriff36/manifest';
 
 // ❌ Incorrect - will fail
-const { compileToIR } = require('@manifest/runtime/ir-compiler');
+const { compileToIR } = require('@angriff36/manifest/ir-compiler');
 ```
 
 Per [Node.js ESM documentation](https://nodejs.org/api/esm.html):
@@ -72,7 +72,7 @@ const lodash = require('lodash');
 
 ```javascript
 // ❌ This will fail
-const { compileToIR } = require('@manifest/runtime/ir-compiler');
+const { compileToIR } = require('@angriff36/manifest/ir-compiler');
 
 // Error: Unknown keyword 'import' or SyntaxError
 ```
@@ -87,7 +87,7 @@ For conditional imports, use dynamic `import()`:
 
 ```typescript
 // ✅ Works in both ESM and CommonJS
-const { compileToIR } = await import('@manifest/runtime/ir-compiler');
+const { compileToIR } = await import('@angriff36/manifest/ir-compiler');
 ```
 
 ---
