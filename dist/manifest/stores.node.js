@@ -11,6 +11,14 @@ export class PostgresStore {
     tableName;
     generateId;
     initialized = false;
+    /**
+     * Quotes a PostgreSQL identifier to prevent SQL injection.
+     * Wraps the identifier in double quotes and escapes any existing quotes.
+     */
+    quoteIdentifier(identifier) {
+        // Quote the identifier and escape any embedded quotes
+        return `"${identifier.replace(/"/g, '""')}"`;
+    }
     constructor(config, generateId) {
         this.generateId = generateId || (() => crypto.randomUUID());
         this.tableName = config.tableName || 'entities';
@@ -30,14 +38,15 @@ export class PostgresStore {
             return;
         const client = await this.pool.connect();
         try {
+            const quotedTable = this.quoteIdentifier(this.tableName);
             await client.query(`
-        CREATE TABLE IF NOT EXISTS ${this.tableName} (
+        CREATE TABLE IF NOT EXISTS ${quotedTable} (
           id TEXT PRIMARY KEY,
           data JSONB NOT NULL,
           created_at TIMESTAMP DEFAULT NOW(),
           updated_at TIMESTAMP DEFAULT NOW()
         );
-        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${this.tableName} USING gin(data);
+        CREATE INDEX IF NOT EXISTS idx_${this.tableName}_data_gin ON ${quotedTable} USING gin(data);
       `);
             this.initialized = true;
         }
@@ -57,13 +66,15 @@ export class PostgresStore {
     }
     async getAll() {
         return this.withConnection(async (client) => {
-            const result = await client.query(`SELECT data FROM ${this.tableName} ORDER BY created_at`);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            const result = await client.query(`SELECT data FROM ${quotedTable} ORDER BY created_at`);
             return result.rows.map((row) => row.data);
         });
     }
     async getById(id) {
         return this.withConnection(async (client) => {
-            const result = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            const result = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
             return result.rows.length > 0 ? result.rows[0].data : undefined;
         });
     }
@@ -71,30 +82,34 @@ export class PostgresStore {
         const id = data.id || this.generateId();
         const item = { ...data, id };
         return this.withConnection(async (client) => {
-            await client.query(`INSERT INTO ${this.tableName} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, JSON.stringify(item)]);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            await client.query(`INSERT INTO ${quotedTable} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`, [id, JSON.stringify(item)]);
             return item;
         });
     }
     async update(id, data) {
         return this.withConnection(async (client) => {
-            const selectResult = await client.query(`SELECT data FROM ${this.tableName} WHERE id = $1`, [id]);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            const selectResult = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
             if (selectResult.rows.length === 0)
                 return undefined;
             const existing = selectResult.rows[0].data;
             const updated = { ...existing, ...data, id };
-            await client.query(`UPDATE ${this.tableName} SET data = $1, updated_at = NOW() WHERE id = $2`, [JSON.stringify(updated), id]);
+            await client.query(`UPDATE ${quotedTable} SET data = $1, updated_at = NOW() WHERE id = $2`, [JSON.stringify(updated), id]);
             return updated;
         });
     }
     async delete(id) {
         return this.withConnection(async (client) => {
-            const result = await client.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [id]);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            const result = await client.query(`DELETE FROM ${quotedTable} WHERE id = $1`, [id]);
             return (result.rowCount ?? 0) > 0;
         });
     }
     async clear() {
         return this.withConnection(async (client) => {
-            await client.query(`DELETE FROM ${this.tableName}`);
+            const quotedTable = this.quoteIdentifier(this.tableName);
+            await client.query(`DELETE FROM ${quotedTable}`);
         });
     }
     async close() {

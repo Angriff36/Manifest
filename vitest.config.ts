@@ -12,12 +12,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@manifest/runtime/ir-compiler': path.resolve(__dirname, './src/manifest/ir-compiler.ts'),
-      '@manifest/runtime/compiler': path.resolve(__dirname, './src/manifest/compiler.ts'),
-      '@manifest/runtime/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
-      '@manifest/runtime/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
-      '@manifest/runtime/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
-      '@manifest/runtime': path.resolve(__dirname, './src/manifest/runtime-engine.ts'),
+      '@angriff36/manifest/ir-compiler': path.resolve(__dirname, './src/manifest/ir-compiler.ts'),
+      '@angriff36/manifest/compiler': path.resolve(__dirname, './src/manifest/compiler.ts'),
+      '@angriff36/manifest/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
+      '@angriff36/manifest/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
+      '@angriff36/manifest/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
+      '@angriff36/manifest': path.resolve(__dirname, './src/manifest/runtime-engine.ts'),
     },
   },
 });

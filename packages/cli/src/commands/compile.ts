@@ -12,7 +12,7 @@ import ora, { Ora } from 'ora';
 
 // Import from the main Manifest package
 async function loadCompiler() {
-  const module = await import('@manifest/runtime/ir-compiler');
+  const module = await import('@angriff36/manifest/ir-compiler');
   return module.compileToIR;
 }
 

@@ -52,8 +52,8 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
     spinner.text = `Compiling ${files.length} manifest file(s)...`;
 
     // 2. Dynamically import the compiler and projection
-    const { compileToIR } = await import('@manifest/runtime/ir-compiler');
-    const { RoutesProjection } = await import('@manifest/runtime/projections/routes');
+    const { compileToIR } = await import('@angriff36/manifest/ir-compiler');
+    const { RoutesProjection } = await import('@angriff36/manifest/projections/routes');
 
     const projection = new RoutesProjection();
 

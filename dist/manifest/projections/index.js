@@ -13,5 +13,6 @@ export * from './interface.js';
 export * from './registry.js';
 // Re-export built-in projections for convenience
 export { NextJsProjection } from './nextjs/generator.js';
+export { RoutesProjection } from './routes/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 //# sourceMappingURL=index.js.map

@@ -30,6 +30,11 @@ export declare class PostgresStore<T extends EntityInstance> implements Store<T>
     private tableName;
     private generateId;
     private initialized;
+    /**
+     * Quotes a PostgreSQL identifier to prevent SQL injection.
+     * Wraps the identifier in double quotes and escapes any existing quotes.
+     */
+    private quoteIdentifier;
     constructor(config: PostgresConfig, generateId?: () => string);
     private ensureInitialized;
     private withConnection;

@@ -1,7 +1,8 @@
 {
-  "name": "@manifest/runtime",
+  "name": "@angriff36/manifest",
   "version": "0.3.21",
   "type": "module",
+  "private": false,
   "main": "./dist/manifest/runtime-engine.js",
   "types": "./dist/manifest/runtime-engine.d.ts",
   "exports": {
@@ -31,6 +32,9 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "bin": {
     "manifest": "./packages/cli/dist/index.js"
   },
@@ -41,6 +45,10 @@
     "LICENSE*",
     "package.json"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Angriff36/Manifest.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -12,5 +12,7 @@
 export * from './interface.js';
 export * from './registry.js';
 export { NextJsProjection } from './nextjs/generator.js';
+export { RoutesProjection } from './routes/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
+export type { RouteEntry, RouteManifest, RouteParam, RoutesProjectionOptions, ManualRouteDeclaration, } from './routes/types.js';
 //# sourceMappingURL=index.d.ts.map

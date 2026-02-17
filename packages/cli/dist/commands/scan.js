@@ -8,7 +8,7 @@
  * - Policy coverage: Every command has a policy
  * - Store consistency: Store targets are recognized
  * - Route context: Generated routes pass required user context
- * - (Future) Property alignment: Manifest properties match store schema
+ * - Property alignment: Manifest properties match Prisma schema (when configured)
  */
 import fs from 'fs/promises';
 import path from 'path';
@@ -18,6 +18,7 @@ import ora from 'ora';
 import { loadAllConfigs, getStoreBindingsInfo, findPrismaSchemaPath, parsePrismaSchema, getPrismaModel, propertyExistsInModel, getPrismaFieldNames } from '../utils/config.js';
 // Import compiler from the monorepo root package
 async function loadCompiler() {
+    // Resolve relative to this file: packages/cli/src/commands/ -> root dist/
     const module = await import('../../../../dist/manifest/ir-compiler.js');
     return module.compileToIR;
 }

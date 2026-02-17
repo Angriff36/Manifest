@@ -8,7 +8,7 @@
  * - Policy coverage: Every command has a policy
  * - Store consistency: Store targets are recognized
  * - Route context: Generated routes pass required user context
- * - (Future) Property alignment: Manifest properties match store schema
+ * - Property alignment: Manifest properties match Prisma schema (when configured)
  */
 interface ScanOptions {
     glob?: string;

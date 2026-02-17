@@ -12,7 +12,7 @@ import ora, { Ora } from 'ora';
 
 // Import from the main Manifest package
 async function loadDependencies() {
-  const projectionModule = await import('@manifest/runtime/projections/nextjs');
+  const projectionModule = await import('@angriff36/manifest/projections/nextjs');
   const NextJsProjection = projectionModule.NextJsProjection;
 
   // IR is just JSON, load it directly
