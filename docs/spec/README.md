@@ -1,4 +1,4 @@
-Last updated: 2026-02-12
+Last updated: 2026-02-16
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
@@ -78,7 +78,7 @@ specification are to be interpreted as described in RFC 2119.
 - `docs/spec/adapters.md` — Adapter hooks and required behavior
 - `docs/spec/conformance.md` — Conformance fixtures and test rules
 - `docs/spec/manifest-vnext.md` — vNext features: constraint outcomes,
-  overrides, workflows, concurrency
+  overrides, workflows, concurrency, canonical routes
 
 ### Migration Documentation
 

@@ -1,6 +1,6 @@
 # Manifest vNext Specification
 
-Last updated: 2026-02-12
+Last updated: 2026-02-16
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
