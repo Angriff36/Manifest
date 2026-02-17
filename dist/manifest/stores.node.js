@@ -3,8 +3,11 @@
  *
  * DO NOT import this file in browser code. It requires Node.js modules (pg).
  * For browser environments, use MemoryStore or LocalStorageStore from runtime-engine.ts.
+ *
+ * Supabase adapter is optional. '@supabase/supabase-js' is a peer dependency.
+ * It is loaded via dynamic import only when SupabaseStore is instantiated.
+ * If the package is not installed, a clear error is thrown at construction time.
  */
-import { createClient } from '@supabase/supabase-js';
 import { Pool } from 'pg';
 export class PostgresStore {
     pool;
@@ -116,22 +119,48 @@ export class PostgresStore {
         await this.pool.end();
     }
 }
+/**
+ * Supabase-backed store adapter.
+ *
+ * '@supabase/supabase-js' is an optional peer dependency. It is loaded via
+ * dynamic import at construction time. If the package is not installed, a
+ * clear error is thrown instructing the user to install it.
+ */
 export class SupabaseStore {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client;
     tableName;
     generateId;
+    ready;
     constructor(config, generateId) {
         this.generateId = generateId || (() => crypto.randomUUID());
         this.tableName = config.tableName || 'entities';
+        this.ready = this.init(config);
+    }
+    async init(config) {
+        let createClient;
+        try {
+            const mod = await import('@supabase/supabase-js');
+            createClient = mod.createClient;
+        }
+        catch {
+            throw new Error(`SupabaseStore requires '@supabase/supabase-js' to be installed.\n` +
+                `Run: npm install @supabase/supabase-js`);
+        }
         this.client = createClient(config.url, config.key);
     }
+    async ensureReady() {
+        await this.ready;
+    }
     async getAll() {
+        await this.ensureReady();
         const { data, error } = await this.client.from(this.tableName).select('data');
         if (error)
             throw new Error(`Supabase getAll failed: ${error.message}`);
         return (data ?? []).map((row) => row.data);
     }
     async getById(id) {
+        await this.ensureReady();
         const { data, error } = await this.client
             .from(this.tableName)
             .select('data')
@@ -145,6 +174,7 @@ export class SupabaseStore {
         return data?.data;
     }
     async create(data) {
+        await this.ensureReady();
         const id = data.id || this.generateId();
         const item = { ...data, id };
         const { data: result, error } = await this.client
@@ -157,6 +187,7 @@ export class SupabaseStore {
         return result?.data ?? item;
     }
     async update(id, data) {
+        await this.ensureReady();
         const { data: existing, error: fetchError } = await this.client
             .from(this.tableName)
             .select('data')
@@ -179,12 +210,14 @@ export class SupabaseStore {
         return result?.data;
     }
     async delete(id) {
+        await this.ensureReady();
         const { error } = await this.client.from(this.tableName).delete().eq('id', id);
         if (error)
             throw new Error(`Supabase delete failed: ${error.message}`);
         return true;
     }
     async clear() {
+        await this.ensureReady();
         const { error } = await this.client.from(this.tableName).delete().neq('id', null);
         if (error)
             throw new Error(`Supabase clear failed: ${error.message}`);

@@ -3,6 +3,10 @@
  *
  * DO NOT import this file in browser code. It requires Node.js modules (pg).
  * For browser environments, use MemoryStore or LocalStorageStore from runtime-engine.ts.
+ *
+ * Supabase adapter is optional. '@supabase/supabase-js' is a peer dependency.
+ * It is loaded via dynamic import only when SupabaseStore is instantiated.
+ * If the package is not installed, a clear error is thrown at construction time.
  */
 export interface EntityInstance {
     id: string;
@@ -51,11 +55,21 @@ export interface SupabaseConfig {
     key: string;
     tableName?: string;
 }
+/**
+ * Supabase-backed store adapter.
+ *
+ * '@supabase/supabase-js' is an optional peer dependency. It is loaded via
+ * dynamic import at construction time. If the package is not installed, a
+ * clear error is thrown instructing the user to install it.
+ */
 export declare class SupabaseStore<T extends EntityInstance> implements Store<T> {
     private client;
     private tableName;
     private generateId;
+    private ready;
     constructor(config: SupabaseConfig, generateId?: () => string);
+    private init;
+    private ensureReady;
     getAll(): Promise<T[]>;
     getById(id: string): Promise<T | undefined>;
     create(data: Partial<T>): Promise<T>;
