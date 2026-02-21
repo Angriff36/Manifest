@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-02-21
 
 Complete reference for all Manifest CLI commands.
 
@@ -10,12 +10,21 @@ Complete reference for all Manifest CLI commands.
 
 ## Installation
 
-```bash
-# Local project
-npm install @angriff36/manifest
+The CLI ships inside the `@angriff36/manifest` package. Install the package and use `pnpm exec manifest` — do not install a separate global CLI binary.
 
-# Global CLI
-npm install -g @manifest/cli
+```bash
+pnpm add @angriff36/manifest
+```
+
+**Always invoke via `pnpm exec` (or `npx`), never a global install:**
+
+```bash
+# Correct — version is pinned to the installed package
+pnpm exec manifest compile
+pnpm exec manifest validate
+
+# Wrong — global install version is independent and will drift
+manifest compile
 ```
 
 ---
@@ -131,49 +140,61 @@ manifest generate ir --auth nextauth -s all -o app/api
 
 ### `manifest validate`
 
-Validate Manifest source without compiling.
+Validate a compiled IR file against the IR schema (`ir-v1.schema.json`).
 
 ```bash
-manifest validate <source>
+manifest validate [ir] [options]
 ```
 
 **Arguments:**
-- `source` - Manifest file or pattern
+- `ir` - IR file or glob pattern (default: finds all `*.ir.json` in current directory)
+
+**Options:**
+- `--schema <path>` - Override schema path (default: bundled schema inside the package)
+- `--strict` - Treat warnings as errors
 
 **Examples:**
 ```bash
-# Validate single file
-manifest validate Recipe.manifest
+# Validate a specific IR file (schema resolved automatically)
+pnpm exec manifest validate ir/Recipe.ir.json
 
-# Validate all files
-manifest validate "manifest/**/*.manifest"
+# Validate all IR files
+pnpm exec manifest validate
+
+# Strict mode
+pnpm exec manifest validate ir/Recipe.ir.json --strict
 ```
 
 **Exit codes:**
 - `0` - Valid
 - `1` - Errors found
 
+**Note:** The schema is bundled inside the package. You do not need a local copy of `ir-v1.schema.json` or a `--schema` flag. If you see `Schema not found`, you are running a stale global CLI binary — use `pnpm exec manifest` instead.
+
 ---
 
 ### `manifest check`
 
-Check project for common issues.
+Compile manifest source to IR and validate the IR against the schema in one step.
 
 ```bash
-manifest check [options]
+manifest check [source] [options]
 ```
+
+**Arguments:**
+- `source` - Manifest file or glob pattern (default: uses config)
 
 **Options:**
 - `-o, --output <dir>` - IR output directory or file path
 - `-g, --glob <pattern>` - Glob pattern for multiple files
 - `-d, --diagnostics` - Include diagnostics in output
 - `--pretty` - Pretty-print JSON output
-- `--schema <path>` - Schema path (default: docs/spec/ir/ir-v1.schema.json)
+- `--schema <path>` - Override schema path (default: bundled schema inside the package)
 - `--strict` - Fail on warnings
 
 **What it does:**
 - Compiles manifest source to IR
-- Validates IR against schema
+- Validates IR against the bundled `ir-v1.schema.json`
 - Reports errors and warnings
 
 ---
@@ -286,25 +307,27 @@ npx manifest generate ir -s all -o app/api/generated
 ```yaml
 # .github/workflows/manifest.yml
 - name: Compile Manifest
-  run: npx manifest compile
+  run: pnpm exec manifest compile
 
 - name: Validate IR
-  run: npx manifest check
+  run: pnpm exec manifest validate
 
 - name: Generate Code
-  run: npx manifest generate ir -s all -o app/api/generated
+  run: pnpm exec manifest generate ir -s all -o app/api/generated
 
 - name: Build
-  run: npm run build
+  run: pnpm run build
 ```
+
+Use `pnpm exec manifest` (not `npx manifest` or a global binary) so the CLI version is always pinned to the installed package.
 
 ### Pre-commit Hook
 
 ```bash
 # .git/hooks/pre-commit
 #!/bin/bash
-npx manifest compile || exit 1
-npx manifest validate "manifest/**/*.manifest" || exit 1
+pnpm exec manifest compile || exit 1
+pnpm exec manifest validate || exit 1
 ```
 
 ---

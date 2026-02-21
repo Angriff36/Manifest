@@ -1,6 +1,6 @@
 # Publishing @angriff36/manifest
 
-Last updated: 2026-02-16
+Last updated: 2026-02-21
 
 ## Overview
 
@@ -15,25 +15,49 @@ The Manifest runtime is published as a private scoped package to GitHub Packages
 | Visibility | Private (GitHub package permissions) |
 | Repo | `https://github.com/Angriff36/Manifest` |
 
+## What Ships in the Package
+
+The published package includes:
+
+- `dist/**` — compiled library (runtime engine, compiler, IR types, projections)
+- `packages/cli/dist/**` — compiled CLI binary
+- `docs/spec/ir/ir-v1.schema.json` — IR schema, bundled so the CLI can validate IR in any consumer project without needing a local copy
+- `README.md`, `LICENSE`, `package.json`
+
+The CLI binary is registered in `bin.manifest` and resolves automatically via `pnpm exec manifest` or `npx manifest` in any project that has the package installed.
+
+## Versioning
+
+The package version (`package.json` → `version`) is the single source of truth. The CLI reports this same version at runtime — it reads `package.json` dynamically rather than hardcoding a string. There is no separate CLI version to maintain.
+
+When bumping the version, update **both**:
+- `package.json` (root)
+- `packages/cli/package.json`
+
 ## Publishing
 
 ### Prerequisites
 
-A GitHub PAT (classic) with `write:packages` scope is required to publish.
+A GitHub PAT (classic) with `write:packages` scope is required to publish. Keep this separate from the `NPM_TOKEN` used by consumer projects (which only needs `read:packages`).
 
 ```bash
-export NODE_AUTH_TOKEN=ghp_your_token_here
+export NODE_AUTH_TOKEN=ghp_your_write_packages_token_here
 ```
 
 ### Steps
 
 ```bash
-# 1. Build lib and CLI
-npm run prepublishOnly   # runs: tsc -p tsconfig.lib.json && cd packages/cli && tsc
+# 1. Bump version in both package.json files
+#    (root and packages/cli/package.json must match)
 
-# 2. Publish
-npm publish
+# 2. Run tests
+npm test
+
+# 3. Publish (prepublishOnly builds lib + CLI automatically)
+pnpm publish --no-git-checks
 ```
+
+`prepublishOnly` runs: `pnpm run build:lib && pnpm --filter @manifest/cli run build`
 
 The `.npmrc` at the repo root routes `@angriff36` to GitHub Packages and reads `NODE_AUTH_TOKEN` from the environment:
 
@@ -58,19 +82,33 @@ Add to the consuming project's `.npmrc`:
 ```json
 {
   "dependencies": {
-    "@angriff36/manifest": "workspace:*"
+    "@angriff36/manifest": "0.3.23"
   }
 }
 ```
 
-Or for external consumers (not workspace):
+## Using the CLI in a Consumer Project
 
-```json
-{
-  "dependencies": {
-    "@angriff36/manifest": "0.3.21"
-  }
-}
+**Always use `pnpm exec manifest` (or `npx manifest`), never a globally installed binary.**
+
+The global install and the package version are independent and will drift. `pnpm exec` resolves the binary from the installed package, guaranteeing the CLI version matches the library version.
+
+```bash
+# Correct — uses the version installed in the project
+pnpm exec manifest validate
+pnpm exec manifest compile
+pnpm exec manifest check
+
+# Wrong — uses whatever is globally installed, version unknown
+manifest validate
+```
+
+### IR Validation
+
+The `validate` command uses the IR schema bundled inside the package. No `--schema` flag needed:
+
+```bash
+pnpm exec manifest validate path/to/output.ir.json
 ```
 
 ## Vercel Deployment

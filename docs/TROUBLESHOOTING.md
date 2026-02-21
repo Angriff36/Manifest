@@ -2,9 +2,48 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-02-21
 
 Solutions to common problems when working with Manifest.
+
+---
+
+## CLI Issues
+
+### `manifest validate` reports "Missing required field: metadata"
+
+**Cause:** You are running a stale global CLI binary (pre-0.3.23). The old `validate` command ignored the schema it loaded and ran hardcoded validation against a `metadata` field that does not exist in the IR spec. The IR was valid; the CLI was wrong.
+
+**Solution:** Stop using the global binary. Use `pnpm exec manifest` instead, which resolves from the installed package:
+
+```bash
+pnpm exec manifest validate path/to/output.ir.json
+```
+
+If you don't have 0.3.23 installed yet:
+
+```bash
+pnpm add @angriff36/manifest@0.3.23
+pnpm exec manifest validate path/to/output.ir.json
+```
+
+Do not copy schema files, modify provenance, or create symlinks as workarounds. The IR is valid.
+
+---
+
+### `manifest validate` reports "Schema not found at docs/spec/ir/ir-v1.schema.json"
+
+**Cause:** You are running a stale global CLI binary (pre-0.3.23). The old CLI resolved the schema relative to `process.cwd()`, which only works inside the manifest repo itself. Consumer projects don't have that path.
+
+**Solution:** Same as above — use `pnpm exec manifest` with 0.3.23+. The schema is now bundled inside the package and resolved relative to the CLI binary, not the working directory.
+
+---
+
+### `manifest --version` reports a different version than the installed package
+
+**Cause:** You have a globally installed CLI binary that is a different version from the `@angriff36/manifest` package installed in your project. These are independent and will drift.
+
+**Solution:** Always use `pnpm exec manifest` (or `npx manifest`). Never rely on a global install. As of 0.3.23, `manifest --version` reads from the package's own `package.json` at runtime, so `pnpm exec manifest --version` will always match the installed package version.
 
 ---
 
