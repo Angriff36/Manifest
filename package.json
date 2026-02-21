@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.3.22",
+  "version": "0.3.23",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -42,6 +42,7 @@
   "files": [
     "dist/**",
     "packages/cli/dist/**",
+    "docs/spec/ir/ir-v1.schema.json",
     "README*",
     "LICENSE*",
     "package.json"

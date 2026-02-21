@@ -6,10 +6,24 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
 import Ajv from 'ajv';
+
+/**
+ * Resolve the bundled schema path — works whether the CLI is run from inside
+ * the manifest repo or installed as a package in a consumer project.
+ *
+ * The schema ships at: <package-root>/docs/spec/ir/ir-v1.schema.json
+ * This file lives at:  <package-root>/packages/cli/dist/commands/validate.js
+ * So we walk up 4 levels: commands → dist → cli → packages → package-root
+ */
+function bundledSchemaPath(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(here, '..', '..', '..', '..', 'docs', 'spec', 'ir', 'ir-v1.schema.json');
+}
 
 interface ValidateOptions {
   schema?: string;
@@ -21,13 +35,17 @@ interface ValidateOptions {
  */
 async function loadSchema(schemaPath: string | undefined): Promise<any> {
   if (!schemaPath) {
-    // Default to Manifest IR schema
-    const defaultPath = path.resolve(process.cwd(), 'docs/spec/ir/ir-v1.schema.json');
+    // Use the schema bundled with the package — works in any consumer project
+    const defaultPath = bundledSchemaPath();
     try {
       const content = await fs.readFile(defaultPath, 'utf-8');
       return JSON.parse(content);
     } catch (error) {
-      throw new Error(`Schema not found at ${defaultPath}. Specify --schema <path>`);
+      throw new Error(
+        `Bundled schema not found at ${defaultPath}. ` +
+        `This is a packaging bug — please report it. ` +
+        `Workaround: specify --schema <path>`
+      );
     }
   }
 
