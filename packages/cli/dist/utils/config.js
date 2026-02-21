@@ -100,9 +100,7 @@ async function loadModule(modulePath) {
     try {
         const jiti = await import('jiti').then(m => m.default || m);
         const load = jiti(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
-            esmResolve: true,
             interopDefault: true,
-            requireCache: false, // Always reload config
         });
         const module = load(modulePath);
         return module;
@@ -127,7 +125,7 @@ function isValidRuntimeConfig(config) {
     const hasResolveUser = typeof c.resolveUser === 'function';
     const hasBuild = c.build && typeof c.build === 'object';
     // Allow empty config objects that just have build settings
-    return hasStores || hasResolveUser || hasBuild || Object.keys(c).length === 0;
+    return !!(hasStores || hasResolveUser || hasBuild || Object.keys(c).length === 0);
 }
 // ============================================================================
 // Config Merging

@@ -197,7 +197,7 @@ async function loadTsConfig(cwd: string): Promise<ManifestRuntimeConfig | null> 
 
       if (config && typeof config === 'object') {
         // Handle both default export and named export
-        const runtimeConfig = config.default ?? config;
+        const runtimeConfig = (config as Record<string, unknown>).default ?? config;
 
         if (isValidRuntimeConfig(runtimeConfig)) {
           return runtimeConfig;
@@ -220,11 +220,9 @@ async function loadModule(modulePath: string): Promise<unknown> {
   // Try jiti first for TypeScript support
   try {
     const jiti = await import('jiti').then(m => m.default || m);
-    const load = jiti(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
-      esmResolve: true,
+    const load = (jiti as Function)(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
       interopDefault: true,
-      requireCache: false, // Always reload config
-    });
+    } as Record<string, unknown>);
 
     const module = load(modulePath);
     return module;
@@ -252,7 +250,7 @@ function isValidRuntimeConfig(config: unknown): config is ManifestRuntimeConfig 
   const hasBuild = c.build && typeof c.build === 'object';
 
   // Allow empty config objects that just have build settings
-  return hasStores || hasResolveUser || hasBuild || Object.keys(c).length === 0;
+  return !!(hasStores || hasResolveUser || hasBuild || Object.keys(c).length === 0);
 }
 
 // ============================================================================

@@ -1,7 +1,7 @@
 /**
  * manifest validate command
  *
- * Validates IR against the schema.
+ * Validates IR against the schema using Ajv for full JSON Schema compliance.
  */
 interface ValidateOptions {
     schema?: string;
