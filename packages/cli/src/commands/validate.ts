@@ -1,7 +1,7 @@
 /**
  * manifest validate command
  *
- * Validates IR against the schema.
+ * Validates IR against the schema using Ajv for full JSON Schema compliance.
  */
 
 import fs from 'fs/promises';
@@ -9,6 +9,7 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
+import Ajv from 'ajv';
 
 interface ValidateOptions {
   schema?: string;
@@ -59,83 +60,57 @@ async function getIRFiles(irInput: string | undefined): Promise<string[]> {
 }
 
 /**
- * Validate IR against schema
- *
- * Note: This is a basic implementation. For full JSON Schema validation,
- * you'd use a library like Ajv.
+ * Format an Ajv error into a human-readable string
  */
-async function validateIR(irPath: string, schema: any, strict: boolean): Promise<{
+function formatAjvError(error: any): string {
+  const field = error.instancePath
+    ? error.instancePath.replace(/^\//, '').replace(/\//g, '.')
+    : 'root';
+
+  switch (error.keyword) {
+    case 'required': {
+      const missing = error.params?.missingProperty ?? '';
+      const prefix = error.instancePath ? `${field}.` : '';
+      return `Missing required field: ${prefix}${missing}`;
+    }
+    case 'additionalProperties': {
+      const extra = error.params?.additionalProperty ?? '';
+      return `Unknown field: ${field}.${extra}`;
+    }
+    case 'type':
+      return `${field} must be of type ${error.params?.type}`;
+    case 'const':
+      return `${field} must be ${JSON.stringify(error.params?.allowedValue)}`;
+    case 'enum':
+      return `${field} must be one of: ${(error.params?.allowedValues ?? []).join(', ')}`;
+    default:
+      return `${field}: ${error.message}`;
+  }
+}
+
+/**
+ * Validate IR against schema using Ajv
+ */
+async function validateIR(irPath: string, schema: any, _strict: boolean): Promise<{
   valid: boolean;
   errors: string[];
   warnings: string[];
 }> {
-  const errors: string[] = [];
   const warnings: string[] = [];
 
   try {
     const irContent = await fs.readFile(irPath, 'utf-8');
     const ir = JSON.parse(irContent);
 
-    // Basic validation: check required fields
-    if (!ir.metadata) {
-      errors.push('Missing required field: metadata');
-    } else {
-      if (!ir.metadata.compilerVersion) {
-        errors.push('Missing required field: metadata.compilerVersion');
-      }
-      if (!ir.metadata.schemaVersion) {
-        warnings.push('Missing recommended field: metadata.schemaVersion');
-      }
-    }
+    const ajv = new Ajv({ allErrors: true });
+    const validate = ajv.compile(schema);
+    const valid = validate(ir) as boolean;
 
-    if (!ir.entities && !ir.commands) {
-      errors.push('IR must contain entities or commands');
-    }
+    const errors = valid
+      ? []
+      : (validate.errors ?? []).map(formatAjvError);
 
-    // Check for valid schema version
-    if (ir.metadata?.schemaVersion && ir.metadata.schemaVersion !== 'v1') {
-      warnings.push(`Unknown schema version: ${ir.metadata.schemaVersion} (expected: v1)`);
-    }
-
-    // Validate entities if present
-    if (ir.entities) {
-      if (!Array.isArray(ir.entities)) {
-        errors.push('entities must be an array');
-      } else {
-        ir.entities.forEach((entity: any, index: number) => {
-          if (!entity.name) {
-            errors.push(`entities[${index}].name is required`);
-          }
-          if (!entity.properties || !Array.isArray(entity.properties)) {
-            errors.push(`entities[${index}].properties must be an array`);
-          }
-        });
-      }
-    }
-
-    // Validate commands if present
-    if (ir.commands) {
-      if (!Array.isArray(ir.commands)) {
-        errors.push('commands must be an array');
-      } else {
-        ir.commands.forEach((command: any, index: number) => {
-          if (!command.name) {
-            errors.push(`commands[${index}].name is required`);
-          }
-        });
-      }
-    }
-
-    // In strict mode, warnings are treated as errors
-    if (strict && warnings.length > 0) {
-      errors.push(...warnings.map(w => `[STRICT] ${w}`));
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings,
-    };
+    return { valid, errors, warnings };
 
   } catch (error: any) {
     if (error.code === 'ENOENT') {

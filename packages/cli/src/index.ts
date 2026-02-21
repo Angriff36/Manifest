@@ -19,15 +19,43 @@ import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
 import { getConfig } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolve, normalize } from 'node:path';
-import { realpath } from 'node:fs/promises';
+import { resolve, normalize, dirname, join } from 'node:path';
+import { realpath, readFile } from 'node:fs/promises';
+
+/**
+ * Read version from the root package.json at runtime so the CLI always
+ * reports the same version as the published package — no manual sync needed.
+ */
+async function getPackageVersion(): Promise<string> {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    // Traverse up from dist/ (or src/ in dev) to find the root package.json
+    for (let dir = here, prev = ''; dir !== prev; prev = dir, dir = dirname(dir)) {
+      try {
+        const pkgPath = join(dir, 'package.json');
+        const raw = await readFile(pkgPath, 'utf-8');
+        const pkg = JSON.parse(raw) as { name?: string; version?: string };
+        if (pkg.name === '@angriff36/manifest' && pkg.version) {
+          return pkg.version;
+        }
+      } catch {
+        // not found at this level, keep walking up
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return '0.0.0';
+}
 
 const program = new Command();
+
+const packageVersion = await getPackageVersion();
 
 program
   .name('manifest')
   .description('Manifest language CLI - Compile, generate, and validate Manifest code')
-  .version('0.3.8');
+  .version(packageVersion);
 
 /**
  * manifest init

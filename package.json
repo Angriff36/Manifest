@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -73,7 +73,7 @@
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
-    "prepublishOnly": "pnpm run build:lib && cd packages/cli && tsc"
+    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build"
   },
   "dependencies": {
     "@types/pg": "^8.16.0",
