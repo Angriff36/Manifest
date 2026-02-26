@@ -354,6 +354,11 @@ declare global {
     electronAPI?: {
       getManifestRoot: () => Promise<string>;
       setManifestRoot: (root: string) => Promise<{ success: boolean }>;
+      getCliPath: () => Promise<string>;
+      setCliPath: (cliPath: string) => Promise<{ success: boolean }>;
+      getManifestRepoRoot: () => Promise<string>;
+      setManifestRepoRoot: (repoRoot: string) => Promise<{ success: boolean }>;
+      validateCliPath: (cliPath: string) => Promise<{ valid: boolean; exists: boolean }>;
       listFiles: (root: string) => Promise<{ files: ManifestFile[]; root: string }>;
       readFile: (filePath: string) => Promise<{ content: string; path: string }>;
       compileFile: (filePath: string) => Promise<CompileResult>;
@@ -405,6 +410,28 @@ export async function saveRoot(root: string): Promise<void> {
 
 export async function pickDirectory(): Promise<string | null> {
   return requireElectronAPI().pickDirectory();
+}
+
+// --- CLI Path Settings ---
+
+export async function getCliPath(): Promise<string> {
+  return requireElectronAPI().getCliPath();
+}
+
+export async function setCliPath(cliPath: string): Promise<void> {
+  await requireElectronAPI().setCliPath(cliPath);
+}
+
+export async function getManifestRepoRoot(): Promise<string> {
+  return requireElectronAPI().getManifestRepoRoot();
+}
+
+export async function setManifestRepoRoot(repoRoot: string): Promise<void> {
+  await requireElectronAPI().setManifestRepoRoot(repoRoot);
+}
+
+export async function validateCliPath(cliPath: string): Promise<{ valid: boolean; exists: boolean }> {
+  return requireElectronAPI().validateCliPath(cliPath);
 }
 
 // --- Data operations (same signatures as before) ---

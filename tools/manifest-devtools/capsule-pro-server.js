@@ -14,11 +14,20 @@ import { execSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Configuration - CHANGE THESE PATHS FOR YOUR SETUP
-const PORT = 8765;
-const CAPSULE_PRO_ROOT = 'C:/projects/capsule-pro';
-const MANIFEST_REPO_ROOT = 'C:/projects/manifest';
-const MANIFEST_SOURCE_DIR = path.join(CAPSULE_PRO_ROOT, 'packages/manifest-adapters/manifests');
+// Configuration - Can be overridden via environment variables or command line args
+const args = process.argv.slice(2).reduce((acc, arg) => {
+  const [key, value] = arg.split('=');
+  acc[key.replace(/^--/, '')] = value;
+  return acc;
+}, {});
+
+const PORT = parseInt(process.env.PORT || args.port || '8765', 10);
+const CAPSULE_PRO_ROOT = process.env.CAPSULE_PRO_ROOT || args['capsule-root'] || 'C:/projects/capsule-pro';
+const MANIFEST_REPO_ROOT = process.env.MANIFEST_REPO_ROOT || args['manifest-repo'] || 'C:/projects/manifest';
+const MANIFEST_SOURCE_DIR = process.env.MANIFEST_SOURCE_DIR || args['manifest-dir'] || path.join(CAPSULE_PRO_ROOT, 'packages/manifest-adapters/manifests');
+
+// CLI path (can be overridden)
+const CLI_PATH = process.env.CLI_PATH || args['cli-path'] || path.join(MANIFEST_REPO_ROOT, 'packages/cli/bin/manifest.js');
 
 const app = express();
 app.use(cors());
@@ -60,8 +69,6 @@ app.get('/api/files/:name', async (req, res) => {
 
 // Helper to run scan with proper module resolution
 function runScan(targetPath) {
-  const manifestCli = path.join(MANIFEST_REPO_ROOT, 'packages/cli/bin/manifest.js');
-  
   // Set up proper module resolution paths
   const nodePaths = [
     path.join(MANIFEST_REPO_ROOT, 'node_modules'),
@@ -74,7 +81,7 @@ function runScan(targetPath) {
   };
 
   const output = execSync(
-    `"${process.execPath}" "${manifestCli}" scan "${targetPath}" --format json`,
+    `"${process.execPath}" "${CLI_PATH}" scan "${targetPath}" --format json`,
     {
       encoding: 'utf-8',
       cwd: MANIFEST_REPO_ROOT,
@@ -206,11 +213,21 @@ app.post('/api/scan-all', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║  Manifest DevTools API Server                            ║
+║  Manifest DevTools API Server (Capsule-Pro)              ║
 ╠══════════════════════════════════════════════════════════╣
-║  Port:        ${PORT}                                         ║
-║  Manifest:    ${MANIFEST_SOURCE_DIR}  ║
-║  Capsule-Pro: ${CAPSULE_PRO_ROOT}                    ║
+║  Port:             ${PORT}                                    ║
+║  Manifest Source:  ${MANIFEST_SOURCE_DIR.padEnd(40)} ║
+║  Capsule-Pro Root: ${CAPSULE_PRO_ROOT.padEnd(40)} ║
+║  Manifest Repo:    ${MANIFEST_REPO_ROOT.padEnd(40)} ║
+║  CLI Path:         ${CLI_PATH.padEnd(40)} ║
+╠══════════════════════════════════════════════════════════╣
+║  Configuration via environment variables:                 ║
+║    PORT, CAPSULE_PRO_ROOT, MANIFEST_REPO_ROOT,           ║
+║    MANIFEST_SOURCE_DIR, CLI_PATH                         ║
+║                                                           ║
+║  Or command line args:                                    ║
+║    --port=8765 --capsule-root=/path --manifest-repo=/path║
+║    --manifest-dir=/path --cli-path=/path                 ║
 ╠══════════════════════════════════════════════════════════╣
 ║  Ready to scan your Capsule-Pro manifest files!          ║
 ╚══════════════════════════════════════════════════════════╝

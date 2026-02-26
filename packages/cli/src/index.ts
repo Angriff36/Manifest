@@ -17,6 +17,14 @@ import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
+import {
+  cacheStatusCommand,
+  doctorCommand,
+  duplicatesCommand,
+  inspectEntityCommand,
+  runtimeCheckCommand,
+  diffSourceVsIRCommand,
+} from './commands/doctor.js';
 import { getConfig } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -247,6 +255,103 @@ program
   .option('-c, --config <path>', 'Config file path')
   .action(async (options = {}) => {
     await lintRoutesCommand(options);
+  });
+
+/**
+ * manifest inspect entity <EntityName>
+ *
+ * Inspect source manifests and precompiled IR for a single entity.
+ */
+const inspectProgram = program
+  .command('inspect')
+  .description('Inspect manifest source and compiled IR surfaces');
+
+inspectProgram
+  .command('entity')
+  .description('Inspect a single entity across source manifests and precompiled IR')
+  .argument('<entityName>', 'Entity name')
+  .option('--json', 'JSON output', false)
+  .option('--src <pattern>', 'Source manifest glob pattern')
+  .option('--ir-root <path...>', 'Compiled IR root directory/directories')
+  .action(async (entityName, options = {}) => {
+    await inspectEntityCommand(entityName, options);
+  });
+
+/**
+ * manifest diff source-vs-ir <EntityName>
+ */
+const diffProgram = program
+  .command('diff')
+  .description('Diff manifest source surfaces against precompiled IR');
+
+diffProgram
+  .command('source-vs-ir')
+  .description('Compare source manifest parse output vs precompiled IR for an entity')
+  .argument('<entityName>', 'Entity name')
+  .option('--json', 'JSON output', false)
+  .option('--src <pattern>', 'Source manifest glob pattern')
+  .option('--ir-root <path...>', 'Compiled IR root directory/directories')
+  .action(async (entityName, options = {}) => {
+    await diffSourceVsIRCommand(entityName, options);
+  });
+
+/**
+ * manifest duplicates
+ */
+program
+  .command('duplicates')
+  .description('Summarize duplicate merge reports (*.merge-report.json)')
+  .option('--entity <name>', 'Filter duplicate entries by entity name/key')
+  .option('--merge-report <pattern>', 'Override merge report glob pattern')
+  .option('--json', 'JSON output', false)
+  .action(async (options = {}) => {
+    await duplicatesCommand(options);
+  });
+
+/**
+ * manifest runtime-check <EntityName> <command>
+ */
+program
+  .command('runtime-check')
+  .description('Correlate route surface, source manifests, and precompiled IR for a command')
+  .argument('<entityName>', 'Entity name')
+  .argument('<commandName>', 'Command name')
+  .option('--route <path>', 'Optional canonical route path to validate (exact match)')
+  .option('--json', 'JSON output', false)
+  .option('--src <pattern>', 'Source manifest glob pattern')
+  .option('--ir-root <path...>', 'Compiled IR root directory/directories')
+  .action(async (entityName, commandName, options = {}) => {
+    await runtimeCheckCommand(entityName, commandName, options);
+  });
+
+/**
+ * manifest cache-status
+ */
+program
+  .command('cache-status')
+  .description('Show offline cache guidance (precompiled IR timestamps + restart advice)')
+  .option('--entity <name>', 'Optional entity context for guidance text')
+  .option('--command <name>', 'Optional command context for guidance text')
+  .option('--json', 'JSON output', false)
+  .option('--ir-root <path...>', 'Compiled IR root directory/directories')
+  .action(async (options = {}) => {
+    await cacheStatusCommand(options);
+  });
+
+/**
+ * manifest doctor
+ */
+program
+  .command('doctor')
+  .description('Run ranked offline diagnostics for source/IR/route drift and duplicate merges')
+  .option('--entity <name>', 'Optional entity to focus the diagnosis')
+  .option('--command <name>', 'Optional command to focus the diagnosis')
+  .option('--route <path>', 'Optional route path for route-surface correlation')
+  .option('--json', 'JSON output', false)
+  .option('--src <pattern>', 'Source manifest glob pattern')
+  .option('--ir-root <path...>', 'Compiled IR root directory/directories')
+  .action(async (options = {}) => {
+    await doctorCommand(options);
   });
 
 /**

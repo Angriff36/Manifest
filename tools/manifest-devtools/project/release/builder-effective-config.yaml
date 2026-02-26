@@ -1,0 +1,10 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.manifest.devtools
+productName: Manifest DevTools
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*.cjs
+electronVersion: 40.4.1

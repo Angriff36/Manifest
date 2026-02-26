@@ -39,4 +39,6 @@ Tool output must never be used to justify semantic drift from spec or conformanc
 
 - `C:/Projects/Manifest/docs/tools/USAGE_GUIDE.md`
 - `C:/Projects/Manifest/docs/tools/RECOMMENDATIONS.md`
+- `C:/Projects/Manifest/docs/tools/PACKAGES_AND_DISTRIBUTION.md`
+- `C:/Projects/Manifest/docs/tools/PUBLISHING.md`
 - `C:/Projects/Manifest/docs/spec/conformance.md`

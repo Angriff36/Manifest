@@ -170,13 +170,22 @@ export default function EntityScannerPage() {
       const allEntities: EntityStatus[] = [];
       let totalCommands = 0;
       let totalProperties = 0;
+      const errorFiles: string[] = [];
 
       for (const fileResult of compiled.results) {
-        if (fileResult.diagnostics.some(d => d.severity === 'error')) continue;
+        if (fileResult.diagnostics.some(d => d.severity === 'error')) {
+          errorFiles.push(`${fileResult.name}: ${fileResult.diagnostics.filter(d => d.severity === 'error').map(d => d.message).join('; ')}`);
+          continue;
+        }
         const scanData = buildScanResult(fileResult.ir, fileResult.file);
         allEntities.push(...scanData.entities);
         totalCommands += scanData.commandsChecked;
         totalProperties += scanData.propertiesScanned;
+      }
+
+      // Warn if all files had compilation errors
+      if (errorFiles.length > 0 && allEntities.length === 0) {
+        setError(`All ${errorFiles.length} file(s) had compilation errors. First error:\n${errorFiles[0]}`);
       }
 
       setResult({

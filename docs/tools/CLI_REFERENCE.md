@@ -6,6 +6,8 @@ Last updated: 2026-02-21
 
 Complete reference for all Manifest CLI commands.
 
+Package/distribution notes (published package vs internal CLI workspace package, GitHub Packages, Vercel): `docs/tools/PACKAGES_AND_DISTRIBUTION.md`
+
 ---
 
 ## Installation
@@ -219,6 +221,125 @@ manifest compile && manifest generate ir
 **Example:**
 ```bash
 manifest build -s all -o app/api/generated
+```
+
+---
+
+### `manifest inspect entity`
+
+Inspect one entity across source manifests and precompiled IR.
+
+```bash
+manifest inspect entity <EntityName> [options]
+```
+
+**Options:**
+- `--json` - JSON output for tooling/CI
+- `--src <pattern>` - Source manifest glob pattern
+- `--ir-root <path...>` - One or more compiled IR roots (defaults include `packages/manifest-ir/ir` and `ir`)
+
+**Examples:**
+```bash
+pnpm exec manifest inspect entity KitchenTask
+pnpm exec manifest inspect entity KitchenTask --json
+```
+
+---
+
+### `manifest diff source-vs-ir`
+
+Compare source manifest parse output vs precompiled IR for a single entity. Exits non-zero on drift.
+
+```bash
+manifest diff source-vs-ir <EntityName> [options]
+```
+
+**Examples:**
+```bash
+pnpm exec manifest diff source-vs-ir KitchenTask
+pnpm exec manifest diff source-vs-ir KitchenTask --json
+```
+
+---
+
+### `manifest duplicates`
+
+Summarize `*.merge-report.json` files (if present) and classify duplicate drops as known vs suspicious.
+
+```bash
+manifest duplicates [options]
+```
+
+**Options:**
+- `--entity <name>` - Filter entries by entity/key
+- `--merge-report <pattern>` - Override merge report glob pattern
+- `--json` - JSON output
+
+**Examples:**
+```bash
+pnpm exec manifest duplicates
+pnpm exec manifest duplicates --entity KitchenTask --json
+```
+
+---
+
+### `manifest runtime-check`
+
+Correlate route surface, source manifests, and precompiled IR for a command route failure (for example `Command 'claim' not found`).
+
+```bash
+manifest runtime-check <EntityName> <command> [options]
+```
+
+**Options:**
+- `--route <path>` - Exact route path to match in `routes.manifest.json`
+- `--json` - JSON output
+- `--src <pattern>` - Source manifest glob pattern
+- `--ir-root <path...>` - Compiled IR root(s)
+
+**Examples:**
+```bash
+pnpm exec manifest runtime-check KitchenTask claim
+pnpm exec manifest runtime-check KitchenTask claim --route /api/kitchen/kitchen-tasks/commands/claim --json
+```
+
+---
+
+### `manifest cache-status`
+
+Offline cache guidance for diagnosing stale runtime processes after IR rebuilds.
+
+```bash
+manifest cache-status [options]
+```
+
+**What it does:**
+- Inspects precompiled IR provenance timestamps (when available)
+- Reports that direct in-process runtime cache introspection is not available from the CLI
+- Prints restart guidance for long-running API processes
+
+---
+
+### `manifest doctor`
+
+Run a ranked offline diagnosis for parser/scanner mismatch, source-vs-IR drift, duplicate merge impacts, route/IR mismatch, and likely stale runtime cache.
+
+```bash
+manifest doctor [options]
+```
+
+**Options:**
+- `--entity <name>` - Focus checks on one entity
+- `--command <name>` - Focus checks on one command
+- `--route <path>` - Route correlation hint
+- `--json` - JSON output
+- `--src <pattern>` - Source manifest glob pattern
+- `--ir-root <path...>` - Compiled IR root(s)
+
+**Examples:**
+```bash
+pnpm exec manifest doctor --entity KitchenTask --command claim
+pnpm exec manifest doctor --entity KitchenTask --command claim --json
 ```
 
 ---

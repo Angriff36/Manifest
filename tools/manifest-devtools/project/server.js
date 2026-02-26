@@ -30,6 +30,14 @@ const DEFAULT_MANIFEST_ROOT = process.platform === 'win32'
   : '/c/projects/capsule-pro/packages/manifest-adapters/manifests'; // Git Bash/WSL
 const MANIFEST_ROOT = args['manifest-root'] || DEFAULT_MANIFEST_ROOT;
 
+// CLI path configuration (can be overridden via CLI_PATH env var or --cli-path arg)
+const DEFAULT_CLI_PATH = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
+const CLI_PATH = process.env.CLI_PATH || args['cli-path'] || DEFAULT_CLI_PATH;
+
+// Manifest repo root (for cwd and NODE_PATH)
+const DEFAULT_REPO_ROOT = path.resolve(__dirname, '../../../..');
+const REPO_ROOT = process.env.MANIFEST_REPO_ROOT || args['repo-root'] || DEFAULT_REPO_ROOT;
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -96,13 +104,19 @@ app.post('/api/scan', async (req, res) => {
     // Run the scan command
     const { execSync } = await import('child_process');
 
-    // Use the CLI binary directly from the repo root
-    const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
-    const manifestRepoRoot = path.resolve(__dirname, '../../../..');
-    const output = execSync(`node "${manifestCli}" scan "${filePath}" --format json`, {
+    // Use configured CLI path and repo root
+    const nodePath = [
+      path.join(REPO_ROOT, 'node_modules'),
+      path.join(REPO_ROOT, 'packages', 'cli', 'node_modules'),
+    ].join(path.delimiter);
+    
+    const output = execSync(`node "${CLI_PATH}" scan "${filePath}" --format json`, {
       encoding: 'utf-8',
-      cwd: manifestRepoRoot,
-      env: { ...process.env }
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        NODE_PATH: nodePath,
+      }
     });
 
     const result = JSON.parse(output);
@@ -244,13 +258,19 @@ app.post('/api/scan-all', async (req, res) => {
     // Run the scan command
     const { execSync } = await import('child_process');
 
-    // Use the CLI binary directly from the repo root
-    const manifestCli = path.join(__dirname, '../../../packages/cli/bin/manifest.js');
-    const manifestRepoRoot = path.resolve(__dirname, '../../../..');
-    const output = execSync(`node "${manifestCli}" scan "${MANIFEST_ROOT}" --format json`, {
+    // Use configured CLI path and repo root
+    const nodePath = [
+      path.join(REPO_ROOT, 'node_modules'),
+      path.join(REPO_ROOT, 'packages', 'cli', 'node_modules'),
+    ].join(path.delimiter);
+    
+    const output = execSync(`node "${CLI_PATH}" scan "${MANIFEST_ROOT}" --format json`, {
       encoding: 'utf-8',
-      cwd: manifestRepoRoot,
-      env: { ...process.env }
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        NODE_PATH: nodePath,
+      }
     });
 
     const result = JSON.parse(output);

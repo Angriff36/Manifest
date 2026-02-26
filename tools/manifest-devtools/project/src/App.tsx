@@ -10,12 +10,14 @@ import EntityScannerPage from './tools/entity-scanner/EntityScannerPage';
 import PolicyCoveragePage from './tools/policy-coverage/PolicyCoveragePage';
 import IssueTrackerPage from './tools/issue-tracker/IssueTrackerPage';
 import RouteSurfacePage from './tools/route-surface/RouteSurfacePage';
+import SettingsModal from './components/SettingsModal';
 import { loadSavedRoot, setManifestRoot, saveRoot, pickDirectory } from './lib/api';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<ToolId>('dashboard');
   const [manifestRoot, setRoot] = useState('');
   const [rootInput, setRootInput] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadSavedRoot().then(saved => {
@@ -48,25 +50,33 @@ export default function App() {
   };
 
   return (
-    <Layout
-      activeTool={activeTool}
-      onNavigate={setActiveTool}
-      manifestRoot={manifestRoot}
-      rootInput={rootInput}
-      onRootInputChange={setRootInput}
-      onRootSubmit={handleRootSubmit}
-      onBrowse={handleBrowse}
-    >
-      {activeTool === 'dashboard' && <Dashboard onNavigate={setActiveTool} />}
-      {activeTool === 'entity-scanner' && <EntityScannerPage />}
-      {activeTool === 'policy-coverage' && <PolicyCoveragePage />}
-      {activeTool === 'issue-tracker' && <IssueTrackerPage />}
-      {activeTool === 'guard-debugger' && <GuardDebuggerPage />}
-      {activeTool === 'fixture-generator' && <FixtureGeneratorPage />}
-      {activeTool === 'profiler' && <ProfilerPage />}
-      {activeTool === 'ir-verifier' && <IRVerifierPage />}
-      {activeTool === 'migration' && <MigrationPage />}
-      {activeTool === 'route-surface' && <RouteSurfacePage />}
-    </Layout>
+    <>
+      <Layout
+        activeTool={activeTool}
+        onNavigate={setActiveTool}
+        manifestRoot={manifestRoot}
+        rootInput={rootInput}
+        onRootInputChange={setRootInput}
+        onRootSubmit={handleRootSubmit}
+        onBrowse={handleBrowse}
+        onOpenSettings={() => setSettingsOpen(true)}
+      >
+        {activeTool === 'dashboard' && <Dashboard onNavigate={setActiveTool} />}
+        {activeTool === 'entity-scanner' && <EntityScannerPage />}
+        {activeTool === 'policy-coverage' && <PolicyCoveragePage />}
+        {activeTool === 'issue-tracker' && <IssueTrackerPage />}
+        {activeTool === 'guard-debugger' && <GuardDebuggerPage />}
+        {activeTool === 'fixture-generator' && <FixtureGeneratorPage />}
+        {activeTool === 'profiler' && <ProfilerPage />}
+        {activeTool === 'ir-verifier' && <IRVerifierPage />}
+        {activeTool === 'migration' && <MigrationPage />}
+        {activeTool === 'route-surface' && <RouteSurfacePage />}
+      </Layout>
+      
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+    </>
   );
 }

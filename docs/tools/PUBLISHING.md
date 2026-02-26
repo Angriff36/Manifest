@@ -6,6 +6,8 @@ Last updated: 2026-02-21
 
 The Manifest runtime is published as a private scoped package to GitHub Packages under `@angriff36/manifest`. It is not published to the public npm registry.
 
+See also: `docs/tools/PACKAGES_AND_DISTRIBUTION.md` for the full package model (published package vs internal CLI workspace package, consumer guidance, and Vercel implications).
+
 ## Package Identity
 
 | Field | Value |
@@ -30,15 +32,16 @@ The CLI binary is registered in `bin.manifest` and resolves automatically via `p
 
 The package version (`package.json` → `version`) is the single source of truth. The CLI reports this same version at runtime — it reads `package.json` dynamically rather than hardcoding a string. There is no separate CLI version to maintain.
 
-When bumping the version, update **both**:
-- `package.json` (root)
-- `packages/cli/package.json`
+Consumer-visible versioning is anchored to the **root** package:
+- `package.json` (root, `@angriff36/manifest`)
+
+`packages/cli/package.json` is an internal workspace package and is not the consumer-facing install target. It may differ during development. What matters for publish is that `packages/cli/dist/**` contains the intended CLI changes.
 
 ## Publishing
 
 ### Prerequisites
 
-A GitHub PAT (classic) with `write:packages` scope is required to publish. Keep this separate from the `NPM_TOKEN` used by consumer projects (which only needs `read:packages`).
+A GitHub token/PAT with `write:packages` scope is required to publish. Keep this separate from the `NPM_TOKEN` used by consumer projects (which only needs `read:packages`).
 
 ```bash
 export NODE_AUTH_TOKEN=ghp_your_write_packages_token_here
@@ -54,7 +57,8 @@ export NODE_AUTH_TOKEN=ghp_your_write_packages_token_here
 npm test
 
 # 3. Publish (prepublishOnly builds lib + CLI automatically)
-pnpm publish --no-git-checks
+#    Use pnpm publish (recommended for this repo/workspace layout)
+pnpm publish --no-git-checks --registry https://npm.pkg.github.com
 ```
 
 `prepublishOnly` runs: `pnpm run build:lib && pnpm --filter @manifest/cli run build`
@@ -126,6 +130,12 @@ Add via: Vercel project → Settings → Environment Variables.
 ### How it works
 
 The `.npmrc` in the consumer project references `${NPM_TOKEN}`. Vercel injects the env var at build time, pnpm resolves it, and the install authenticates successfully.
+
+Important:
+
+- Vercel should install `@angriff36/manifest` from GitHub Packages.
+- Do not rely on a local workspace-only Manifest package path as the deployment mechanism.
+- If a feature works locally but fails in Vercel, verify the package was actually published and the consumer lockfile was updated.
 
 ## Package Exports
 

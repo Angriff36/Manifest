@@ -11,11 +11,13 @@ const { pathToFileURL } = require('url');
 /** Manifest repo root: 4 levels up from electron/ inside tools/manifest-devtools/project/electron/ */
 const MANIFEST_ROOT = path.resolve(__dirname, '../../../..');
 
-/** Compiler entry (ESM) — resolved from repo root */
-const COMPILER_PATH = path.join(MANIFEST_ROOT, 'dist', 'manifest', 'ir-compiler.js');
+/** Compiler entry (ESM) — resolved dynamically from repo root setting */
+function getCompilerPath() {
+  return path.join(getManifestRepoRoot(), 'dist', 'manifest', 'ir-compiler.js');
+}
 
-/** CLI entry */
-const CLI_PATH = path.join(MANIFEST_ROOT, 'packages', 'cli', 'bin', 'manifest.js');
+/** CLI entry — default fallback (will be overridden by settings) */
+const DEFAULT_CLI_PATH = path.join(MANIFEST_ROOT, 'packages', 'cli', 'bin', 'manifest.js');
 
 /** Persistent settings file stored in Electron's userData directory */
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
@@ -73,10 +75,17 @@ function findManifestFiles(root) {
 // ---------------------------------------------------------------------------
 
 let _compilerPromise = null;
+let _compilerPathUsed = null;
 
 function getCompiler() {
+  const compilerPath = getCompilerPath();
+  // Invalidate cache if the repo root (and thus compiler path) changed
+  if (_compilerPathUsed !== compilerPath) {
+    _compilerPromise = null;
+    _compilerPathUsed = compilerPath;
+  }
   if (!_compilerPromise) {
-    _compilerPromise = import(pathToFileURL(COMPILER_PATH).href).then((mod) => {
+    _compilerPromise = import(pathToFileURL(compilerPath).href).then((mod) => {
       // The module exports both the class IRCompiler and the convenience fn compileToIR
       return mod;
     }).catch((err) => {
@@ -100,13 +109,22 @@ async function compileSource(source) {
 // Runtime engine helper — dynamic ESM import
 // ---------------------------------------------------------------------------
 
-const RUNTIME_PATH = path.join(MANIFEST_ROOT, 'dist', 'manifest', 'runtime-engine.js');
+function getRuntimePath() {
+  return path.join(getManifestRepoRoot(), 'dist', 'manifest', 'runtime-engine.js');
+}
 
 let _runtimePromise = null;
+let _runtimePathUsed = null;
 
 function getRuntimeEngine() {
+  const runtimePath = getRuntimePath();
+  // Invalidate cache if the repo root (and thus runtime path) changed
+  if (_runtimePathUsed !== runtimePath) {
+    _runtimePromise = null;
+    _runtimePathUsed = runtimePath;
+  }
   if (!_runtimePromise) {
-    _runtimePromise = import(pathToFileURL(RUNTIME_PATH).href).then((mod) => {
+    _runtimePromise = import(pathToFileURL(runtimePath).href).then((mod) => {
       return mod;
     }).catch((err) => {
       _runtimePromise = null;
@@ -117,17 +135,81 @@ function getRuntimeEngine() {
 }
 
 // ---------------------------------------------------------------------------
-// CLI helper — execSync wrapper
+// CLI helper — execSync wrapper with configurable path
 // ---------------------------------------------------------------------------
 
+/**
+ * Get the CLI path from settings, or fall back to default.
+ * Returns null if the configured path doesn't exist.
+ */
+function getCliPath() {
+  const settings = loadSettings();
+  const cliPath = settings.cliPath || DEFAULT_CLI_PATH;
+  
+  // Validate that the CLI path exists
+  if (!fs.existsSync(cliPath)) {
+    return null;
+  }
+  
+  return cliPath;
+}
+
+/**
+ * Get the manifest repo root from settings.
+ * This is the directory containing the manifest repo (for cwd and NODE_PATH).
+ */
+function getManifestRepoRoot() {
+  const settings = loadSettings();
+  return settings.manifestRepoRoot || MANIFEST_ROOT;
+}
+
+/**
+ * Find a usable Node.js binary.  In dev mode `process.execPath` *is* Node
+ * (or Electron, which can run scripts).  In a packaged build it points at
+ * the app executable (e.g. "Manifest DevTools.exe"), which would just open
+ * another window.  Fall back to the system `node` on PATH.
+ */
+function getNodeBinary() {
+  // In a packaged app, process.execPath is the .exe — don't use it
+  if (app.isPackaged) {
+    // Try to find node on PATH
+    try {
+      const nodePath = execSync('where node', { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
+      if (nodePath && fs.existsSync(nodePath)) return nodePath;
+    } catch { /* ignore */ }
+    // Fallback: just use "node" and hope it's on PATH
+    return 'node';
+  }
+  return process.execPath;
+}
+
 function runCLI(args) {
-  const cmd = `node "${CLI_PATH}" ${args}`;
+  const cliPath = getCliPath();
+  if (!cliPath) {
+    throw new Error('Manifest CLI path not configured or does not exist. Please set the CLI path in settings.');
+  }
+
+  const repoRoot = getManifestRepoRoot();
+  const nodeBin = getNodeBinary();
+
+  // Set NODE_PATH to include repo node_modules for proper module resolution
+  const nodePath = [
+    path.join(repoRoot, 'node_modules'),
+    path.join(repoRoot, 'packages', 'cli', 'node_modules'),
+  ].join(path.delimiter);
+
+  const cmd = `"${nodeBin}" "${cliPath}" ${args}`;
+  
   try {
     const stdout = execSync(cmd, {
-      cwd: MANIFEST_ROOT,
+      cwd: repoRoot,
       encoding: 'utf-8',
       timeout: 30_000,
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        NODE_PATH: nodePath,
+      },
     });
     return JSON.parse(stdout);
   } catch (err) {
@@ -191,6 +273,31 @@ function registerIPC() {
     return { success: true };
   });
 
+  ipcMain.handle('get-cli-path', () => {
+    const settings = loadSettings();
+    return settings.cliPath || DEFAULT_CLI_PATH;
+  });
+
+  ipcMain.handle('set-cli-path', (_event, { cliPath }) => {
+    saveSettings({ cliPath });
+    return { success: true };
+  });
+
+  ipcMain.handle('get-manifest-repo-root', () => {
+    const settings = loadSettings();
+    return settings.manifestRepoRoot || MANIFEST_ROOT;
+  });
+
+  ipcMain.handle('set-manifest-repo-root', (_event, { repoRoot }) => {
+    saveSettings({ manifestRepoRoot: repoRoot });
+    return { success: true };
+  });
+
+  ipcMain.handle('validate-cli-path', (_event, { cliPath }) => {
+    const exists = fs.existsSync(cliPath);
+    return { valid: exists, exists };
+  });
+
   // ---- File operations ---------------------------------------------------
 
   ipcMain.handle('list-files', (_event, { root }) => {
@@ -212,6 +319,7 @@ function registerIPC() {
   });
 
   ipcMain.handle('compile-all', async (_event, { root }) => {
+    console.log('[compile-all] root:', root, '| compiler:', getCompilerPath());
     const files = findManifestFiles(root);
     const results = [];
 
@@ -221,6 +329,7 @@ function registerIPC() {
         const { ir, diagnostics } = await compileSource(source);
         results.push({ file: file.path, name: file.name, ir, diagnostics });
       } catch (err) {
+        console.error('[compile-all] Error compiling', file.name, ':', err.message);
         results.push({
           file: file.path,
           name: file.name,
@@ -524,8 +633,9 @@ function registerIPC() {
     if (_schemaValidator) return _schemaValidator;
 
     // Import Ajv from the schema-validator tool's node_modules
-    const ajvPath = path.join(MANIFEST_ROOT, 'tools', 'manifest-ir-schema-validator', 'project', 'node_modules', 'ajv', 'dist', 'ajv.js');
-    const ajvFormatsPath = path.join(MANIFEST_ROOT, 'tools', 'manifest-ir-schema-validator', 'project', 'node_modules', 'ajv-formats', 'dist', 'index.js');
+    const repoRoot = getManifestRepoRoot();
+    const ajvPath = path.join(repoRoot, 'tools', 'manifest-ir-schema-validator', 'project', 'node_modules', 'ajv', 'dist', 'ajv.js');
+    const ajvFormatsPath = path.join(repoRoot, 'tools', 'manifest-ir-schema-validator', 'project', 'node_modules', 'ajv-formats', 'dist', 'index.js');
 
     const AjvMod = await import(pathToFileURL(ajvPath).href);
     const addFormatsMod = await import(pathToFileURL(ajvFormatsPath).href);
@@ -533,7 +643,7 @@ function registerIPC() {
     const Ajv = AjvMod.default || AjvMod;
     const addFormats = addFormatsMod.default || addFormatsMod;
 
-    const schemaPath = path.join(MANIFEST_ROOT, 'docs', 'spec', 'ir', 'ir-v1.schema.json');
+    const schemaPath = path.join(repoRoot, 'docs', 'spec', 'ir', 'ir-v1.schema.json');
     const schemaData = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
 
     const ajv = new Ajv({ allErrors: true, verbose: true, strict: false, strictSchema: false, strictTypes: false });
@@ -604,7 +714,7 @@ function registerIPC() {
 
   async function getDiffModule() {
     if (_diffModule) return _diffModule;
-    const diffPath = path.join(MANIFEST_ROOT, 'tools', 'IR-diff-explainer', 'project', 'packages', 'ir-diff', 'dist', 'index.js');
+    const diffPath = path.join(getManifestRepoRoot(), 'tools', 'IR-diff-explainer', 'project', 'packages', 'ir-diff', 'dist', 'index.js');
     _diffModule = await import(pathToFileURL(diffPath).href);
     return _diffModule;
   }
@@ -656,7 +766,7 @@ function registerIPC() {
           name: p.name,
           type: typeof p.type === 'object' && p.type?.name ? p.type.name : String(p.type),
           required: p.required || false,
-          default: p.default !== undefined ? p.default : null,
+          default: p.defaultValue !== undefined ? p.defaultValue : (p.default !== undefined ? p.default : null),
         })),
         commands: entityCommands.map(cmd => ({
           name: cmd.name,
@@ -740,14 +850,70 @@ function registerIPC() {
     const runtimeMod = await getRuntimeEngine();
     const context = script.context || {};
 
-    // Execute each command step using the REAL RuntimeEngine
+    // Create a single stateful engine — state carries across all steps
+    const engine = new runtimeMod.RuntimeEngine(ir, context, {
+      deterministicMode: true,
+      requireValidProvenance: false,
+    });
+
+    // Pre-seed entities via store.create (bypasses constraint validation)
+    if (Array.isArray(script.seedEntities)) {
+      for (const seed of script.seedEntities) {
+        if (seed.entity && seed.id && seed.properties) {
+          const store = engine.getStore(seed.entity);
+          if (store) {
+            await store.create({ id: seed.id, ...seed.properties });
+          }
+        }
+      }
+    }
+
+    // Track which entity instances have been created in the store
+    const createdInstances = new Set();
+
+    // Execute each command step — state carries forward between steps
     const steps = [];
     for (const cmd of script.commands) {
-      // Create a fresh engine for each step (stateless — each command is independent)
-      const engine = new runtimeMod.RuntimeEngine(ir, context, {
-        deterministicMode: true,
-        requireValidProvenance: false,
-      });
+
+      // Ensure entity instance exists in the store before running the command.
+      // RuntimeEngine.runCommand calls getInstance() to bind `self` — if the instance
+      // doesn't exist, self is undefined and all guards referencing self.* fail.
+      // RuntimeEngine.updateInstance also requires an existing instance (no upsert).
+      //
+      // We use store.create() directly (bypassing engine.createInstance) because
+      // createInstance validates entity constraints which may block creation when
+      // IR defaults don't satisfy them (e.g. validTitle: self.title != "" but default is "").
+      // The create command's mutations will set the real values after seeding.
+      const instanceKey = `${cmd.entity}::${cmd.id}`;
+      if (!createdInstances.has(instanceKey)) {
+        const existing = await engine.getInstance(cmd.entity, cmd.id);
+        if (!existing) {
+          // Build IR defaults for this entity
+          const entityDef = ir.entities.find(e => e.name === cmd.entity);
+          const defaults = {};
+          if (entityDef) {
+            for (const prop of entityDef.properties || []) {
+              if (prop.defaultValue && prop.defaultValue.value !== undefined) {
+                defaults[prop.name] = prop.defaultValue.value;
+              } else {
+                const typeName = prop.type?.name || prop.type || 'string';
+                switch (typeName) {
+                  case 'number': defaults[prop.name] = 0; break;
+                  case 'boolean': defaults[prop.name] = false; break;
+                  case 'list': defaults[prop.name] = []; break;
+                  case 'map': defaults[prop.name] = {}; break;
+                  default: defaults[prop.name] = ''; break;
+                }
+              }
+            }
+          }
+          const store = engine.getStore(cmd.entity);
+          if (store) {
+            await store.create({ ...defaults, id: cmd.id });
+          }
+        }
+        createdInstances.add(instanceKey);
+      }
 
       let result;
       try {
@@ -918,6 +1084,24 @@ function registerIPC() {
 app.whenReady().then(() => {
   registerIPC();
   createWindow();
+  
+  // Validate CLI path on startup
+  const cliPath = getCliPath();
+  if (!cliPath) {
+    // Show error dialog after a short delay to ensure window is ready
+    setTimeout(() => {
+      if (mainWindow) {
+        dialog.showErrorBox(
+          'Manifest CLI Not Found',
+          'The Manifest CLI path is not configured or does not exist.\n\n' +
+          'Please configure the CLI path in Settings:\n' +
+          '1. Set "Manifest Repo Root" to the root directory of the manifest repository\n' +
+          '2. The CLI path will be automatically set to <repo>/packages/cli/bin/manifest.js\n\n' +
+          'Or manually set the CLI path to the manifest.js file location.'
+        );
+      }
+    }, 1000);
+  }
 
   app.on('activate', () => {
     // macOS: re-create window when dock icon clicked and no windows open

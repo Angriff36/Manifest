@@ -3,6 +3,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getManifestRoot: () => ipcRenderer.invoke('get-manifest-root'),
   setManifestRoot: (root) => ipcRenderer.invoke('set-manifest-root', { root }),
+  getCliPath: () => ipcRenderer.invoke('get-cli-path'),
+  setCliPath: (cliPath) => ipcRenderer.invoke('set-cli-path', { cliPath }),
+  getManifestRepoRoot: () => ipcRenderer.invoke('get-manifest-repo-root'),
+  setManifestRepoRoot: (repoRoot) => ipcRenderer.invoke('set-manifest-repo-root', { repoRoot }),
+  validateCliPath: (cliPath) => ipcRenderer.invoke('validate-cli-path', { cliPath }),
   listFiles: (root) => ipcRenderer.invoke('list-files', { root }),
   readFile: (filePath) => ipcRenderer.invoke('read-file', { filePath }),
   compileFile: (filePath) => ipcRenderer.invoke('compile-file', { filePath }),

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   FolderOpen,
   Globe,
+  Settings,
 } from 'lucide-react';
 
 export type ToolId = 'dashboard' | 'guard-debugger' | 'fixture-generator' | 'profiler' | 'ir-verifier' | 'migration' | 'entity-scanner' | 'policy-coverage' | 'issue-tracker' | 'route-surface';
@@ -47,6 +48,7 @@ interface LayoutProps {
   onRootInputChange: (value: string) => void;
   onRootSubmit: () => void;
   onBrowse: () => void;
+  onOpenSettings: () => void;
 }
 
 export default function Layout({
@@ -58,6 +60,7 @@ export default function Layout({
   onRootInputChange,
   onRootSubmit,
   onBrowse,
+  onOpenSettings,
 }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -120,7 +123,14 @@ export default function Layout({
           })}
         </nav>
 
-        <div className="px-4 py-3 border-t border-surface-border">
+        <div className="px-4 py-3 border-t border-surface-border space-y-2">
+          <button
+            onClick={onOpenSettings}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 hover:bg-surface-hover rounded-md transition-colors"
+          >
+            <Settings size={16} />
+            <span>Settings</span>
+          </button>
           <p className="text-[10px] text-slate-600 text-center">Manifest DevTools v0.1.0</p>
         </div>
       </aside>

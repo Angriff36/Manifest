@@ -55,19 +55,41 @@ function generateSampleScript(entities: IREntityInfo[]): string {
     params[p.name] = getDefaultForParam(p.type, p.name);
   }
 
+  // Build all command steps — one per command across all entities
+  const commands = [];
+  let step = 0;
+  for (const entity of entities) {
+    for (const c of entity.commands) {
+      step++;
+      const cParams: Record<string, unknown> = {};
+      for (const p of c.parameters) {
+        cParams[p.name] = getDefaultForParam(p.type, p.name);
+      }
+      commands.push({
+        step,
+        entity: entity.name,
+        id: `${entity.name.toLowerCase()}-1`,
+        command: c.name,
+        params: cParams,
+        expect: { success: true },
+      });
+    }
+  }
+
   return JSON.stringify({
     description: `Test ${entityWithCmd.name}.${cmd.name}`,
-    context: {},
+    context: {
+      user: { id: 'test-user-1', role: 'admin', name: 'Test Admin' },
+      tenant: 'test-tenant-1',
+    },
     seedEntities,
-    commands: [{
+    commands: commands.length > 0 ? commands : [{
       step: 1,
       entity: entityWithCmd.name,
       id: `${entityWithCmd.name.toLowerCase()}-1`,
       command: cmd.name,
       params,
-      expect: {
-        success: true,
-      },
+      expect: { success: true },
     }],
   }, null, 2);
 }
