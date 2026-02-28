@@ -146,10 +146,14 @@ export async function POST(
   });
 
   if (!result.success) {
-    return Response.json({ error: result.diagnostics }, { status: 400 });
+    const errorMsg = result.guardFailure?.formatted 
+      || result.policyDenial?.message 
+      || result.error 
+      || 'Command failed';
+    return Response.json({ error: errorMsg }, { status: 400 });
   }
 
-  return Response.json(result);
+  return Response.json({ result: result.result, events: result.emittedEvents });
 }
 ```
 
@@ -301,11 +305,15 @@ export async function POST(
     // Track clone event
     await analyticsQueue.add('recipe-cloned', {
       originalId: params.id,
-      cloneId: result.instance.id,
+      cloneId: result.result.id,
     });
   }
 
-  return Response.json(result);
+  return Response.json({ 
+    success: result.success, 
+    result: result.result, 
+    events: result.emittedEvents 
+  });
 }
 ```
 
@@ -548,12 +556,14 @@ export const resolvers = {
         tenantId: context.tenantId,
       });
 
-      const result = await runtime.runCommand('Recipe', 'create', input);
+      const result = await runtime.runCommand('create', input, { entityName: 'Recipe' });
 
       return {
         success: result.success,
-        recipe: result.instance,
-        errors: result.diagnostics?.map(d => d.message),
+        recipe: result.result,
+        errors: result.success ? undefined : [
+          result.guardFailure?.formatted || result.policyDenial?.message || result.error
+        ].filter(Boolean),
       };
     },
 
@@ -569,14 +579,17 @@ export const resolvers = {
         }
       });
 
-      const result = await runtime.runCommand('Recipe', 'publish', {
+      const result = await runtime.runCommand('publish', {}, {
+        entityName: 'Recipe',
         instanceId: id,
       });
 
       return {
         success: result.success,
-        recipe: result.instance,
-        errors: result.diagnostics?.map(d => d.message),
+        recipe: result.result,
+        errors: result.success ? undefined : [
+          result.guardFailure?.formatted || result.policyDenial?.message || result.error
+        ].filter(Boolean),
       };
     },
   },

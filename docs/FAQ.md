@@ -268,7 +268,17 @@ See: `docs/migration/vnext-migration-guide.md`
 
 ### Why does my test say "guard failed but no diagnostic"?
 
-Check that you are not silently catching errors. The runtime MUST emit diagnostics for guard failures.
+Check that you are inspecting the correct fields on `CommandResult`. The runtime returns guard failure details in `result.guardFailure`, not `result.diagnostics` (which doesn't exist on `CommandResult`).
+
+```typescript
+if (!result.success && result.guardFailure) {
+  console.error('Guard failed:', {
+    index: result.guardFailure.index,
+    expression: result.guardFailure.formatted,
+    resolved: result.guardFailure.resolved
+  });
+}
+```
 
 ### Why is my constraint not blocking?
 

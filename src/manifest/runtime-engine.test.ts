@@ -958,7 +958,7 @@ describe('RuntimeEngine', () => {
         commands: [{
           name: 'doSomething',
           entity: 'Item',
-          params: [],
+          parameters: [],
           guards: [guardExpr],
           actions: [],
           emits: [],
@@ -1116,6 +1116,7 @@ describe('RuntimeEngine', () => {
             name: 'deepValue',
             expression: deepExpr,
             type: { name: 'number', nullable: false },
+            dependencies: ['value'],
           }],
           relationships: [],
           commands: [],

@@ -11,6 +11,13 @@ import type { IR } from '../manifest/ir';
 // Minimal valid IR for testing
 const mockIR: IR = {
   version: '1.0',
+  provenance: {
+    contentHash: 'test-hash',
+    compilerVersion: '0.0.0',
+    schemaVersion: '1.0',
+    compiledAt: new Date().toISOString(),
+  },
+  modules: [],
   entities: [
     {
       name: 'TestEntity',
@@ -18,17 +25,24 @@ const mockIR: IR = {
         { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['readonly'] },
         { name: 'name', type: { name: 'string', nullable: false }, modifiers: [] },
       ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
     },
   ],
+  stores: [],
   commands: [],
   events: [],
+  policies: [],
 };
 
 describe('CLI Generate Command - API Contract Tests', () => {
   let projection: NextJsProjection;
 
   beforeEach(() => {
-    projection = new NextJsProjection({});
+    projection = new NextJsProjection();
   });
 
   describe('Projection API compliance', () => {
@@ -139,7 +153,8 @@ describe('CLI Generate Command - API Contract Tests', () => {
             entity: 'TestEntity',
             parameters: [],
             guards: [],
-            mutations: [],
+            actions: [],
+            emits: [],
           },
         ],
       };

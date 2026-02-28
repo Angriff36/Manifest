@@ -93,22 +93,52 @@ console.log(result.ir.entities.map(e => e.name));
 
 ### "Guard failed but no diagnostic"
 
-**Cause**: Silently catching errors or not checking result diagnostics.
+**Cause**: Not checking the correct fields on `CommandResult`.
 
 **Solution**:
-- Always check `result.success` before accessing `result.instance`
-- Inspect `result.diagnostics` for detailed error information
+- Always check `result.success` before accessing `result.result`
+- Inspect `result.guardFailure`, `result.policyDenial`, or `result.error` for detailed error information
+- Note: `CommandResult` does NOT have a `diagnostics` field - use the specific failure fields instead
 
 ```typescript
-const result = await runtime.runCommand('Todo', 'create', input);
+const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
 
 if (!result.success) {
-  console.error('Failed:', result.diagnostics);
-  // diagnostics contains: guard index, expression, resolved values
+  if (result.guardFailure) {
+    console.error('Guard failed:', {
+      index: result.guardFailure.index,
+      expression: result.guardFailure.formatted,
+      resolved: result.guardFailure.resolved
+    });
+  } else if (result.policyDenial) {
+    console.error('Policy denied:', {
+      policy: result.policyDenial.policyName,
+      message: result.policyDenial.message
+    });
+  } else {
+    console.error('Error:', result.error);
+  }
   return;
 }
 
-console.log('Success:', result.instance);
+console.log('Success:', result.result);
+```
+
+**For API responses**, use the normalization helper to get a consistent diagnostic structure:
+
+```typescript
+import { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
+
+const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
+const normalized = normalizeCommandResult('Todo', 'create', result);
+
+if (!normalized.success) {
+  console.error('Failed:', normalized.diagnostics);
+  // diagnostics contains: kind, entity, command, ruleName, message, resolved values
+  return;
+}
+
+console.log('Success:', normalized.data);
 ```
 
 ### "Policy denied"
@@ -406,17 +436,19 @@ node scripts/debug/dump-ir.mts program.manifest > ir.json
 ### Trace guard evaluation
 
 ```typescript
-// Runtime emits guard failures with full context
-runtime.on('guardFailed', (event) => {
+// Check guard failure details from CommandResult
+const result = await runtime.runCommand('update', input, { entityName: 'Task' });
+
+if (!result.success && result.guardFailure) {
   console.log('Guard failed:', {
-    entity: event.entityName,
-    command: event.commandName,
-    guardIndex: event.guardIndex,
-    expression: event.guardExpression,
-    resolved: event.resolvedValues
+    guardIndex: result.guardFailure.index,
+    expression: result.guardFailure.formatted,
+    resolved: result.guardFailure.resolved
   });
-});
+}
 ```
+
+**Note**: The runtime does NOT emit events like `runtime.on('guardFailed')`. All diagnostic information is returned in the `CommandResult` object.
 
 ### Inspect runtime state
 

@@ -31,3 +31,11 @@ console-messages.json
 codex-plans/
 claude-code-plans/
 tools/manifest-devtools/project/release/win-unpacked/locales/zh-TW.pak
+tools/manifest-devtools/project/release/win-unpacked/Manifest DevTools.exe
+tools/manifest-devtools/project.zip
+tasks/lessons.md
+nul
+manifest-spec-docs.zip
+
+# Session files (may contain secrets)
+session-ses_*.md

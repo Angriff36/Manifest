@@ -489,7 +489,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
-    lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse }', responseImportPath));
+    lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
     lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     if (options.includeTenantFilter) {
       if (options.tenantProvider) {
@@ -517,17 +517,19 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(`      entityName: "${entity.name}",`);
     lines.push('    });');
     lines.push('');
-    lines.push('    if (!result.success) {');
-    lines.push('      if (result.policyDenial) {');
-    lines.push('        return manifestErrorResponse(`Access denied: ${result.policyDenial.policyName}`, 403);');
-    lines.push('      }');
-    lines.push('      if (result.guardFailure) {');
-    lines.push('        return manifestErrorResponse(`Guard ${result.guardFailure.index} failed: ${result.guardFailure.formatted}`, 422);');
-    lines.push('      }');
-    lines.push('      return manifestErrorResponse(result.error ?? "Command failed", 400);');
+    lines.push(`    const normalized = normalizeCommandResult("${entity.name}", "${command.name}", result);`);
+    lines.push('');
+    lines.push('    if (!normalized.success) {');
+    lines.push('      // Determine HTTP status based on diagnostic kind');
+    lines.push('      const firstDiagnostic = normalized.diagnostics?.[0];');
+    lines.push('      const status = firstDiagnostic?.kind === "policy_denial" ? 403');
+    lines.push('        : firstDiagnostic?.kind === "guard_failure" ? 422');
+    lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
+    lines.push('        : 400;');
+    lines.push('      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);');
     lines.push('    }');
     lines.push('');
-    lines.push('    return manifestSuccessResponse({ result: result.result, events: result.emittedEvents });');
+    lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
     lines.push('  } catch (error) {');
     lines.push(`    console.error("Error executing ${entity.name}.${command.name}:", error);`);
     lines.push('    return manifestErrorResponse("Internal server error", 500);');

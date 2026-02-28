@@ -122,6 +122,22 @@ Agents must follow this sequence for any change:
    - Run conformance tests. No green = not done.
    - If UI is involved, do a minimal manual smoke test in Kitchen/Runtime.
 
+## Publishing (MANDATORY — Do Not Ask the User)
+
+When publishing to GitHub Packages:
+
+1. **Token location**: `C:\Users\Ryan\Documents\env.txt`, key `GITHUB_PACKAGES_TOKEN`
+2. **Read the token yourself** from that file. Do NOT ask the user for it.
+3. **Check existing versions first**: `NODE_AUTH_TOKEN=<token> npm view @angriff36/manifest versions --json`
+4. **Bump to next available version** in root `package.json`
+5. **Use pnpm publish** (npm publish fails due to Arborist workspace bug):
+   ```bash
+   NODE_AUTH_TOKEN=<token> pnpm publish --no-git-checks
+   ```
+6. Full publish docs: `docs/tools/PACKAGES_AND_DISTRIBUTION.md`
+
+---
+
 ## Commands Agents Are Allowed to Run
 
 Use npm for this repo.

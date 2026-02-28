@@ -313,12 +313,14 @@ describe('NextJsProjection', () => {
       expect(code).toContain('createManifestRuntime');
       expect(code).toContain('user: { id: userId');
 
-      // Contract: Must handle guard failure with 422
-      expect(code).toContain('guardFailure');
-      expect(code).toContain('422');
+      // Contract: Must use normalizeCommandResult for error handling
+      expect(code).toContain('normalizeCommandResult');
+      expect(code).toContain('normalized.success');
 
-      // Contract: Must handle policy denial with 403
-      expect(code).toContain('policyDenial');
+      // Contract: Must handle different diagnostic kinds with appropriate status codes
+      expect(code).toContain('guard_failure');
+      expect(code).toContain('policy_denial');
+      expect(code).toContain('422');
       expect(code).toContain('403');
 
       // Contract: Must have auth check
@@ -477,6 +479,34 @@ describe('NextJsProjection', () => {
 
       expect(commandResult.artifacts[0].id).toBe('nextjs.command:Recipe.create');
       expect(commandResult.artifacts[0].pathHint).toContain('recipe/create/route.ts');
+    });
+
+    it('uses normalizeCommandResult for structured diagnostics', async () => {
+      const result = await compileToIR(commandSource);
+      expect(result.ir).not.toBeNull();
+
+      const commandResult = projection.generate(result.ir!, {
+        surface: 'nextjs.command',
+        entity: 'Recipe',
+        command: 'create',
+      });
+
+      const code = firstCode(commandResult);
+
+      // Contract: Must import normalizeCommandResult
+      expect(code).toContain('normalizeCommandResult');
+
+      // Contract: Must call normalizeCommandResult with entity and command names
+      expect(code).toContain('normalizeCommandResult("Recipe", "create", result)');
+
+      // Contract: Must use normalized.success instead of result.success
+      expect(code).toContain('if (!normalized.success)');
+
+      // Contract: Must return structured diagnostics in error responses
+      expect(code).toContain('diagnostics: normalized.diagnostics');
+
+      // Contract: Must NOT manually format guard failures
+      expect(code).not.toContain('Guard ${result.guardFailure.index} failed');
     });
   });
 

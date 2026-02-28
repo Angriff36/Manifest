@@ -70,15 +70,21 @@ constructor(
 Executes a command on an entity.
 
 ```typescript
-const result = await runtime.runCommand('Todo', 'create', {
+const result = await runtime.runCommand('create', {
   title: 'Learn Manifest'
-});
+}, { entityName: 'Todo' });
 
 if (result.success) {
-  console.log('Created:', result.instance);
-  console.log('Events:', result.events);
+  console.log('Created:', result.result);
+  console.log('Events:', result.emittedEvents);
 } else {
-  console.error('Failed:', result.diagnostics);
+  if (result.guardFailure) {
+    console.error('Guard failed:', result.guardFailure.formatted);
+  } else if (result.policyDenial) {
+    console.error('Policy denied:', result.policyDenial.policyName);
+  } else {
+    console.error('Error:', result.error);
+  }
 }
 ```
 
@@ -86,11 +92,45 @@ if (result.success) {
 ```typescript
 interface CommandResult {
   success: boolean;                     // True if command succeeded
-  instance?: EntityInstance;            // Created/updated instance (if successful)
-  events?: Event[];                     // Emitted events
-  diagnostics?: Diagnostic[];           // Error details (if failed)
-  nonBlockingViolations?: ConstraintViolation[];  // Non-blocking constraint failures
+  result?: unknown;                     // Command result value
+  error?: string;                       // Error message (if failed)
+  guardFailure?: GuardFailure;          // Guard failure details (if guard failed)
+  policyDenial?: PolicyDenial;          // Policy denial details (if policy denied)
+  constraintOutcomes?: ConstraintOutcome[];  // Constraint evaluation results
+  emittedEvents: EmittedEvent[];        // Events emitted during execution
 }
+
+interface GuardFailure {
+  index: number;                        // 1-based guard index
+  expression: IRExpression;             // Guard expression AST
+  formatted: string;                    // Human-readable expression
+  resolved?: Array<{                    // Resolved values for debugging
+    expression: string;
+    value: unknown;
+  }>;
+}
+
+interface PolicyDenial {
+  policyName: string;                   // Name of denying policy
+  expression: IRExpression;             // Policy expression AST
+  formatted: string;                    // Human-readable expression
+  message?: string;                     // Optional policy message
+  resolved?: Array<{                    // Resolved values for debugging
+    expression: string;
+    value: unknown;
+  }>;
+}
+```
+
+**For API responses**, use the normalization helper:
+```typescript
+import { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
+
+const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
+const normalized = normalizeCommandResult('Todo', 'create', result);
+
+// normalized has consistent structure:
+// { success, error?, diagnostics?, data?, events }
 ```
 
 #### `query(entityName: string, filter?: QueryFilter): Promise<EntityInstance[]>`

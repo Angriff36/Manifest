@@ -17,6 +17,7 @@ import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
+import { auditRoutesCommand } from './commands/audit-routes.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -255,6 +256,28 @@ program
   .option('-c, --config <path>', 'Config file path')
   .action(async (options = {}) => {
     await lintRoutesCommand(options);
+  });
+
+/**
+ * manifest audit-routes
+ *
+ * Audit generated/handwritten routes for Manifest boundary compliance:
+ * - Writes should execute via runtime.runCommand
+ * - Direct reads should include expected tenant/location/soft-delete filters
+ */
+program
+  .command('audit-routes')
+  .description('Audit route boundary compliance (runtime writes + scoped reads + ownership)')
+  .option('-r, --root <path>', 'Root directory to audit', '.')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--strict', 'Fail on warnings and enforce ownership rules as errors', false)
+  .option('--tenant-field <name>', 'Tenant scope field name', 'tenantId')
+  .option('--deleted-field <name>', 'Soft-delete field name', 'deletedAt')
+  .option('--location-field <name>', 'Location scope field name', 'locationId')
+  .option('--commands-manifest <path>', 'Path to commands manifest JSON (enables ownership rules)')
+  .option('--exemptions <path>', 'Path to exemptions registry JSON')
+  .action(async (options = {}) => {
+    await auditRoutesCommand(options);
   });
 
 /**

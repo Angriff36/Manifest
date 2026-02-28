@@ -1,6 +1,6 @@
 # Manifest Compliance Matrix
 
-Last updated: 2026-02-12
+Last updated: 2026-02-28
 Status: Active
 Authority: Advisory
 Enforced by: None
@@ -171,7 +171,28 @@ All documented nonconformances have been resolved:
 
 - Workflow replay engine — OUT_OF_SCOPE. Runtime provides replay primitives (correlationId, causationId, emitIndex, IdempotencyStore, deterministicMode). Replay orchestration is the caller's responsibility per manifest-vnext.md § "Workflow Patterns".
 
-## 10. Recommendations
+## 10. Route Ownership Tooling (CLI)
+
+| Status | Requirement | Spec Reference | Implementation Status | Code Reference | Notes |
+|--------|-------------|----------------|---------------------|----------------|-------|
+| [x] | WRITE_ROUTE_BYPASSES_RUNTIME rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:363-370 | Write routes must call runCommand |
+| [x] | WRITE_ROUTE_USER_CONTEXT_NOT_VISIBLE rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:373-380 | User context detection in write routes |
+| [x] | READ_MISSING_TENANT_SCOPE rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:384-391 | Tenant field predicate detection |
+| [x] | READ_MISSING_SOFT_DELETE_FILTER rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:394-401 | Soft-delete filter detection |
+| [x] | READ_LOCATION_REFERENCE_WITHOUT_FILTER rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:405-414 | Location filter in direct query where-clause (AST-based) |
+| [x] | WRITE_OUTSIDE_COMMANDS_NAMESPACE rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:425-433 | Write routes must be in /commands/ or exempted |
+| [x] | COMMAND_ROUTE_MISSING_RUNTIME_CALL rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:437-445 | Command-namespace routes must call runCommand |
+| [x] | COMMAND_ROUTE_ORPHAN rule | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:451-469 | Command routes must have backing manifest entry |
+| [x] | Commands manifest loading | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:102-126 | JSON loading with malformed-JSON error, ENOENT tolerance |
+| [x] | Exemption registry loading | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:134-157 | JSON loading with malformed-JSON error, ENOENT tolerance |
+| [x] | Path traversal guard | Security | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:179 | Refuses to match files outside root directory |
+| [x] | Rollout severity (warnings by default) | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:356 | Ownership rules are warnings unless --strict |
+| [x] | Exit code 2 for usage errors | CLI conventions | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:603 | AuditUsageError class distinguishes usage from rule violations |
+| [x] | Empty manifest detection | manifest-vnext.md § "Canonical Routes" | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.ts:452-459 | Warns when explicitly-provided manifest is empty |
+| [x] | Test coverage | Testing | FULLY_IMPLEMENTED | packages/cli/src/commands/audit-routes.test.ts | 55 tests covering all rules, helpers, loaders, edge cases |
+
+## 11. Recommendations
 
 1. **Low Priority**: Enhance performance with more aggressive memoization
 2. **Ongoing**: Maintain conformance test coverage as features evolve
+3. **Ongoing**: Maintain route ownership test coverage as new audit rules are added

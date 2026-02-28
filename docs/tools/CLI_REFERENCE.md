@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-21
+Last updated: 2026-02-28
 
 Complete reference for all Manifest CLI commands.
 
@@ -341,6 +341,240 @@ manifest doctor [options]
 pnpm exec manifest doctor --entity KitchenTask --command claim
 pnpm exec manifest doctor --entity KitchenTask --command claim --json
 ```
+
+---
+
+### `manifest scan`
+
+Scan `.manifest` files for configuration issues before runtime. Primary goal: "If scan passes, the code works."
+
+```bash
+manifest scan [source] [options]
+```
+
+**Arguments:**
+- `source` - Source `.manifest` file or directory (default: current directory)
+
+**Options:**
+- `-g, --glob <pattern>` - Glob pattern for manifest files (default: `**/*.manifest`)
+- `-f, --format <format>` - Output format: `text`, `json` (default: `text`)
+- `--strict` - Fail on warnings
+
+**Checks performed:**
+- **Policy coverage** — Every command has an `execute` or `all` policy
+- **Store consistency** — Store targets are recognized built-ins (`memory`, `localStorage`, `postgres`, `supabase`) or have config bindings
+- **Route context** — Generated routes pass required `user` context when command guards/policies reference `user.*`
+- **Property alignment** — Manifest properties match Prisma schema fields (when configured), with Levenshtein-distance "did you mean?" suggestions
+
+**Examples:**
+```bash
+# Scan all manifest files in current directory
+pnpm exec manifest scan
+
+# Scan a specific directory
+pnpm exec manifest scan manifest/
+
+# JSON output for CI
+pnpm exec manifest scan --format json
+
+# Strict mode (warnings → failures)
+pnpm exec manifest scan --strict
+```
+
+**Exit codes:**
+- `0` - Scan passed (no errors; warnings allowed unless `--strict`)
+- `1` - Errors found (or warnings in strict mode)
+
+---
+
+### `manifest routes`
+
+Compile all `.manifest` files and output the canonical route manifest as JSON. This is the agent-accessible equivalent of the DevTools Route Surface tab.
+
+```bash
+manifest routes [options]
+```
+
+**Options:**
+- `-s, --src <pattern>` - Source glob pattern for `.manifest` files
+- `-f, --format <format>` - Output format: `json`, `summary` (default: `json`)
+- `-b, --base-path <path>` - Base path prefix for routes (default: `/api`)
+
+**Examples:**
+```bash
+# JSON route manifest to stdout (default)
+pnpm exec manifest routes
+
+# Human-readable summary table
+pnpm exec manifest routes --format summary
+
+# Custom source directory
+pnpm exec manifest routes --src "manifest/**/*.manifest"
+
+# Custom base path
+pnpm exec manifest routes --base-path /v1
+```
+
+**JSON output shape:**
+```json
+{
+  "$schema": "https://manifest.lang/spec/routes-v1.schema.json",
+  "version": "1.0",
+  "generatedAt": "2026-02-28T...",
+  "basePath": "/api",
+  "filesCompiled": 3,
+  "routes": [
+    { "method": "GET", "path": "/api/recipes", "source": { "kind": "entity-read", "entity": "Recipe" } },
+    { "method": "POST", "path": "/api/recipes/commands/create", "source": { "kind": "command", "entity": "Recipe", "command": "create" } }
+  ],
+  "diagnostics": []
+}
+```
+
+**Exit codes:**
+- `0` - Success
+- `1` - Compilation errors
+
+See `docs/spec/manifest-vnext.md` § "Canonical Routes (Normative)".
+
+---
+
+### `manifest lint-routes`
+
+Scan client directories for hardcoded route strings. Fails CI when violations are found — the enforcement layer for the Canonical Routes invariant.
+
+```bash
+manifest lint-routes [options]
+```
+
+**Options:**
+- `-f, --format <format>` - Output format: `text`, `json` (default: `text`)
+- `-c, --config <path>` - Config file path
+
+**Configuration** (in `manifest.config.yaml`):
+```yaml
+lintRoutes:
+  dirs: [src, app, pages, components, lib]
+  prefixes: ["/api/"]
+  allowlist: ["/api/health"]
+  exclude:
+    - "**/node_modules/**"
+    - "**/.next/**"
+    - "**/routes.ts"
+    - "**/routes.manifest.json"
+    - "**/*.test.*"
+```
+
+**What it detects:**
+- String literals containing route prefixes: `"/api/foo"`, `'/api/foo'`
+- Template literals: `` `/api/foo` ``
+- Fetch calls: `fetch("/api/foo")`
+
+**What it skips:**
+- Import paths (`from "..."`, `require("...")`)
+- Comments and generated file headers
+- Allowlisted paths
+
+**Examples:**
+```bash
+# Scan with defaults
+pnpm exec manifest lint-routes
+
+# JSON output for CI
+pnpm exec manifest lint-routes --format json
+```
+
+**Exit codes:**
+- `0` - No hardcoded routes found
+- `1` - Violations found
+
+See `docs/spec/manifest-vnext.md` § "Canonical Routes (Normative)".
+
+---
+
+### `manifest audit-routes`
+
+Audit generated and handwritten route files for Manifest boundary compliance. Checks that write routes execute through the runtime, read routes include expected filters, and (when ownership context is provided) that command routes follow the commands-namespace convention.
+
+```bash
+manifest audit-routes [options]
+```
+
+**Options:**
+- `-r, --root <path>` - Root directory to audit (default: `.`)
+- `-f, --format <format>` - Output format: `text`, `json` (default: `text`)
+- `--strict` - Fail on warnings and enforce ownership rules as errors
+- `--tenant-field <name>` - Tenant scope field name (default: `tenantId`)
+- `--deleted-field <name>` - Soft-delete field name (default: `deletedAt`)
+- `--location-field <name>` - Location scope field name (default: `locationId`)
+- `--commands-manifest <path>` - Path to commands manifest JSON (enables ownership rules)
+- `--exemptions <path>` - Path to exemptions registry JSON
+
+**Audit rules:**
+
+| Code | Severity | Trigger |
+|------|----------|---------|
+| `WRITE_ROUTE_BYPASSES_RUNTIME` | error | Write route (POST/PUT/PATCH/DELETE) with no `runCommand` call |
+| `WRITE_ROUTE_USER_CONTEXT_NOT_VISIBLE` | warning | Write route calls `runCommand` but no `user: {…}` context detected |
+| `READ_MISSING_TENANT_SCOPE` | warning | GET route uses direct query without tenant field predicate |
+| `READ_MISSING_SOFT_DELETE_FILTER` | warning | GET route uses direct query without `deletedAt: null` filter |
+| `READ_LOCATION_REFERENCE_WITHOUT_FILTER` | warning | GET route references location field but no query filter detected |
+| `WRITE_OUTSIDE_COMMANDS_NAMESPACE` | warning* | Write route outside `/commands/` with no exemption |
+| `COMMAND_ROUTE_MISSING_RUNTIME_CALL` | warning* | Route in `/commands/` namespace that doesn't call `runCommand` |
+| `COMMAND_ROUTE_ORPHAN` | warning* | Command route with no backing entry in commands manifest |
+
+*\* Ownership rules (last 3) require `--commands-manifest`. Severity is `warning` by default (rollout mode) and `error` with `--strict`.*
+
+**Commands manifest format** (`kitchen.commands.json`):
+```json
+[
+  { "entity": "KitchenTask", "command": "create", "commandId": "KitchenTask.create" },
+  { "entity": "KitchenTask", "command": "claim", "commandId": "KitchenTask.claim" }
+]
+```
+
+**Exemptions registry format** (`route-exemptions.json`):
+```json
+[
+  {
+    "path": "app/api/kitchen/tasks/route.ts",
+    "methods": ["POST"],
+    "reason": "Legacy bulk import endpoint — migration planned for Q3",
+    "category": "legacy"
+  }
+]
+```
+
+**Examples:**
+```bash
+# Basic audit (existing rules only)
+pnpm exec manifest audit-routes
+
+# Enable ownership rules (rollout mode — warnings)
+pnpm exec manifest audit-routes \
+  --commands-manifest kitchen.commands.json \
+  --exemptions route-exemptions.json
+
+# Strict mode (ownership rules → errors, warnings → failures)
+pnpm exec manifest audit-routes \
+  --commands-manifest kitchen.commands.json \
+  --exemptions route-exemptions.json \
+  --strict
+
+# JSON output for CI
+pnpm exec manifest audit-routes --format json \
+  --commands-manifest kitchen.commands.json
+
+# Custom field names
+pnpm exec manifest audit-routes \
+  --tenant-field organizationId \
+  --deleted-field archivedAt
+```
+
+**Exit codes:**
+- `0` - No errors (warnings allowed unless `--strict`)
+- `1` - Rule violations found (errors, or warnings in strict mode)
+- `2` - Invalid usage (malformed JSON, unreadable files)
 
 ---
 

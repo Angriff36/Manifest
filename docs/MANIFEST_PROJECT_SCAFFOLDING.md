@@ -279,13 +279,24 @@ export function manifestSuccessResponse(data: unknown, status = 200) {
 }
 
 export function manifestErrorResponse(
-  message: string | { message?: string; diagnostics?: unknown[] },
+  message: string | { error?: string; diagnostics?: unknown[] },
   status = 400
 ) {
   const body = typeof message === 'string' ? { error: message } : message;
   return NextResponse.json(body, { status });
 }
+
+// Re-export the normalization helper from Manifest
+export { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
+export type { RuntimeDiagnostic, NormalizedCommandResult } from '@angriff36/manifest/api-diagnostics';
 ```
+
+**What this provides:**
+- `manifestSuccessResponse` - Returns successful API responses
+- `manifestErrorResponse` - Returns error responses with consistent structure
+- `normalizeCommandResult` - Converts runtime `CommandResult` into a consistent API shape with structured diagnostics
+- `RuntimeDiagnostic` - TypeScript type for diagnostic objects
+- `NormalizedCommandResult` - TypeScript type for normalized responses
 
 ### Step 7: Compile Manifest to IR
 

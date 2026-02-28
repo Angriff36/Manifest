@@ -1,6 +1,6 @@
 # Manifest Packages and Distribution
 
-Last updated: 2026-02-26
+Last updated: 2026-02-28
 Status: Active
 Authority: Advisory
 Enforced by: None
@@ -112,21 +112,39 @@ This confirms auth, but not always publish scope. A publish can still fail if th
 
 Publish from the Manifest repo root (`@angriff36/manifest`), not from `packages/cli`.
 
-Recommended sequence:
+### Token Setup (REQUIRED — read this first)
+
+The publish token is stored in `C:\Users\Ryan\Documents\env.txt` under the key `GITHUB_PACKAGES_TOKEN` (also aliased as `NPM_TOKEN` in that file). This is a GitHub PAT with `write:packages` scope.
+
+**Agents: read the token from that file and pass it inline. Do not ask the user for it.**
+
+The `.npmrc` in this repo references `${NODE_AUTH_TOKEN}`. You must provide it as an environment variable at publish time.
+
+### Recommended publish sequence
 
 ```bash
-# write-capable GitHub Packages token
-export NODE_AUTH_TOKEN=...
+# 1. Check latest published version to avoid conflicts
+NODE_AUTH_TOKEN=<token> npm view @angriff36/manifest versions --json
 
-# bump the real package version
-npm version patch --no-git-tag-version
+# 2. Bump version in root package.json to next available
+#    (edit package.json directly — do NOT use npm version, it may fail in workspace)
 
-# build shipped artifacts
+# 3. Build shipped artifacts
 pnpm run build:lib
 pnpm --filter @manifest/cli run build
 
-# publish to GitHub Packages
-pnpm publish --no-git-checks --registry https://npm.pkg.github.com
+# 4. Publish to GitHub Packages
+NODE_AUTH_TOKEN=<token> pnpm publish --no-git-checks
+```
+
+**On Windows (Git Bash / MSYS2)**, use inline env var syntax:
+```bash
+NODE_AUTH_TOKEN=ghp_xxx pnpm publish --no-git-checks
+```
+
+**On Windows (cmd.exe / PowerShell)**:
+```powershell
+$env:NODE_AUTH_TOKEN="ghp_xxx"; pnpm publish --no-git-checks
 ```
 
 ### Why `pnpm publish` is recommended here
@@ -170,24 +188,31 @@ pnpm add -w @angriff36/manifest@0.3.24 --save-exact --lockfile-only
 
 CI/Vercel will perform a clean install from the updated lockfile.
 
-## CLI Diagnostics Commands (Shipped in `@angriff36/manifest`)
+## CLI Commands (Shipped in `@angriff36/manifest`)
 
-The following commands are included in the published package CLI:
+The following commands are included in the published package CLI. See `docs/tools/CLI_REFERENCE.md` for full usage.
 
-- `manifest doctor`
-- `manifest inspect entity <EntityName>`
-- `manifest diff source-vs-ir <EntityName>`
-- `manifest duplicates`
-- `manifest runtime-check <EntityName> <command>`
-- `manifest cache-status`
+### Build & Generate
+- `manifest init` — Initialize project config
+- `manifest compile` — Compile .manifest to IR
+- `manifest generate` — Generate code from IR
+- `manifest build` — Compile + generate in one step
+- `manifest validate` — Validate IR against schema
+- `manifest check` — Compile + validate in one step
 
-These are intended to detect:
+### Route Tooling
+- `manifest routes` — Generate canonical route manifest from IR
+- `manifest lint-routes` — Scan for hardcoded route strings (CI enforcement)
+- `manifest audit-routes` — Audit route boundary compliance + ownership rules
+- `manifest scan` — Scan .manifest files for policy/store/context/property issues
 
-- Source parser/scanner mismatches
-- Source vs precompiled IR drift
-- Duplicate merge report issues
-- Route surface / IR / source correlation problems
-- Likely stale in-process runtime cache (with restart guidance)
+### Diagnostics
+- `manifest doctor` — Ranked offline diagnostics
+- `manifest inspect entity <EntityName>` — Inspect source + IR for an entity
+- `manifest diff source-vs-ir <EntityName>` — Detect source/IR drift
+- `manifest duplicates` — Summarize duplicate merge reports
+- `manifest runtime-check <EntityName> <command>` — Route/IR/source correlation
+- `manifest cache-status` — Stale runtime cache guidance
 
 ## Anti-Pattern to Avoid
 
