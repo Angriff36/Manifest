@@ -365,10 +365,12 @@ export async function auditRoutesCommand(options = {}) {
         // Load ownership context if commands manifest is provided
         let ownership;
         if (options.commandsManifest) {
-            const manifestPath = path.resolve(root, options.commandsManifest);
+            // Resolve relative to CWD, not --root. --root scopes the route scan;
+            // --commands-manifest and --exemptions are independent file paths.
+            const manifestPath = path.resolve(options.commandsManifest);
             const commandsManifest = await loadCommandsManifest(manifestPath);
             const exemptionsPath = options.exemptions
-                ? path.resolve(root, options.exemptions)
+                ? path.resolve(options.exemptions)
                 : undefined;
             const exemptions = exemptionsPath ? await loadExemptions(exemptionsPath) : [];
             ownership = {
