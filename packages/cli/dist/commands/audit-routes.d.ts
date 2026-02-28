@@ -1,4 +1,4 @@
-type Severity = 'error' | 'warning';
+type Severity = "error" | "warning";
 export interface RouteAuditFinding {
     file: string;
     severity: Severity;
@@ -35,7 +35,7 @@ export interface RouteExemption {
 }
 export interface AuditRoutesOptions {
     root?: string;
-    format?: 'text' | 'json';
+    format?: "text" | "json";
     strict?: boolean;
     tenantField?: string;
     deletedField?: string;
@@ -45,6 +45,13 @@ export interface AuditRoutesOptions {
     /** Path to exemptions registry JSON */
     exemptions?: string;
 }
+/**
+ * Finding codes that belong to the ownership enforcement gate.
+ * --strict fails the exit code ONLY when findings with these codes exist
+ * at error severity. All other finding codes (legacy write-bypass, read
+ * quality) are reported but never block the exit code.
+ */
+export declare const OWNERSHIP_RULE_CODES: Set<string>;
 /**
  * Thrown for invalid CLI usage: malformed JSON, unreadable files (non-ENOENT), etc.
  * Distinguished from rule-violation failures so the CLI can exit with code 2.
@@ -90,7 +97,9 @@ export declare function extractCommandFromPath(filePath: string): string | null;
 export declare function extractEntitySegmentFromPath(filePath: string): string | null;
 /**
  * Check if a command route has a backing entry in the commands manifest.
- * Matches by command name only (case-insensitive).
+ * Normalizes both sides to kebab-case for comparison, since the filesystem
+ * uses kebab-case (e.g. "assign-task") while the IR uses camelCase
+ * (e.g. "assignTask").
  *
  * Entity naming conventions differ between IR (PascalCase, e.g. "CrmClient")
  * and filesystem (lowercase/kebab, e.g. "clients"), so entity segment matching
@@ -120,7 +129,7 @@ export interface OwnershipContext {
      */
     manifestExplicitlyProvided: boolean;
 }
-export declare function auditRouteFileContent(content: string, file: string, options: Required<Pick<AuditRoutesOptions, 'tenantField' | 'deletedField' | 'locationField'>>, ownership?: OwnershipContext): RouteAuditFileResult;
+export declare function auditRouteFileContent(content: string, file: string, options: Required<Pick<AuditRoutesOptions, "tenantField" | "deletedField" | "locationField">>, ownership?: OwnershipContext): RouteAuditFileResult;
 export declare function auditRoutesCommand(options?: AuditRoutesOptions): Promise<void>;
 export {};
 //# sourceMappingURL=audit-routes.d.ts.map
