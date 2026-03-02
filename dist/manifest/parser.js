@@ -615,6 +615,60 @@ export class Parser {
         }
         const expression = this.parseExpr();
         message = this.check('STRING') ? this.advance().value : undefined;
+        // Check for optional block after inline expression:
+        //   constraint name:severity <expr> { messageTemplate: "...", details: { ... } }
+        // This is the hybrid inline+block syntax used in production manifests.
+        if (this.check('PUNCTUATION', '{')) {
+            this.advance();
+            this.skipNL();
+            while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+                this.skipNL();
+                if (this.check('PUNCTUATION', '}'))
+                    break;
+                const field = this.consumeIdentifierOrKeyword().value;
+                this.consume('OPERATOR', ':');
+                switch (field) {
+                    case 'code':
+                        code = this.consumeIdentifier().value;
+                        break;
+                    case 'message':
+                        message = this.check('STRING') ? this.advance().value : undefined;
+                        break;
+                    case 'messageTemplate':
+                        messageTemplate = this.check('STRING') ? this.advance().value : undefined;
+                        break;
+                    case 'overridePolicy':
+                        overridePolicyRef = this.consumeIdentifier().value;
+                        break;
+                    case 'details':
+                        detailsMapping = {};
+                        if (this.check('PUNCTUATION', '{')) {
+                            this.advance();
+                            this.skipNL();
+                            while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+                                this.skipNL();
+                                if (this.check('PUNCTUATION', '}'))
+                                    break;
+                                const key = this.consumeIdentifierOrKeyword().value;
+                                this.consume('OPERATOR', ':');
+                                detailsMapping[key] = this.parseExpr();
+                                this.skipNL();
+                                if (this.check('PUNCTUATION', ','))
+                                    this.advance();
+                            }
+                            this.consume('PUNCTUATION', '}');
+                        }
+                        break;
+                    default:
+                        // Unknown field, skip the expression
+                        this.parseExpr();
+                }
+                this.skipNL();
+                if (this.check('PUNCTUATION', ','))
+                    this.advance();
+            }
+            this.consume('PUNCTUATION', '}');
+        }
         return {
             type: 'Constraint',
             name,
@@ -622,7 +676,10 @@ export class Parser {
             expression,
             severity: severity || 'block',
             message,
+            messageTemplate,
+            detailsMapping,
             overrideable,
+            overridePolicyRef,
         };
     }
     parseFlow() {

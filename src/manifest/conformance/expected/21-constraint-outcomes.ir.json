@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "d6f2b8486341646573b276fc9bb47c64ea6b16ad5eb48926c74ac3cbf7a5a6c6",
+    "irHash": "5fdec52662f73e97fa28822c6facdd87a5d4e04fe3b3c723519907731a758b09",
     "compilerVersion": "0.3.8",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -97,7 +97,12 @@
       ],
       "computedProperties": [],
       "relationships": [],
-      "commands": [],
+      "commands": [
+        "createLargeOrder",
+        "updateStatus",
+        "process",
+        "cancel"
+      ],
       "constraints": [
         {
           "name": "positiveAmount",
@@ -331,6 +336,43 @@
             }
           },
           "severity": "block",
+          "messageTemplate": "Order amount {currentAmount} exceeds limit of {maxAmount} by {excessAmount}",
+          "detailsMapping": {
+            "maxAmount": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 10000
+              }
+            },
+            "currentAmount": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "amount"
+            },
+            "excessAmount": {
+              "kind": "binary",
+              "operator": "-",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "amount"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 10000
+                }
+              }
+            }
+          },
           "overrideable": false
         }
       ],
@@ -445,6 +487,7 @@
   "commands": [
     {
       "name": "createLargeOrder",
+      "entity": "Order",
       "parameters": [
         {
           "name": "amount",
@@ -484,47 +527,21 @@
             }
           },
           "severity": "block",
+          "messageTemplate": "Cannot create order with amount {amount}",
+          "detailsMapping": {
+            "amount": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "input"
+              },
+              "property": "amount"
+            }
+          },
           "overrideable": false
         }
       ],
       "actions": [
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "object",
-            "properties": [
-              {
-                "key": "messageTemplate",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "string",
-                    "value": "Cannot create order with amount {amount}"
-                  }
-                }
-              },
-              {
-                "key": "details",
-                "value": {
-                  "kind": "object",
-                  "properties": [
-                    {
-                      "key": "amount",
-                      "value": {
-                        "kind": "member",
-                        "object": {
-                          "kind": "identifier",
-                          "name": "input"
-                        },
-                        "property": "amount"
-                      }
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        },
         {
           "kind": "mutate",
           "target": "amount",
@@ -544,6 +561,7 @@
     },
     {
       "name": "updateStatus",
+      "entity": "Order",
       "parameters": [
         {
           "name": "newStatus",
@@ -660,6 +678,7 @@
     },
     {
       "name": "process",
+      "entity": "Order",
       "parameters": [],
       "guards": [],
       "constraints": [
@@ -777,6 +796,7 @@
     },
     {
       "name": "cancel",
+      "entity": "Order",
       "parameters": [],
       "guards": [],
       "constraints": [
