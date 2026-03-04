@@ -1,6 +1,6 @@
 {
   "name": "@manifest/cli",
-  "version": "0.3.23",
+  "version": "0.3.36",
   "description": "CLI for the Manifest language",
   "type": "module",
   "bin": {

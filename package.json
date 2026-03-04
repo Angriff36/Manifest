@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.3.28",
+  "version": "0.3.36",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -29,6 +29,10 @@
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"
+    },
+    "./stores": {
+      "types": "./dist/manifest/stores.node.d.ts",
+      "import": "./dist/manifest/stores.node.js"
     },
     "./package.json": "./package.json"
   },
