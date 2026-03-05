@@ -1149,6 +1149,7 @@ export class RuntimeEngine {
         evalContext.self = enriched;
         evalContext.this = enriched;
         Object.assign(evalContext, enriched);
+        Object.assign(evalContext, input);
       }
       result = actionResult;
     }
