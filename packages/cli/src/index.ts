@@ -15,6 +15,7 @@ import { validateCommand } from './commands/validate.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
+import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
@@ -221,6 +222,22 @@ program
   .option('--strict', 'Fail on warnings', false)
   .action(async (source, options = {}) => {
     await scanCommand(source, options);
+  });
+
+/**
+ * manifest harness <manifest>
+ *
+ * Run a fixture-generator style test script against compiled IR and report
+ * step/assertion pass-fail counts.
+ */
+program
+  .command('harness')
+  .description('Run IR harness script and report failed steps/assertions')
+  .argument('<manifest>', 'Path to a .manifest file')
+  .requiredOption('-s, --script <path>', 'Path to harness script JSON')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .action(async (manifest, options = {}) => {
+    await harnessCommand(manifest, options);
   });
 
 /**

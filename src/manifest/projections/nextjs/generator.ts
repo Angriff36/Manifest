@@ -282,7 +282,7 @@ function generateEntityTypes(entity: IREntity): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.command', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -308,6 +308,29 @@ export class NextJsProjection implements ProjectionTarget {
             code: result.code,
           }],
           diagnostics: result.diagnostics,
+        };
+      }
+
+      case 'nextjs.detail': {
+        if (!request.entity) {
+          return {
+            artifacts: [],
+            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.detail" requires entity' }],
+          };
+        }
+        const detailResult = this._detail(ir, request.entity, options);
+        if (detailResult.diagnostics.some(d => d.severity === 'error')) {
+          return { artifacts: [], diagnostics: detailResult.diagnostics };
+        }
+        const detailOpts = normalizeOptions(options);
+        return {
+          artifacts: [{
+            id: `nextjs.detail:${request.entity}`,
+            pathHint: `${detailOpts.appDir}/${toEntitySegment(request.entity)}/[id]/route.ts`,
+            contentType: 'typescript',
+            code: detailResult.code,
+          }],
+          diagnostics: detailResult.diagnostics,
         };
       }
 
@@ -421,13 +444,27 @@ export class NextJsProjection implements ProjectionTarget {
 
     for (const entity of ir.entities) {
       const lowerEntity = entity.name.toLowerCase();
+      const delegateName = toLowerCamelCase(entity.name);
+
+      // List (findMany) function
       lines.push(`export async function get${entity.name}s(): Promise<${entity.name}[]> {`);
-      lines.push(`  const response = await fetch(\`/api/${lowerEntity}\`);`);
+      lines.push(`  const response = await fetch(\`/api/${lowerEntity}/list\`);`);
       lines.push(`  if (!response.ok) {`);
       lines.push(`    throw new Error("Failed to fetch ${entity.name}s");`);
       lines.push(`  }`);
       lines.push(`  const data = await response.json();`);
-      lines.push(`  return data.${lowerEntity}s;`);
+      lines.push(`  return data.${delegateName}s;`);
+      lines.push(`}`);
+      lines.push('');
+
+      // Detail (findUnique) function
+      lines.push(`export async function get${entity.name}(id: string): Promise<${entity.name}> {`);
+      lines.push(`  const response = await fetch(\`/api/${lowerEntity}/\${encodeURIComponent(id)}\`);`);
+      lines.push(`  if (!response.ok) {`);
+      lines.push(`    throw new Error("Failed to fetch ${entity.name}");`);
+      lines.push(`  }`);
+      lines.push(`  const data = await response.json();`);
+      lines.push(`  return data.${delegateName};`);
       lines.push(`}`);
       lines.push('');
     }
@@ -541,6 +578,33 @@ export class NextJsProjection implements ProjectionTarget {
   }
 
   /**
+   * Generate detail (getById) route handler for an entity.
+   * Uses direct Prisma findUnique (bypassing runtime) for efficiency.
+   */
+  private _detail(
+    ir: IR,
+    entityName: string,
+    options?: NextJsProjectionOptions
+  ): CodeResult {
+    const diagnostics: ProjectionDiagnostic[] = [];
+    const opts = normalizeOptions(options);
+
+    const entity = ir.entities.find(e => e.name === entityName);
+    if (!entity) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'ENTITY_NOT_FOUND',
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        entity: entityName,
+      });
+      return { code: '', diagnostics };
+    }
+
+    const code = this._generateDetailRoute(entity, opts);
+    return { code, diagnostics };
+  }
+
+  /**
    * Generate GET route for an entity.
    * Uses direct Prisma query (bypassing runtime) for efficiency.
    */
@@ -579,6 +643,78 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(`    return manifestSuccessResponse({ ${variableName} });`);
   lines.push('  } catch (error) {');
     lines.push(`    console.error("Error fetching ${variableName}:", error);`);
+    lines.push('    return manifestErrorResponse("Internal server error", 500);');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate GET detail route for a single entity instance.
+   * Uses direct Prisma findUnique (bypassing runtime) for efficiency.
+   */
+  private _generateDetailRoute(entity: IREntity, options: NormalizedNextJsOptions): string {
+    const { databaseImportPath, responseImportPath } = options;
+    const delegateName = toLowerCamelCase(entity.name);
+
+    const lines: string[] = [];
+
+    lines.push(`// Auto-generated Next.js API detail route for ${entity.name}`);
+    lines.push('// Generated from Manifest IR - DO NOT EDIT');
+    lines.push('');
+    lines.push('import type { NextRequest } from "next/server";');
+    if (options.tenantProvider) {
+      lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      lines.push(generateImport(`{ database }`, databaseImportPath));
+    } else {
+      lines.push(generateImport(`{ database }`, databaseImportPath));
+    }
+    lines.push(generateImport(
+      `{ manifestErrorResponse, manifestSuccessResponse }`,
+      responseImportPath
+    ));
+    const authImport = generateAuthImport(options);
+    if (authImport) lines.push(authImport);
+    lines.push('');
+    lines.push('export async function GET(');
+    lines.push('  request: NextRequest,');
+    lines.push('  { params }: { params: Promise<{ id: string }> }');
+    lines.push(') {');
+    lines.push('  try {');
+    lines.push(generateAuthBody(options));
+    lines.push(generateTenantLookup(options));
+    lines.push('');
+    lines.push('    const { id } = await params;');
+    lines.push('');
+
+    // Build the findUnique where clause
+    const whereConditions: string[] = ['id'];
+    if (options.includeTenantFilter) {
+      whereConditions.push(options.tenantIdProperty);
+    }
+    if (options.includeSoftDeleteFilter) {
+      whereConditions.push(`${options.deletedAtProperty}: null`);
+    }
+
+    const whereClause = whereConditions.length > 1
+      ? `where: {
+        ${whereConditions.join(',\n        ')}
+      },`
+      : `where: { id },`;
+
+    lines.push(`    const ${delegateName} = await database.${delegateName}.findUnique({`);
+    lines.push(`      ${whereClause}`);
+    lines.push('    });');
+    lines.push('');
+    lines.push(`    if (!${delegateName}) {`);
+    lines.push(`      return manifestErrorResponse("${entity.name} not found", 404);`);
+    lines.push('    }');
+    lines.push('');
+    lines.push(`    return manifestSuccessResponse({ ${delegateName} });`);
+    lines.push('  } catch (error) {');
+    lines.push(`    console.error("Error fetching ${delegateName}:", error);`);
     lines.push('    return manifestErrorResponse("Internal server error", 500);');
     lines.push('  }');
     lines.push('}');

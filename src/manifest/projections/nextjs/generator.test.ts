@@ -228,6 +228,242 @@ describe('NextJsProjection', () => {
     });
   });
 
+  describe('nextjs.detail surface', () => {
+    it('generates detail route with direct Prisma findUnique (not runtime.query)', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+          property name: string
+          property category: string?
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.ir).not.toBeNull();
+
+      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Recipe' });
+
+      const code = firstCode(detailResult);
+
+      // Contract: Must use Prisma findUnique directly for reads
+      expect(code).toContain('database.recipe.findUnique');
+      expect(code).not.toContain('runtime.query');
+      expect(code).not.toContain('runtime.get');
+      expect(code).not.toContain('findMany');
+
+      // Contract: Must extract id from URL params
+      expect(code).toContain('const { id } = await params;');
+
+      // Contract: Must filter by tenant (when enabled by default)
+      expect(code).toContain('tenantId');
+      expect(code).toContain('deletedAt: null');
+
+      // Contract: Must return 404 when not found
+      expect(code).toContain('not found');
+      expect(code).toContain('404');
+
+      // Contract: Must have proper error handling
+      expect(code).toContain('try {');
+      expect(code).toContain('} catch (error)');
+      expect(code).toContain('manifestErrorResponse');
+
+      // Contract: Must have auth check
+      expect(code).toContain('Unauthorized');
+
+      // Contract: Must use Next.js App Router params pattern
+      expect(code).toContain('params: Promise<{ id: string }>');
+
+      expect(detailResult.diagnostics).toHaveLength(0);
+    });
+
+    it('artifact has correct id and pathHint with [id] dynamic segment', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Recipe' });
+
+      expect(detailResult.artifacts[0].id).toBe('nextjs.detail:Recipe');
+      expect(detailResult.artifacts[0].pathHint).toContain('recipe/[id]/route.ts');
+    });
+
+    it('returns error diagnostic if entity not found in IR', async () => {
+      const source = `entity Recipe { property id: string }`;
+      const result = await compileToIR(source);
+
+      expect(result.diagnostics).toHaveLength(0);
+
+      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'NonExistent' });
+
+      expect(detailResult.artifacts).toHaveLength(0);
+      expect(detailResult.diagnostics).toHaveLength(1);
+      expect(detailResult.diagnostics[0].severity).toBe('error');
+      expect(detailResult.diagnostics[0].message).toContain('Entity "NonExistent" not found');
+      expect(detailResult.diagnostics[0].entity).toBe('NonExistent');
+    });
+
+    it('returns error diagnostic if entity not provided', async () => {
+      const source = `entity Recipe { property id: string }`;
+      const result = await compileToIR(source);
+
+      const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail' });
+
+      expect(detailResult.artifacts).toHaveLength(0);
+      expect(detailResult.diagnostics).toHaveLength(1);
+      expect(detailResult.diagnostics[0].severity).toBe('error');
+      expect(detailResult.diagnostics[0].message).toContain('requires entity');
+    });
+
+    it('respects includeTenantFilter option', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+          property name: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const noFilterResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: { includeTenantFilter: false },
+      });
+
+      const noFilterCode = firstCode(noFilterResult);
+      expect(noFilterCode).not.toContain('tenantId');
+
+      const withFilterResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+      });
+
+      const withFilterCode = firstCode(withFilterResult);
+      expect(withFilterCode).toContain('tenantId');
+      expect(withFilterCode).toContain('getTenantIdForOrg');
+    });
+
+    it('respects includeSoftDeleteFilter option', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+          property name: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const noSoftDeleteResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: { includeSoftDeleteFilter: false },
+      });
+
+      expect(firstCode(noSoftDeleteResult)).not.toContain('deletedAt');
+
+      const withSoftDeleteResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+      });
+
+      expect(firstCode(withSoftDeleteResult)).toContain('deletedAt');
+    });
+
+    it('supports different auth providers', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const clerkResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: { authProvider: 'clerk' },
+      });
+      expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
+      expect(firstCode(clerkResult)).toContain('const { orgId, userId } = await auth()');
+
+      const nextAuthResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: { authProvider: 'nextauth' },
+      });
+      expect(firstCode(nextAuthResult)).toContain('getServerSession');
+
+      const noAuthResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: { authProvider: 'none' },
+      });
+      expect(firstCode(noAuthResult)).toContain('Auth disabled');
+      expect(firstCode(noAuthResult)).toContain('const userId = "anonymous"');
+    });
+
+    it('respects custom import paths', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const customPathsResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: {
+          databaseImportPath: '@myapp/db',
+          authImportPath: '@myapp/auth',
+          responseImportPath: '@myapp/responses',
+        },
+      });
+
+      const code = firstCode(customPathsResult);
+      expect(code).toContain('from "@myapp/db"');
+      expect(code).toContain('from "@myapp/auth"');
+      expect(code).toContain('from "@myapp/responses"');
+    });
+
+    it('respects custom tenant and soft delete property names', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const customPropsResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'Recipe',
+        options: {
+          tenantIdProperty: 'orgId',
+          deletedAtProperty: 'removedAt',
+        },
+      });
+
+      const code = firstCode(customPropsResult);
+      expect(code).toContain('orgId');
+      expect(code).toContain('removedAt: null');
+      expect(code).not.toContain('tenantId');
+      expect(code).not.toContain('deletedAt');
+    });
+  });
+
   describe('ts.types surface', () => {
     it('generates TypeScript types from IR entities', async () => {
       const source = `
@@ -254,7 +490,7 @@ describe('NextJsProjection', () => {
   });
 
   describe('ts.client surface', () => {
-    it('generates client SDK functions', async () => {
+    it('generates client SDK functions for list and detail', async () => {
       const source = `
         entity Recipe {
           property id: string
@@ -267,8 +503,16 @@ describe('NextJsProjection', () => {
       const clientResult = projection.generate(result.ir!, { surface: 'ts.client' });
 
       const code = firstCode(clientResult);
+
+      // List function
       expect(code).toContain('export async function getRecipes()');
-      expect(code).toContain('fetch(`/api/recipe`)');
+      expect(code).toContain('fetch(`/api/recipe/list`)');
+      expect(code).toContain('return data.recipes;');
+
+      // Detail function
+      expect(code).toContain('export async function getRecipe(id: string): Promise<Recipe>');
+      expect(code).toContain('encodeURIComponent(id)');
+      expect(code).toContain('return data.recipe;');
     });
   });
 
@@ -515,6 +759,7 @@ describe('NextJsProjection', () => {
       expect(projection.name).toBe('nextjs');
       expect(projection.description).toContain('Next.js App Router');
       expect(projection.surfaces).toContain('nextjs.route');
+      expect(projection.surfaces).toContain('nextjs.detail');
       expect(projection.surfaces).toContain('nextjs.command');
       expect(projection.surfaces).toContain('ts.types');
       expect(projection.surfaces).toContain('ts.client');
