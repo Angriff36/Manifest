@@ -7,6 +7,23 @@ Enforced by: src/manifest/conformance/**, npm test
 
 This document defines the runtime meaning of IR v1. The IR schema is authoritative; this document defines how conforming runtimes MUST interpret it.
 
+## Capsule-Pro Constitution Reference
+
+Manifest provides the primitives the Capsule-Pro Constitution
+(`docs/capsule-pro/constitution.md`) is written against:
+runtime command execution, typed runtime context, IR-derived registries,
+projections, deterministic mode, and the audit CLI surfaces.
+
+The constitution does not change Manifest semantics. It commits a downstream
+consumer (Capsule-Pro) to using only these primitives for governed mutations.
+
+Any Manifest behavior change that touches a constitution-referenced primitive
+(runtime context shape, dispatcher route shape, registry shape, audit
+finding codes, deterministic mode, semantic event emission, adapter
+boundary) MUST update both this spec and the mirrored constitution copy,
+and SHOULD bump `compilerVersion` so downstream `irHash` checks surface
+the change.
+
 ## Runtime Model
 - A runtime hosts an IR program plus execution state (stores, context, event log).
 - A runtime evaluates IRExpressions against an evaluation context, producing a value or undefined.
