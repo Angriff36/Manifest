@@ -6,6 +6,7 @@
  * Provides commands for compiling, generating code, and managing Manifest projects.
  */
 import { Command } from 'commander';
+import chalk from 'chalk';
 import { compileCommand } from './commands/compile.js';
 import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
@@ -13,9 +14,14 @@ import { validateCommand } from './commands/validate.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
+import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
+import { emitRegistriesCommand } from './commands/emit-registries.js';
+import { auditBypassesCommand } from './commands/audit-bypasses.js';
+import { auditGovernanceCommand } from './commands/audit-governance.js';
+import { integrationCheckCommand } from './commands/integration-check.js';
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
 import { getConfig } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -201,6 +207,21 @@ program
     await scanCommand(source, options);
 });
 /**
+ * manifest harness <manifest>
+ *
+ * Run a fixture-generator style test script against compiled IR and report
+ * step/assertion pass-fail counts.
+ */
+program
+    .command('harness')
+    .description('Run IR harness script and report failed steps/assertions')
+    .argument('<manifest>', 'Path to a .manifest file')
+    .requiredOption('-s, --script <path>', 'Path to harness script JSON')
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .action(async (manifest, options = {}) => {
+    await harnessCommand(manifest, options);
+});
+/**
  * manifest routes
  *
  * Compile all .manifest files and output the canonical route manifest.
@@ -253,6 +274,88 @@ program
     .option('--exemptions <path>', 'Path to exemptions registry JSON')
     .action(async (options = {}) => {
     await auditRoutesCommand(options);
+});
+/**
+ * manifest emit registries
+ *
+ * Emit machine-readable command and governed-entity registries from a
+ * compiled IR JSON or a manifest source file. Validates against the schemas
+ * in docs/spec/registry/. See docs/spec/registry/README.md.
+ */
+const emitProgram = program
+    .command('emit')
+    .description('Emit IR-derived artifacts');
+/**
+ * manifest audit-bypasses
+ *
+ * Validates an approved-bypass registry against
+ * docs/spec/registry/bypasses.schema.json. Reports missing-file references
+ * as errors and expired review dates as warnings (or errors under
+ * --strict-expiry).
+ */
+/**
+ * manifest audit-governance
+ *
+ * Umbrella that runs every governance detector and aggregates findings.
+ * Under --strict, any error finding causes a non-zero exit. Detectors:
+ *   direct-writes, event-fabrication, route-drift, missing-tests,
+ *   bypass-violations.
+ *
+ * `audit-constitution` is retained as a deprecated alias.
+ */
+program
+    .command('audit-governance')
+    .alias('audit-constitution')
+    .description('Run the full governance audit suite (umbrella). `audit-constitution` is a deprecated alias.')
+    .option('-r, --root <path>', 'Root directory to audit', '.')
+    .option('--only <list>', 'Comma-separated detector names to run (default: all)')
+    .option('--commands-registry <path>', 'Path to commands.json (enables missing-tests detector)')
+    .option('--bypass-registry <path>', 'Path to bypasses.json (enables bypass-violations detector)')
+    .option('--strict', 'Exit non-zero on any error finding', false)
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .action(async (options = {}, cmd) => {
+    // Surface a deprecation hint when callers invoke the legacy alias.
+    const invokedAs = cmd?.args?.[0] ?? cmd?.name?.();
+    const calledByAlias = process.argv.includes('audit-constitution');
+    if (calledByAlias) {
+        console.warn(chalk.yellow('[deprecation] `manifest audit-constitution` is renamed to `manifest audit-governance`. ' +
+            'The alias still works but will be removed in a future release.'));
+    }
+    const result = await auditGovernanceCommand(options);
+    if (options.strict && result.errorCount > 0) {
+        process.exitCode = 1;
+    }
+    else if (!options.strict && result.errorCount > 0) {
+        // Non-strict still surfaces failures; the exit code is left to the
+        // caller's CI integration. Mirror audit-routes behavior.
+        process.exitCode = 1;
+    }
+    // Suppress unused-var noise from optional invokedAs lookup.
+    void invokedAs;
+});
+program
+    .command('audit-bypasses')
+    .description('Validate the approved-bypass registry against the schema')
+    .option('--registry <path>', 'Path to bypass registry JSON file')
+    .option('-r, --root <path>', 'Root directory used to resolve bypass paths', '.')
+    .option('--strict-expiry', 'Treat expired reviewBy dates as errors', false)
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .action(async (options = {}) => {
+    const result = await auditBypassesCommand(options);
+    if (result.errorCount > 0) {
+        process.exitCode = 1;
+    }
+});
+emitProgram
+    .command('registries')
+    .description('Emit commands.json and entities.json registries from IR')
+    .option('--ir <path>', 'Path to a compiled IR JSON file')
+    .option('--source <path>', 'Path to a .manifest source file to compile and emit from')
+    .option('--out <dir>', 'Output directory', 'manifest-registry')
+    .option('--no-validate', 'Skip JSON-schema validation of the emitted output')
+    .option('--no-pretty', 'Emit compact JSON (no indentation)')
+    .action(async (options = {}) => {
+    await emitRegistriesCommand(options);
 });
 /**
  * manifest inspect entity <EntityName>
@@ -342,6 +445,41 @@ program
     .option('--ir-root <path...>', 'Compiled IR root directory/directories')
     .action(async (options = {}) => {
     await doctorCommand(options);
+});
+/**
+ * manifest integration-check
+ *
+ * End-to-end validation that a downstream repo is correctly integrated
+ * with the Manifest governance contract. Runs static governance + bypass
+ * audit + dispatcher presence + runtime smoke (audit/outbox adapters) +
+ * package shape. Exit code is 0 only if every section passes.
+ */
+program
+    .command('integration-check')
+    .description('Validate a downstream repo against the full Manifest governance + runtime contract')
+    .option('--root <path>', 'Downstream repo root (defaults to cwd)')
+    .option('--commands-registry <path>', 'Path to a commands registry JSON')
+    .option('--bypass-registry <path>', 'Path to a bypass registry JSON')
+    .option('--format <fmt>', 'Output format: text | json', 'text')
+    .option('--strict', 'Treat warnings as failures', false)
+    .option('--skip-runtime-smoke', 'Skip the in-memory RuntimeEngine smoke', false)
+    .option('--skip-package-shape', 'Skip the package-shape check', false)
+    .option('--skip-tarball', 'Skip the `npm pack --dry-run` sub-step in package-shape', false)
+    .option('--package-root <path>', 'Override the @angriff36/manifest package root for the package-shape check')
+    .action(async (options = {}) => {
+    const result = await integrationCheckCommand({
+        root: options.root,
+        commandsRegistry: options.commandsRegistry,
+        bypassRegistry: options.bypassRegistry,
+        format: options.format === 'json' ? 'json' : 'text',
+        strict: !!options.strict,
+        skipRuntimeSmoke: !!options.skipRuntimeSmoke,
+        skipPackageShape: !!options.skipPackageShape,
+        skipTarball: !!options.skipTarball,
+        packageRoot: options.packageRoot,
+    });
+    if (!result.ok)
+        process.exit(1);
 });
 /**
  * Run the CLI

@@ -236,13 +236,21 @@ export async function integrationCheckCommand(
     const shape = await checkPackageShape({ packageRoot, skipTarball: options.skipTarball });
     packageShape = shape;
     const failed = shape.subpathImports.filter(r => !r.ok).length;
-    const summary = shape.tarball.ran
-      ? `${shape.subpathImports.length - failed}/${shape.subpathImports.length} subpaths import, tarball ${shape.tarball.ok ? 'OK' : 'MISSING ENTRIES'}`
-      : `${shape.subpathImports.length - failed}/${shape.subpathImports.length} subpaths import, tarball check skipped`;
+    let tarballNote: string;
+    if (shape.tarballSkipped) {
+      tarballNote = 'tarball check skipped';
+    } else if (!shape.tarball.ran) {
+      // npm pack failed to spawn — surface that as a real failure, not a skip.
+      tarballNote = `tarball check FAILED to run (${shape.tarball.error ?? 'unknown'})`;
+    } else if (shape.tarball.ok === false) {
+      tarballNote = 'tarball MISSING REQUIRED ENTRIES';
+    } else {
+      tarballNote = `tarball OK (${shape.tarball.files.length} files)`;
+    }
     sections.push({
       name: 'package-shape',
       ok: shape.ok,
-      summary,
+      summary: `${shape.subpathImports.length - failed}/${shape.subpathImports.length} subpaths import, ${tarballNote}`,
       detail: shape,
     });
   }

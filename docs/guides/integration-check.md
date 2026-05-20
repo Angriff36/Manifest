@@ -119,9 +119,17 @@ installs before this step is strongly recommended.
   existence — it does NOT verify the file's contents delegate to the
   dispatcher. The `route-drift` detector (inside the `governance` section)
   catches concrete non-dispatcher routes; the two are complementary.
-- The `package-shape` section's tarball check requires `npm` on the PATH.
-  In CI sandboxes without npm, use `--skip-tarball` and rely on the
-  subpath-import sub-check instead.
+- The `package-shape` section's tarball check prefers `pnpm pack` over
+  `npm pack --dry-run` because `npm pack` is intermittent on Windows
+  when the workspace uses pnpm-managed `node_modules` (an upstream
+  `@npmcli/arborist` bug that surfaces at ~40% rate locally with
+  npm 10.9.3 + Node 22 on Windows 11). `pnpm pack` is deterministic on
+  the same layout. CI publishes still go through `npm publish` because
+  CI uses fresh installs where the bug does not trigger.
+- The tarball check requires `pnpm` (or `npm` as fallback) AND `tar` on
+  the PATH. In CI sandboxes that lack either, use `--skip-tarball` to
+  explicitly skip; the check WILL surface a clear failure if it can't
+  run the packer, rather than silently green-painting.
 - The `runtime-smoke` section runs against a synthetic IR built in-memory;
   it does **not** read the downstream's `.manifest` files. The downstream's
   own conformance tests cover that surface.

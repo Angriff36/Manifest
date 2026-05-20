@@ -18,8 +18,10 @@ import ora from 'ora';
 import { loadAllConfigs, getStoreBindingsInfo, findPrismaSchemaPath, parsePrismaSchema, getPrismaModel, propertyExistsInModel, getPrismaFieldNames } from '../utils/config.js';
 // Import compiler from the monorepo root package
 async function loadCompiler() {
-    // Resolve relative to this file: packages/cli/src/commands/ -> root dist/
-    const module = await import('../../../../dist/manifest/ir-compiler.js');
+    // Match the resolution path used by compile.ts and emit-registries.ts —
+    // go through the package's own subpath export map. Vitest aliases this
+    // to src/ during tests; the export map resolves to dist/ in production.
+    const module = await import('@angriff36/manifest/ir-compiler');
     return module.compileToIR;
 }
 /**
