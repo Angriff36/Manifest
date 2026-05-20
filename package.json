@@ -38,6 +38,30 @@
       "types": "./dist/manifest/registry/emit.d.ts",
       "import": "./dist/manifest/registry/emit.js"
     },
+    "./audit": {
+      "types": "./dist/manifest/audit/audit-sink.d.ts",
+      "import": "./dist/manifest/audit/audit-sink.js"
+    },
+    "./audit/memory": {
+      "types": "./dist/manifest/audit/sinks/memory.d.ts",
+      "import": "./dist/manifest/audit/sinks/memory.js"
+    },
+    "./audit/postgres": {
+      "types": "./dist/manifest/audit/sinks/postgres.d.ts",
+      "import": "./dist/manifest/audit/sinks/postgres.js"
+    },
+    "./outbox": {
+      "types": "./dist/manifest/outbox/outbox-store.d.ts",
+      "import": "./dist/manifest/outbox/outbox-store.js"
+    },
+    "./outbox/memory": {
+      "types": "./dist/manifest/outbox/stores/memory.d.ts",
+      "import": "./dist/manifest/outbox/stores/memory.js"
+    },
+    "./outbox/postgres": {
+      "types": "./dist/manifest/outbox/stores/postgres.d.ts",
+      "import": "./dist/manifest/outbox/stores/postgres.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -50,6 +74,8 @@
     "files": [
     "dist/manifest/**",
     "packages/cli/dist/**",
+    "src/manifest/audit/sinks/*.sql",
+    "src/manifest/outbox/stores/*.sql",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/registry/*.schema.json",
     "README*",

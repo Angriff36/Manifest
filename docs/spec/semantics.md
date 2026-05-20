@@ -19,7 +19,7 @@ integrations to consume:
 - deterministic mode (effect-boundary enforcement)
 - governance audit CLI surfaces (`manifest emit registries`,
   `manifest audit-bypasses`, `manifest audit-governance`)
-- adapter contracts: `AuditSink`, `OutboxStore`, store adapters
+- adapter contracts: `AuditSink`, `OutboxStore`, store adapters (runtime-integrated — see `adapters.md` § "Audit Sink" and § "Outbox Store" for emission/enqueue semantics)
 
 A downstream application's governance policy (which entities are governed,
 which commands require tenant context, which bypasses are allowed) is

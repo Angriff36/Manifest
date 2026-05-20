@@ -141,6 +141,16 @@ export interface RuntimeOptions {
   outboxStore?: import('./outbox/outbox-store').OutboxStore;
 }
 
+// Re-export adapter contract types at the package root so consumers can do
+// `import type { AuditSink, OutboxStore } from '@angriff36/manifest'`
+// without reaching into deep subpaths. Concrete implementations
+// (MemoryAuditSink, PostgresAuditSink, MemoryOutboxStore,
+// PostgresOutboxStore) ship via dedicated subpath exports — see
+// package.json `exports` § "./audit/memory", "./audit/postgres",
+// "./outbox/memory", "./outbox/postgres".
+export type { AuditSink, AuditRecord, CommandOutcome } from './audit/audit-sink';
+export type { OutboxStore, OutboxEntry, OutboxEntryStatus } from './outbox/outbox-store';
+
 export interface EntityInstance {
   id: string;
   /** For optimistic concurrency control (optional) */
@@ -665,6 +675,17 @@ export class RuntimeEngine {
     return this.options.now ? this.options.now() : Date.now();
   }
 
+  /**
+   * Generate a unique identifier for runtime-internal records (audit
+   * records, outbox entry ids). Uses the caller-supplied generator from
+   * RuntimeOptions when present; otherwise falls back to crypto.randomUUID.
+   * Distinct from `getBuiltins().uuid` only by intent — keeping a named
+   * helper avoids leaking the fallback chain across call sites.
+   */
+  private nextRuntimeId(): string {
+    return this.options.generateId ? this.options.generateId() : crypto.randomUUID();
+  }
+
   private getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
     return {
       now: () => this.getNow(),
@@ -1019,41 +1040,220 @@ export class RuntimeEngine {
       idempotencyKey?: string;
     } = {}
   ): Promise<CommandResult> {
-    // Tenant context gate: fail closed before ANY work, including idempotency
-    // cache reads/writes. Falsy values (undefined, '', null) all count as
-    // missing — preventing accidental empty-string passes.
-    if (this.options.requireTenantContext && !this.context.tenantId) {
-      return {
-        success: false,
-        error: 'MISSING_TENANT_CONTEXT: tenant-scoped command invoked without context.tenantId',
-        emittedEvents: [],
-      };
-    }
+    // Per docs/spec/adapters.md § "Audit Sink": when an AuditSink is wired in,
+    // runCommand emits exactly one AuditRecord per invocation regardless of
+    // outcome. The recordId is generated once up front so callers can correlate
+    // the same attempt across logs even if `result` is constructed late.
+    const auditEnabled = !!this.options.auditSink;
+    const auditRecordId = auditEnabled ? this.nextRuntimeId() : undefined;
+    const auditOccurredAt = auditEnabled ? this.getNow() : 0;
 
-    // Idempotency short-circuit (before ANY evaluation)
-    if (this.options.idempotencyStore) {
-      if (options.idempotencyKey === undefined) {
-        return {
+    let result: CommandResult | undefined;
+    let thrown: unknown;
+    try {
+      // Tenant context gate: fail closed before ANY work, including idempotency
+      // cache reads/writes. Falsy values (undefined, '', null) all count as
+      // missing — preventing accidental empty-string passes.
+      if (this.options.requireTenantContext && !this.context.tenantId) {
+        result = {
           success: false,
-          error: 'IdempotencyStore is configured but no idempotencyKey was provided',
+          error: 'MISSING_TENANT_CONTEXT: tenant-scoped command invoked without context.tenantId',
           emittedEvents: [],
         };
+        return result;
       }
-      const cached = await this.options.idempotencyStore.get(options.idempotencyKey);
-      if (cached !== undefined) {
-        return cached;
+
+      // Idempotency short-circuit (before ANY evaluation)
+      if (this.options.idempotencyStore) {
+        if (options.idempotencyKey === undefined) {
+          result = {
+            success: false,
+            error: 'IdempotencyStore is configured but no idempotencyKey was provided',
+            emittedEvents: [],
+          };
+          return result;
+        }
+        const cached = await this.options.idempotencyStore.get(options.idempotencyKey);
+        if (cached !== undefined) {
+          result = cached;
+          return cached;
+        }
+      }
+
+      // Full command execution
+      result = await this._executeCommandInternal(commandName, input, options);
+
+      // Outbox enqueue: when an OutboxStore is wired in and the command
+      // succeeded with one or more emitted events, durably persist the
+      // semantic events. NOTE: the in-memory runtime has no shared
+      // transaction boundary, so this enqueue is NOT transactional w.r.t.
+      // mutation today — see docs/spec/adapters.md § "Outbox Store".
+      if (this.options.outboxStore && result.success && result.emittedEvents.length > 0) {
+        await this.enqueueOutbox(result.emittedEvents, commandName, options);
+      }
+
+      // Cache result (success OR failure)
+      if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
+        await this.options.idempotencyStore.set(options.idempotencyKey, result);
+      }
+
+      return result;
+    } catch (e) {
+      thrown = e;
+      throw e;
+    } finally {
+      if (auditEnabled) {
+        await this.emitAudit({
+          sink: this.options.auditSink!,
+          recordId: auditRecordId!,
+          occurredAt: auditOccurredAt,
+          commandName,
+          entityName: options.entityName,
+          result,
+          thrown,
+        });
       }
     }
+  }
 
-    // Full command execution
-    const result = await this._executeCommandInternal(commandName, input, options);
+  /**
+   * Map a CommandResult and any thrown error into a CommandOutcome for the
+   * AuditRecord. The mapping mirrors the exit paths inside runCommand and
+   * _executeCommandInternal — keep them in lock-step when adding new
+   * failure modes.
+   */
+  private classifyOutcome(
+    result: CommandResult | undefined,
+    thrown: unknown
+  ): import('./audit/audit-sink').CommandOutcome {
+    if (thrown !== undefined) return 'error';
+    if (!result) return 'error';
+    if (result.success) return 'success';
+    if (result.policyDenial) return 'policy_denied';
+    if (result.guardFailure) return 'guard_denied';
+    if (result.concurrencyConflict) return 'concurrency_conflict';
+    if (typeof result.error === 'string' && result.error.startsWith('MISSING_TENANT_CONTEXT')) {
+      return 'missing_tenant_context';
+    }
+    // A blocking constraint failure is distinguishable by the presence of a
+    // blocking outcome on result.constraintOutcomes (non-blocking warn/ok
+    // outcomes ride along with success too, so we must check severity).
+    if (result.constraintOutcomes?.some(o => !o.passed && !o.overridden && o.severity === 'block')) {
+      return 'constraint_failed';
+    }
+    return 'error';
+  }
 
-    // Cache result (success OR failure)
-    if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
-      await this.options.idempotencyStore.set(options.idempotencyKey, result);
+  /**
+   * Build and emit a single AuditRecord through the configured sink.
+   * Sink errors are caught and logged — audit emission MUST NOT alter
+   * command-execution behavior. This is the documented fail-open policy
+   * (see docs/spec/adapters.md § "Audit Sink").
+   */
+  private async emitAudit(args: {
+    sink: import('./audit/audit-sink').AuditSink;
+    recordId: string;
+    occurredAt: number;
+    commandName: string;
+    entityName?: string;
+    result: CommandResult | undefined;
+    thrown: unknown;
+  }): Promise<void> {
+    const { sink, recordId, occurredAt, commandName, entityName, result, thrown } = args;
+
+    const outcome = this.classifyOutcome(result, thrown);
+    const commandId = entityName ? `${entityName}.${commandName}` : commandName;
+
+    // Diagnostics surface the structured failure for failed outcomes; for
+    // success we carry along non-blocking constraint outcomes when present.
+    let diagnostics: unknown = undefined;
+    if (thrown !== undefined) {
+      diagnostics = { error: thrown instanceof Error ? thrown.message : String(thrown) };
+    } else if (result) {
+      const parts: Record<string, unknown> = {};
+      if (result.error !== undefined) parts.error = result.error;
+      if (result.deniedBy !== undefined) parts.deniedBy = result.deniedBy;
+      if (result.policyDenial) parts.policyDenial = result.policyDenial;
+      if (result.guardFailure) parts.guardFailure = result.guardFailure;
+      if (result.concurrencyConflict) parts.concurrencyConflict = result.concurrencyConflict;
+      if (result.constraintOutcomes && result.constraintOutcomes.length > 0) {
+        parts.constraintOutcomes = result.constraintOutcomes;
+      }
+      if (result.overrideRequests && result.overrideRequests.length > 0) {
+        parts.overrideRequests = result.overrideRequests;
+      }
+      if (Object.keys(parts).length > 0) diagnostics = parts;
     }
 
-    return result;
+    const emittedEventNames = result?.emittedEvents?.map(e => e.name);
+
+    const record: import('./audit/audit-sink').AuditRecord = {
+      recordId,
+      occurredAt,
+      command: commandName,
+      commandId,
+      outcome,
+      ...(entityName !== undefined ? { entity: entityName } : {}),
+      ...(this.context.tenantId !== undefined ? { tenantId: this.context.tenantId } : {}),
+      ...(this.context.orgId !== undefined ? { orgId: this.context.orgId } : {}),
+      ...(this.context.actorId !== undefined ? { actorId: this.context.actorId } : {}),
+      ...(this.context.requestId !== undefined ? { requestId: this.context.requestId } : {}),
+      ...(this.context.source !== undefined ? { source: this.context.source } : {}),
+      ...(this.ir.provenance?.contentHash ? { irHash: this.ir.provenance.contentHash } : {}),
+      ...(diagnostics !== undefined ? { diagnostics } : {}),
+      ...(emittedEventNames && emittedEventNames.length > 0 ? { emittedEventNames } : {}),
+    };
+
+    try {
+      await sink.emit(record);
+    } catch (sinkError) {
+      // Fail-open: audit sink errors MUST NOT alter command execution.
+      // Surface the failure on stderr so operators can wire alerts off it.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[Manifest Runtime] AuditSink.emit failed; record dropped:',
+        sinkError instanceof Error ? sinkError.message : sinkError
+      );
+    }
+  }
+
+  /**
+   * Enqueue emitted events into the configured OutboxStore as a batch.
+   * Wraps the call in try/catch and logs failures — outbox failures MUST
+   * NOT alter the CommandResult shape callers already received.
+   *
+   * Non-transactional caveat: the in-memory runtime does not yet expose a
+   * shared transaction boundary, so a successful command followed by an
+   * outbox enqueue failure leaves state mutated without an outbox row.
+   * Durable adapters MUST honor the `tx` parameter and enqueue inside the
+   * same transaction that mutated state.
+   */
+  private async enqueueOutbox(
+    events: EmittedEvent[],
+    _commandName: string,
+    _runOptions: { entityName?: string; instanceId?: string }
+  ): Promise<void> {
+    const store = this.options.outboxStore;
+    if (!store) return;
+
+    const enqueuedAt = this.getNow();
+    const entries: import('./outbox/outbox-store').OutboxEntry[] = events.map(event => ({
+      entryId: this.nextRuntimeId(),
+      enqueuedAt,
+      event,
+      status: 'pending',
+      attempts: 0,
+    }));
+
+    try {
+      await store.enqueue(entries);
+    } catch (storeError) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[Manifest Runtime] OutboxStore.enqueue failed; events not durably persisted:',
+        storeError instanceof Error ? storeError.message : storeError
+      );
+    }
   }
 
   private async _executeCommandInternal(
