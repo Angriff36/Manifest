@@ -540,7 +540,15 @@ export class NextJsProjection implements ProjectionTarget {
 
     lines.push(`// Auto-generated Next.js command handler for ${entity.name}.${command.name}`);
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
-    lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints');
+    lines.push('//');
+    lines.push('// DEPRECATED ALIAS: this concrete per-command route is retained for');
+    lines.push('// backwards compatibility only. The canonical write path is the');
+    lines.push('// nextjs.dispatcher projection at:');
+    lines.push('//   POST /api/manifest/[entity]/commands/[command]');
+    lines.push('// See docs/spec/adapters.md § "Canonical Dispatcher (Transport Boundary)"');
+    lines.push('// and capsule-pro/constitution.md §6.');
+    lines.push('//');
+    lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints.');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));

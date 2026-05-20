@@ -99,6 +99,19 @@ describe('nextjs.dispatcher surface', () => {
     expect(out.artifacts).toHaveLength(1);
   });
 
+  it('marks legacy per-command routes as deprecated aliases of the dispatcher', async () => {
+    const ir = await compileSample();
+    const result = target.generate(ir, {
+      surface: 'nextjs.command',
+      entity: 'Recipe',
+      command: 'create',
+    });
+    expect(result.artifacts).toHaveLength(1);
+    const code = result.artifacts[0].code;
+    expect(code).toMatch(/DEPRECATED ALIAS/);
+    expect(code).toContain('/api/manifest/[entity]/commands/[command]');
+  });
+
   it('honors authProvider option (none disables the auth import)', async () => {
     const ir = await compileSample();
     const code = target.generate(ir, {
