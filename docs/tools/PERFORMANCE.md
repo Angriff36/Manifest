@@ -2,7 +2,8 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-05-20
+Applies to: `@angriff36/manifest@0.5.0+`
 
 Performance characteristics and optimization strategies for Manifest.
 
@@ -102,18 +103,28 @@ entity Order {
 
 ### 5. Batch Operations
 
-Execute multiple commands in a transaction:
+The runtime executes commands sequentially. There is no built-in
+multi-command transaction; commit boundaries are owned by the underlying
+`Store` adapter, not by `runCommand`. To reduce per-call overhead, model
+batching at the command level — design a command that accepts an array
+of items and applies them in a single store call.
 
 ```typescript
-// Instead of:
+// Many fine-grained command invocations:
 for (const item of items) {
-  await runtime.executeCommand('OrderItem', 'create', item);
+  await runtime.runCommand('create', item, { entityName: 'OrderItem' });
 }
 
-// Use:
-await runtime.executeCommand('Order', 'addItems', { items });
-// Manifest handles all items in one transaction
+// One coarse-grained command that owns its own batch semantics:
+await runtime.runCommand('addItems', { items }, { entityName: 'Order' });
 ```
+
+The Manifest runtime does NOT wrap multiple `runCommand` calls in a
+single transaction. If you need atomic multi-entity writes, either:
+
+- Model them as a single command that does all the work, or
+- Use a `Store` adapter that exposes its own transaction handle and
+  thread it through. See `docs/patterns/implementing-custom-stores.md`.
 
 ### 6. Optimize Store Queries
 
@@ -182,8 +193,8 @@ Manifest runtime is single-threaded. Commands execute sequentially.
 
 ```typescript
 // Commands execute one at a time
-await runtime.executeCommand('Todo', 'create', { title: 'A' });
-await runtime.executeCommand('Todo', 'create', { title: 'B' });
+await runtime.runCommand('create', { title: 'A' }, { entityName: 'Todo' });
+await runtime.runCommand('create', { title: 'B' }, { entityName: 'Todo' });
 ```
 
 ### Multi-Tenant Isolation
@@ -197,8 +208,8 @@ const runtime2 = new RuntimeEngine(ir, { tenantId: 'tenant-2' });
 
 // These can run in parallel (different instances)
 await Promise.all([
-  runtime1.executeCommand('Todo', 'create', { title: 'A' }),
-  runtime2.executeCommand('Todo', 'create', { title: 'B' })
+  runtime1.runCommand('create', { title: 'A' }, { entityName: 'Todo' }),
+  runtime2.runCommand('create', { title: 'B' }, { entityName: 'Todo' })
 ]);
 ```
 
@@ -247,7 +258,7 @@ Track execution time:
 
 ```typescript
 const start = performance.now();
-const result = await runtime.executeCommand('Todo', 'create', input);
+const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
 const duration = performance.now() - start;
 
 console.log(`Command executed in ${duration}ms`);
@@ -308,7 +319,7 @@ npm run bench
 Output:
 
 ```
-RuntimeEngine.executeCommand
+RuntimeEngine.runCommand
   ✓ Simple command (no guards)         ~0.1ms
   ✓ Command with 3 guards              ~0.15ms
   ✓ Command with constraints           ~0.2ms

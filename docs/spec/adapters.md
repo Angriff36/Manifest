@@ -1,9 +1,10 @@
 # Adapters
 
-Last updated: 2026-02-12
+Last updated: 2026-05-20
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
+Applies to: `@angriff36/manifest@0.5.0+`
 
 This document defines adapter hooks for storage targets and action kinds. Adapters are extensions, not core language features, unless stated otherwise.
 

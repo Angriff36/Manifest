@@ -19,8 +19,10 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 
 - **Full Language Parser & Compiler**: Parses Manifest source code and compiles to IR v1
 - **Reference Runtime Engine**: Executes commands with policy checks, guard evaluation, and event emission
-- **Conformance Test Suite**: 448 tests (58 lexer + 79 parser + 91 IR compiler + 56 runtime + 142 conformance + 21 projection + 1 integration) covering compilation, runtime semantics, and edge cases
-- **Projections System**: Generate platform-specific code from IR with 4 Next.js surfaces (route, command, types, client)
+- **Conformance Test Suite**: 919+ tests covering compilation, runtime semantics, governance audits, adapter contracts, and edge cases
+- **Projections System**: Generate platform-specific code from IR. Next.js projection ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path
+- **Audit Sink + Outbox Store adapters**: First-party `MemoryAuditSink` / `MemoryOutboxStore` for tests and local development; `PostgresAuditSink` / `PostgresOutboxStore` for durable production use (SQL schemas ship with the package). Runtime emits exactly one audit record per `runCommand` attempt and enqueues outbox entries on emit. See `docs/spec/adapters.md`.
+- **Governance audit CLI**: `manifest audit-governance` runs five detectors (direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations); `manifest integration-check` is the umbrella validator for downstream consumers
 - **Runtime UI**: Interactive development environment for testing Manifest programs
 - **Event Logging**: Persistent event log with payload inspection
 - **Project Export**: Generates runnable React/TypeScript projects from Manifest source
@@ -43,7 +45,7 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 
 ## Getting Started
 
-**New to Manifest?** Start with the [Usage Patterns Guide](docs/guides/usage-patterns.md) to understand the two ways to integrate Manifest into your application:
+**New to Manifest?** Start with the [Usage Patterns Guide](docs/patterns/usage-patterns.md) to understand the two ways to integrate Manifest into your application:
 
 1. **Projections** - Auto-generate API routes from `.manifest` files (best for simple CRUD)
 2. **Embedded Runtime** - Use the runtime directly in your handlers (best for complex workflows)
@@ -67,7 +69,7 @@ The Next.js projection includes 4 surfaces:
 
 **2. `nextjs.command` - Command-scoped POST/PUT/DELETE Operations**
 - Generates Next.js API routes for command execution
-- **MUST use `runtime.executeCommand()`** to enforce guards, policies, and events
+- **MUST use `RuntimeEngine.runCommand()`** to enforce guards, policies, and events
 - Supports all HTTP methods (POST, PUT, DELETE, PATCH)
 - Validates command parameters and runtime context
 - Returns command results with event emissions
@@ -272,7 +274,7 @@ npx tsx bin/generate-projection.ts --help
 
 **Note**: The CLI is a development tool using `tsx`. For production use, import the projection functions directly into your build scripts.
 
-**Important**: Entity routes (nextjs.route) generate READ operations that bypass the runtime (direct DB queries). Command routes (nextjs.command) MUST use `runtime.executeCommand()` for mutations. See `docs/patterns/external-projections.md` for detailed rationale.
+**Important**: Entity routes (nextjs.route) generate READ operations that bypass the runtime (direct DB queries). Command routes (nextjs.command) MUST use `RuntimeEngine.runCommand()` for mutations. See `docs/patterns/external-projections.md` for detailed rationale.
 
 ### Testing
 

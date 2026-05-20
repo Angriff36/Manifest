@@ -1,9 +1,10 @@
 # Manifest IR v1 Semantics
 
-Last updated: 2026-02-12
+Last updated: 2026-05-20
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
+Applies to: `@angriff36/manifest@0.5.0+`
 
 This document defines the runtime meaning of IR v1. The IR schema is authoritative; this document defines how conforming runtimes MUST interpret it.
 

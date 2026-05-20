@@ -2,7 +2,8 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-28
+Last updated: 2026-05-20
+Applies to: `@angriff36/manifest@0.5.0+`
 
 Complete reference for all Manifest CLI commands.
 
@@ -719,8 +720,129 @@ MANIFEST_DEBUG=1 manifest compile
 
 ---
 
+## v0.5.0 Commands
+
+The following commands were added or substantially extended in
+`@angriff36/manifest@0.5.0`. They cover the audit/outbox runtime
+contracts, registry emission, and the umbrella integration validator.
+
+### `manifest harness`
+
+Run a fixture-generator style test script against compiled IR and report
+step/assertion pass-fail counts. Uses a real in-memory `RuntimeEngine`.
+
+```bash
+manifest harness <manifest> -s <script.json> [-f text|json]
+```
+
+**Use when:** repeatable runtime assertions without writing TS test code.
+**Don't use when:** you want real unit tests — write vitest cases against
+the runtime directly.
+**Destructive:** no (in-memory store).
+
+### `manifest emit registries`
+
+Emit machine-readable command and governed-entity registries
+(`commands.json`, `entities.json`) from compiled IR or a `.manifest`
+source file. Validates against the schemas in `docs/spec/registry/`.
+
+```bash
+manifest emit registries --source "**/*.manifest" --out manifest-registry
+manifest emit registries --ir path/to/ir.json --out manifest-registry
+```
+
+**Use when:** entity/command surface has changed and downstream
+governance tooling needs a fresh index.
+**Don't use when:** no surface changes — registries are stable.
+**Destructive:** writes to `--out` directory.
+
+### `manifest audit-governance`
+
+Umbrella governance audit that runs every governance detector and
+aggregates findings. The deprecated alias `manifest audit-constitution`
+still works but is removed in a future release.
+
+Bundled detectors:
+- `direct-writes` — flag direct ORM writes outside `runtime.runCommand`
+- `event-fabrication` — flag semantic events created outside the runtime
+- `route-drift` — flag per-command routes that bypass the dispatcher
+- `missing-tests` — flag governed commands without test references
+- `bypass-violations` — cross-check direct writes against bypass registry
+
+```bash
+manifest audit-governance \
+  -r . \
+  --commands-registry manifest-registry/commands.json \
+  --bypass-registry bypasses.json \
+  --strict
+```
+
+**Use when:** CI gate on every PR touching manifests, route handlers, or
+the bypass registry.
+**Don't use when:** you only need one detector — pass `--only direct-writes`
+(or any single detector name) for faster iteration.
+**Destructive:** no.
+
+### `manifest audit-bypasses`
+
+Validates an approved-bypass registry against
+`docs/spec/registry/bypasses.schema.json`. Reports missing-file references
+as errors and expired `reviewBy` dates as warnings (or errors under
+`--strict-expiry`).
+
+```bash
+manifest audit-bypasses --registry bypasses.json --strict-expiry
+```
+
+**Use when:** after any edit to `bypasses.json`.
+**Don't use when:** the project doesn't use a bypass registry.
+**Destructive:** no.
+
+### `manifest integration-check`
+
+Umbrella validator that proves a downstream repo is correctly integrated
+with the full Manifest governance + runtime contract. Sections:
+
+1. **governance** — runs all five `audit-governance` detectors
+2. **bypasses** — validates `bypasses.json` against the schema
+3. **dispatcher** — confirms the canonical dispatcher route exists
+4. **runtime-smoke** — instantiates an in-memory `RuntimeEngine` with
+   `MemoryAuditSink` + `MemoryOutboxStore`, runs a synthetic command,
+   asserts exactly-one audit emission plus one outbox enqueue plus
+   correct `RuntimeContext` threading
+5. **package-shape** — imports every documented subpath export and packs
+   the tarball (via `pnpm pack`) to confirm SQL schemas, CLI bin, and
+   adapter `dist/` files are all present
+
+```bash
+manifest integration-check \
+  --root . \
+  --commands-registry manifest-registry/commands.json \
+  --bypass-registry bypasses.json
+```
+
+**Use when:** validating a downstream repo after a Manifest version bump,
+or as a CI gate that catches "we upgraded but forgot to migrate something."
+**Don't use when:** iterating on one specific check — call that check
+directly for faster feedback.
+**Destructive:** no — the tarball it produces is auto-deleted.
+
+Skip flags (opt-in only):
+- `--skip-runtime-smoke` — don't instantiate `RuntimeEngine`
+- `--skip-package-shape` — don't run subpath imports / tarball
+- `--skip-tarball` — keep subpath imports but skip `pnpm pack`
+
+See [`docs/tools/integration-check.md`](./integration-check.md) for the
+deeper integration guide.
+
+---
+
 ## Related Docs
 
+- **Canonical reading order**: `docs/README.md`
+- **Spec**: `docs/spec/README.md`
+- **Adapter contracts**: `docs/spec/adapters.md`
+- **Integration check guide**: `docs/tools/integration-check.md`
 - **Project Scaffolding**: `docs/MANIFEST_PROJECT_SCAFFOLDING.md`
 - **Quick Start**: `docs/QUICKSTART.md`
 - **Projections**: `docs/patterns/external-projections.md`

@@ -1,11 +1,12 @@
-Last updated: 2026-02-16
+Last updated: 2026-05-20
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
+Applies to: `@angriff36/manifest@0.5.0+`
 
 Quick routing:
 
-- Human overview: `docs/README.md`
+- Canonical reading order: `docs/README.md`
 - Contracts signpost: `docs/contracts/README.md`
 - Governance rules: `docs/DOCUMENTATION_GOVERNANCE.md`
 
@@ -75,10 +76,12 @@ specification are to be interpreted as described in RFC 2119.
 - `docs/spec/ir/ir-v1.schema.json` — IR v1 JSON Schema (authoritative contract)
 - `docs/spec/semantics.md` — Runtime meaning of IR nodes
 - `docs/spec/builtins.md` — Built-in identifiers and functions
-- `docs/spec/adapters.md` — Adapter hooks and required behavior
+- `docs/spec/adapters.md` — Adapter hooks (audit, outbox, stores, dispatcher) and required behavior
 - `docs/spec/conformance.md` — Conformance fixtures and test rules
 - `docs/spec/manifest-vnext.md` — vNext features: constraint outcomes,
   overrides, workflows, concurrency, canonical routes
+- `docs/spec/registry/` — Registry schemas (commands, governed entities,
+  approved bypasses) and emission rules
 
 ### Migration Documentation
 

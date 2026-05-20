@@ -19,10 +19,10 @@ For Context7 indexing, ingest in this order:
 
 Then ingest the non-spec docs in this order:
 
-1. `C:/Projects/Manifest/docs/guides/usage-patterns.md`
-2. `C:/Projects/Manifest/docs/guides/embedded-runtime-pattern.md`
-3. `C:/Projects/Manifest/docs/guides/implementing-custom-stores.md`
-4. `C:/Projects/Manifest/docs/guides/transactional-outbox-pattern.md`
+1. `C:/Projects/Manifest/docs/patterns/usage-patterns.md`
+2. `C:/Projects/Manifest/docs/patterns/embedded-runtime-pattern.md`
+3. `C:/Projects/Manifest/docs/patterns/implementing-custom-stores.md`
+4. `C:/Projects/Manifest/docs/patterns/transactional-outbox-pattern.md`
 5. `C:/Projects/Manifest/docs/patterns/external-projections.md`
 6. `C:/Projects/Manifest/docs/migration/vnext-migration-guide.md`
 7. `C:/Projects/Manifest/docs/tools/README.md`
