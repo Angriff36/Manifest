@@ -1515,8 +1515,12 @@ export class RuntimeEngine {
     emitCounter: { value: number },
     workflowMeta: { correlationId?: string; causationId?: string }
   ): Promise<unknown> {
-    // Effect boundary enforcement: in deterministicMode, adapter actions hard-error
-    if (this.options.deterministicMode &&
+    // Effect boundary enforcement: in deterministic mode, adapter actions hard-error.
+    // Sources, in precedence order: options.deterministicMode (explicit caller intent),
+    // then context.deterministic (ambient context). See docs/spec/semantics.md
+    // § "Runtime Context Schema".
+    const deterministic = this.options.deterministicMode ?? this.context.deterministic ?? false;
+    if (deterministic &&
         (action.kind === 'persist' || action.kind === 'publish' || action.kind === 'effect')) {
       throw new ManifestEffectBoundaryError(action.kind);
     }
