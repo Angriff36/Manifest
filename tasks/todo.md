@@ -29,12 +29,12 @@ Source goal (from session 2026-05-20):
   - [x] 2.3 Mark `nextjs.command` output as deprecated alias
   - [x] 2.4 Closing verification
 
-- [ ] **Phase 3 — IR registries**
-  - [ ] 3.1 Schemas at `docs/spec/registry/`
-  - [ ] 3.2 `emitRegistries(ir)` function + tests
-  - [ ] 3.3 Schema validation in emitter
-  - [ ] 3.4 CLI: `manifest emit registries`
-  - [ ] 3.5 Closing verification
+- [x] **Phase 3 — IR registries** (closed 2026-05-20; 791/791 green)
+  - [x] 3.1 Schemas at `docs/spec/registry/`
+  - [x] 3.2 `emitRegistries(ir)` function + tests
+  - [x] 3.3 Schema validation — folded into CLI (`--no-validate` opt-out)
+  - [x] 3.4 CLI: `manifest emit registries` (supports `--ir` and `--source`)
+  - [x] 3.5 Closing verification
 
 - [ ] **Phase 4 — Bypass registry**
   - [ ] 4.1 Bypass schema
