@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.dev/spec/registry/bypasses.schema.json",
+  "title": "Manifest Approved Bypass Registry",
+  "description": "Hand-curated registry of direct mutations that are explicitly exempt from the canonical write path. Validated by `manifest audit bypasses`. Authority: docs/capsule-pro/constitution.md §8 and §17.",
+  "type": "object",
+  "required": ["version", "bypasses"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Bypass registry format version. Current: '1'."
+    },
+    "bypasses": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/BypassEntry" }
+    }
+  },
+  "definitions": {
+    "BypassEntry": {
+      "type": "object",
+      "required": [
+        "entity",
+        "path",
+        "reason",
+        "whyRuntimeNotRequired",
+        "tenantBoundary",
+        "owner",
+        "approvedAt",
+        "reviewBy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entity": {
+          "type": "string",
+          "description": "Name of the entity being bypassed. MUST match an entry in the governed-entity registry."
+        },
+        "path": {
+          "type": "string",
+          "description": "Repo-root-relative path to the file containing the bypass. Forward-slashed even on Windows."
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "*"]
+          },
+          "description": "Optional HTTP methods scope. Omit to apply to all methods."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of WHAT the bypass does."
+        },
+        "whyRuntimeNotRequired": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this mutation legitimately does not need runtime governance. NOT 'we will migrate later'."
+        },
+        "tenantBoundary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What tenant/security boundary still applies to the bypass. E.g. 'enforced by RLS', 'admin-only via Clerk middleware', 'no tenant data'."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human or team responsible for the bypass. Email, Slack handle, or GH username."
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO date (YYYY-MM-DD) of approval."
+        },
+        "reviewBy": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO date (YYYY-MM-DD) by which the bypass MUST be re-reviewed. Past dates are reported as warnings (default) or errors (--strict-expiry)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional free-form note (linked ticket, migration plan, etc.)."
+        }
+      }
+    }
+  }
+}

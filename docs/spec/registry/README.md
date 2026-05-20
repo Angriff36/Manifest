@@ -14,8 +14,10 @@ Manifest emits from compiled IR:
   bypass_allowed / unknown_nonconforming), recording whether it is tenant-
   scoped, and listing the commands it owns.
 
-- `bypasses.schema.json` — the **approved-bypass registry** (separate file).
-  Hand-curated by repo owners; validated by `manifest audit bypasses`.
+- `bypasses.schema.json` — the **approved-bypass registry**. Hand-curated by
+  repo owners; validated by `manifest audit bypasses`. Fields cover every
+  field the constitution §8 requires: entity, path, reason, why-runtime-not-
+  required, tenant boundary, owner, approval and review dates.
 
 ## Stability
 
