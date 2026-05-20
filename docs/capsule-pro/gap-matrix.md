@@ -6,7 +6,7 @@ Tracks which constitution clauses are mechanically enforceable today.
 - ◐ partial: runtime exists, enforcement scaffolding missing
 - ✗ missing: no Manifest-side support yet
 
-Last updated: 2026-05-20 (Phases 1–4 closed)
+Last updated: 2026-05-20 (Phases 1–5 closed; Phase 6 deferred)
 
 | Clause | Topic | Status | Manifest evidence | Plan phase |
 |---|---|---|---|---|
@@ -19,15 +19,15 @@ Last updated: 2026-05-20 (Phases 1–4 closed)
 | §6 | Canonical dispatcher `POST /api/manifest/{entity}/commands/{command}` | ✅ | `nextjs.dispatcher` surface emits single dynamic route at `apps/api/app/api/manifest/[entity]/commands/[command]/route.ts`; legacy per-command routes carry DEPRECATED ALIAS banners | Phase 2 (done) |
 | §8 | Governed entity registry | ✅ | `manifest emit registries` writes `entities.json` (governed / read_only_projection / infrastructure / bypass_allowed / unknown_nonconforming); schema at `docs/spec/registry/entities.schema.json` | Phase 3 (done) |
 | §8 | Bypass registry | ✅ | Schema at `docs/spec/registry/bypasses.schema.json`; `manifest audit-bypasses` validates shape, file paths, and review dates (with `--strict-expiry` escalation) | Phase 4 (done) |
-| §9 | Direct write prohibition (CI gate) | ◐ | `audit-routes` flags `prisma.X.create/update/delete/*Many` | Phase 5 |
+| §9 | Direct write prohibition (CI gate) | ✅ | `manifest audit-constitution --only direct-writes,bypass-violations` enforces direct-write prohibition AND cross-checks against the bypass registry | Phase 5 (done) |
 | §10 | Read path freedom + projection generators | ✅ | `nextjs.detail`, `ts.client`, `ts.types` | — |
-| §11 | Semantic events only from runtime | ◐ | Runtime emits; no CI gate against fabrication | Phase 5 |
+| §11 | Semantic events only from runtime | ✅ | `manifest audit-constitution --only event-fabrication` flags `eventBus.publish`, `new ManifestEvent`, `emit('X.y', …)` outside runtime/adapter paths | Phase 5 (done) |
 | §11 | Transactional event outbox | ✗ | In-memory `eventLog` only | Phase 6 (deferred) |
 | §12 | Audit (who/what/tenant/result/diagnostics) | ✗ | No audit emitter | Phase 6 (deferred) |
-| §13 | Conformance harness for governed commands | ◐ | Harness exists; no pluggable hook for downstream | Phase 5 (missing-tests detector) |
-| §13 | CI gates the constitution lists | ◐ | Only direct-write check | Phase 5 |
+| §13 | Conformance harness for governed commands | ✅ | `manifest audit-constitution --only missing-tests --commands-registry commands.json` flags governed commandIds not referenced by any test or fixture | Phase 5 (done) |
+| §13 | CI gates the constitution lists | ✅ | Five-detector umbrella: direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations | Phase 5 (done) |
 | §14 | Change protocol (spec → tests → impl) | ✅ | Enforced by CLAUDE.md / AGENTS.md | — |
-| §17 | Required repo artifacts (registries, route/event audits, conformance index) | ◐ | command + entity registries emitted via `manifest emit registries`; bypass registry and audit suites still pending | Phases 3 done, 4–5 pending |
+| §17 | Required repo artifacts (registries, route/event audits, conformance index) | ✅ | `manifest emit registries`, `manifest audit-bypasses`, `manifest audit-constitution` — registries + route/event audits + conformance-index check all shipped | Phases 3–5 (done) |
 | §18 | RLS wiring to runtime (Postgres role / JWT claim) | ✗ | `SupabaseStore` exists, no claim wiring | Phase 6 (deferred) |
 | §19 | Clerk-to-Manifest context translation | ✅ | dispatcher emits `{ tenantId, orgId, actorId, requestId, source }` populated from `auth()` + tenant lookup; honors `authProvider: 'none' \| 'clerk' \| 'nextauth' \| 'custom'` | Phase 2 (done) |
 | §20 | Plain-terms reads-flexible / writes-rigid principle | ✅ | Implicit in design | — |

@@ -41,14 +41,14 @@ Source goal (from session 2026-05-20):
   - [x] 4.2 `manifest audit-bypasses` validator (8 tests)
   - [x] 4.3 Closing verification
 
-- [ ] **Phase 5 — Constitution audit suite**
-  - [ ] 5.1 Umbrella `manifest audit constitution`
-  - [ ] 5.2 Event fabrication detector
-  - [ ] 5.3 Route drift detector
-  - [ ] 5.4 Missing-tests detector
-  - [ ] 5.5 Bypass violations detector
-  - [ ] 5.6 End-to-end smoke fixture
-  - [ ] 5.7 Closing verification
+- [x] **Phase 5 — Constitution audit suite** (closed 2026-05-20; 811/811 green)
+  - [x] 5.1 Umbrella `manifest audit-constitution` with --only selection
+  - [x] 5.2 Event fabrication detector (3 patterns)
+  - [x] 5.3 Route drift detector (canonical-path-aware, banner-aware)
+  - [x] 5.4 Missing-tests detector (substring lookup across test corpus)
+  - [x] 5.5 Bypass violations detector (composes direct-writes + registry; STALE_BYPASS warnings)
+  - [x] 5.6 End-to-end fixture coverage (12 tests in audit-constitution.test.ts)
+  - [x] 5.7 Closing verification
 
 - [ ] **Phase 6 — Audit + outbox (DEFERRED, sketch only)**
   - See plan §"Phase 6" for contracts.
