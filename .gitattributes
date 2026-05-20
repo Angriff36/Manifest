@@ -1,0 +1,37 @@
+# Pin line endings so column-counting tests are platform-independent.
+#
+# Without this, files authored on Windows get checked out as CRLF and the
+# lexer counts \r as a column, breaking conformance fixtures on Linux CI.
+# All text source / fixture / config files MUST be LF in the working tree.
+
+*               text=auto eol=lf
+
+# Manifest source files and IR/JSON fixtures are column-sensitive.
+*.manifest      text eol=lf
+*.json          text eol=lf
+
+# Code/config files.
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.mjs           text eol=lf
+*.cjs           text eol=lf
+*.md            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+
+# Lockfiles — keep LF to avoid noisy diffs across platforms.
+package-lock.json   text eol=lf
+pnpm-lock.yaml      text eol=lf
+
+# Binary types — never normalize.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.zip           binary
+*.pdf           binary
