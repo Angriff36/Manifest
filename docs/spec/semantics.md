@@ -29,6 +29,19 @@ the change.
 - A runtime evaluates IRExpressions against an evaluation context, producing a value or undefined.
 - A runtime MAY expose a context object containing `user` and arbitrary fields.
 
+## Runtime Context Schema
+- The runtime context object MAY carry the following typed fields. None are required by the IR itself; downstream consumers (e.g. Capsule-Pro) MAY require subsets via runtime options:
+  - `tenantId: string` — active tenant identifier
+  - `orgId: string` — active organization identifier (e.g. Clerk `orgId`)
+  - `actorId: string` — acting user identifier
+  - `requestId: string` — caller-supplied request id, surfaced in diagnostics and on emitted events
+  - `source: string` — origin surface (`route` | `job` | `cli` | `test` | `ui` | `workflow` | other)
+  - `deterministic: boolean` — when true, adapter actions (persist/publish/effect) MUST throw `ManifestEffectBoundaryError`
+- All typed fields are surfaced inside expression evaluation under the existing `context.*` binding. Adding these fields does NOT change IR shape.
+- A runtime MAY accept the option `requireTenantContext: true`. When set, `runCommand` MUST fail closed with diagnostic `MISSING_TENANT_CONTEXT` when `context.tenantId` is absent.
+- If both `options.deterministicMode` and `context.deterministic` are set, `options.deterministicMode` takes precedence (explicit caller intent overrides ambient context).
+- The runtime context object remains open (additional ad-hoc keys MAY be present). The typed fields are a minimum contract, not an exhaustive shape.
+
 ## Modules
 - IR modules are a logical grouping only.
 - Module membership does not change runtime behavior.

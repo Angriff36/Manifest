@@ -17,6 +17,20 @@ A conforming runtime MUST provide these identifiers in the evaluation context:
 These identifiers are not reserved keywords in IR; they are injected by the runtime evaluation context.
 If a runtime does not provide required built-ins, it is non-conforming even if a particular manifest does not reference them.
 
+### Context Member Access
+The following `context.*` bindings are spec-guaranteed when the host runtime
+populates them (see `semantics.md` § "Runtime Context Schema"):
+- `context.tenantId: string | undefined`
+- `context.orgId: string | undefined`
+- `context.actorId: string | undefined`
+- `context.requestId: string | undefined`
+- `context.source: string | undefined`
+- `context.deterministic: boolean | undefined`
+
+Guard, policy, and constraint expressions MAY reference any of the above.
+Referencing an unset field MUST evaluate to `undefined` (no exception).
+The runtime MUST NOT auto-populate these fields; they are caller-supplied.
+
 ## Core Literals (Required)
 A conforming runtime MUST support these literal identifiers:
 - `true`
