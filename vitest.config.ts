@@ -17,6 +17,7 @@ export default defineConfig({
       '@angriff36/manifest/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
       '@angriff36/manifest/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
       '@angriff36/manifest/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
+      '@angriff36/manifest/registry/emit': path.resolve(__dirname, './src/manifest/registry/emit.ts'),
       '@angriff36/manifest': path.resolve(__dirname, './src/manifest/runtime-engine.ts'),
     },
   },

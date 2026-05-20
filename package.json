@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.3.37",
+  "version": "0.3.39",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -34,6 +34,10 @@
       "types": "./dist/manifest/stores.node.d.ts",
       "import": "./dist/manifest/stores.node.js"
     },
+    "./registry/emit": {
+      "types": "./dist/manifest/registry/emit.d.ts",
+      "import": "./dist/manifest/registry/emit.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -43,10 +47,11 @@
   "bin": {
     "manifest": "./packages/cli/dist/index.js"
   },
-  "files": [
-    "dist/**",
+    "files": [
+    "dist/manifest/**",
     "packages/cli/dist/**",
     "docs/spec/ir/ir-v1.schema.json",
+    "docs/spec/registry/*.schema.json",
     "README*",
     "LICENSE*",
     "package.json"
@@ -57,8 +62,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "pnpm run build:lib && vite build",
     "build:lib": "tsc -p tsconfig.lib.json",
+    "build:app": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",

@@ -19,6 +19,7 @@ import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
+import { emitRegistriesCommand } from './commands/emit-registries.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -295,6 +296,30 @@ program
   .option('--exemptions <path>', 'Path to exemptions registry JSON')
   .action(async (options = {}) => {
     await auditRoutesCommand(options);
+  });
+
+/**
+ * manifest emit registries
+ *
+ * Emit machine-readable command and governed-entity registries from a
+ * compiled IR JSON or a manifest source file. Validates against the schemas
+ * in docs/spec/registry/. See docs/spec/registry/README.md and the
+ * Capsule-Pro constitution §8/§17.
+ */
+const emitProgram = program
+  .command('emit')
+  .description('Emit IR-derived artifacts');
+
+emitProgram
+  .command('registries')
+  .description('Emit commands.json and entities.json registries from IR')
+  .option('--ir <path>', 'Path to a compiled IR JSON file')
+  .option('--source <path>', 'Path to a .manifest source file to compile and emit from')
+  .option('--out <dir>', 'Output directory', 'manifest-registry')
+  .option('--no-validate', 'Skip JSON-schema validation of the emitted output')
+  .option('--no-pretty', 'Emit compact JSON (no indentation)')
+  .action(async (options = {}) => {
+    await emitRegistriesCommand(options);
   });
 
 /**
