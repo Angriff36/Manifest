@@ -1,0 +1,33 @@
+# Manifest IR Registries
+
+This directory contains the JSON schemas for the machine-readable registries
+Manifest emits from compiled IR:
+
+- `commands.schema.json` — the **command registry**. One entry per
+  entity+command pair, listing the policies, guards, emits, and effect kinds
+  visible at compile time. Downstream consumers (CI gates, audit tooling,
+  IDE integrations) treat this as the authoritative inventory of governed
+  commands.
+
+- `entities.schema.json` — the **governed-entity registry**. One entry per
+  entity, classifying it (governed / read_only_projection / infrastructure /
+  bypass_allowed / unknown_nonconforming), recording whether it is tenant-
+  scoped, and listing the commands it owns.
+
+- `bypasses.schema.json` — the **approved-bypass registry** (separate file).
+  Hand-curated by repo owners; validated by `manifest audit bypasses`.
+
+## Stability
+
+The schemas are versioned via the `compilerVersion` and `irHash` fields on
+the emitted JSON. Breaking changes to the schemas MUST bump the manifest
+compiler's major version (per `docs/spec/semantics.md` change protocol).
+
+## Authority
+
+Authority for what these registries mean lives in:
+- `docs/spec/semantics.md` § "Capsule-Pro Constitution Reference"
+- `docs/capsule-pro/constitution.md` §8 (governed-entity registry) and §17
+
+The schemas in this directory are the machine-readable contract; the spec
+text is the human-readable contract.

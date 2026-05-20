@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.dev/spec/registry/entities.schema.json",
+  "title": "Manifest Governed Entity Registry",
+  "description": "Machine-readable inventory of every entity in a compiled IR, with the constitution's classification axis. Emitted by `manifest emit registries`.",
+  "type": "object",
+  "required": ["irHash", "compilerVersion", "entities"],
+  "additionalProperties": false,
+  "properties": {
+    "irHash": { "type": "string" },
+    "compilerVersion": { "type": "string" },
+    "entities": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/EntityEntry" }
+    }
+  },
+  "definitions": {
+    "EntityEntry": {
+      "type": "object",
+      "required": ["name", "classification", "tenantScoped", "commands", "properties"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "governed",
+            "read_only_projection",
+            "infrastructure",
+            "bypass_allowed",
+            "unknown_nonconforming"
+          ],
+          "description": "Defaults to 'governed' for tenant-scoped entities, 'unknown_nonconforming' otherwise. Repo authors may override via annotation (future)."
+        },
+        "tenantScoped": {
+          "type": "boolean",
+          "description": "True iff the entity declares a `tenantId` property. Heuristic; downstream consumers may refine."
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of commands this entity owns."
+        },
+        "properties": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of declared properties (not computed properties)."
+        }
+      }
+    }
+  }
+}

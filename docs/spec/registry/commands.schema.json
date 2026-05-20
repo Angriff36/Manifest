@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.dev/spec/registry/commands.schema.json",
+  "title": "Manifest Command Registry",
+  "description": "Machine-readable inventory of every entity+command pair derivable from a compiled IR. Emitted by `manifest emit registries`. See docs/spec/registry/README.md.",
+  "type": "object",
+  "required": ["irHash", "compilerVersion", "commands"],
+  "additionalProperties": false,
+  "properties": {
+    "irHash": {
+      "type": "string",
+      "description": "Content hash of the IR this registry was derived from. Allows downstream consumers to detect drift."
+    },
+    "compilerVersion": {
+      "type": "string",
+      "description": "Version of the Manifest compiler that produced the IR."
+    },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/CommandEntry" }
+    }
+  },
+  "definitions": {
+    "CommandEntry": {
+      "type": "object",
+      "required": ["entity", "command", "commandId"],
+      "additionalProperties": false,
+      "properties": {
+        "entity": { "type": "string" },
+        "command": { "type": "string" },
+        "commandId": {
+          "type": "string",
+          "description": "Canonical identifier, formed as '<entity>.<command>'."
+        },
+        "policies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of IRPolicy entries that gate this command. May include entity defaultPolicies."
+        },
+        "guardCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of guard expressions on the command. Expressions themselves live in the IR; only the count is registered."
+        },
+        "emits": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of semantic events the command may emit on success."
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["mutate", "emit", "compute", "effect", "publish", "persist"]
+          },
+          "description": "Distinct action kinds on the command body."
+        }
+      }
+    }
+  }
+}
