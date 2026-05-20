@@ -36,10 +36,10 @@ Source goal (from session 2026-05-20):
   - [x] 3.4 CLI: `manifest emit registries` (supports `--ir` and `--source`)
   - [x] 3.5 Closing verification
 
-- [ ] **Phase 4 — Bypass registry**
-  - [ ] 4.1 Bypass schema
-  - [ ] 4.2 `manifest audit bypasses` validator
-  - [ ] 4.3 Closing verification
+- [x] **Phase 4 — Bypass registry** (closed 2026-05-20; 799/799 green)
+  - [x] 4.1 Bypass schema
+  - [x] 4.2 `manifest audit-bypasses` validator (8 tests)
+  - [x] 4.3 Closing verification
 
 - [ ] **Phase 5 — Constitution audit suite**
   - [ ] 5.1 Umbrella `manifest audit constitution`

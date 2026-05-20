@@ -6,7 +6,7 @@ Tracks which constitution clauses are mechanically enforceable today.
 - ◐ partial: runtime exists, enforcement scaffolding missing
 - ✗ missing: no Manifest-side support yet
 
-Last updated: 2026-05-20 (Phases 1–3 closed)
+Last updated: 2026-05-20 (Phases 1–4 closed)
 
 | Clause | Topic | Status | Manifest evidence | Plan phase |
 |---|---|---|---|---|
@@ -18,7 +18,7 @@ Last updated: 2026-05-20 (Phases 1–3 closed)
 | §5 | Canonical write path (policies → guards → actions → emits → return) | ✅ | runtime engine `runCommand` | — |
 | §6 | Canonical dispatcher `POST /api/manifest/{entity}/commands/{command}` | ✅ | `nextjs.dispatcher` surface emits single dynamic route at `apps/api/app/api/manifest/[entity]/commands/[command]/route.ts`; legacy per-command routes carry DEPRECATED ALIAS banners | Phase 2 (done) |
 | §8 | Governed entity registry | ✅ | `manifest emit registries` writes `entities.json` (governed / read_only_projection / infrastructure / bypass_allowed / unknown_nonconforming); schema at `docs/spec/registry/entities.schema.json` | Phase 3 (done) |
-| §8 | Bypass registry | ✗ | None | Phase 4 |
+| §8 | Bypass registry | ✅ | Schema at `docs/spec/registry/bypasses.schema.json`; `manifest audit-bypasses` validates shape, file paths, and review dates (with `--strict-expiry` escalation) | Phase 4 (done) |
 | §9 | Direct write prohibition (CI gate) | ◐ | `audit-routes` flags `prisma.X.create/update/delete/*Many` | Phase 5 |
 | §10 | Read path freedom + projection generators | ✅ | `nextjs.detail`, `ts.client`, `ts.types` | — |
 | §11 | Semantic events only from runtime | ◐ | Runtime emits; no CI gate against fabrication | Phase 5 |
