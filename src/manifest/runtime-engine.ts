@@ -32,8 +32,33 @@ function isProductionMode(): boolean {
   return false;
 }
 
+/**
+ * Spec-guaranteed runtime context bindings (see docs/spec/semantics.md
+ * § "Runtime Context Schema" and docs/spec/builtins.md § "Context Member
+ * Access"). Every typed field is optional at the type level; per spec,
+ * tenant-scoped commands MUST fail closed with `MISSING_TENANT_CONTEXT`
+ * when `tenantId` is absent and `requireTenantContext` is set on
+ * RuntimeOptions.
+ *
+ * The index signature is preserved for backwards compatibility — existing
+ * callers may attach ad-hoc keys without a type-level change.
+ */
 export interface RuntimeContext {
+  /** Active tenant identifier. Required for tenant-scoped commands. */
+  tenantId?: string;
+  /** Active organization identifier (e.g. Clerk orgId). */
+  orgId?: string;
+  /** Acting user identifier. */
+  actorId?: string;
+  /** Caller-supplied request id; surfaces in diagnostics and emitted events. */
+  requestId?: string;
+  /** Origin surface: 'route' | 'job' | 'cli' | 'test' | 'ui' | 'workflow' (or other). */
+  source?: string;
+  /** If true, adapter actions throw ManifestEffectBoundaryError. options.deterministicMode wins if both set. */
+  deterministic?: boolean;
+  /** Legacy actor shorthand. Prefer `actorId` for new code. */
   user?: { id: string; role?: string; [key: string]: unknown };
+  /** Open extension surface; legacy callers still rely on free keys. */
   [key: string]: unknown;
 }
 
