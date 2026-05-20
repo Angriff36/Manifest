@@ -23,11 +23,11 @@ Source goal (from session 2026-05-20):
   - [x] 1.4 `requireTenantContext` fail-closed
   - [x] 1.5 Closing verification (tests, lint of touched files, typecheck, gap-matrix)
 
-- [ ] **Phase 2 — nextjs.dispatcher projection**
-  - [ ] 2.1 Spec: canonical dispatcher section
-  - [ ] 2.2 Register `nextjs.dispatcher` surface in generator
-  - [ ] 2.3 Mark `nextjs.command` output as deprecated alias
-  - [ ] 2.4 Closing verification
+- [x] **Phase 2 — nextjs.dispatcher projection** (closed 2026-05-20; 777/777 green)
+  - [x] 2.1 Spec: canonical dispatcher section
+  - [x] 2.2 Register `nextjs.dispatcher` surface in generator
+  - [x] 2.3 Mark `nextjs.command` output as deprecated alias
+  - [x] 2.4 Closing verification
 
 - [ ] **Phase 3 — IR registries**
   - [ ] 3.1 Schemas at `docs/spec/registry/`

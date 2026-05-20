@@ -6,7 +6,7 @@ Tracks which constitution clauses are mechanically enforceable today.
 - ◐ partial: runtime exists, enforcement scaffolding missing
 - ✗ missing: no Manifest-side support yet
 
-Last updated: 2026-05-20 (Phase 1 closed)
+Last updated: 2026-05-20 (Phases 1–2 closed)
 
 | Clause | Topic | Status | Manifest evidence | Plan phase |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@ Last updated: 2026-05-20 (Phase 1 closed)
 | §3 | Policies / guards / constraints with diagnostics | ✅ | runtime engine §1051,§1229,§791,§831 | — |
 | §4 | Adapter / effect boundary | ✅ | `stores.node.ts` (Postgres/Supabase), `ManifestEffectBoundaryError` | — |
 | §5 | Canonical write path (policies → guards → actions → emits → return) | ✅ | runtime engine `runCommand` | — |
-| §6 | Canonical dispatcher `POST /api/manifest/{entity}/commands/{command}` | ✗ | Next.js projection emits per-command routes only | Phase 2 |
+| §6 | Canonical dispatcher `POST /api/manifest/{entity}/commands/{command}` | ✅ | `nextjs.dispatcher` surface emits single dynamic route at `apps/api/app/api/manifest/[entity]/commands/[command]/route.ts`; legacy per-command routes carry DEPRECATED ALIAS banners | Phase 2 (done) |
 | §8 | Governed entity registry | ✗ | None | Phase 3 |
 | §8 | Bypass registry | ✗ | None | Phase 4 |
 | §9 | Direct write prohibition (CI gate) | ◐ | `audit-routes` flags `prisma.X.create/update/delete/*Many` | Phase 5 |
@@ -29,7 +29,7 @@ Last updated: 2026-05-20 (Phase 1 closed)
 | §14 | Change protocol (spec → tests → impl) | ✅ | Enforced by CLAUDE.md / AGENTS.md | — |
 | §17 | Required repo artifacts (registries, route/event audits, conformance index) | ✗ | None emitted | Phases 3–5 |
 | §18 | RLS wiring to runtime (Postgres role / JWT claim) | ✗ | `SupabaseStore` exists, no claim wiring | Phase 6 (deferred) |
-| §19 | Clerk-to-Manifest context translation | ◐ | Typed context lands in Phase 1; dispatcher in Phase 2 populates it from Clerk auth | Phase 2 |
+| §19 | Clerk-to-Manifest context translation | ✅ | dispatcher emits `{ tenantId, orgId, actorId, requestId, source }` populated from `auth()` + tenant lookup; honors `authProvider: 'none' \| 'clerk' \| 'nextauth' \| 'custom'` | Phase 2 (done) |
 | §20 | Plain-terms reads-flexible / writes-rigid principle | ✅ | Implicit in design | — |
 
 ## Status legend
