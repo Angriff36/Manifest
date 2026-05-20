@@ -94,7 +94,6 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "pretest": "tsc -p tsconfig.lib.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",

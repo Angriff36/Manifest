@@ -32,8 +32,5 @@ jobs:
       - name: Documentation integrity checks
         run: npm run docs:check
 
-      - name: Build library (dist/ is required by CLI tests via loadCompiler relative path)
-        run: npm run build:lib
-
       - name: Run test suite
         run: npm test
