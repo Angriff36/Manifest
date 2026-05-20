@@ -118,6 +118,13 @@ export interface RuntimeOptions {
   deterministicMode?: boolean;
   /** Optional complexity limits for expression evaluation */
   evaluationLimits?: EvaluationLimits;
+  /**
+   * If true, any `runCommand` invocation MUST fail closed with diagnostic
+   * `MISSING_TENANT_CONTEXT` when `context.tenantId` is absent or empty.
+   * Use to enforce tenant-scoped command semantics per constitution §3/§19.
+   * Default: false (backwards compatible — legacy callers unaffected).
+   */
+  requireTenantContext?: boolean;
 }
 
 export interface EntityInstance {
@@ -998,6 +1005,17 @@ export class RuntimeEngine {
       idempotencyKey?: string;
     } = {}
   ): Promise<CommandResult> {
+    // Tenant context gate (constitution §3/§19): fail closed before ANY work,
+    // including idempotency cache reads/writes. Falsy values (undefined, '',
+    // null) all count as missing — preventing accidental empty-string passes.
+    if (this.options.requireTenantContext && !this.context.tenantId) {
+      return {
+        success: false,
+        error: 'MISSING_TENANT_CONTEXT: tenant-scoped command invoked without context.tenantId',
+        emittedEvents: [],
+      };
+    }
+
     // Idempotency short-circuit (before ANY evaluation)
     if (this.options.idempotencyStore) {
       if (options.idempotencyKey === undefined) {
