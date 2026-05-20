@@ -65,7 +65,13 @@ jobs:
 
       - name: Publish to GitHub Packages
         # prepublishOnly already runs build:lib + cli build, so dist/ is
-        # regenerated from current source before pack.
-        run: npm publish
+        # regenerated from current source before pack. Using `pnpm publish`
+        # rather than `npm publish` because the rest of this workflow runs
+        # on pnpm, and `npm pack` (which `npm publish` calls internally)
+        # has an intermittent @npmcli/arborist bug when walking pnpm-
+        # managed node_modules — see packages/cli/src/checks/package-shape.ts
+        # for the documented reproduction. `--no-git-checks` skips the
+        # uncommitted-changes guard (Actions checkout is always clean).
+        run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
