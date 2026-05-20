@@ -23,6 +23,7 @@ import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import { auditGovernanceCommand } from './commands/audit-governance.js';
+import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -485,6 +486,41 @@ program
   .option('--ir-root <path...>', 'Compiled IR root directory/directories')
   .action(async (options = {}) => {
     await doctorCommand(options);
+  });
+
+/**
+ * manifest integration-check
+ *
+ * End-to-end validation that a downstream repo is correctly integrated
+ * with the Manifest governance contract. Runs static governance + bypass
+ * audit + dispatcher presence + runtime smoke (audit/outbox adapters) +
+ * package shape. Exit code is 0 only if every section passes.
+ */
+program
+  .command('integration-check')
+  .description('Validate a downstream repo against the full Manifest governance + runtime contract')
+  .option('--root <path>', 'Downstream repo root (defaults to cwd)')
+  .option('--commands-registry <path>', 'Path to a commands registry JSON')
+  .option('--bypass-registry <path>', 'Path to a bypass registry JSON')
+  .option('--format <fmt>', 'Output format: text | json', 'text')
+  .option('--strict', 'Treat warnings as failures', false)
+  .option('--skip-runtime-smoke', 'Skip the in-memory RuntimeEngine smoke', false)
+  .option('--skip-package-shape', 'Skip the package-shape check', false)
+  .option('--skip-tarball', 'Skip the `npm pack --dry-run` sub-step in package-shape', false)
+  .option('--package-root <path>', 'Override the @angriff36/manifest package root for the package-shape check')
+  .action(async (options = {}) => {
+    const result = await integrationCheckCommand({
+      root: options.root,
+      commandsRegistry: options.commandsRegistry,
+      bypassRegistry: options.bypassRegistry,
+      format: options.format === 'json' ? 'json' : 'text',
+      strict: !!options.strict,
+      skipRuntimeSmoke: !!options.skipRuntimeSmoke,
+      skipPackageShape: !!options.skipPackageShape,
+      skipTarball: !!options.skipTarball,
+      packageRoot: options.packageRoot,
+    });
+    if (!result.ok) process.exit(1);
   });
 
 /**

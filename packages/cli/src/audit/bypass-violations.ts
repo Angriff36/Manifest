@@ -14,8 +14,8 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { AuditFinding, Detector, DetectorContext } from './types';
-import { directWritesDetector } from './direct-writes';
+import type { AuditFinding, Detector, DetectorContext } from './types.js';
+import { directWritesDetector } from './direct-writes.js';
 
 interface BypassEntry {
   entity: string;

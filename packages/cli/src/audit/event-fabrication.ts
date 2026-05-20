@@ -16,7 +16,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { glob } from 'glob';
-import type { AuditFinding, Detector, DetectorContext } from './types';
+import type { AuditFinding, Detector, DetectorContext } from './types.js';
 
 const ROUTE_GLOBS = [
   'app/api/**/route.ts',
