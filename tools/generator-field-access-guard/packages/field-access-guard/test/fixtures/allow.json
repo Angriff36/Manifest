@@ -1,6 +1,0 @@
-[
-  "entities.*.name",
-  "entities.*.properties.*.type",
-  "policies.*",
-  "guards.*.expression"
-]

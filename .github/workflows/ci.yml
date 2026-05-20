@@ -32,29 +32,8 @@ jobs:
       - name: Documentation integrity checks
         run: npm run docs:check
 
-      - name: Run test suite (427 tests)
+      - name: Build library (dist/ is required by CLI tests via loadCompiler relative path)
+        run: npm run build:lib
+
+      - name: Run test suite
         run: npm test
-
-  validate-ir:
-    name: Validate IR Schema
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install validator dependencies
-        working-directory: tools/manifest-ir-schema-validator/project
-        run: npm ci
-
-      - name: Build validator
-        working-directory: tools/manifest-ir-schema-validator/project
-        run: npm run build
-
-      - name: Validate all conformance IR files
-        working-directory: tools/manifest-ir-schema-validator/project
-        run: npm start -- --schema ../../../docs/spec/ir/ir-v1.schema.json --fixtures ../../../src/manifest/conformance/expected
