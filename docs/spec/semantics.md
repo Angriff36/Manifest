@@ -7,22 +7,33 @@ Enforced by: src/manifest/conformance/**, npm test
 
 This document defines the runtime meaning of IR v1. The IR schema is authoritative; this document defines how conforming runtimes MUST interpret it.
 
-## Capsule-Pro Constitution Reference
+## Governance Primitive Surface
 
-Manifest provides the primitives the Capsule-Pro Constitution
-(`docs/capsule-pro/constitution.md`) is written against:
-runtime command execution, typed runtime context, IR-derived registries,
-projections, deterministic mode, and the audit CLI surfaces.
+Manifest exposes the following primitives for downstream governance
+integrations to consume:
 
-The constitution does not change Manifest semantics. It commits a downstream
-consumer (Capsule-Pro) to using only these primitives for governed mutations.
+- runtime command execution
+- typed runtime context (tenantId, orgId, actorId, requestId, source, deterministic)
+- IR-derived command and governed-entity registries
+- canonical Next.js dispatcher projection
+- deterministic mode (effect-boundary enforcement)
+- governance audit CLI surfaces (`manifest emit registries`,
+  `manifest audit-bypasses`, `manifest audit-governance`)
+- adapter contracts: `AuditSink`, `OutboxStore`, store adapters
 
-Any Manifest behavior change that touches a constitution-referenced primitive
+A downstream application's governance policy (which entities are governed,
+which commands require tenant context, which bypasses are allowed) is
+expressed in the registries, the bypass file, and runtime options the
+consumer passes — never inside Manifest itself.
+
+Any Manifest behavior change that touches one of these primitives
 (runtime context shape, dispatcher route shape, registry shape, audit
 finding codes, deterministic mode, semantic event emission, adapter
-boundary) MUST update both this spec and the mirrored constitution copy,
-and SHOULD bump `compilerVersion` so downstream `irHash` checks surface
-the change.
+boundary) MUST update this spec and SHOULD bump `compilerVersion` so
+downstream `irHash` checks surface the change.
+
+Downstream integration examples live under `docs/integrations/` and are
+not authoritative for Manifest semantics.
 
 ## Runtime Model
 - A runtime hosts an IR program plus execution state (stores, context, event log).
@@ -30,7 +41,7 @@ the change.
 - A runtime MAY expose a context object containing `user` and arbitrary fields.
 
 ## Runtime Context Schema
-- The runtime context object MAY carry the following typed fields. None are required by the IR itself; downstream consumers (e.g. Capsule-Pro) MAY require subsets via runtime options:
+- The runtime context object MAY carry the following typed fields. None are required by the IR itself; downstream consumers MAY require subsets via runtime options:
   - `tenantId: string` — active tenant identifier
   - `orgId: string` — active organization identifier (e.g. Clerk `orgId`)
   - `actorId: string` — acting user identifier

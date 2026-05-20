@@ -5,8 +5,9 @@
  *   - docs/spec/registry/commands.schema.json
  *   - docs/spec/registry/entities.schema.json
  *
- * Authority: see constitution §8 (governed-entity registry) and §17
- * (required repo artifacts), mirrored at docs/capsule-pro/constitution.md.
+ * Manifest emits these as the inventory surface for any governed
+ * downstream application; CI gates (`manifest audit-governance`) read them
+ * to enforce route drift, missing-tests, and bypass-violation rules.
  *
  * Validation: this module emits pure data; the CLI (`manifest emit
  * registries`) is responsible for Ajv validation against the JSON schemas

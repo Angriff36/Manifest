@@ -4,10 +4,10 @@ import type { IR } from './ir';
 import { COMPILER_VERSION } from './version';
 
 /**
- * Constitution §3, §19: tenant-scoped commands MUST fail closed when the
- * runtime context lacks tenantId. Manifest exposes this as the
- * `requireTenantContext` runtime option; downstream consumers (e.g.
- * Capsule-Pro) flip it on for governed entities.
+ * Tenant-scoped commands MUST fail closed when the runtime context lacks
+ * tenantId. Manifest exposes this as the `requireTenantContext` runtime
+ * option; downstream governance integrations flip it on for governed
+ * entities.
  */
 
 function buildIR(): IR {

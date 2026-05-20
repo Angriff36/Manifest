@@ -545,8 +545,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// backwards compatibility only. The canonical write path is the');
     lines.push('// nextjs.dispatcher projection at:');
     lines.push('//   POST /api/manifest/[entity]/commands/[command]');
-    lines.push('// See docs/spec/adapters.md § "Canonical Dispatcher (Transport Boundary)"');
-    lines.push('// and capsule-pro/constitution.md §6.');
+    lines.push('// See docs/spec/adapters.md § "Canonical Dispatcher (Transport Boundary)".');
     lines.push('//');
     lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints.');
     lines.push('');
@@ -606,7 +605,8 @@ export class NextJsProjection implements ProjectionTarget {
    * Generate the canonical dispatcher route. Single dynamic file at
    *   <appDir>/manifest/[entity]/commands/[command]/route.ts
    * Resolves entity+command at request time and delegates to
-   * RuntimeEngine.runCommand. Matches capsule-pro/constitution.md §6.
+   * RuntimeEngine.runCommand. Single canonical write path for governed
+   * mutations; downstream integrations may add aliases or CI gates.
    */
   private _dispatcher(
     options?: NextJsProjectionOptions
@@ -622,9 +622,9 @@ export class NextJsProjection implements ProjectionTarget {
 
     lines.push('// Auto-generated canonical Manifest dispatcher.');
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
-    lines.push('// Constitution §6: this is the canonical write path.');
-    lines.push('// All governed mutations should arrive here; per-command');
-    lines.push('// concrete routes are deprecated aliases that delegate here.');
+    lines.push('// Canonical write path for governed commands. Per-command');
+    lines.push('// concrete routes (nextjs.command) are deprecated aliases');
+    lines.push('// that delegate here.');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
@@ -639,8 +639,10 @@ export class NextJsProjection implements ProjectionTarget {
     const authImport = generateAuthImport(options);
     if (authImport) lines.push(authImport);
     lines.push('');
+    lines.push('// Next.js 15 App Router: dynamic route params are async.');
+    lines.push('// See https://nextjs.org/docs/app/api-reference/file-conventions/route');
     lines.push('interface DispatcherContext {');
-    lines.push('  params: { entity: string; command: string };');
+    lines.push('  params: Promise<{ entity: string; command: string }>;');
     lines.push('}');
     lines.push('');
     lines.push('export async function POST(request: NextRequest, ctx: DispatcherContext) {');
@@ -650,7 +652,7 @@ export class NextJsProjection implements ProjectionTarget {
     if (tenantLookup) lines.push(tenantLookup);
     lines.push('');
     lines.push('    const body = await request.json();');
-    lines.push('    const { entity, command } = ctx.params;');
+    lines.push('    const { entity, command } = await ctx.params;');
     lines.push('');
     lines.push('    if (!entity || !command) {');
     lines.push('      return manifestErrorResponse("Missing entity or command in route", 400);');

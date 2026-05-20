@@ -5,7 +5,9 @@
  * compiled IR. Validates the output against the schemas in
  * docs/spec/registry/{commands,entities}.schema.json.
  *
- * Authority: constitution §8/§17 (mirrored at docs/capsule-pro/constitution.md).
+ * The registries are Manifest's inventory surface for downstream
+ * governance integrations and CI gates. Authoritative shape lives in
+ * `docs/spec/registry/`.
  */
 
 import fs from 'node:fs/promises';

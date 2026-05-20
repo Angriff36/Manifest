@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://manifest.dev/spec/registry/bypasses.schema.json",
   "title": "Manifest Approved Bypass Registry",
-  "description": "Hand-curated registry of direct mutations that are explicitly exempt from the canonical write path. Validated by `manifest audit bypasses`. Authority: docs/capsule-pro/constitution.md §8 and §17.",
+  "description": "Hand-curated registry of direct mutations that are explicitly exempt from the canonical write path. Validated by `manifest audit-bypasses`. Each entry documents the entity, path, reason, why-runtime-not-required, tenant boundary, owner, and approval/review dates so governance reviews have full provenance.",
   "type": "object",
   "required": ["version", "bypasses"],
   "additionalProperties": false,

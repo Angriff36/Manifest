@@ -1,11 +1,10 @@
 /**
  * Missing-tests detector.
  *
- * Constitution §13: every governed command must produce or connect to
- * conformance evidence. This detector loads commands.json (from
- * `manifest emit registries`) and verifies that each governed command's
- * commandId is referenced by at least one test or fixture file under the
- * audited root.
+ * Every governed command should produce or connect to conformance evidence.
+ * This detector loads commands.json (from `manifest emit registries`) and
+ * verifies that each governed command's commandId is referenced by at
+ * least one test or fixture file under the audited root.
  *
  * A "reference" is a substring match of the commandId (e.g. `Recipe.create`)
  * in any *.test.ts, *.test.js, *.conformance.json, *.fixture.json,
@@ -73,7 +72,7 @@ async function collectTestCorpus(root: string): Promise<string> {
 
 export const missingTestsDetector: Detector = {
   name: 'missing-tests',
-  description: 'Flag governed commands without conformance/test references (constitution §13)',
+  description: 'Flag governed commands without conformance/test references',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     if (!ctx.commandsRegistry) {
       return [

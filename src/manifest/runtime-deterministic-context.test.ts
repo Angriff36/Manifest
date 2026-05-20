@@ -5,10 +5,9 @@ import { COMPILER_VERSION } from './version';
 
 /**
  * Tests that `context.deterministic === true` triggers the effect boundary
- * the same way `options.deterministicMode === true` does. The constitution
- * (§14) requires deterministic mode to be reachable from the runtime context
- * so a downstream consumer can flip it per request without re-instantiating
- * the engine.
+ * the same way `options.deterministicMode === true` does. Deterministic mode
+ * is reachable from the runtime context so a downstream consumer can flip it
+ * per request without re-instantiating the engine.
  */
 
 function buildIR(): IR {

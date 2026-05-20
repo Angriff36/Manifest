@@ -15,9 +15,10 @@ Manifest emits from compiled IR:
   scoped, and listing the commands it owns.
 
 - `bypasses.schema.json` — the **approved-bypass registry**. Hand-curated by
-  repo owners; validated by `manifest audit bypasses`. Fields cover every
-  field the constitution §8 requires: entity, path, reason, why-runtime-not-
-  required, tenant boundary, owner, approval and review dates.
+  repo owners; validated by `manifest audit-bypasses`. Fields cover the
+  evidence any responsible governance review needs: entity, path, reason,
+  why-runtime-not-required, tenant boundary, owner, approval and review
+  dates.
 
 ## Stability
 
@@ -28,8 +29,9 @@ compiler's major version (per `docs/spec/semantics.md` change protocol).
 ## Authority
 
 Authority for what these registries mean lives in:
-- `docs/spec/semantics.md` § "Capsule-Pro Constitution Reference"
-- `docs/capsule-pro/constitution.md` §8 (governed-entity registry) and §17
+- `docs/spec/semantics.md` § "Governance Primitive Surface"
+- `docs/spec/adapters.md` (canonical dispatcher, audit sink, outbox store)
 
 The schemas in this directory are the machine-readable contract; the spec
-text is the human-readable contract.
+text is the human-readable contract. Downstream governance integrations
+(see `docs/integrations/`) consume these schemas but do not author them.

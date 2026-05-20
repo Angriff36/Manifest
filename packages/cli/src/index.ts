@@ -8,6 +8,7 @@
  */
 
 import { Command } from 'commander';
+import chalk from 'chalk';
 import { compileCommand } from './commands/compile.js';
 import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
@@ -21,7 +22,7 @@ import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
-import { auditConstitutionCommand } from './commands/audit-constitution.js';
+import { auditGovernanceCommand } from './commands/audit-governance.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -305,40 +306,53 @@ program
  *
  * Emit machine-readable command and governed-entity registries from a
  * compiled IR JSON or a manifest source file. Validates against the schemas
- * in docs/spec/registry/. See docs/spec/registry/README.md and the
- * Capsule-Pro constitution §8/§17.
+ * in docs/spec/registry/. See docs/spec/registry/README.md.
  */
 const emitProgram = program
   .command('emit')
   .description('Emit IR-derived artifacts');
 
 /**
- * manifest audit bypasses
+ * manifest audit-bypasses
  *
  * Validates an approved-bypass registry against
  * docs/spec/registry/bypasses.schema.json. Reports missing-file references
  * as errors and expired review dates as warnings (or errors under
- * --strict-expiry). Authority: constitution §8/§17.
+ * --strict-expiry).
  */
 /**
- * manifest audit-constitution
+ * manifest audit-governance
  *
- * Umbrella that runs every constitution detector and aggregates findings.
+ * Umbrella that runs every governance detector and aggregates findings.
  * Under --strict, any error finding causes a non-zero exit. Detectors:
  *   direct-writes, event-fabrication, route-drift, missing-tests,
- *   bypass-violations. Authority: constitution §6, §9, §11, §13, §17.
+ *   bypass-violations.
+ *
+ * `audit-constitution` is retained as a deprecated alias.
  */
 program
-  .command('audit-constitution')
-  .description('Run the full constitution audit suite (umbrella)')
+  .command('audit-governance')
+  .alias('audit-constitution')
+  .description('Run the full governance audit suite (umbrella). `audit-constitution` is a deprecated alias.')
   .option('-r, --root <path>', 'Root directory to audit', '.')
   .option('--only <list>', 'Comma-separated detector names to run (default: all)')
   .option('--commands-registry <path>', 'Path to commands.json (enables missing-tests detector)')
   .option('--bypass-registry <path>', 'Path to bypasses.json (enables bypass-violations detector)')
   .option('--strict', 'Exit non-zero on any error finding', false)
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
-  .action(async (options = {}) => {
-    const result = await auditConstitutionCommand(options);
+  .action(async (options = {}, cmd) => {
+    // Surface a deprecation hint when callers invoke the legacy alias.
+    const invokedAs = cmd?.args?.[0] ?? cmd?.name?.();
+    const calledByAlias = process.argv.includes('audit-constitution');
+    if (calledByAlias) {
+      console.warn(
+        chalk.yellow(
+          '[deprecation] `manifest audit-constitution` is renamed to `manifest audit-governance`. ' +
+          'The alias still works but will be removed in a future release.'
+        )
+      );
+    }
+    const result = await auditGovernanceCommand(options);
     if (options.strict && result.errorCount > 0) {
       process.exitCode = 1;
     } else if (!options.strict && result.errorCount > 0) {
@@ -346,6 +360,8 @@ program
       // caller's CI integration. Mirror audit-routes behavior.
       process.exitCode = 1;
     }
+    // Suppress unused-var noise from optional invokedAs lookup.
+    void invokedAs;
   });
 
 program

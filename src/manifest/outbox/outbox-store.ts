@@ -1,10 +1,10 @@
 /**
  * Outbox store contract.
  *
- * Constitution §11: where transactional persistence is supported, state
- * mutation and semantic event persistence MUST share the same transaction
- * boundary. The `OutboxStore` adapter is the contract the runtime calls
- * inside its mutation transaction to durably enqueue emitted events.
+ * Where transactional persistence is supported, state mutation and semantic
+ * event persistence share the same transaction boundary. The `OutboxStore`
+ * adapter is the contract the runtime calls inside its mutation transaction
+ * to durably enqueue emitted events.
  *
  * This module defines the contract only. Concrete stores (Memory, Postgres)
  * land in a follow-on. Wire-in via RuntimeOptions.outboxStore.

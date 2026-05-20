@@ -5,7 +5,7 @@ import type { IR } from '../ir';
 import { COMPILER_VERSION } from '../version';
 
 /**
- * Constitution §12 contract surface.
+ * AuditSink contract surface.
  *
  * These tests assert the contract is wired into the runtime as an option
  * and that the type surface accepts a conforming sink. Actual emission
@@ -45,7 +45,7 @@ function buildIR(): IR {
 }
 
 describe('AuditSink contract', () => {
-  it('exports a record shape covering every constitution §12 field', () => {
+  it('exports a record shape covering every audit field', () => {
     const record: AuditRecord = {
       recordId: 'r1',
       occurredAt: Date.now(),
@@ -78,6 +78,7 @@ describe('AuditSink contract', () => {
     const result = await rt.runCommand('bar', {}, { entityName: 'Foo' });
     expect(result.success).toBe(true);
     // No assertions on `records` — emission is a follow-on contract. The
-    // surface acceptance is what the constitution §12 contract demands today.
+    // load-bearing check today is that the runtime accepts the sink option
+    // without typeerror or behavior change.
   });
 });

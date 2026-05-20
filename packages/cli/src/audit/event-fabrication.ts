@@ -1,8 +1,8 @@
 /**
  * Event fabrication detector.
  *
- * Constitution §11: semantic events MUST originate from runtime execution.
- * Routes, jobs, UI handlers, and tests MUST NOT fabricate domain events.
+ * Semantic events should originate from runtime execution. Routes, jobs,
+ * UI handlers, and tests should not fabricate domain events.
  *
  * This detector scans Next.js route files (and equivalents) for patterns
  * that suggest event creation outside the runtime, e.g.:
@@ -83,7 +83,7 @@ async function scanFile(filePath: string, root: string): Promise<AuditFinding[]>
 
 export const eventFabricationDetector: Detector = {
   name: 'event-fabrication',
-  description: 'Flag semantic event creation outside runtime adapters (constitution §11)',
+  description: 'Flag semantic event creation outside runtime adapters',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
     for (const pattern of ROUTE_GLOBS) {

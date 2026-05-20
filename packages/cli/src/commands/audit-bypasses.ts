@@ -1,12 +1,12 @@
 /**
- * manifest audit bypasses
+ * manifest audit-bypasses
  *
  * Validates a hand-curated approved-bypass registry against the schema at
  * docs/spec/registry/bypasses.schema.json, checks that referenced file
  * paths exist, and surfaces expired review dates.
  *
- * Authority: constitution §8 and §17, mirrored at
- * docs/capsule-pro/constitution.md.
+ * Schema and field semantics live in `docs/spec/registry/bypasses.schema.json`
+ * and `docs/spec/registry/README.md`.
  */
 
 import fs from 'node:fs/promises';

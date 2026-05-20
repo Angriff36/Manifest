@@ -1,9 +1,9 @@
 /**
  * Route drift detector.
  *
- * Constitution §6: per-command concrete routes are not authoritative. They
- * may exist as thin compatibility aliases that immediately delegate to the
- * canonical dispatcher. They MUST NOT define alternative semantics.
+ * Per-command concrete routes are not authoritative for governed mutations.
+ * They may exist as thin compatibility aliases that immediately delegate to
+ * the canonical dispatcher. They MUST NOT define alternative semantics.
  *
  * This detector flags route files under app/api/**.../route.ts that:
  *   - live outside the canonical /api/manifest/[entity]/commands/[command]/
@@ -53,7 +53,7 @@ async function scanFile(filePath: string, root: string): Promise<AuditFinding[]>
 
 export const routeDriftDetector: Detector = {
   name: 'route-drift',
-  description: 'Flag per-command routes that drift from the canonical dispatcher (constitution §6)',
+  description: 'Flag per-command routes that drift from the canonical dispatcher',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
     for (const pattern of ROUTE_GLOBS) {

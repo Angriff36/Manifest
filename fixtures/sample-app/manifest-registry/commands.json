@@ -1,0 +1,33 @@
+{
+  "irHash": "sample-app-library-v1",
+  "compilerVersion": "0.3.21",
+  "commands": [
+    {
+      "entity": "Book",
+      "command": "checkout",
+      "commandId": "Book.checkout",
+      "policies": [],
+      "guardCount": 0,
+      "emits": ["BookCheckedOut"],
+      "effects": []
+    },
+    {
+      "entity": "Book",
+      "command": "return",
+      "commandId": "Book.return",
+      "policies": [],
+      "guardCount": 0,
+      "emits": ["BookReturned"],
+      "effects": []
+    },
+    {
+      "entity": "Loan",
+      "command": "close",
+      "commandId": "Loan.close",
+      "policies": [],
+      "guardCount": 0,
+      "emits": ["LoanClosed"],
+      "effects": []
+    }
+  ]
+}

@@ -121,12 +121,12 @@ export interface RuntimeOptions {
   /**
    * If true, any `runCommand` invocation MUST fail closed with diagnostic
    * `MISSING_TENANT_CONTEXT` when `context.tenantId` is absent or empty.
-   * Use to enforce tenant-scoped command semantics per constitution §3/§19.
+   * Use to enforce tenant-scoped command semantics in multi-tenant apps.
    * Default: false (backwards compatible — legacy callers unaffected).
    */
   requireTenantContext?: boolean;
   /**
-   * Optional AuditSink for durable audit records (constitution §12).
+   * Optional AuditSink for durable audit records.
    * When supplied, the runtime is contracted to call sink.emit() exactly
    * once per command invocation. Contract: src/manifest/audit/audit-sink.ts.
    * Wire-in is contract-only in this release; actual emission lands in
@@ -134,7 +134,7 @@ export interface RuntimeOptions {
    */
   auditSink?: import('./audit/audit-sink').AuditSink;
   /**
-   * Optional OutboxStore for transactional event persistence (§11).
+   * Optional OutboxStore for transactional event persistence.
    * Contract: src/manifest/outbox/outbox-store.ts. Contract-only wire-in
    * in this release; transactional integration lands in the follow-on.
    */
@@ -1019,9 +1019,9 @@ export class RuntimeEngine {
       idempotencyKey?: string;
     } = {}
   ): Promise<CommandResult> {
-    // Tenant context gate (constitution §3/§19): fail closed before ANY work,
-    // including idempotency cache reads/writes. Falsy values (undefined, '',
-    // null) all count as missing — preventing accidental empty-string passes.
+    // Tenant context gate: fail closed before ANY work, including idempotency
+    // cache reads/writes. Falsy values (undefined, '', null) all count as
+    // missing — preventing accidental empty-string passes.
     if (this.options.requireTenantContext && !this.context.tenantId) {
       return {
         success: false,

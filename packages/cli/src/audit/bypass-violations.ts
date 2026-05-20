@@ -10,8 +10,6 @@
  *
  * For each bypass registry entry whose path no longer contains a direct
  * write → STALE_BYPASS warning (so the registry is kept clean).
- *
- * Constitution §9 + §17.
  */
 
 import fs from 'node:fs/promises';
@@ -40,7 +38,7 @@ async function loadBypassRegistry(p: string): Promise<BypassRegistry | null> {
 
 export const bypassViolationsDetector: Detector = {
   name: 'bypass-violations',
-  description: 'Cross-check direct writes against the bypass registry (constitution §9, §17)',
+  description: 'Cross-check direct writes against the approved-bypass registry',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     if (!ctx.bypassRegistry) {
       return [

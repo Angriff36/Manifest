@@ -1,0 +1,15 @@
+{
+  "version": "1",
+  "bypasses": [
+    {
+      "entity": "Book",
+      "path": "app/api/admin/bulk-import/route.ts",
+      "reason": "One-time bulk catalog import is run from an admin-only route during library onboarding; results in a single transaction with manual review.",
+      "whyRuntimeNotRequired": "Operation is bulk insert-only; no per-row guards/policies apply, and the path runs behind an admin-only gate audited separately.",
+      "tenantBoundary": "single-tenant import script; tenantId is supplied per row",
+      "owner": "library-platform-team",
+      "approvedAt": "2026-01-15",
+      "reviewBy": "2099-01-01"
+    }
+  ]
+}

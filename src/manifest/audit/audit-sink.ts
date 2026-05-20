@@ -1,10 +1,10 @@
 /**
  * Audit sink contract.
  *
- * Constitution §12: every governed command MUST produce or connect to an
- * audit record covering who, what, tenant, outcome, and diagnostics. The
- * runtime exposes this as an `AuditSink` adapter — applications wire in a
- * concrete sink (Postgres, file, OpenTelemetry, …) via RuntimeOptions.
+ * Every governed command attempt produces or connects to an audit record
+ * covering who, what, tenant, outcome, and diagnostics. The runtime exposes
+ * this as an `AuditSink` adapter — applications wire in a concrete sink
+ * (Postgres, file, OpenTelemetry, …) via RuntimeOptions.
  *
  * This module defines the contract only. Concrete sinks live in
  * `src/manifest/audit/sinks/<name>.ts` (memory + postgres land in a

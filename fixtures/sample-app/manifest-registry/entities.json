@@ -1,0 +1,18 @@
+{
+  "irHash": "sample-app-library-v1",
+  "compilerVersion": "0.3.21",
+  "entities": [
+    {
+      "name": "Book",
+      "classification": "governed",
+      "tenantScoped": true,
+      "commands": ["checkout", "return"]
+    },
+    {
+      "name": "Loan",
+      "classification": "governed",
+      "tenantScoped": true,
+      "commands": ["close"]
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 /**
- * Shared types for the constitution audit suite.
+ * Shared types for the governance audit suite.
  *
- * Each detector returns a uniform finding shape. The `manifest audit
- * constitution` umbrella aggregates findings across detectors and decides
- * the process exit code based on severity counts plus the `--strict` flag.
+ * Each detector returns a uniform finding shape. The `manifest
+ * audit-governance` umbrella aggregates findings across detectors and
+ * decides the process exit code based on severity counts plus the
+ * `--strict` flag.
  */
 
 export type AuditSeverity = 'error' | 'warning';

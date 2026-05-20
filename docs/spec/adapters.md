@@ -138,11 +138,13 @@ The dispatcher route MUST:
 
 The dispatcher is the canonical write path. Consumers SHOULD prefer it. Per-command concrete routes (the legacy `nextjs.command` projection output) remain available but are marked as deprecated aliases in their emitted code; they MUST NOT define additional semantics beyond delegating to the runtime.
 
-Constitution reference: this section corresponds to capsule-pro/constitution.md §6 ("Canonical Routing Rule"). Downstream consumers MAY add CI gates that flag any non-alias direct command route (see Phase 5 of the constitution-enforcement plan).
+The dispatcher targets Next.js 15 App Router. Dynamic route segment params are async: `ctx.params` is typed `Promise<{ entity: string; command: string }>` and MUST be `await`ed before reading. See the official Next.js route handler reference for the canonical shape.
+
+Downstream governance integrations MAY add CI gates (via `manifest audit-governance`) that flag any non-alias direct command route.
 
 ## Audit Sink (Contract)
 
-Constitution §12 requires every governed command to produce or connect to an audit record. The runtime exposes this as the `AuditSink` adapter (`src/manifest/audit/audit-sink.ts`). Conforming sinks:
+The runtime exposes a durable audit hook as the `AuditSink` adapter (`src/manifest/audit/audit-sink.ts`). Conforming sinks:
 
 - accept the full `AuditRecord` shape (recordId, occurredAt, tenantId, orgId, actorId, requestId, source, entity, command, commandId, outcome, diagnostics, emittedEventNames, irHash);
 - MUST be idempotent against `recordId` so retries do not double-write;
@@ -150,16 +152,16 @@ Constitution §12 requires every governed command to produce or connect to an au
 
 Outcome values: `success | guard_denied | policy_denied | constraint_failed | concurrency_conflict | missing_tenant_context | error`.
 
-In this release the option is accepted at the type level. Actual emission integration with the runtime lifecycle lands in a follow-on. The contract is shipped now so downstream consumers can implement against it.
+In this release the option is accepted at the type level. Actual emission integration with the runtime lifecycle lands in a follow-on (see "Deferred Work" in `docs/spec/conformance.md` or the active plan). The contract is shipped now so downstream consumers can implement against it.
 
 ## Outbox Store (Contract)
 
-Constitution §11 requires transactional event persistence. The `OutboxStore` adapter (`src/manifest/outbox/outbox-store.ts`) is the contract:
+Transactional event persistence is exposed via the `OutboxStore` adapter (`src/manifest/outbox/outbox-store.ts`):
 
 - `enqueue(entries, tx?)` — runtime calls inside the mutation transaction;
 - `claim(batchSize)` — dispatcher worker pulls pending entries;
 - `markDelivered(ids)` / `markFailed(ids, error)` — delivery accounting.
 
-Wire-in via `RuntimeOptions.outboxStore`. Same as the audit sink, the contract is shipped now; transactional integration is a follow-on.
+Wire-in via `RuntimeOptions.outboxStore`. As with the audit sink, the contract is shipped now; transactional emission integration (enqueue inside the mutation transaction) is a follow-on and is currently deferred — see the active plan for status.
 
 

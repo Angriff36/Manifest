@@ -1,0 +1,30 @@
+// Generic governed sample. Domain: a library lending books to members.
+// This fixture proves Manifest's governance system is application-agnostic.
+
+entity Book {
+  property tenantId: string
+  property title: string
+  property available: boolean
+
+  command checkout(memberId: string) {
+    emit BookCheckedOut
+  }
+
+  command return() {
+    emit BookReturned
+  }
+}
+
+entity Loan {
+  property tenantId: string
+  property bookId: string
+  property memberId: string
+
+  command close() {
+    emit LoanClosed
+  }
+}
+
+event BookCheckedOut: "book.checked_out" { bookId: string; memberId: string }
+event BookReturned: "book.returned" { bookId: string }
+event LoanClosed: "loan.closed" { loanId: string }

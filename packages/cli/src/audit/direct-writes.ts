@@ -1,9 +1,10 @@
 /**
  * Direct-writes detector.
  *
- * Constitution §9: prisma.X.create/update/delete/upsert/*Many in routes,
- * server actions, jobs, etc., are forbidden unless the path is explicitly
- * listed in the approved bypass registry.
+ * Direct ORM writes (e.g. `prisma.X.create/update/delete/upsert/*Many`) in
+ * routes, server actions, jobs, etc. bypass the governed runtime command
+ * path. They are flagged unless the path is explicitly listed in the
+ * approved bypass registry.
  *
  * This detector only finds the direct writes; the bypass-violations
  * detector composes this output with a bypass registry to determine which
@@ -61,7 +62,7 @@ async function scanFile(filePath: string, root: string): Promise<AuditFinding[]>
 
 export const directWritesDetector: Detector = {
   name: 'direct-writes',
-  description: 'Flag direct prisma writes outside runtime adapters (constitution §9)',
+  description: 'Flag direct ORM writes outside runtime adapters',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
     for (const pattern of ROUTE_GLOBS) {
