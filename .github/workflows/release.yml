@@ -36,7 +36,15 @@ jobs:
           scope: '@angriff36'
           cache: 'pnpm'
 
-      - name: Install dependencies (frozen lockfile)
+      - name: Install root dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install packages/cli dependencies (frozen lockfile)
+        # packages/cli is its own pnpm project (separate pnpm-lock.yaml),
+        # not a workspace member of the root. Tests in root pull from
+        # packages/cli/src/**, so its transitive deps (chalk, ora, ...) must
+        # also be installed.
+        working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
       - name: Verify tag version matches package.json
