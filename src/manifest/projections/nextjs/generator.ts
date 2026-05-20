@@ -282,7 +282,7 @@ function generateEntityTypes(entity: IREntity): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -360,6 +360,23 @@ export class NextJsProjection implements ProjectionTarget {
             code: commandResult.code,
           }],
           diagnostics: commandResult.diagnostics,
+        };
+      }
+
+      case 'nextjs.dispatcher': {
+        const dispatcherResult = this._dispatcher(options);
+        if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
+          return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
+        }
+        const dispatcherOpts = normalizeOptions(options);
+        return {
+          artifacts: [{
+            id: 'nextjs.dispatcher',
+            pathHint: `${dispatcherOpts.appDir}/manifest/[entity]/commands/[command]/route.ts`,
+            contentType: 'typescript',
+            code: dispatcherResult.code,
+          }],
+          diagnostics: dispatcherResult.diagnostics,
         };
       }
 
@@ -569,6 +586,102 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
     lines.push('  } catch (error) {');
     lines.push(`    console.error("Error executing ${entity.name}.${command.name}:", error);`);
+    lines.push('    return manifestErrorResponse("Internal server error", 500);');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Generate the canonical dispatcher route. Single dynamic file at
+   *   <appDir>/manifest/[entity]/commands/[command]/route.ts
+   * Resolves entity+command at request time and delegates to
+   * RuntimeEngine.runCommand. Matches capsule-pro/constitution.md §6.
+   */
+  private _dispatcher(
+    options?: NextJsProjectionOptions
+  ): CodeResult {
+    const opts = normalizeOptions(options);
+    const code = this._generateDispatcherHandler(opts);
+    return { code, diagnostics: [] };
+  }
+
+  private _generateDispatcherHandler(options: NormalizedNextJsOptions): string {
+    const { responseImportPath, runtimeImportPath } = options;
+    const lines: string[] = [];
+
+    lines.push('// Auto-generated canonical Manifest dispatcher.');
+    lines.push('// Generated from Manifest IR - DO NOT EDIT');
+    lines.push('// Constitution §6: this is the canonical write path.');
+    lines.push('// All governed mutations should arrive here; per-command');
+    lines.push('// concrete routes are deprecated aliases that delegate here.');
+    lines.push('');
+    lines.push('import type { NextRequest } from "next/server";');
+    lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
+    lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
+    if (options.includeTenantFilter) {
+      if (options.tenantProvider) {
+        lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      } else {
+        lines.push(generateImport('{ database }', options.databaseImportPath));
+      }
+    }
+    const authImport = generateAuthImport(options);
+    if (authImport) lines.push(authImport);
+    lines.push('');
+    lines.push('interface DispatcherContext {');
+    lines.push('  params: { entity: string; command: string };');
+    lines.push('}');
+    lines.push('');
+    lines.push('export async function POST(request: NextRequest, ctx: DispatcherContext) {');
+    lines.push('  try {');
+    lines.push(generateAuthBody(options));
+    const tenantLookup = generateTenantLookup(options);
+    if (tenantLookup) lines.push(tenantLookup);
+    lines.push('');
+    lines.push('    const body = await request.json();');
+    lines.push('    const { entity, command } = ctx.params;');
+    lines.push('');
+    lines.push('    if (!entity || !command) {');
+    lines.push('      return manifestErrorResponse("Missing entity or command in route", 400);');
+    lines.push('    }');
+    lines.push('');
+    const tenantField = options.tenantIdProperty;
+    const tenantValueExpr = options.includeTenantFilter ? tenantField : '"__no_tenant__"';
+    // Typed RuntimeContext: tenantId/orgId/actorId/requestId/source.
+    // Legacy `user` shorthand preserved for downstream callers still
+    // reading it; new code MUST prefer actorId.
+    lines.push('    const runtime = await createManifestRuntime({');
+    if (options.includeTenantFilter) {
+      lines.push(`      tenantId: ${tenantValueExpr},`);
+      lines.push(`      orgId: ${tenantValueExpr},`);
+    }
+    lines.push('      actorId: userId,');
+    lines.push('      requestId: request.headers.get("x-request-id") ?? undefined,');
+    lines.push('      source: "route",');
+    lines.push(`      user: { id: userId, ${tenantField}: ${tenantValueExpr} },`);
+    lines.push('    });');
+    lines.push('');
+    lines.push('    const result = await runtime.runCommand(command, body, {');
+    lines.push('      entityName: entity,');
+    lines.push('    });');
+    lines.push('');
+    lines.push('    const normalized = normalizeCommandResult(entity, command, result);');
+    lines.push('');
+    lines.push('    if (!normalized.success) {');
+    lines.push('      const firstDiagnostic = normalized.diagnostics?.[0];');
+    lines.push('      const status = firstDiagnostic?.kind === "policy_denial" ? 403');
+    lines.push('        : firstDiagnostic?.kind === "guard_failure" ? 422');
+    lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
+    lines.push('        : 400;');
+    lines.push('      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);');
+    lines.push('    }');
+    lines.push('');
+    lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
+    lines.push('  } catch (error) {');
+    lines.push('    console.error("Manifest dispatcher error:", error);');
     lines.push('    return manifestErrorResponse("Internal server error", 500);');
     lines.push('  }');
     lines.push('}');
