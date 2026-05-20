@@ -12,16 +12,16 @@ Source goal (from session 2026-05-20):
 
 ## Phases
 
-- [ ] **Phase 0 — Spec alignment**
-  - [ ] 0.1 Mirror capsule-pro constitution into `docs/capsule-pro/`
-  - [ ] 0.2 Create `docs/capsule-pro/gap-matrix.md`
+- [x] **Phase 0 — Spec alignment**
+  - [x] 0.1 Mirror capsule-pro constitution into `docs/capsule-pro/`
+  - [x] 0.2 Create `docs/capsule-pro/gap-matrix.md`
 
-- [ ] **Phase 1 — Typed RuntimeContext**
-  - [ ] 1.1 Spec: document typed context bindings
-  - [ ] 1.2 Add typed fields to `RuntimeContext` interface
-  - [ ] 1.3 Wire `context.deterministic` into runtime
-  - [ ] 1.4 `requireTenantContext` fail-closed
-  - [ ] 1.5 Closing verification (tests, lint, typecheck, gap-matrix)
+- [x] **Phase 1 — Typed RuntimeContext** (closed 2026-05-20; 768/768 green)
+  - [x] 1.1 Spec: document typed context bindings
+  - [x] 1.2 Add typed fields to `RuntimeContext` interface
+  - [x] 1.3 Wire `context.deterministic` into runtime
+  - [x] 1.4 `requireTenantContext` fail-closed
+  - [x] 1.5 Closing verification (tests, lint of touched files, typecheck, gap-matrix)
 
 - [ ] **Phase 2 — nextjs.dispatcher projection**
   - [ ] 2.1 Spec: canonical dispatcher section
