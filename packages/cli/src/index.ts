@@ -20,6 +20,7 @@ import { lintRoutesCommand } from './commands/lint-routes.js';
 import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
+import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -309,6 +310,28 @@ program
 const emitProgram = program
   .command('emit')
   .description('Emit IR-derived artifacts');
+
+/**
+ * manifest audit bypasses
+ *
+ * Validates an approved-bypass registry against
+ * docs/spec/registry/bypasses.schema.json. Reports missing-file references
+ * as errors and expired review dates as warnings (or errors under
+ * --strict-expiry). Authority: constitution §8/§17.
+ */
+program
+  .command('audit-bypasses')
+  .description('Validate the approved-bypass registry against the schema')
+  .option('--registry <path>', 'Path to bypass registry JSON file')
+  .option('-r, --root <path>', 'Root directory used to resolve bypass paths', '.')
+  .option('--strict-expiry', 'Treat expired reviewBy dates as errors', false)
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .action(async (options = {}) => {
+    const result = await auditBypassesCommand(options);
+    if (result.errorCount > 0) {
+      process.exitCode = 1;
+    }
+  });
 
 emitProgram
   .command('registries')
