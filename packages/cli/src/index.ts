@@ -21,6 +21,7 @@ import { routesCommand } from './commands/routes.js';
 import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
+import { auditConstitutionCommand } from './commands/audit-constitution.js';
 import {
   cacheStatusCommand,
   doctorCommand,
@@ -319,6 +320,34 @@ const emitProgram = program
  * as errors and expired review dates as warnings (or errors under
  * --strict-expiry). Authority: constitution §8/§17.
  */
+/**
+ * manifest audit-constitution
+ *
+ * Umbrella that runs every constitution detector and aggregates findings.
+ * Under --strict, any error finding causes a non-zero exit. Detectors:
+ *   direct-writes, event-fabrication, route-drift, missing-tests,
+ *   bypass-violations. Authority: constitution §6, §9, §11, §13, §17.
+ */
+program
+  .command('audit-constitution')
+  .description('Run the full constitution audit suite (umbrella)')
+  .option('-r, --root <path>', 'Root directory to audit', '.')
+  .option('--only <list>', 'Comma-separated detector names to run (default: all)')
+  .option('--commands-registry <path>', 'Path to commands.json (enables missing-tests detector)')
+  .option('--bypass-registry <path>', 'Path to bypasses.json (enables bypass-violations detector)')
+  .option('--strict', 'Exit non-zero on any error finding', false)
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .action(async (options = {}) => {
+    const result = await auditConstitutionCommand(options);
+    if (options.strict && result.errorCount > 0) {
+      process.exitCode = 1;
+    } else if (!options.strict && result.errorCount > 0) {
+      // Non-strict still surfaces failures; the exit code is left to the
+      // caller's CI integration. Mirror audit-routes behavior.
+      process.exitCode = 1;
+    }
+  });
+
 program
   .command('audit-bypasses')
   .description('Validate the approved-bypass registry against the schema')
