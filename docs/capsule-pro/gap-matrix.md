@@ -6,7 +6,7 @@ Tracks which constitution clauses are mechanically enforceable today.
 - ◐ partial: runtime exists, enforcement scaffolding missing
 - ✗ missing: no Manifest-side support yet
 
-Last updated: 2026-05-20 (Phases 1–5 closed; Phase 6 deferred)
+Last updated: 2026-05-20 (Phases 1–5 closed; Phase 6 stage 1 — contract surfaces — shipped; full implementation deferred)
 
 | Clause | Topic | Status | Manifest evidence | Plan phase |
 |---|---|---|---|---|
@@ -22,8 +22,8 @@ Last updated: 2026-05-20 (Phases 1–5 closed; Phase 6 deferred)
 | §9 | Direct write prohibition (CI gate) | ✅ | `manifest audit-constitution --only direct-writes,bypass-violations` enforces direct-write prohibition AND cross-checks against the bypass registry | Phase 5 (done) |
 | §10 | Read path freedom + projection generators | ✅ | `nextjs.detail`, `ts.client`, `ts.types` | — |
 | §11 | Semantic events only from runtime | ✅ | `manifest audit-constitution --only event-fabrication` flags `eventBus.publish`, `new ManifestEvent`, `emit('X.y', …)` outside runtime/adapter paths | Phase 5 (done) |
-| §11 | Transactional event outbox | ✗ | In-memory `eventLog` only | Phase 6 (deferred) |
-| §12 | Audit (who/what/tenant/result/diagnostics) | ✗ | No audit emitter | Phase 6 (deferred) |
+| §11 | Transactional event outbox | ◐ | `OutboxStore` contract shipped at `src/manifest/outbox/outbox-store.ts` and accepted via `RuntimeOptions.outboxStore`; concrete Memory/Postgres adapters and transactional integration deferred | Phase 6 stage 1 (done); stage 2 deferred |
+| §12 | Audit (who/what/tenant/result/diagnostics) | ◐ | `AuditSink` contract shipped at `src/manifest/audit/audit-sink.ts` and accepted via `RuntimeOptions.auditSink`; runtime emission integration deferred | Phase 6 stage 1 (done); stage 2 deferred |
 | §13 | Conformance harness for governed commands | ✅ | `manifest audit-constitution --only missing-tests --commands-registry commands.json` flags governed commandIds not referenced by any test or fixture | Phase 5 (done) |
 | §13 | CI gates the constitution lists | ✅ | Five-detector umbrella: direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations | Phase 5 (done) |
 | §14 | Change protocol (spec → tests → impl) | ✅ | Enforced by CLAUDE.md / AGENTS.md | — |

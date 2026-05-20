@@ -50,8 +50,15 @@ Source goal (from session 2026-05-20):
   - [x] 5.6 End-to-end fixture coverage (12 tests in audit-constitution.test.ts)
   - [x] 5.7 Closing verification
 
-- [ ] **Phase 6 — Audit + outbox (DEFERRED, sketch only)**
-  - See plan §"Phase 6" for contracts.
+- [~] **Phase 6 — Audit + outbox**
+  - [x] 6.1 AuditSink + AuditRecord contract (`src/manifest/audit/audit-sink.ts`)
+  - [x] 6.2 OutboxEntry + OutboxStore contract (`src/manifest/outbox/outbox-store.ts`)
+  - [x] 6.3 RuntimeOptions wire-in (typed-only; emission integration deferred)
+  - [x] 6.4 Spec section in `docs/spec/adapters.md`
+  - [ ] 6.5 MemoryAuditSink, MemoryOutboxStore (stage 2 — deferred)
+  - [ ] 6.6 PostgresAuditSink, PostgresOutboxStore (stage 2 — deferred)
+  - [ ] 6.7 Runtime emits records on every command outcome (stage 2 — deferred)
+  - [ ] 6.8 Outbox transactional integration (stage 2 — deferred)
 
 ## Validation cadence
 
