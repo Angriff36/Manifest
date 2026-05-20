@@ -19,16 +19,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # This repo uses pnpm locally (pnpm-lock.yaml + per-package
+      # node_modules under packages/*). Root `npm ci` would not install
+      # workspace deps like ora used by packages/cli, so we use pnpm.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js (with GitHub Packages registry)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@angriff36'
-          cache: 'npm'
+          cache: 'pnpm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
 
       - name: Verify tag version matches package.json
         run: |
@@ -41,10 +47,10 @@ jobs:
           echo "Publishing version $PKG_VERSION"
 
       - name: TypeScript type check
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Run test suite
-        run: npm test
+        run: pnpm test -- --run
 
       - name: Publish to GitHub Packages
         # prepublishOnly already runs build:lib + cli build, so dist/ is
