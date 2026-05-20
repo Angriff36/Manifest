@@ -24,6 +24,9 @@ jobs:
       # workspace deps like ora used by packages/cli, so we use pnpm.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # pnpm-lock.yaml is lockfileVersion 9 (pnpm 9.x family).
+          version: 9
 
       - name: Setup Node.js (with GitHub Packages registry)
         uses: actions/setup-node@v4
