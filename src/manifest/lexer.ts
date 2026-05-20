@@ -53,7 +53,11 @@ export class Lexer {
   private tokens: Token[] = [];
 
   constructor(source: string) {
-    this.source = source;
+    // Normalize CRLF/CR to LF so line/column positions are platform-
+    // independent. Without this, `\r` is consumed as whitespace and bumps
+    // col, causing CRLF-authored fixtures to drift one column ahead of
+    // LF sources (breaks conformance tests on Linux CI vs Windows local).
+    this.source = source.replace(/\r\n?/g, '\n');
   }
 
   tokenize(): Token[] {
