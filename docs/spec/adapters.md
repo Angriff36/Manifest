@@ -121,5 +121,23 @@ When configured, the runtime MUST require a caller-provided `idempotencyKey` in 
 - ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~
 - **CORRECT BEHAVIOR (2026-02-05)**: Per spec, the default behavior when no adapter is installed IS to treat actions as no-ops and return the evaluated expression value. The runtime correctly implements this default behavior at runtime-engine.ts:881-894.
 
+## Canonical Dispatcher (Transport Boundary)
+
+Manifest is transport-agnostic. The runtime accepts `(commandName, input, options)`; how those values arrive over the network is a separate concern. The `nextjs.dispatcher` projection emits the canonical HTTP shape:
+
+```text
+POST /api/manifest/{entity}/commands/{command}
+```
+
+The dispatcher route MUST:
+
+1. Resolve `{entity}` and `{command}` against compiled IR (no string-keyed lookup tables that can drift).
+2. Authenticate the caller and translate auth state into a typed `RuntimeContext` (see `semantics.md` § "Runtime Context Schema") populating at minimum `actorId` and, when present, `tenantId`/`orgId` and `requestId`.
+3. Invoke `RuntimeEngine.runCommand` with the resolved entity and command.
+4. Return the resulting `CommandResult` verbatim — diagnostics, guard/policy denials, and emitted events MUST NOT be reshaped by the transport.
+
+The dispatcher is the canonical write path. Consumers SHOULD prefer it. Per-command concrete routes (the legacy `nextjs.command` projection output) remain available but are marked as deprecated aliases in their emitted code; they MUST NOT define additional semantics beyond delegating to the runtime.
+
+Constitution reference: this section corresponds to capsule-pro/constitution.md §6 ("Canonical Routing Rule"). Downstream consumers MAY add CI gates that flag any non-alias direct command route (see Phase 5 of the constitution-enforcement plan).
 
 
