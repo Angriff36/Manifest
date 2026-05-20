@@ -140,4 +140,26 @@ The dispatcher is the canonical write path. Consumers SHOULD prefer it. Per-comm
 
 Constitution reference: this section corresponds to capsule-pro/constitution.md §6 ("Canonical Routing Rule"). Downstream consumers MAY add CI gates that flag any non-alias direct command route (see Phase 5 of the constitution-enforcement plan).
 
+## Audit Sink (Contract)
+
+Constitution §12 requires every governed command to produce or connect to an audit record. The runtime exposes this as the `AuditSink` adapter (`src/manifest/audit/audit-sink.ts`). Conforming sinks:
+
+- accept the full `AuditRecord` shape (recordId, occurredAt, tenantId, orgId, actorId, requestId, source, entity, command, commandId, outcome, diagnostics, emittedEventNames, irHash);
+- MUST be idempotent against `recordId` so retries do not double-write;
+- are wired in via `RuntimeOptions.auditSink`.
+
+Outcome values: `success | guard_denied | policy_denied | constraint_failed | concurrency_conflict | missing_tenant_context | error`.
+
+In this release the option is accepted at the type level. Actual emission integration with the runtime lifecycle lands in a follow-on. The contract is shipped now so downstream consumers can implement against it.
+
+## Outbox Store (Contract)
+
+Constitution §11 requires transactional event persistence. The `OutboxStore` adapter (`src/manifest/outbox/outbox-store.ts`) is the contract:
+
+- `enqueue(entries, tx?)` — runtime calls inside the mutation transaction;
+- `claim(batchSize)` — dispatcher worker pulls pending entries;
+- `markDelivered(ids)` / `markFailed(ids, error)` — delivery accounting.
+
+Wire-in via `RuntimeOptions.outboxStore`. Same as the audit sink, the contract is shipped now; transactional integration is a follow-on.
+
 

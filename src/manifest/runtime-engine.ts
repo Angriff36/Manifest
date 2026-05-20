@@ -125,6 +125,20 @@ export interface RuntimeOptions {
    * Default: false (backwards compatible — legacy callers unaffected).
    */
   requireTenantContext?: boolean;
+  /**
+   * Optional AuditSink for durable audit records (constitution §12).
+   * When supplied, the runtime is contracted to call sink.emit() exactly
+   * once per command invocation. Contract: src/manifest/audit/audit-sink.ts.
+   * Wire-in is contract-only in this release; actual emission lands in
+   * the audit/outbox implementation follow-on.
+   */
+  auditSink?: import('./audit/audit-sink').AuditSink;
+  /**
+   * Optional OutboxStore for transactional event persistence (§11).
+   * Contract: src/manifest/outbox/outbox-store.ts. Contract-only wire-in
+   * in this release; transactional integration lands in the follow-on.
+   */
+  outboxStore?: import('./outbox/outbox-store').OutboxStore;
 }
 
 export interface EntityInstance {
