@@ -1,4 +1,28 @@
 {
+  "$schema": "https://context7.com/schema/context7.json",
   "url": "https://context7.com/angriff36/manifest",
-  "public_key": "pk_BrDyogEiJTR24GMewnPrk"
+  "public_key": "pk_BrDyogEiJTR24GMewnPrk",
+  "projectTitle": "Manifest",
+  "description": "A formal domain modeling language with reference runtime. Compiles .manifest source to an IR (the single source of truth for program semantics) and projects Next.js routes, TypeScript types, and client SDKs. Supports entities, commands with guards, policies, constraints with severity/override, events, stores (memory/localStorage/Postgres/Supabase), idempotency, and optimistic concurrency.",
+  "folders": [],
+  "excludeFolders": [
+    "docs/integrations/capsule-pro",
+    "docs/context",
+    "docs/plans",
+    "docs/proposals/delivery",
+    "docs/archive"
+  ],
+  "excludeFiles": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/REPO_GUARDRAILS.md",
+    "docs/DOCUMENTATION_GOVERNANCE.md"
+  ],
+  "rules": [
+    "Manifest is IR-first: the IR (docs/spec/ir/ir-v1.schema.json) is the single source of truth, generated code is a view of it.",
+    "Runtime execution is deterministic: identical IR + identical context must produce identical results.",
+    "Command execution order is fixed: idempotency -> policies -> transitions -> guards -> constraints -> actions -> events.",
+    "Guards must reference spec-guaranteed bindings (self.*, this.*, user.*, context.*) and halt execution on the first falsey guard with no auto-repair or permissive defaults.",
+    "Constraints have severity levels (ok/warn/block); blocking constraints can be authorized-bypassed via overrideRequests, which emits OverrideApplied audit events on the system channel."
+  ]
 }
