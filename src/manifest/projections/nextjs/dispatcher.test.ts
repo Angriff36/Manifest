@@ -113,12 +113,16 @@ describe('nextjs.dispatcher surface', () => {
     expect(out.artifacts).toHaveLength(1);
   });
 
-  it('marks legacy per-command routes as deprecated aliases of the dispatcher', async () => {
+  it('marks opt-in legacy per-command routes as deprecated aliases of the dispatcher', async () => {
+    // Concrete command routes are opt-in (goal step 3). When enabled, they
+    // MUST still carry the DEPRECATED ALIAS banner pointing at the
+    // dispatcher, so downstream callers can be migrated off them.
     const ir = await compileSample();
     const result = target.generate(ir, {
       surface: 'nextjs.command',
       entity: 'Recipe',
       command: 'create',
+      options: { concreteCommandRoutes: { enabled: true } },
     });
     expect(result.artifacts).toHaveLength(1);
     const code = result.artifacts[0].code;

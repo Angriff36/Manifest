@@ -228,21 +228,45 @@ The dispatcher is the canonical Manifest write surface at `POST /api/manifest/[e
   Named export to call on the external executor module.
 </ParamField>
 
-<ParamField path="projections.nextjs.options.dispatcher.deriveInstanceId" type="boolean" default="false">
-  When `true` and `executionMode` is `externalExecutor`, the handler derives an `instanceId` from `body.instanceId` or `body.id` and passes it to the executor. Off by default to avoid surprising callers of non-instance commands.
+<ParamField path="projections.nextjs.options.dispatcher.deriveInstanceId" type="boolean" default="true">
+  When `true` (default), the dispatcher extracts an `instanceId` from `body.instanceId` or `body.id` and forwards it to `runCommand` (inline mode) or the configured executor (`externalExecutor` mode). Non-create commands (release, archive, update, …) need this to address the target instance; create commands ignore it harmlessly. Override to `false` only with strong reason.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.dispatcher.path" type="string" default="/manifest/[entity]/commands/[command]/route.ts">
+  Dispatcher route path relative to `appDir`. Override only for non-canonical prefixes (e.g. `/api/v1/manifest/...`).
+</ParamField>
+
+<ParamField path="projections.nextjs.options.unauthorizedStatus" type="integer" default="401">
+  HTTP status returned when the auth helper rejects the request OR when it throws (invalid/expired token). Must be in the 400–499 range. Auth failures MUST NEVER surface as 500. Override only if you standardise on 403 to avoid user-existence leak.
 </ParamField>
 
 ### `projections.nextjs.options.concreteCommandRoutes`
 
-Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). These remain emitted as deprecated aliases of the dispatcher by default.
+Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). As of v0.7.x these are **opt-in** — the canonical dispatcher is the only write surface by default.
 
-<ParamField path="projections.nextjs.options.concreteCommandRoutes.enabled" type="boolean" default="true">
-  When `false`, `nextjs.command` artifacts are suppressed entirely.
+<ParamField path="projections.nextjs.options.concreteCommandRoutes.enabled" type="boolean" default="false">
+  **Default false (opt-in).** When `false`, `nextjs.command` artifacts are suppressed entirely and `manifest generate --surface all` does not emit them. Opt in only if you still need per-command routes for legacy callers.
 </ParamField>
 
 <ParamField path="projections.nextjs.options.concreteCommandRoutes.legacyAliasesOnly" type="boolean" default="true">
-  When `true` (default), generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface.
+  When `true` (default) and `enabled` is `true`, generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface.
 </ParamField>
+
+### `projections.nextjs.options.readRoutes`
+
+Policy for direct database read routes (`nextjs.route` for list, `nextjs.detail` for single-entity GET). Direct reads bypass the runtime engine for read performance and assume a Prisma-compatible client at `databaseImportPath`.
+
+<ParamField path="projections.nextjs.options.readRoutes.enabled" type="boolean" default="true">
+  When `false`, both list and detail read routes are suppressed (info diagnostic only).
+</ParamField>
+
+<ParamField path="projections.nextjs.options.readRoutes.directDbReads" type="boolean" default="true">
+  When `false`, read route handlers are emitted but contain no inline Prisma call — useful for projects that route reads through a separate query layer.
+</ParamField>
+
+<Note>
+**Prisma 7 note.** When `includeTenantFilter` and/or `includeSoftDeleteFilter` are true, the detail route emits `findFirst` (not `findUnique`). The previous template emitted `findUnique({ where: { id, tenantId, deletedAt: null } })`, which fails type-check on Prisma 7+. Fixed in v0.7.x.
+</Note>
 
 ## externalExecutor migration
 

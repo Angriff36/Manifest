@@ -18,6 +18,7 @@ import {
   DEFAULT_TENANT_PROVIDER,
   DISPATCHER_DEFAULTS,
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
+  READ_ROUTES_DEFAULTS,
 } from './defaults';
 
 /**
@@ -32,6 +33,7 @@ export {
   DEFAULT_TENANT_PROVIDER,
   DISPATCHER_DEFAULTS,
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
+  READ_ROUTES_DEFAULTS,
   ROUTES_DEFAULTS,
   getManifestDefaultsSnapshot,
   type ManifestDefaultsSnapshot,
@@ -55,6 +57,7 @@ interface NormalizedDispatcherOptions {
   executorImportPath: string;
   executorImportName: string;
   deriveInstanceId: boolean;
+  path: string;
 }
 
 /**
@@ -63,6 +66,14 @@ interface NormalizedDispatcherOptions {
 interface NormalizedConcreteCommandRoutesOptions {
   enabled: boolean;
   legacyAliasesOnly: boolean;
+}
+
+/**
+ * Normalized read-routes policy.
+ */
+interface NormalizedReadRoutesOptions {
+  enabled: boolean;
+  directDbReads: boolean;
 }
 
 /**
@@ -82,6 +93,7 @@ interface NormalizedNextJsOptions {
   strictMode: boolean;
   includeComments: boolean;
   indentSize: number;
+  unauthorizedStatus: number;
   tenantProvider?: {
     importPath: string;
     functionName: string;
@@ -89,6 +101,7 @@ interface NormalizedNextJsOptions {
   };
   dispatcher: NormalizedDispatcherOptions;
   concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions;
+  readRoutes: NormalizedReadRoutesOptions;
 }
 
 /**
@@ -104,11 +117,16 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     executorImportPath: options?.dispatcher?.executorImportPath ?? DISPATCHER_DEFAULTS.executorImportPath,
     executorImportName: options?.dispatcher?.executorImportName ?? DISPATCHER_DEFAULTS.executorImportName,
     deriveInstanceId: options?.dispatcher?.deriveInstanceId ?? DISPATCHER_DEFAULTS.deriveInstanceId,
+    path: options?.dispatcher?.path ?? DISPATCHER_DEFAULTS.path,
   };
   const concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions = {
     enabled: options?.concreteCommandRoutes?.enabled ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.enabled,
     legacyAliasesOnly:
       options?.concreteCommandRoutes?.legacyAliasesOnly ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.legacyAliasesOnly,
+  };
+  const readRoutes: NormalizedReadRoutesOptions = {
+    enabled: options?.readRoutes?.enabled ?? READ_ROUTES_DEFAULTS.enabled,
+    directDbReads: options?.readRoutes?.directDbReads ?? READ_ROUTES_DEFAULTS.directDbReads,
   };
   return {
     authProvider: options?.authProvider ?? NEXTJS_DEFAULTS.authProvider,
@@ -124,9 +142,11 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     strictMode: options?.strictMode ?? NEXTJS_DEFAULTS.strictMode,
     includeComments: options?.includeComments ?? NEXTJS_DEFAULTS.includeComments,
     indentSize: options?.indentSize ?? NEXTJS_DEFAULTS.indentSize,
+    unauthorizedStatus: options?.unauthorizedStatus ?? NEXTJS_DEFAULTS.unauthorizedStatus,
     tenantProvider: options?.tenantProvider ?? DEFAULT_TENANT_PROVIDER,
     dispatcher,
     concreteCommandRoutes,
+    readRoutes,
   };
 }
 
@@ -181,9 +201,16 @@ function generateAuthImport(options: NormalizedNextJsOptions): string {
 
 /**
  * Generate the auth check body (no import statements).
+ *
+ * The unauthorized status is wired from `options.unauthorizedStatus` so apps
+ * can standardise on 403 (avoiding existence leak) without forking the
+ * generator. Thrown errors from the auth helper are NOT handled here — the
+ * caller is expected to wrap this body in a try/catch that maps any
+ * exception to the same unauthorized status, per goal step 4.
  */
 function generateAuthBody(options: NormalizedNextJsOptions): string {
-  const { authProvider } = options;
+  const { authProvider, unauthorizedStatus } = options;
+  const status = unauthorizedStatus;
 
   switch (authProvider) {
     case 'clerk': {
@@ -194,21 +221,21 @@ function generateAuthBody(options: NormalizedNextJsOptions): string {
         : 'if (!userId) {';
       return `  const ${destructure} = await auth();
   ${authGuard}
-    return manifestErrorResponse("Unauthorized", 401);
+    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, ${status});
   }`;
     }
 
     case 'nextauth':
       return `  const session = await getServerSession();
   if (!session?.user?.id) {
-    return manifestErrorResponse("Unauthorized", 401);
+    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, ${status});
   }
   const userId = session.user.id;`;
 
     case 'custom':
       return `  const user = await getUser(request);
   if (!user?.id) {
-    return manifestErrorResponse("Unauthorized", 401);
+    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, ${status});
   }
   const userId = user.id;`;
 
@@ -218,6 +245,34 @@ function generateAuthBody(options: NormalizedNextJsOptions): string {
     default:
       return `  // Unknown auth provider - please implement\n  const userId = "unknown";`;
   }
+}
+
+/**
+ * Tag every emitted runtime error block with a stable Manifest response
+ * shape (`{ error, diagnostics }`) at status 500. Auth failures map to
+ * `unauthorizedStatus` via a separate branch; transport/runtime failures
+ * always carry this shape so downstream clients can rely on it.
+ */
+function emitRuntimeErrorReturn(unauthorizedStatus: number, opName: string): string[] {
+  return [
+    '  } catch (error) {',
+    '    // Auth helpers (clerk, next-auth, custom) may throw on invalid/expired',
+    '    // tokens. Goal step 4: auth failures MUST NEVER surface as 500.',
+    '    const isAuthError = error instanceof Error && (',
+    '      /unauth/i.test(error.message) ||',
+    '      /token/i.test(error.message) ||',
+    '      /session/i.test(error.message)',
+    '    );',
+    '    if (isAuthError) {',
+    `      return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, ${unauthorizedStatus});`,
+    '    }',
+    `    console.error(${JSON.stringify(opName)}, error);`,
+    '    return manifestErrorResponse(',
+    '      { error: "Internal server error", diagnostics: [{ kind: "runtime_error", message: error instanceof Error ? error.message : String(error) }] },',
+    '      500,',
+    '    );',
+    '  }',
+  ];
 }
 
 /**
@@ -234,7 +289,7 @@ function generateTenantLookup(options: NormalizedNextJsOptions): string {
   const ${options.tenantIdProperty} = await ${functionName}(${lookupKey});
 
   if (!${options.tenantIdProperty}) {
-    return manifestErrorResponse("Tenant not found", 400);
+    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
   }`;
   }
 
@@ -244,7 +299,7 @@ function generateTenantLookup(options: NormalizedNextJsOptions): string {
   });
 
   if (!userMapping) {
-    return manifestErrorResponse("User not mapped to tenant", 400);
+    return manifestErrorResponse({ error: "User not mapped to tenant", diagnostics: [] }, 400);
   }
 
   const { ${options.tenantIdProperty} } = userMapping;`;
@@ -343,11 +398,22 @@ export class NextJsProjection implements ProjectionTarget {
             diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.route" requires entity' }],
           };
         }
+        const opts = normalizeOptions(options);
+        if (!opts.readRoutes.enabled) {
+          return {
+            artifacts: [],
+            diagnostics: [{
+              severity: 'info',
+              code: 'READ_ROUTES_DISABLED',
+              message: 'readRoutes.enabled is false — skipping nextjs.route emission.',
+              entity: request.entity,
+            }],
+          };
+        }
         const result = this._route(ir, request.entity, options);
         if (result.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: result.diagnostics };
         }
-        const opts = normalizeOptions(options);
         return {
           artifacts: [{
             id: `nextjs.route:${request.entity}`,
@@ -366,11 +432,22 @@ export class NextJsProjection implements ProjectionTarget {
             diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.detail" requires entity' }],
           };
         }
+        const detailOpts = normalizeOptions(options);
+        if (!detailOpts.readRoutes.enabled) {
+          return {
+            artifacts: [],
+            diagnostics: [{
+              severity: 'info',
+              code: 'READ_ROUTES_DISABLED',
+              message: 'readRoutes.enabled is false — skipping nextjs.detail emission.',
+              entity: request.entity,
+            }],
+          };
+        }
         const detailResult = this._detail(ir, request.entity, options);
         if (detailResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: detailResult.diagnostics };
         }
-        const detailOpts = normalizeOptions(options);
         return {
           artifacts: [{
             id: `nextjs.detail:${request.entity}`,
@@ -438,10 +515,13 @@ export class NextJsProjection implements ProjectionTarget {
         if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
         }
+        // dispatcher.path is relative to appDir (joined directly; the
+        // default starts with '/' so we don't double-slash on appDir).
+        const dispatcherPathHint = `${dispatcherOpts.appDir}${dispatcherOpts.dispatcher.path}`;
         return {
           artifacts: [{
             id: 'nextjs.dispatcher',
-            pathHint: `${dispatcherOpts.appDir}/manifest/[entity]/commands/[command]/route.ts`,
+            pathHint: dispatcherPathHint,
             contentType: 'typescript',
             code: dispatcherResult.code,
           }],
@@ -646,6 +726,16 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     lines.push('    const body = await request.json();');
     lines.push('');
+    if (dispatcher.deriveInstanceId) {
+      // Goal step 4: non-create commands must extract instanceId from the
+      // request. Extract universally — create commands ignore it harmlessly.
+      lines.push('    const instanceId = typeof body?.instanceId === "string"');
+      lines.push('      ? body.instanceId');
+      lines.push('      : typeof body?.id === "string"');
+      lines.push('        ? body.id');
+      lines.push('        : undefined;');
+      lines.push('');
+    }
     if (useExternalExecutor) {
       const tenantField = options.tenantIdProperty;
       const tenantValueExpr = options.includeTenantFilter ? tenantField : '"__no_tenant__"';
@@ -653,6 +743,9 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push(`      entityName: "${entity.name}",`);
       lines.push(`      commandName: "${command.name}",`);
       lines.push('      input: body,');
+      if (dispatcher.deriveInstanceId) {
+        lines.push('      instanceId,');
+      }
       lines.push('      context: {');
       if (options.includeTenantFilter) {
         lines.push(`        tenantId: ${tenantValueExpr},`);
@@ -671,6 +764,11 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
       lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
       lines.push(`      entityName: "${entity.name}",`);
+      if (dispatcher.deriveInstanceId) {
+        // runtime-engine.ts runCommand accepts { entityName?, instanceId? }
+        // as its third arg — pass instanceId through for non-create commands.
+        lines.push('      instanceId,');
+      }
       lines.push('    });');
     }
     lines.push('');
@@ -687,10 +785,12 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('    }');
     lines.push('');
     lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
-    lines.push('  } catch (error) {');
-    lines.push(`    console.error("Error executing ${entity.name}.${command.name}:", error);`);
-    lines.push('    return manifestErrorResponse("Internal server error", 500);');
-    lines.push('  }');
+    for (const errLine of emitRuntimeErrorReturn(
+      options.unauthorizedStatus,
+      `Error executing ${entity.name}.${command.name}:`,
+    )) {
+      lines.push(errLine);
+    }
     lines.push('}');
     lines.push('');
 
@@ -767,19 +867,22 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     const tenantField = options.tenantIdProperty;
     const tenantValueExpr = options.includeTenantFilter ? tenantField : '"__no_tenant__"';
+    // Goal step 4: extract instanceId universally when deriveInstanceId is on
+    // (default). Non-create commands (release, archive, update, ...) need
+    // this; create commands ignore it harmlessly. Body shape preference:
+    // body.instanceId, then body.id, then undefined.
+    if (dispatcher.deriveInstanceId) {
+      lines.push('    const instanceId = typeof body?.instanceId === "string"');
+      lines.push('      ? body.instanceId');
+      lines.push('      : typeof body?.id === "string"');
+      lines.push('        ? body.id');
+      lines.push('        : undefined;');
+      lines.push('');
+    }
     if (useExternalExecutor) {
       // externalExecutor mode: delegate to app-owned executor; do NOT construct
       // a runtime inline. The executor receives full RuntimeContext + the
       // raw entity/command keys parsed from the URL, plus the input body.
-      if (dispatcher.deriveInstanceId) {
-        lines.push('    // deriveInstanceId: pull instanceId from common body locations.');
-        lines.push('    const instanceId = typeof body?.instanceId === "string"');
-        lines.push('      ? body.instanceId');
-        lines.push('      : typeof body?.id === "string"');
-        lines.push('        ? body.id');
-        lines.push('        : undefined;');
-        lines.push('');
-      }
       lines.push(`    const result = await ${dispatcher.executorImportName}({`);
       lines.push('      entityName: entity,');
       lines.push('      commandName: command,');
@@ -816,6 +919,11 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push('');
       lines.push('    const result = await runtime.runCommand(command, body, {');
       lines.push('      entityName: entity,');
+      if (dispatcher.deriveInstanceId) {
+        // runtime-engine.ts runCommand options accept instanceId — pass it
+        // through so non-create commands route to the correct instance.
+        lines.push('      instanceId,');
+      }
       lines.push('    });');
     }
     lines.push('');
@@ -831,10 +939,12 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('    }');
     lines.push('');
     lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
-    lines.push('  } catch (error) {');
-    lines.push('    console.error("Manifest dispatcher error:", error);');
-    lines.push('    return manifestErrorResponse("Internal server error", 500);');
-    lines.push('  }');
+    for (const errLine of emitRuntimeErrorReturn(
+      options.unauthorizedStatus,
+      'Manifest dispatcher error:',
+    )) {
+      lines.push(errLine);
+    }
     lines.push('}');
     lines.push('');
 
@@ -902,13 +1012,23 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateAuthBody(options));
     lines.push(generateTenantLookup(options));
     lines.push('');
-    lines.push(generatePrismaQuery(entity.name, options));
+    if (options.readRoutes.directDbReads) {
+      lines.push(generatePrismaQuery(entity.name, options));
+    } else {
+      // directDbReads disabled: emit a stub that returns an empty list and
+      // a diagnostic telling the app to wire its own read source.
+      lines.push(`    // readRoutes.directDbReads = false: emit no inline Prisma call.`);
+      lines.push(`    // Wire your read source here and assign to \`${variableName}\`.`);
+      lines.push(`    const ${variableName}: unknown[] = [];`);
+    }
     lines.push('');
     lines.push(`    return manifestSuccessResponse({ ${variableName} });`);
-  lines.push('  } catch (error) {');
-    lines.push(`    console.error("Error fetching ${variableName}:", error);`);
-    lines.push('    return manifestErrorResponse("Internal server error", 500);');
-    lines.push('  }');
+    for (const errLine of emitRuntimeErrorReturn(
+      options.unauthorizedStatus,
+      `Error fetching ${variableName}:`,
+    )) {
+      lines.push(errLine);
+    }
     lines.push('}');
     lines.push('');
 
@@ -953,7 +1073,11 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('    const { id } = await params;');
     lines.push('');
 
-    // Build the findUnique where clause
+    // Build the where clause and pick the correct Prisma method.
+    // Prisma 7: findUnique REQUIRES the where to be a unique constraint
+    // (just `id` for typical schemas). Multi-field filters need findFirst.
+    // The previous template emitted findUnique({ where: { id, tenantId,
+    // deletedAt } }) which fails type-check on Prisma 7. Goal step 5.
     const whereConditions: string[] = ['id'];
     if (options.includeTenantFilter) {
       whereConditions.push(options.tenantIdProperty);
@@ -961,26 +1085,36 @@ export class NextJsProjection implements ProjectionTarget {
     if (options.includeSoftDeleteFilter) {
       whereConditions.push(`${options.deletedAtProperty}: null`);
     }
-
-    const whereClause = whereConditions.length > 1
+    const isMultiField = whereConditions.length > 1;
+    const prismaMethod = isMultiField ? 'findFirst' : 'findUnique';
+    const whereClause = isMultiField
       ? `where: {
         ${whereConditions.join(',\n        ')}
       },`
       : `where: { id },`;
 
-    lines.push(`    const ${delegateName} = await database.${delegateName}.findUnique({`);
-    lines.push(`      ${whereClause}`);
-    lines.push('    });');
+    if (options.readRoutes.directDbReads) {
+      lines.push(`    // Using ${prismaMethod} — ${isMultiField ? 'multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+' : 'single id is a unique constraint'}.`);
+      lines.push(`    const ${delegateName} = await database.${delegateName}.${prismaMethod}({`);
+      lines.push(`      ${whereClause}`);
+      lines.push('    });');
+    } else {
+      lines.push(`    // readRoutes.directDbReads = false: emit no inline Prisma call.`);
+      lines.push(`    // Wire your read source here and assign to \`${delegateName}\`.`);
+      lines.push(`    const ${delegateName}: unknown = null;`);
+    }
     lines.push('');
     lines.push(`    if (!${delegateName}) {`);
-    lines.push(`      return manifestErrorResponse("${entity.name} not found", 404);`);
+    lines.push(`      return manifestErrorResponse({ error: "${entity.name} not found", diagnostics: [] }, 404);`);
     lines.push('    }');
     lines.push('');
     lines.push(`    return manifestSuccessResponse({ ${delegateName} });`);
-    lines.push('  } catch (error) {');
-    lines.push(`    console.error("Error fetching ${delegateName}:", error);`);
-    lines.push('    return manifestErrorResponse("Internal server error", 500);');
-    lines.push('  }');
+    for (const errLine of emitRuntimeErrorReturn(
+      options.unauthorizedStatus,
+      `Error fetching ${delegateName}:`,
+    )) {
+      lines.push(errLine);
+    }
     lines.push('}');
     lines.push('');
 

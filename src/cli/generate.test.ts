@@ -163,6 +163,8 @@ describe('CLI Generate Command - API Contract Tests', () => {
         surface: 'nextjs.command',
         entity: 'TestEntity',
         command: 'create',
+        // Concrete per-command routes are opt-in as of v0.7.x (goal step 3).
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(result.artifacts[0].pathHint).toBe('apps/api/app/api/testentity/create/route.ts');

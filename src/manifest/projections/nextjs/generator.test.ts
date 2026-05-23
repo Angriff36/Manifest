@@ -246,8 +246,12 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(detailResult);
 
-      // Contract: Must use Prisma findUnique directly for reads
-      expect(code).toContain('database.recipe.findUnique');
+      // Contract: Must use Prisma findFirst (not findUnique) for multi-field
+      // reads. tenantId + soft-delete filter are on by default; Prisma 7
+      // rejects findUnique with non-unique-constraint where shapes. See
+      // _generateDetailRoute in generator.ts (goal step 5).
+      expect(code).toContain('database.recipe.findFirst');
+      expect(code).not.toContain('database.recipe.findUnique');
       expect(code).not.toContain('runtime.query');
       expect(code).not.toContain('runtime.get');
       expect(code).not.toContain('findMany');
@@ -538,6 +542,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);
@@ -584,6 +589,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);
@@ -605,7 +611,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { includeTenantFilter: false },
+        options: { includeTenantFilter: false,  concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);
@@ -622,6 +628,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'NonExistent',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(commandResult.artifacts).toHaveLength(0);
@@ -639,6 +646,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'nonExistentCommand',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(commandResult.artifacts).toHaveLength(0);
@@ -655,6 +663,7 @@ describe('NextJsProjection', () => {
       const commandResult = projection.generate(result.ir!, {
         surface: 'nextjs.command',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(commandResult.artifacts).toHaveLength(0);
@@ -669,6 +678,7 @@ describe('NextJsProjection', () => {
       const commandResult = projection.generate(result.ir!, {
         surface: 'nextjs.command',
         entity: 'Recipe',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(commandResult.artifacts).toHaveLength(0);
@@ -684,7 +694,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { runtimeImportPath: '@myapp/runtime' },
+        options: { runtimeImportPath: '@myapp/runtime',  concreteCommandRoutes: { enabled: true } },
       });
 
       expect(firstCode(commandResult)).toContain('from "@myapp/runtime"');
@@ -698,7 +708,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { authProvider: 'clerk' },
+        options: { authProvider: 'clerk',  concreteCommandRoutes: { enabled: true } },
       });
       expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
 
@@ -706,7 +716,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { authProvider: 'none' },
+        options: { authProvider: 'none',  concreteCommandRoutes: { enabled: true } },
       });
       expect(firstCode(noAuthResult)).toContain('Auth disabled');
     });
@@ -719,6 +729,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       expect(commandResult.artifacts[0].id).toBe('nextjs.command:Recipe.create');
@@ -733,6 +744,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
+        options: { concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);

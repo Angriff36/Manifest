@@ -133,13 +133,17 @@ async function generateFromIR(
 }
 
 /**
- * Generate all projection surfaces, including the canonical dispatcher.
+ * Generate all projection surfaces.
  *
- * The dispatcher is emitted alongside the legacy per-command routes so
- * downstream apps get the full canonical-write-path surface. The dispatcher
- * artifact respects `dispatcher.enabled` and `dispatcher.executionMode`
- * config keys — when `enabled: false`, the projection itself returns no
- * artifact and we surface the info-diagnostic instead.
+ * The dispatcher is the canonical write surface and is always emitted
+ * (unless `dispatcher.enabled: false`). Per-command concrete routes are
+ * **opt-in** (`concreteCommandRoutes.enabled: true`) — by default
+ * `--surface all` does NOT emit them, per the goal of dispatcher-only
+ * canonical writes. Read routes respect `readRoutes.enabled`.
+ *
+ * The projection itself returns info-diagnostics when these gates are
+ * closed, but skipping at the CLI layer avoids spamming the spinner with
+ * "skipped" lines for every entity/command.
  */
 async function generateAllSurfaces(
   projection: any,
@@ -148,14 +152,30 @@ async function generateAllSurfaces(
   spinner: Ora,
   projectionOptions: any
 ): Promise<void> {
-  spinner.text = 'Generating routes...';
-  await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
+  const readRoutesEnabled = projectionOptions?.readRoutes?.enabled !== false; // default true
+  const dispatcherEnabled = projectionOptions?.dispatcher?.enabled !== false; // default true
+  const concreteCommandsEnabled = projectionOptions?.concreteCommandRoutes?.enabled === true; // default false (opt-in)
 
-  spinner.text = 'Generating commands...';
-  await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+  if (readRoutesEnabled) {
+    spinner.text = 'Generating routes...';
+    await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping read routes (readRoutes.enabled: false)');
+  }
 
-  spinner.text = 'Generating dispatcher...';
-  await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
+  if (concreteCommandsEnabled) {
+    spinner.text = 'Generating concrete command routes (opt-in)...';
+    await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping concrete per-command routes (concreteCommandRoutes.enabled: false — dispatcher is canonical)');
+  }
+
+  if (dispatcherEnabled) {
+    spinner.text = 'Generating dispatcher...';
+    await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping dispatcher (dispatcher.enabled: false)');
+  }
 
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);

@@ -73,9 +73,11 @@ emits but encodes no downstream-app branding.
 | `strictMode`              | `true`                        | boolean                                     | Whether generated TypeScript is strict-mode friendly. |
 | `includeComments`         | `true`                        | boolean                                     | Whether to emit explanatory comments above generated handlers. |
 | `indentSize`              | `2`                           | integer 1–8                                 | Spaces of indentation in generated code. |
+| `unauthorizedStatus`      | `401`                         | integer (400–499)                           | HTTP status returned when the auth helper rejects the request **or** throws (invalid/expired token). Auth failures MUST NEVER surface as 500. Override only if you standardise on 403 to avoid user-existence leak. |
 | `tenantProvider`          | `{ importPath: '@/app/lib/tenant', functionName: 'getTenantIdForOrg', lookupKey: 'orgId' }` | object                  | Override the default `userTenantMapping.findUnique` pattern with a project-supplied lookup. See **`tenantProvider`** below. |
 | `dispatcher`              | (see below)                   | object                                      | Configuration for the canonical write surface. See **`dispatcher`** below. |
-| `concreteCommandRoutes`   | (see below)                   | object                                      | Policy for the deprecated per-command routes. See **`concreteCommandRoutes`** below. |
+| `concreteCommandRoutes`   | (see below)                   | object                                      | Opt-in policy for the deprecated per-command routes. See **`concreteCommandRoutes`** below. |
+| `readRoutes`              | (see below)                   | object                                      | Policy for direct database read routes. See **`readRoutes`** below. |
 
 ### `tenantProvider`
 
@@ -120,15 +122,20 @@ projections:
 | `executionMode`         | `inline`                        | `inline` \| `externalExecutor`        | `inline` (default, back-compat): handler calls `createManifestRuntime(...)` then `runtime.runCommand(...)`. `externalExecutor`: handler imports the configured executor and delegates — **no `createManifestRuntime` or `runtime.runCommand` appears in the emitted code.** |
 | `executorImportPath`    | `@/lib/manifest-executor`       | string                                | Module path for the external executor. Only used in `externalExecutor` mode. |
 | `executorImportName`    | `executeManifestCommand`        | string                                | Named export to call on the external executor module. |
-| `deriveInstanceId`      | `false`                         | boolean                               | When `true` and `executionMode` is `externalExecutor`, the handler derives an `instanceId` from `body.instanceId` or `body.id` and passes it to the executor. Off by default to avoid surprising callers of non-instance commands. |
+| `deriveInstanceId`      | `true`                          | boolean                               | When `true` (default), the dispatcher extracts an `instanceId` from `body.instanceId` or `body.id` and forwards it to `runCommand` (inline) **or** to the executor (`externalExecutor`). Non-create commands (release, archive, update, …) need this; create commands ignore it harmlessly. Set `false` only with strong reason. |
+| `path`                  | `/manifest/[entity]/commands/[command]/route.ts` | string             | Dispatcher route path relative to `appDir`. Override for non-canonical prefixes. |
 
 ### `concreteCommandRoutes`
 
 Per-command "concrete" routes (the `nextjs.command` surface) were the
-original write path before the dispatcher existed. They remain emitted as
-deprecated aliases by default.
+original write path before the dispatcher existed. As of v0.7.x they are
+**opt-in** — the canonical dispatcher is the only write surface emitted
+by default. `manifest generate --surface all` skips them unless
+`concreteCommandRoutes.enabled: true` is set.
 
 ```yaml
+# OPT-IN: only set this if you still need per-command routes
+# for legacy callers. The dispatcher is the canonical write path.
 projections:
   nextjs:
     options:
@@ -139,8 +146,35 @@ projections:
 
 | Key                  | Default | Type    | Generated behaviour |
 |----------------------|---------|---------|---------------------|
-| `enabled`            | `true`  | boolean | When `false`, `nextjs.command` artifacts are suppressed entirely (an info-diagnostic is returned). |
-| `legacyAliasesOnly`  | `true`  | boolean | When `true` (default), generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface. |
+| `enabled`            | `false` | boolean | **Default false (opt-in).** When `false`, `nextjs.command` artifacts are suppressed entirely (an info-diagnostic is returned) and `--surface all` does not emit them. |
+| `legacyAliasesOnly`  | `true`  | boolean | When `true` (default) and `enabled` is `true`, generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface. |
+
+### `readRoutes`
+
+Direct database read routes (`nextjs.route` for list, `nextjs.detail`
+for single-entity GET). These bypass the runtime engine for read
+performance and assume a Prisma-compatible client at
+`databaseImportPath`.
+
+```yaml
+projections:
+  nextjs:
+    options:
+      readRoutes:
+        enabled: true        # emit read routes at all
+        directDbReads: true  # inline Prisma call; false = stub only
+```
+
+| Key             | Default | Type    | Generated behaviour |
+|-----------------|---------|---------|---------------------|
+| `enabled`       | `true`  | boolean | When `false`, both list and detail read routes are suppressed (info diagnostic). |
+| `directDbReads` | `true`  | boolean | When `false`, read route handlers are emitted but contain no inline Prisma call — useful for projects that route reads through a separate query layer. |
+
+> **Prisma 7 note.** When `includeTenantFilter` and/or `includeSoftDeleteFilter`
+> are true, the detail route emits `findFirst` (not `findUnique`) because
+> the where shape contains more than the unique constraint. The previous
+> generator emitted `findUnique({ where: { id, tenantId, deletedAt: null } })`
+> which fails type-check on Prisma 7+. Fixed in v0.7.x.
 
 ---
 
