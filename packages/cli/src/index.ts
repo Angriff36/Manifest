@@ -23,6 +23,7 @@ import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import { auditGovernanceCommand } from './commands/audit-governance.js';
+import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   cacheStatusCommand,
@@ -363,6 +364,39 @@ program
     }
     // Suppress unused-var noise from optional invokedAs lookup.
     void invokedAs;
+  });
+
+/**
+ * `enforce-surface` — the strictest registry-vs-app check.
+ *
+ * Composes the governance detectors with three registry-aware detectors to
+ * stop agents and contributors from inventing duplicate or bypass write
+ * paths when a registered Manifest command already exists.
+ */
+program
+  .command('enforce-surface')
+  .description(
+    'Enforce that application code only writes through registered Manifest commands'
+  )
+  .requiredOption('--root <path>', 'Repository or application root to scan')
+  .requiredOption('--commands-registry <path>', 'Path to commands.json emitted from Manifest IR')
+  .option('--entities-registry <path>', 'Path to entities.json emitted from Manifest IR')
+  .option('--bypass-registry <path>', 'Path to bypasses.json (approved exceptions)')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--strict', 'Exit non-zero on any error finding', false)
+  .option('--include <glob...>', 'Additional include globs')
+  .option('--exclude <glob...>', 'Exclude globs (generated files, build output, fixtures, etc.)')
+  .action(async (options = {}) => {
+    await enforceSurfaceCommand({
+      root: options.root,
+      commandsRegistry: options.commandsRegistry,
+      entitiesRegistry: options.entitiesRegistry,
+      bypassRegistry: options.bypassRegistry,
+      format: options.format,
+      strict: !!options.strict,
+      include: options.include,
+      exclude: options.exclude,
+    });
   });
 
 program
