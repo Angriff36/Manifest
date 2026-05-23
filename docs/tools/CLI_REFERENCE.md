@@ -835,6 +835,155 @@ Skip flags (opt-in only):
 See [`docs/tools/integration-check.md`](./integration-check.md) for the
 deeper integration guide.
 
+### `manifest enforce-surface`
+
+The strictest registry-vs-app check. Composes the governance detector
+suite with three registry-aware detectors to fail when application code
+deviates from the compiled Manifest command registry — stopping agents
+and contributors from inventing duplicate or bypass write paths when a
+registered Manifest command already exists.
+
+```bash
+manifest enforce-surface \
+  --root . \
+  --commands-registry manifest-registry/commands.json \
+  --entities-registry manifest-registry/entities.json \
+  --bypass-registry bypasses.json \
+  --strict --format text
+```
+
+**Required flags:** `--root`, `--commands-registry`.
+**Optional flags:** `--entities-registry`, `--bypass-registry`, `--format text|json`, `--strict`, `--include <glob...>`, `--exclude <glob...>`.
+
+**Finding codes** (all surfaced by the orchestrator; see
+`newguard.json` for the source contract):
+
+| Code | Severity | What triggers it |
+|---|---|---|
+| `UNREGISTERED_COMMAND_CALL` | error | `runtime.runCommand('Entity.command', …)` whose `Entity.command` is not present in the commands registry |
+| `DYNAMIC_COMMAND_UNVERIFIABLE` | warning (error in `--strict`) | First argument to `runtime.runCommand` is not a static string literal |
+| `DIRECT_WRITE_BYPASS` | error | Direct Prisma `create/update/delete/upsert/*Many` outside runtime adapters |
+| `EXISTING_COMMAND_AVAILABLE` | error | Helper or route name multiset-matches a registered `Entity.command` but does NOT dispatch through `runtime.runCommand` for that command |
+| `ROUTE_SURFACE_DRIFT` | error | Concrete per-command `route.ts` that calls `runCommand` without a `DEPRECATED ALIAS` banner pointing at the canonical dispatcher |
+| `UNREGISTERED_ENTITY_WRITE` | error | Direct Prisma write against a model with no entry in the entities registry |
+| `EVENT_FABRICATION` | error | Code emits `ManifestEvent`-style payloads outside the runtime (`eventBus.publish`, `new ManifestEvent(...)`, `emit('SomethingHappened', …)`) |
+| `APPROVED_BYPASS_REQUIRED` | warning (error in `--strict`) | A direct write exists at a path not present in the bypass registry |
+
+**Use when:** before AND after any agent or contributor change that
+touches routes, server actions, database writes, Manifest commands,
+migrations, or generated routes. This is the guard that catches
+"the agent invented its own write path instead of using the registered
+command."
+
+**Don't use when:** you only need one detector — call `audit-governance`
+with `--only <detector>` for faster iteration.
+
+**Destructive:** no. Does not mutate source files, does not regenerate
+routes, and does not modify the bypass registry.
+
+**How it differs from neighbors:**
+- `audit-routes` — shape/boundary check on routes only; does not reason
+  about the command registry.
+- `audit-governance` — broad governance posture (direct writes, events,
+  drift, missing tests, bypasses); does not enforce that every
+  `runtime.runCommand` references a registered command.
+- `runtime-check` — correlates one specific command across source,
+  routes, and IR; per-command depth, not surface breadth.
+- `integration-check` — downstream repo wiring (dispatcher present,
+  package shape, runtime smoke); answers "does this consumer integrate
+  correctly?"
+- **`enforce-surface`** — answers "does this application's write
+  surface align *exactly* with the registered command registry?"
+
+**Recommended CI pipeline** (run all of these in this order):
+
+```bash
+manifest check "**/*.manifest"
+manifest emit registries --source "**/*.manifest" --out manifest-registry
+manifest enforce-surface --root . \
+  --commands-registry manifest-registry/commands.json \
+  --entities-registry manifest-registry/entities.json \
+  --bypass-registry bypasses.json \
+  --strict
+manifest audit-governance -r . \
+  --commands-registry manifest-registry/commands.json \
+  --bypass-registry bypasses.json \
+  --strict
+manifest integration-check --root . \
+  --commands-registry manifest-registry/commands.json \
+  --bypass-registry bypasses.json
+```
+
+**Agent workflow guidance:** Agents MUST run `enforce-surface` both
+**before** and **after** any change that touches routes, server actions,
+database writes, Manifest commands, migrations, or generated routes.
+Running before establishes a clean baseline; running after proves the
+change did not introduce a duplicate or bypass write path. In `--strict`
+mode the command fails the agent's task if any error finding is present.
+
+**Example text output:**
+
+```
+enforce-surface — 2 errors, 1 warnings
+  UNREGISTERED_COMMAND_CALL: 1
+  EXISTING_COMMAND_AVAILABLE: 1
+  APPROVED_BYPASS_REQUIRED: 1
+error UNREGISTERED_COMMAND_CALL app/api/orders/route.ts:3 — runtime.runCommand('Order.place') is not present in the command registry
+  ↳ Register 'Order.place' as a Manifest command, or change the call to an existing registered command
+error EXISTING_COMMAND_AVAILABLE app/api/helpers/route.ts:1 — 'createUser' looks like a duplicate of registered Manifest command 'User.create' but does not dispatch through runtime.runCommand
+  ↳ Replace this implementation with a call to runtime.runCommand('User.create', payload)
+warning APPROVED_BYPASS_REQUIRED app/api/migration/route.ts — Direct write at app/api/migration/route.ts is not in the approved-bypass registry
+  ↳ Add the path to the bypass registry with reason, owner, and reviewBy
+```
+
+**Example JSON output:**
+
+```json
+{
+  "ok": false,
+  "root": "/abs/path/to/app",
+  "registry": {
+    "commandsRegistry": "manifest-registry/commands.json",
+    "entitiesRegistry": "manifest-registry/entities.json"
+  },
+  "summary": {
+    "errors": 2,
+    "warnings": 1,
+    "byCode": {
+      "UNREGISTERED_COMMAND_CALL": 1,
+      "EXISTING_COMMAND_AVAILABLE": 1,
+      "APPROVED_BYPASS_REQUIRED": 1
+    }
+  },
+  "findings": [
+    {
+      "code": "UNREGISTERED_COMMAND_CALL",
+      "severity": "error",
+      "file": "app/api/orders/route.ts",
+      "line": 3,
+      "column": 41,
+      "entity": "Order",
+      "command": "place",
+      "message": "runtime.runCommand('Order.place') is not present in the command registry",
+      "suggestion": "Register 'Order.place' as a Manifest command, or change the call to an existing registered command"
+    }
+  ]
+}
+```
+
+**Limitations:**
+- `existing-command-available` uses a name-token multiset heuristic.
+  Ambiguous names (e.g. `update`) and fully dynamic command names
+  cannot be flagged.
+- Direct-write detection inherits the regex pattern from
+  `direct-writes.ts` (Prisma-shaped). Non-Prisma ORMs (Drizzle, Kysely)
+  need detector extensions.
+- Raw SQL writes embedded in template literals are not currently parsed
+  — a follow-up SQL-write detector is required to cover that surface.
+- AST detection of `runtime.runCommand` covers `runtime.runCommand(...)`
+  and `<expr>.runtime.runCommand(...)` only. Imported helper wrappers
+  with non-trivial control flow are not statically resolved.
+
 ---
 
 ## Related Docs
