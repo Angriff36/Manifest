@@ -158,6 +158,167 @@ These options control the import paths and filtering behavior written into gener
   ```
 </ParamField>
 
+<ParamField path="projections.nextjs.options.appDir" type="string" default="apps/api/app/api">
+  App Router base directory. Every generated route's `pathHint` is relative to this. For a non-monorepo Next.js project, set this to `app/api`.
+
+  ```yaml
+  options:
+    appDir: app/api
+  ```
+</ParamField>
+
+<ParamField path="projections.nextjs.options.strictMode" type="boolean" default="true">
+  Whether generated TypeScript is written to be strict-mode friendly. Leave on unless you have a specific compatibility reason to disable it.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.includeComments" type="boolean" default="true">
+  Whether to emit explanatory comments above generated handlers. Set `false` to slim generated files.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.indentSize" type="integer" default="2">
+  Spaces of indentation in generated code. Must be between 1 and 8.
+</ParamField>
+
+### `projections.nextjs.options.tenantProvider`
+
+Replaces the default `userTenantMapping.findUnique` pattern with a project-supplied lookup helper. When set, generated handlers import `functionName` from `importPath` and call it with the auth field named by `lookupKey`.
+
+<ParamField path="projections.nextjs.options.tenantProvider.importPath" type="string" required>
+  Module path that exports the tenant lookup helper.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.tenantProvider.functionName" type="string" required>
+  Named export to call (e.g. `getTenantIdForOrg`).
+</ParamField>
+
+<ParamField path="projections.nextjs.options.tenantProvider.lookupKey" type="string" required>
+  Which auth-context field is passed as the lookup argument. Accepted values: `orgId`, `userId`.
+</ParamField>
+
+```yaml
+projections:
+  nextjs:
+    options:
+      tenantProvider:
+        importPath: "@my-app/data"
+        functionName: "getTenantIdForOrg"
+        lookupKey: "orgId"
+```
+
+### `projections.nextjs.options.dispatcher`
+
+The dispatcher is the canonical Manifest write surface at `POST /api/manifest/[entity]/commands/[command]`. Two execution modes are supported, and either can be selected from config alone — no projection-source edits required.
+
+<ParamField path="projections.nextjs.options.dispatcher.enabled" type="boolean" default="true">
+  When `false`, the `nextjs.dispatcher` surface emits no artifact and the CLI surfaces an info-diagnostic.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.dispatcher.executionMode" type="string" default="inline">
+  Where command execution happens.
+
+  - `inline` (default, back-compat): handler calls `createManifestRuntime(...)` then `runtime.runCommand(...)` per request.
+  - `externalExecutor`: handler imports the configured executor and delegates — **no `createManifestRuntime` or `runtime.runCommand` appears in the emitted code.**
+</ParamField>
+
+<ParamField path="projections.nextjs.options.dispatcher.executorImportPath" type="string" default="@/lib/manifest-executor">
+  Module path for the external executor. Only used when `executionMode` is `externalExecutor`.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.dispatcher.executorImportName" type="string" default="executeManifestCommand">
+  Named export to call on the external executor module.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.dispatcher.deriveInstanceId" type="boolean" default="false">
+  When `true` and `executionMode` is `externalExecutor`, the handler derives an `instanceId` from `body.instanceId` or `body.id` and passes it to the executor. Off by default to avoid surprising callers of non-instance commands.
+</ParamField>
+
+### `projections.nextjs.options.concreteCommandRoutes`
+
+Policy for the deprecated per-command "concrete" routes (the `nextjs.command` surface). These remain emitted as deprecated aliases of the dispatcher by default.
+
+<ParamField path="projections.nextjs.options.concreteCommandRoutes.enabled" type="boolean" default="true">
+  When `false`, `nextjs.command` artifacts are suppressed entirely.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.concreteCommandRoutes.legacyAliasesOnly" type="boolean" default="true">
+  When `true` (default), generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface.
+</ParamField>
+
+## externalExecutor migration
+
+Use `executionMode: externalExecutor` when your app owns Manifest runtime construction (shared executor, custom store wiring, extra context) and wants the dispatcher to be a thin transport adapter.
+
+**Step 1.** Author an executor in your app. Place it where `executorImportPath` points; the call shape below is the contract.
+
+```ts
+// apps/api/lib/manifest-executor.ts
+import { createManifestRuntime } from "./manifest-runtime";
+
+export interface ManifestExecutorCall {
+  entityName: string;
+  commandName: string;
+  input: unknown;
+  instanceId?: string;
+  context: {
+    tenantId?: string;
+    orgId?: string;
+    actorId?: string;
+    requestId?: string;
+    source?: string;
+    user?: Record<string, unknown>;
+  };
+}
+
+export async function executeManifestCommand(call: ManifestExecutorCall) {
+  const runtime = await createManifestRuntime(call.context);
+  return runtime.runCommand(call.commandName, call.input, {
+    entityName: call.entityName,
+    ...(call.instanceId ? { instanceId: call.instanceId } : {}),
+  });
+}
+```
+
+**Step 2.** Flip config to point at your executor:
+
+```yaml
+projections:
+  nextjs:
+    options:
+      dispatcher:
+        executionMode: externalExecutor
+        executorImportPath: "@my-app/manifest-executor"
+        executorImportName: "executeManifestCommand"
+```
+
+**Step 3.** Regenerate. The dispatcher route now imports your executor and delegates to it — no `createManifestRuntime` or `runtime.runCommand` in the emitted code.
+
+**Step 4.** Confirm with the CLI:
+
+```bash
+manifest config inspect --json | jq '.projections.nextjs.options.dispatcher'
+```
+
+## CI / drift workflow
+
+Downstream repos should commit `manifest.config.yaml` and pin generated output under VCS. The recommended four-step CI gate catches both Manifest default changes and local config drift:
+
+```bash
+# 1. Fail on invalid config.
+manifest config validate
+
+# 2. Snapshot the effective config (commit the snapshot under VCS).
+manifest config inspect --json > .manifest/effective-config.snapshot.json
+git diff --exit-code .manifest/effective-config.snapshot.json
+
+# 3. Regenerate code from IR.
+manifest build
+
+# 4. Fail on drift between checked-in and just-generated code.
+git diff --exit-code
+```
+
+This flow guarantees that the effective config has not silently changed and that emitted code matches what the current Manifest + config combination produces.
+
 ## Workspace monorepo imports
 
 In a pnpm/yarn workspace (e.g. Turborepo or a custom monorepo), your shared packages are available under a workspace prefix like `@repo/`. Set the import path options to point at those packages instead of local `@/lib/` aliases:
