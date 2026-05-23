@@ -49,6 +49,23 @@ describe('loadCommandSet', () => {
     expect(set.has('User.delete')).toBe(false);
   });
 
+  it('accepts a flat-array registry (downstream consumer shape)', async () => {
+    // Capsule-Pro and similar consumers emit a bare array rather than the
+    // wrapped { commands: [...] } shape produced by `manifest emit`.
+    const dir = await tempDir();
+    const reg = path.join(dir, 'commands.json');
+    await fs.writeFile(
+      reg,
+      JSON.stringify([
+        { entity: 'User', command: 'create', commandId: 'User.create' },
+        { entity: 'Order', command: 'place', commandId: 'Order.place' },
+      ])
+    );
+    const set = await loadCommandSet(reg);
+    expect(set.has('User.create')).toBe(true);
+    expect(set.has('Order.place')).toBe(true);
+  });
+
   it('falls back to entity.command when commandId is missing', async () => {
     const dir = await tempDir();
     const reg = path.join(dir, 'commands.json');
