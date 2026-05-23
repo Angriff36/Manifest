@@ -78,6 +78,7 @@
     "src/manifest/outbox/stores/*.sql",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/registry/*.schema.json",
+    "docs/spec/config/*.schema.json",
     "README*",
     "LICENSE*",
     "package.json"

@@ -26,6 +26,11 @@ import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
+  configValidateCommand,
+  configPrintDefaultsCommand,
+  configInspectCommand,
+} from './commands/config.js';
+import {
   cacheStatusCommand,
   doctorCommand,
   duplicatesCommand,
@@ -555,6 +560,41 @@ program
       packageRoot: options.packageRoot,
     });
     if (!result.ok) process.exit(1);
+  });
+
+/**
+ * manifest config
+ *
+ * Inspection and validation surface for manifest.config.{yaml,yml,ts,js}.
+ * Generic to Manifest itself — not tied to any downstream consumer.
+ */
+const configProgram = program
+  .command('config')
+  .description('Inspect and validate manifest.config.{yaml,ts,js}');
+
+configProgram
+  .command('validate')
+  .description('Validate manifest.config against the JSON schema')
+  .option('--json', 'JSON output (and non-zero exit on failure)', false)
+  .action(async (options = {}) => {
+    await configValidateCommand({ json: !!options.json });
+  });
+
+configProgram
+  .command('print-defaults')
+  .description('Print the canonical defaults Manifest applies when no config is set')
+  .option('--json', 'JSON output (default: yes)', true)
+  .action(async (options = {}) => {
+    await configPrintDefaultsCommand({ json: options.json !== false });
+  });
+
+configProgram
+  .command('inspect')
+  .alias('print-effective')
+  .description('Print the effective config (defaults + user overrides). Stable, key-sorted; safe for CI snapshots.')
+  .option('--json', 'JSON output (default: yes)', true)
+  .action(async (options = {}) => {
+    await configInspectCommand({ json: options.json !== false });
   });
 
 /**
