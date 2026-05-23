@@ -129,11 +129,18 @@ export async function enforceSurfaceCommand(
   options: EnforceSurfaceOptions = {}
 ): Promise<EnforceSurfaceResult> {
   const root = path.resolve(process.cwd(), options.root ?? '.');
+  // Resolve every registry path to an absolute path up front. The
+  // bypass-violations detector calls path.resolve(ctx.root, ctx.bypassRegistry)
+  // internally; passing an already-absolute path is a no-op and keeps
+  // registry semantics consistent regardless of whether the caller's cwd
+  // matches --root.
+  const resolve = (p?: string): string | undefined =>
+    p ? path.resolve(process.cwd(), p) : undefined;
   const ctx: DetectorContext = {
     root,
-    commandsRegistry: options.commandsRegistry,
-    entitiesRegistry: options.entitiesRegistry,
-    bypassRegistry: options.bypassRegistry,
+    commandsRegistry: resolve(options.commandsRegistry),
+    entitiesRegistry: resolve(options.entitiesRegistry),
+    bypassRegistry: resolve(options.bypassRegistry),
   };
 
   const raw: AuditFinding[] = [];
