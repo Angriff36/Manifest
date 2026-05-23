@@ -1,0 +1,57 @@
+---
+title: "Manifest: Declarative Domain Modeling for Developers"
+description: "Manifest is a domain-specific language that compiles business rules, entities, and commands into a portable runtime. Define once, run anywhere."
+---
+
+Manifest is a declarative language for expressing your application's domain model — its entities, commands, guards, policies, and events — in a format that compiles to an executable Intermediate Representation (IR). The runtime enforces your rules deterministically on every execution, making business logic auditable, testable, and portable across platforms.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Install Manifest and run your first command in under 5 minutes.
+  </Card>
+  <Card title="Language Reference" icon="book" href="/language/entities">
+    Learn entities, commands, guards, policies, events, and stores.
+  </Card>
+  <Card title="Integration Guide" icon="plug" href="/integration/overview">
+    Use projections or embed the runtime directly in your app.
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Compile, generate, build, and validate from the command line.
+  </Card>
+</CardGroup>
+
+## How Manifest works
+
+Manifest programs are `.manifest` source files. The compiler transforms them into IR — a JSON contract that the runtime executes. You can generate platform-specific code (like Next.js API routes) from that IR, or embed the runtime directly in your application handlers.
+
+<Steps>
+  <Step title="Install the package">
+    Add `@angriff36/manifest` to your project with npm or pnpm.
+  </Step>
+  <Step title="Write a .manifest file">
+    Define entities, commands, guards, and policies in the Manifest language.
+  </Step>
+  <Step title="Compile to IR">
+    Use the CLI or the `compileToIR` function to produce an IR JSON file.
+  </Step>
+  <Step title="Run commands">
+    Instantiate `RuntimeEngine` with your IR and call `runCommand` from your handlers.
+  </Step>
+</Steps>
+
+## Key capabilities
+
+<CardGroup cols={2}>
+  <Card title="Deterministic execution" icon="lock">
+    Identical IR plus identical runtime context always produces identical results. No surprises in production.
+  </Card>
+  <Card title="Guard-based authorization" icon="shield">
+    Guards and policies are first-class language constructs, not bolt-on middleware. They cannot be bypassed.
+  </Card>
+  <Card title="Event emission" icon="satellite-dish">
+    Commands declare the events they emit. The runtime logs every emission with payload, channel, and timestamp.
+  </Card>
+  <Card title="Platform projections" icon="code">
+    Generate Next.js API routes, TypeScript types, and a client SDK directly from your IR.
+  </Card>
+</CardGroup>

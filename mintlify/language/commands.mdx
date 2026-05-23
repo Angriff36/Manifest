@@ -1,0 +1,231 @@
+---
+title: "Commands: business operations and mutations"
+description: "Declare named operations on entities that enforce guards and policies, execute ordered actions, emit events, and return a structured CommandResult."
+sidebarTitle: "Commands"
+---
+
+A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order: policies → constraints → guards → actions → emits → return. Nothing in that order can be rearranged or skipped.
+
+## Declaring a command
+
+Commands live inside an entity block. A command takes an optional parameter list and a body of guards and actions.
+
+```manifest
+entity Counter {
+  property value: number = 0
+
+  command increment() {
+    mutate value = value + 1
+    emit CounterIncremented
+  }
+
+  command setValue(newValue: number) {
+    guard newValue >= 0
+    mutate value = newValue
+    emit CounterSet
+  }
+}
+```
+
+Parameters are typed with the same types as properties: `string`, `number`, `boolean`, `timestamp`. Parameters are available by name in all guard and action expressions.
+
+## Execution order
+
+The runtime executes every command in exactly this order:
+
+<Steps>
+  <Step title="Build evaluation context">
+    Bind `self` and `this` to the current entity instance, inject command parameters, and attach the runtime context (`user`, `context.*`).
+  </Step>
+  <Step title="Evaluate policies">
+    Check every applicable policy (entity-level defaults first, then command-level). If any policy denies, execution stops immediately with a `policyDenial` result.
+  </Step>
+  <Step title="Evaluate command constraints">
+    Evaluate any `block` constraints declared inside the command. If any fail without an authorized override, execution stops with `constraintOutcomes` in the result.
+  </Step>
+  <Step title="Evaluate guards">
+    Evaluate each guard expression in declaration order. Execution halts on the first falsey result and returns a `guardFailure` with the failing guard's index and expression.
+  </Step>
+  <Step title="Execute actions">
+    Run each action (`mutate`, `emit`, `compute`, `publish`, `persist`, `effect`) in declaration order.
+  </Step>
+  <Step title="Emit declared events">
+    Emit the events listed in the `emits` declaration (if any) in order, attaching payload and metadata.
+  </Step>
+  <Step title="Return CommandResult">
+    Return the `CommandResult` with `success: true`, the last action result, and all emitted events.
+  </Step>
+</Steps>
+
+## Actions
+
+Actions are the statements inside a command body that produce effects.
+
+### `mutate`
+
+Assigns a value to an entity property. The expression is evaluated against the current context and stored on the instance.
+
+```manifest
+command complete() {
+  guard not self.completed
+  mutate completed = true
+  mutate completedAt = now()
+}
+```
+
+### `emit`
+
+Emits an event and optionally attaches an inline payload. Also produces an action result with the evaluated value.
+
+```manifest
+command increment() {
+  mutate value = value + 1
+  emit CounterIncremented
+}
+```
+
+### `compute`
+
+Evaluates an expression and returns the value. Does not write to the store. Useful for deriving values you want in the action result without persisting them.
+
+```manifest
+command setTimestamp() {
+  compute createdAt = now()
+  emit TaskCreated
+}
+```
+
+### `publish`
+
+Sends the expression result to an external message broker or outbox adapter. In the default (no-adapter) runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+
+### `persist`
+
+Invokes a persistence adapter with the expression result. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+
+### `effect`
+
+Invokes a side-effect adapter. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+
+<Warning>
+`publish`, `persist`, and `effect` are no-ops unless you configure an adapter. When `deterministicMode` is `true`, calling any of them throws `ManifestEffectBoundaryError` — this is by design to enforce the effect boundary contract.
+</Warning>
+
+## The `emits` keyword
+
+You can declare events at the command level using the `emits` keyword outside the action body. This serves as a declaration that the command emits a specific event after all actions succeed.
+
+```manifest
+entity Order {
+  property status: string = "pending"
+
+  command complete() {
+    guard self.status == "in_progress"
+    mutate status = "completed"
+    emit OrderCompleted
+  }
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  completedAt: number
+}
+```
+
+See [Events](/language/events) for how to declare event schemas.
+
+## Command constraints (vNext)
+
+Commands can declare their own `constraint` blocks that are evaluated after policies but before guards. The same severity levels (`ok`, `warn`, `block`) apply:
+
+```manifest
+entity Order {
+  property status: string = "pending"
+  property amount: number = 0
+
+  command updateStatus(newStatus: string) {
+    constraint notCancelled: self.status != "cancelled" "Cannot update a cancelled order"
+    constraint amountVerified:warn self.amount >= 100 "Orders under $100 require manual approval"
+
+    mutate status = newStatus
+    emit OrderStatusChanged
+  }
+}
+```
+
+A failing `block` constraint stops execution and surfaces `constraintOutcomes` in the `CommandResult`. A `warn` constraint produces an outcome entry but does not stop execution.
+
+## CommandResult shape
+
+Every call to `runCommand` returns a `CommandResult`:
+
+```typescript
+interface CommandResult {
+  success: boolean;
+  error?: string;
+
+  // Present when a policy denied execution
+  policyDenial?: {
+    policyName: string;
+    expression: string;
+  };
+
+  // Present when a guard halted execution
+  guardFailure?: {
+    guardIndex: number;       // 1-based
+    expression: string;
+    resolved: { expression: string; value: unknown }[];
+  };
+
+  // Present when constraints were evaluated
+  constraintOutcomes?: ConstraintOutcome[];
+
+  // Present when optimistic concurrency detected a conflict
+  concurrencyConflict?: ConcurrencyConflict;
+
+  // All events emitted during this run
+  emittedEvents: EmittedEvent[];
+
+  // The return value of the last action
+  lastActionResult?: unknown;
+}
+```
+
+## Calling `runCommand` from TypeScript
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "user-123", role: "admin" },
+});
+
+const result = await runtime.runCommand("Order", "updateStatus", {
+  instanceId: "order-abc",
+  newStatus: "processing",
+});
+
+if (!result.success) {
+  if (result.policyDenial) {
+    console.error("Denied by policy:", result.policyDenial.policyName);
+  } else if (result.guardFailure) {
+    console.error(
+      `Guard ${result.guardFailure.guardIndex} failed:`,
+      result.guardFailure.expression
+    );
+  } else if (result.constraintOutcomes) {
+    const blocked = result.constraintOutcomes.filter(
+      (o) => o.severity === "block" && !o.passed
+    );
+    console.error("Blocked by constraints:", blocked.map((o) => o.code));
+  }
+  process.exit(1);
+}
+
+console.log("Events:", result.emittedEvents);
+```
+
+<Note>
+The `instanceId` is passed inside the options object to `runCommand`, not as a command parameter. Command parameters are the named values declared in the command signature.
+</Note>

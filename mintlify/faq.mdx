@@ -1,0 +1,179 @@
+---
+title: "Frequently asked questions about Manifest"
+description: "Answers to the most common questions about Manifest's design, architecture, integration patterns, runtime semantics, and vNext features."
+sidebarTitle: "FAQ"
+---
+
+Manifest is an IR-first domain-specific language for encoding business rules, authorization policies, and event-driven workflows. The questions below address the most common points of confusion — from how Manifest compares to ORMs, to how the runtime evaluates guards and policies, to what's coming in vNext.
+
+<AccordionGroup>
+
+  <Accordion title="What is Manifest and who is it for?">
+    Manifest is a domain-specific language for defining business rules and workflows with declarative specifications. It is **IR-first**: the Intermediate Representation (IR) is the single source of truth for program semantics, not the generated TypeScript or route code.
+
+    The primary consumers are **AI agents** that emit, validate, and reason about Manifest programs. Secondary consumers are developers who want:
+    - Declarative business rules that compile to full-stack implementations
+    - Deterministic execution — identical IR plus identical context always produces identical results
+    - Guard-based authorization that cannot be bypassed
+    - Event-driven architectures with guaranteed ordering
+  </Accordion>
+
+  <Accordion title="What makes Manifest different from ORMs like Prisma?">
+    Prisma and Manifest solve different problems. Prisma gives you a type-safe query API over a database schema. Manifest gives you an executable contract over your business rules.
+
+    | Prisma | Manifest |
+    |--------|----------|
+    | Database schema + type-safe queries | Business rules + execution semantics |
+    | Queries are imperative (`findMany`, `update`) | Commands are declarative (`create Recipe { ... }`) |
+    | No built-in authorization | Guards and policies are first-class |
+    | No event system | Events are first-class with ordering guarantees |
+    | Generated code is source | IR is source; generated code is derivative |
+
+    You can use Prisma as a storage adapter behind Manifest — it is not a replacement.
+  </Accordion>
+
+  <Accordion title="What are the two integration patterns?">
+    Manifest supports two ways to integrate with your application:
+
+    1. **Projections** — Generate platform-specific code (Next.js App Router routes, Express controllers, TypeScript types, client SDKs) directly from IR. Use this when your mutation flow is standard runtime execution and you want convention-over-configuration.
+
+    2. **Embedded Runtime** — Write application handlers that call `RuntimeEngine.runCommand` directly. Use this when you need custom orchestration, custom event handling pipelines, or framework-specific behavior.
+
+    | Use projections when | Use embedded runtime when |
+    |---------------------|--------------------------|
+    | You want generated route/controller code | You need custom orchestration around commands |
+    | Your mutation flow is standard | You need custom event handling pipelines |
+    | You want convention-over-configuration | You need framework-specific behavior |
+  </Accordion>
+
+  <Accordion title="Can I use Manifest with my existing database?">
+    Yes. Manifest does not require a specific database. You can connect any storage backend by implementing the `Store` interface and passing it through `storeProvider` in `RuntimeOptions`:
+
+    ```typescript
+    interface Store<T extends EntityInstance = EntityInstance> {
+      getAll(): Promise<T[]>;
+      getById(id: string): Promise<T | undefined>;
+      create(data: Partial<T>): Promise<T>;
+      update(id: string, data: Partial<T>): Promise<T | undefined>;
+      delete(id: string): Promise<boolean>;
+      clear(): Promise<void>;
+    }
+    ```
+
+    Pass your store implementation when constructing `RuntimeEngine`:
+
+    ```typescript
+    const runtime = new RuntimeEngine(ir, {
+      userId: 'user-123',
+      storeProvider: (entityName) => {
+        if (entityName === 'Recipe') return new MyRecipeStore();
+        return undefined; // fall back to in-memory store
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="What storage targets are supported?">
+    The runtime **must** support `memory`. The following targets **may** be supported depending on your environment:
+
+    - `localStorage` (browser)
+    - `postgres` (Node.js)
+    - `supabase` (Node.js / Edge)
+    - Custom stores via the `Store` interface and `storeProvider`
+
+    Unsupported targets emit diagnostics — there is no silent fallback unless you explicitly configure one.
+  </Accordion>
+
+  <Accordion title="Does Manifest handle authentication?">
+    No. Manifest handles **authorization** (policies and guards), not authentication.
+
+    Authentication is the responsibility of your application layer — Clerk, Auth0, NextAuth, and similar providers all work. You derive identity from your auth context and inject authoritative values (for example `userId`, `tenantId`, `user.role`) into the runtime context before command execution.
+
+    <Warning>
+      Never read `id`, `userId`, `tenantId`, or `orgId` from `request.json()`. Always derive these values from your auth context and inject them into the runtime. Client-supplied identity values cannot be trusted.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="What is the execution order for commands?">
+    Manifest commands execute in a fixed, deterministic order defined in the language specification:
+
+    1. **Policy check** — evaluated for `execute` or `all` scope
+    2. **Guard evaluation** — evaluated in declaration order; halts on the first falsey result
+    3. **Constraint validation** — checked by severity (`block`, `warn`, `ok`)
+    4. **Action execution** — `persist`, `publish`, `effect` actions run in order
+    5. **Event emission** — events emitted in declaration order
+    6. **Return** — `CommandResult` is returned to the caller
+
+    This order is not configurable. If a step fails, execution halts immediately and the result includes the relevant failure details.
+  </Accordion>
+
+  <Accordion title="What happens when a guard fails?">
+    Execution halts immediately. There is no auto-repair, no fallback, and no permissive default.
+
+    The runtime returns a `CommandResult` with `success: false` and a `guardFailure` object that includes the failing guard's index, expression, and resolved values at the time of failure. Always inspect `result.guardFailure`, not a `result.diagnostics` field — `CommandResult` does not have a `diagnostics` field.
+
+    ```typescript
+    const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
+
+    if (!result.success && result.guardFailure) {
+      console.error('Guard failed:', {
+        index: result.guardFailure.index,
+        expression: result.guardFailure.formatted,
+        resolved: result.guardFailure.resolved
+      });
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="What is the difference between read, execute, and all policy scopes?">
+    Policy scope controls when a policy is enforced during command processing:
+
+    - **`read`** — NOT enforced by default. Reads are application-defined and may bypass the runtime entirely, querying storage directly.
+    - **`execute`** — Enforced during command execution. Use this for policies that must block mutations.
+    - **`all`** — Enforced during all operations.
+
+    If you define a `read` policy and it does not appear to be enforced, this is correct behavior. Only `execute` and `all` scoped policies are checked by the runtime during `runCommand`. See also: [Read policies not enforced](/troubleshooting) in the troubleshooting guide.
+  </Accordion>
+
+  <Accordion title="What are constraint severity levels?">
+    Constraints have three severity levels that control whether a violation blocks execution:
+
+    - **`block`** — The constraint must pass for the command to proceed. This is the default.
+    - **`warn`** — Execution continues even if the constraint fails. The violation is recorded in `result.nonBlockingViolations`.
+    - **`ok`** — Informational only. Never blocks execution.
+
+    ```typescript
+    // Check non-blocking violations after a successful command
+    if (result.nonBlockingViolations) {
+      console.warn('Non-blocking violations:', result.nonBlockingViolations);
+    }
+    ```
+
+    If a constraint is not blocking execution when you expect it to, verify that its severity is set to `block`.
+  </Accordion>
+
+  <Accordion title="Are read operations (GET) validated by the runtime?">
+    No. Per the language specification, policies scoped to `read` are not enforced by default.
+
+    Reads are application-defined. Generated projections (for example, Next.js GET route handlers) may bypass the runtime entirely and query storage directly. Only mutations — commands executed via `runtime.runCommand()` — go through the full guard, policy, constraint, and event pipeline.
+
+    If you need language-level enforcement of read policies, that requires adding read execution semantics to the spec, defining policy enforcement behavior, writing conformance tests, and updating the runtime accordingly.
+  </Accordion>
+
+  <Accordion title="What are vNext features?">
+    vNext features are implemented in the IR and runtime and are ready for adoption today. They are not behind a flag. The current vNext features are:
+
+    - **Constraint severity and outcomes** — `block`, `warn`, `ok` severity levels with `nonBlockingViolations` in `CommandResult`
+    - **Command-level constraints** — Constraints attached to individual commands, not just entities
+    - **Entity concurrency controls** — Optimistic concurrency on entity mutations
+    - **Policy-based authorization** — `read`, `execute`, and `all` scoped policies with full enforcement semantics
+    - **IR caching** — Compiled IR can be cached to disk to avoid recompilation on every request
+
+    See the vNext spec and migration guide for adoption instructions.
+  </Accordion>
+
+</AccordionGroup>
+
+<Note>
+  Looking for troubleshooting help instead? See the [Troubleshooting guide](/troubleshooting) for specific error messages and fixes.
+</Note>

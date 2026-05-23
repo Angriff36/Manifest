@@ -1,0 +1,198 @@
+---
+title: "Quickstart: install Manifest and run your first command"
+sidebarTitle: "Quickstart"
+description: "Install @angriff36/manifest, write your first .manifest file, compile it to IR, and execute a command with RuntimeEngine in under five minutes."
+---
+
+This guide walks you from a blank project to a running Manifest program. You will install the package, write a `.manifest` source file, compile it to IR, and call `RuntimeEngine.runCommand()` to see the result. All code examples use real APIs from the package — nothing is invented.
+
+<Steps>
+
+<Step title="Install the package">
+
+Add `@angriff36/manifest` to your project. Node.js 18 or later is required.
+
+<CodeGroup>
+
+```bash npm
+npm install @angriff36/manifest
+```
+
+```bash pnpm
+pnpm add @angriff36/manifest
+```
+
+</CodeGroup>
+
+</Step>
+
+<Step title="Write your first .manifest file">
+
+Create `my-program.manifest` in your project root. This entity models a simple to-do item with two commands and an authorization policy.
+
+```manifest
+entity Todo {
+  property id: string
+  property title: string
+  property completed: boolean
+  property createdAt: timestamp
+
+  command create(title: string) {
+    guard title is not empty
+    guard title.length < 100
+
+    mutate this.title = title
+    mutate this.completed = false
+    mutate this.createdAt = now()
+  }
+
+  command complete() {
+    guard this.completed is false
+
+    mutate this.completed = true
+    emit TodoCompleted { todoId: this.id }
+  }
+
+  policy read allow if user.role == "admin"
+  policy execute allow if user.id == this.createdBy
+}
+```
+
+Each `command` defines a named business operation. The `guard` lines gate execution — if any guard evaluates to `false`, the command stops immediately and returns diagnostics. The `policy` lines enforce authorization before guards even run.
+
+</Step>
+
+<Step title="Compile the source to IR">
+
+Use the `compileToIR` export to parse the source and produce an IR object. Always check diagnostics before proceeding — compilation errors are surfaced here, not thrown as exceptions.
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { readFileSync } from 'fs';
+
+const source = readFileSync('my-program.manifest', 'utf-8');
+
+const { ir, diagnostics } = await compileToIR(source);
+
+if (diagnostics.some(d => d.severity === 'error')) {
+  console.error('Compilation errors:');
+  diagnostics.forEach(d => console.error(`  ${d.message}`));
+  process.exit(1);
+}
+
+console.log('Compiled IR:', JSON.stringify(ir, null, 2));
+```
+
+You can also compile inline source directly — useful for tests and prototyping:
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+
+const source = `
+  entity Todo {
+    property id: string
+    property title: string
+  }
+`;
+
+const { ir, diagnostics } = await compileToIR(source);
+```
+
+<Note>
+  The IR is plain JSON. You can serialize it to disk, cache it, or pass it to any downstream consumer — including the `RuntimeEngine`, projections, and conformance tooling.
+</Note>
+
+</Step>
+
+<Step title="Execute a command with RuntimeEngine">
+
+Import `RuntimeEngine` from the package root and construct it with your compiled IR and a runtime context. The context provides the user identity and tenant that guards and policies resolve against.
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+
+const runtime = new RuntimeEngine(ir, {
+  userId: 'user-123',
+  tenantId: 'tenant-456',
+});
+
+// Run the "create" command on the Todo entity
+const createResult = await runtime.runCommand('Todo', 'create', {
+  title: 'Learn Manifest'
+});
+
+if (!createResult.success) {
+  console.error('Failed:', createResult.diagnostics);
+  process.exit(1);
+}
+
+console.log('Created:', createResult.instance);
+```
+
+When the command succeeds, `createResult.instance` contains the resulting entity state. When it fails — because a guard evaluated to `false` or a policy denied access — `createResult.diagnostics` tells you exactly which check failed and what values were resolved.
+
+</Step>
+
+<Step title="Chain a second command and inspect events">
+
+Use the instance returned by `create` to run `complete`. Check `completeResult.events` to see the `TodoCompleted` event that the command emitted.
+
+```typescript
+const completeResult = await runtime.runCommand('Todo', 'complete', {
+  id: createResult.instance.id
+});
+
+if (completeResult.success) {
+  console.log('Events:', completeResult.events);
+  // Output: Events: [{ name: 'TodoCompleted', channel: 'default', ... }]
+}
+```
+
+You can also subscribe to events using `runtime.on`:
+
+```typescript
+runtime.on('TodoCompleted', (event) => {
+  console.log('Todo completed:', event.payload.todoId);
+
+  // Trigger side effects
+  sendEmail(event.payload.todoId);
+  updateAnalytics(event.payload.todoId);
+});
+```
+
+</Step>
+
+</Steps>
+
+## Running the CLI instead
+
+If you prefer a command-line workflow, use the `manifest` CLI that ships with the package:
+
+```bash
+# Compile a .manifest file to IR
+manifest compile my-program.manifest --output ir/
+
+# Compile and generate Next.js routes in one step
+manifest build my-program.manifest --projection nextjs --output app/api/
+
+# Interactive project setup (creates manifest.config.yaml)
+manifest init
+```
+
+<Tip>
+  Run `manifest init` once to create a `manifest.config.yaml` for your project. After that, `manifest build` uses your config defaults and you don't need to repeat flags on every invocation.
+</Tip>
+
+## Troubleshooting
+
+**"Entity not found in IR"** — Entity names are case-sensitive. Make sure the name you pass to `runCommand` exactly matches the `entity` declaration in your source file.
+
+**"Guard failed but no diagnostic"** — Check that you aren't silently catching errors before inspecting `result.diagnostics`. The runtime always emits a diagnostic for every guard failure, including the guard index, the expression, and resolved sub-expression values.
+
+**Compilation errors after a small change** — Conformance tests treat compilation output as executable semantics. If something stops compiling, you've changed language meaning. Review your source against the language specification.
+
+## Next steps
+
+- **[Installation](/installation)** — full install options, all package exports, TypeScript configuration, and CLI setup
+- **[Language reference](/language/entities)** — complete specification for entities, commands, guards, policies, events, and stores
+- **[Integration patterns](/integration/overview)** — how to use projections and the embedded runtime together in a real application

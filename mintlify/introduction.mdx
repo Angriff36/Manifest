@@ -1,0 +1,99 @@
+---
+title: "Manifest: a declarative domain language and runtime"
+sidebarTitle: "Introduction"
+description: "Manifest is a declarative domain modeling language that compiles to IR, letting you define entities, commands, guards, and policies in code."
+---
+
+Manifest is a formal language for expressing domain logic — the rules, constraints, and operations that define how your application's data actually behaves. You write `.manifest` source files that describe entities with typed properties, commands that mutate state, guards that gate execution, policies that enforce authorization, and events that notify downstream systems. The compiler transforms that source into a compact Intermediate Representation (IR), and the `RuntimeEngine` executes the IR deterministically — enforcing every guard and policy in strict order, every time.
+
+## The core mental model
+
+Every Manifest program moves through two stages:
+
+1. **Compile** — your `.manifest` source is parsed and transformed to IR v1 JSON. The IR is the canonical contract between the compiler and everything downstream.
+2. **Execute** — the `RuntimeEngine` accepts the IR plus a runtime context (user identity, tenant, etc.) and runs commands. Execution always follows the same order: policies → guards → actions → event emissions.
+
+Because the IR is immutable at runtime, all variability enters through the runtime context. Identical IR plus identical context always produces identical results.
+
+## Key language constructs
+
+| Construct | What it does |
+|-----------|-------------|
+| **Entity** | Defines a data structure with typed properties, defaults, computed values, and relationships |
+| **Command** | A named business operation with parameters, guards, actions (`mutate`, `emit`, `compute`), and event emissions |
+| **Guard** | A boolean expression evaluated in order; execution halts immediately on the first falsey guard |
+| **Policy** | An authorization rule scoped to an entity action (`read`, `write`, `execute`, `all`) |
+| **Event** | A typed definition with a channel name and payload schema, used for outbox patterns and real-time communication |
+| **Store** | Declares where entity instances persist — `memory` for development, or a database adapter for production |
+
+## A real example
+
+The following entity models a kitchen prep task. It defines computed properties, guards that restrict who can run each command, and events emitted on state transitions.
+
+```manifest
+entity PrepTask {
+  property required id: string
+  property required name: string
+  property assignedTo: string?
+  property status: string = "pending"
+  property priority: number = 1
+
+  computed isUrgent: boolean = priority >= 3
+
+  command claim(employeeId: string) {
+    guard self.status == "pending"
+    guard user.role == "cook" or user.role == "chef"
+    mutate assignedTo = employeeId
+    mutate status = "in_progress"
+    emit taskClaimed
+  }
+
+  command complete() {
+    guard self.status == "in_progress"
+    guard self.assignedTo == user.id
+    mutate status = "completed"
+    emit taskCompleted
+  }
+
+  policy canClaim execute: user.role in ["cook", "chef"]
+}
+
+store PrepTask in memory
+
+event taskClaimed: "kitchen.task.claimed" {
+  taskId: string
+  employeeId: string
+}
+
+event taskCompleted: "kitchen.task.completed" {
+  taskId: string
+  completedBy: string
+}
+```
+
+## How Manifest differs from ORMs
+
+ORMs map database tables to objects and handle queries. Manifest models domain _behavior_ — the rules and operations that govern what can happen to your data, not just its shape. Where an ORM lets you call `update()` freely, Manifest requires that every state change pass through a command with explicit guards and policy checks. The runtime refuses to skip them.
+
+This means your business rules live in one place — the `.manifest` file — rather than scattered across route handlers, service classes, and middleware.
+
+## Two integration patterns
+
+Most applications use one or both of:
+
+- **Projections** — run `manifest build` to auto-generate Next.js API routes directly from your `.manifest` files. Best for standard CRUD workflows.
+- **Embedded runtime** — import `RuntimeEngine` and call `runCommand()` directly in your own handlers. Best for complex workflows or when you need full control.
+
+## Where to go next
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Install the package and run your first command in under five minutes.
+  </Card>
+  <Card title="Installation" icon="package" href="/installation">
+    Full install options, package exports, TypeScript setup, and CLI reference.
+  </Card>
+  <Card title="Language reference" icon="book" href="/language/entities">
+    Complete specification for entities, commands, guards, policies, events, and stores.
+  </Card>
+</CardGroup>

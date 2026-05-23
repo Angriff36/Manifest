@@ -1,0 +1,214 @@
+---
+title: "Guards and policies: access control"
+description: "Use guards for precondition checks and policies for authorization. Both are boolean expressions evaluated in strict order before any action runs."
+sidebarTitle: "Guards & Policies"
+---
+
+Manifest separates authorization into two distinct mechanisms: **policies**, which control who is allowed to execute a command at all, and **guards**, which verify that the current state satisfies the preconditions for the command to proceed. Both are evaluated before any action runs, and neither can be bypassed.
+
+## Guards
+
+A guard is a boolean expression declared inside a command body. Guards are evaluated in declaration order. Execution halts on the first expression that evaluates to `false` — no later guards run, and no actions execute.
+
+```manifest
+entity Task {
+  property completed: boolean = false
+  property priority: number = 1
+
+  command complete() {
+    guard not self.completed
+    mutate completed = true
+    emit TaskCompleted
+  }
+
+  command setPriority(level: number) {
+    guard level >= 1 and level <= 5
+    mutate priority = level
+  }
+}
+```
+
+### Guard diagnostics
+
+When a guard fails, the runtime returns a `guardFailure` in the `CommandResult` with:
+
+- `guardIndex` — 1-based position of the failing guard
+- `expression` — the source expression as a string
+- `resolved` — array of `{ expression, value }` pairs showing what each sub-expression evaluated to
+
+This gives you enough information to explain the failure to the caller without any manual debugging.
+
+```typescript
+if (result.guardFailure) {
+  console.error(
+    `Guard ${result.guardFailure.guardIndex} failed: ${result.guardFailure.expression}`
+  );
+  for (const r of result.guardFailure.resolved) {
+    console.error(`  ${r.expression} => ${r.value}`);
+  }
+}
+```
+
+### Available bindings in guards
+
+Guard expressions evaluate in the command's evaluation context. You have access to:
+
+| Binding       | Value |
+|---------------|-------|
+| `self` / `this` | The current entity instance (or `null` when no instance is bound) |
+| `user`        | The current user object, or `null` when unauthenticated |
+| `context`     | The runtime context object |
+| `context.tenantId` | Active tenant ID (if provided by caller) |
+| `context.orgId` | Active organization ID (if provided) |
+| `context.actorId` | Acting user ID (if provided) |
+| `context.requestId` | Caller-supplied request ID |
+| Command params | Named parameters from the command signature |
+| `now()`       | Current time as milliseconds since epoch |
+| `uuid()`      | A new globally unique identifier |
+
+<Warning>
+If a guard references `user` and no user is provided to the runtime, the guard correctly fails. This is not a bug — it is the expected behavior. The runtime does not inject a permissive default `user` to make demos work.
+</Warning>
+
+### Operators in guard expressions
+
+Guards support the full expression language:
+
+| Category | Operators |
+|----------|-----------|
+| Arithmetic | `+`, `-`, `*`, `/`, `%` |
+| Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| Logical | `and`, `or`, `not`, `!` |
+| Membership | `in`, `contains` |
+| Conditional | `? :` (ternary) |
+
+`==` uses loose equality (`undefined == null` is `true`). Use `is not` or `!=` for strict inequality.
+
+## Policies
+
+A policy is a named boolean expression with a **scope** that controls when it is checked. Policies are declared outside entity blocks (or as entity-level defaults in vNext).
+
+```manifest
+policy adminOnly execute: user.role == "admin" "Only administrators can execute commands"
+```
+
+The expression after the scope keyword is evaluated before any command runs. If it returns `false`, the runtime returns a `policyDenial` result and no further execution occurs.
+
+### Policy scopes
+
+| Scope     | When enforced |
+|-----------|---------------|
+| `execute` | Before any command execution |
+| `read`    | On entity read operations (not enforced by default runtime) |
+| `write`   | On entity write operations (not enforced by default runtime) |
+| `all`     | Equivalent to `execute` in the default runtime |
+| `override` | Before authorizing a constraint override (vNext) |
+
+The runtime enforces `execute` and `all` scopes by default. `read`, `write`, and `delete` scopes are not enforced by the default runtime — they are available for custom adapter or projection logic.
+
+### Binding a policy to an entity
+
+A policy applies to all commands on a specific entity when you reference it inside the entity block or use the entity name in a standalone policy:
+
+```manifest
+entity Document {
+  property required title: string
+  property isPublic: boolean = false
+
+  command makePublic() {
+    mutate isPublic = true
+    emit DocumentPublished
+  }
+}
+
+policy adminOnly execute: user.role == "admin" "Only admins can execute"
+```
+
+In this example, `adminOnly` is a global policy. Bind it to a specific command by listing it inside the command body, or use `default policy` to apply it to every command on the entity.
+
+### Command-level policies
+
+Declare a policy inline within a command to override the entity's defaults:
+
+```manifest
+entity InventoryItem {
+  default policy execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
+
+  command consume(quantity: number) {
+    // Inherits default policy
+    guard quantity > 0
+    mutate stock = self.stock - quantity
+  }
+
+  command adjust(delta: number) {
+    // Overrides default — managers only
+    policy execute: user.role in ["kitchen_lead", "manager", "admin"]
+    mutate stock = self.stock + delta
+  }
+}
+```
+
+<Note>
+When a command declares its own `policy` list, the entity's `defaultPolicies` are **not merged** — the command's explicit policies fully replace the defaults.
+</Note>
+
+## Default policies (vNext)
+
+Use `default policy` on an entity to apply a policy to every command that does not declare its own:
+
+```manifest
+entity Task {
+  property required title: string
+  property status: string = "pending"
+  property assigneeId: string
+
+  default policy RequireAuth execute: user.id != null "Authentication required"
+
+  command complete() {
+    guard self.assigneeId == user.id or user.role == "admin"
+    mutate status = "completed"
+    emit TaskCompleted
+  }
+
+  command reassign(newAssigneeId: string) {
+    guard user.role == "admin" or user.role == "manager"
+    mutate assigneeId = newAssigneeId
+  }
+}
+```
+
+Both `complete` and `reassign` inherit `RequireAuth`. If you add a command with an explicit `policy` declaration, that command uses only its declared policy.
+
+### Inheritance rules
+
+1. If the command declares explicit policies, use only those.
+2. If the command has no explicit policies but the entity has `defaultPolicies`, use the entity defaults.
+3. If neither has policies, no policy check runs (the scanner will warn).
+
+The IR compiler expands default policies into each command's effective policy list at compile time. The runtime always evaluates an explicit, expanded list — it does not perform inheritance at runtime.
+
+## Override policies (vNext)
+
+The `override` scope is a special policy used to authorize constraint bypasses. When a constraint is marked `overrideable`, the runtime evaluates the referenced override policy before granting the bypass:
+
+```manifest
+entity FinancialRecord {
+  command process() {
+    constraint overrideable requiresApproval {
+      expression: self.status == "approved" or self.amount <= 500
+      severity: block
+      message: "Must be approved before processing"
+      overridePolicy: canApproveLargeAmounts
+    }
+
+    mutate status = "processed"
+    emit RecordProcessed
+  }
+}
+
+policy canApproveLargeAmounts override:
+  user.role == "manager" or user.role == "admin"
+  "Only managers and admins can approve large amounts"
+```
+
+If the override policy passes, the constraint outcome is marked `overridden: true` and the runtime emits a synthetic `OverrideApplied` event. Attempts to override a constraint that is not marked `overrideable` are always rejected.
