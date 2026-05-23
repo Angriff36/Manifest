@@ -134,6 +134,44 @@ The issues below cover the most common problems reported when working with Manif
     ```
   </Accordion>
 
+  <Accordion title='"Cannot find module ./defaults" when importing the Next.js projection'>
+    **What you see**
+
+    A fresh install of `@angriff36/manifest` 0.7.0 or 0.8.0 fails the moment you import the Next.js projection:
+
+    ```text
+    ERR_MODULE_NOT_FOUND: Cannot find module
+      .../dist/manifest/projections/nextjs/defaults
+      imported from .../dist/manifest/projections/nextjs/generator.js
+    ```
+
+    You can reproduce it with a one-liner:
+
+    ```bash
+    node -e "import('@angriff36/manifest/projections/nextjs')"
+    ```
+
+    **Why it happens**
+
+    Version 0.7.0 split the Next.js projection defaults into a separate `defaults` module, but the `generator.ts` import was written as `from './defaults'` without an explicit `.js` extension. TypeScript with `moduleResolution: bundler` accepted the extensionless form at compile time, so the emitted JavaScript in `dist/` shipped without the suffix. Node.js ESM requires the explicit `.js` suffix on relative imports at runtime, so every downstream consumer fails on first import.
+
+    **How to fix it**
+
+    Upgrade to **0.8.1** or later. That release restores the `.js` suffix on the `./defaults` import in the Next.js projection generator:
+
+    ```bash
+    pnpm add @angriff36/manifest@latest
+    ```
+
+    Verify the fix in your project:
+
+    ```bash
+    node -e "import('@angriff36/manifest/projections/nextjs').then(m => console.log(Object.keys(m)))"
+    ```
+
+    Expected result: the import resolves and prints the projection's exported names (including `NextJsProjection`). There is no behavioural change — only the runtime import path is corrected.
+  </Accordion>
+
   <Accordion title="Windows: manifest exits 0 with no output">
     **What you see**
 
