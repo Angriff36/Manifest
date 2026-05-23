@@ -67,6 +67,13 @@ export const directWritesDetector: Detector = {
     const findings: AuditFinding[] = [];
     const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
     const ignorePatterns = ctx.excludeGlobs;
+    // Default globs and user --include patterns may overlap (e.g. defaults
+    // already include `app/api/**/route.ts` and a user passes
+    // `--include 'app/api/**/*.ts'`). Without dedup, the same file gets
+    // scanned multiple times and emits duplicate findings — which then
+    // cascade into duplicate BYPASS_VIOLATION entries via
+    // bypass-violations.
+    const seen = new Set<string>();
     for (const pattern of scanPatterns) {
       const matches = await glob(pattern, {
         cwd: ctx.root,
@@ -74,6 +81,8 @@ export const directWritesDetector: Detector = {
         ignore: ignorePatterns,
       });
       for (const file of matches) {
+        if (seen.has(file)) continue;
+        seen.add(file);
         findings.push(...(await scanFile(file, ctx.root)));
       }
     }
