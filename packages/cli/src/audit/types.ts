@@ -38,6 +38,18 @@ export interface DetectorContext {
   entitiesRegistry?: string;
   /** Optional path to a bypass registry JSON (bypasses.json). */
   bypassRegistry?: string;
+  /**
+   * Extra glob patterns appended to every detector's scan list. Repo-root
+   * relative; allows callers to widen the surface beyond the detector's
+   * built-in globs.
+   */
+  includeGlobs?: string[];
+  /**
+   * Extra glob patterns appended to every detector's ignore list. Repo-root
+   * relative; allows callers to suppress noisy or generated paths without
+   * editing each detector.
+   */
+  excludeGlobs?: string[];
 }
 
 export interface Detector {

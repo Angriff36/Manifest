@@ -26,16 +26,16 @@ import { loadCommandSet, extractRunCommandCalls } from './unregistered-command-c
 // like `useCreateShipment` and route helpers like `createLead` that wrap
 // fetch calls to API routes (where the runtime dispatch actually happens).
 const SCAN_GLOBS = [
-  'app/api/**/*.{ts,tsx}',
-  'src/app/api/**/*.{ts,tsx}',
-  'apps/*/app/api/**/*.{ts,tsx}',
-  'app/actions/**/*.{ts,tsx}',
-  'src/app/actions/**/*.{ts,tsx}',
-  'apps/*/app/actions/**/*.{ts,tsx}',
-  'pages/api/**/*.{ts,tsx}',
-  'src/pages/api/**/*.{ts,tsx}',
-  'jobs/**/*.{ts,tsx}',
-  'src/jobs/**/*.{ts,tsx}',
+  'app/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/app/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'apps/*/app/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'app/actions/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/app/actions/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'apps/*/app/actions/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'pages/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/pages/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'jobs/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/jobs/**/*.{ts,tsx,js,jsx,mjs,cjs}',
 ];
 
 const EXCLUDE_GLOBS = [
@@ -44,10 +44,8 @@ const EXCLUDE_GLOBS = [
   '**/.next/**',
   '**/build/**',
   '**/generated/**',
-  '**/*.test.ts',
-  '**/*.test.tsx',
-  '**/*.spec.ts',
-  '**/*.spec.tsx',
+  '**/*.test.{ts,tsx,js,jsx,mjs,cjs}',
+  '**/*.spec.{ts,tsx,js,jsx,mjs,cjs}',
   '**/__tests__/**',
 ];
 
@@ -122,8 +120,10 @@ export const existingCommandAvailableDetector: Detector = {
     }
     const findings: AuditFinding[] = [];
     const seen = new Set<string>();
-    for (const pat of SCAN_GLOBS) {
-      const files = await glob(pat, { cwd: ctx.root, absolute: true, ignore: EXCLUDE_GLOBS });
+    const scanPatterns = [...SCAN_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = [...EXCLUDE_GLOBS, ...(ctx.excludeGlobs ?? [])];
+    for (const pat of scanPatterns) {
+      const files = await glob(pat, { cwd: ctx.root, absolute: true, ignore: ignorePatterns });
       for (const file of files) {
         if (seen.has(file)) continue;
         seen.add(file);

@@ -189,6 +189,57 @@ describe('enforceSurfaceCommand', () => {
     expect(Array.isArray(j.findings)).toBe(true);
   });
 
+  it('honors --include by widening the scan surface', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    // File lives outside the default scan globs (no app/, no api/).
+    await writeRoute(
+      root,
+      'lib/server/legacy.ts',
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const without = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+    });
+    const withInclude = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      include: ['lib/**/*.{ts,js}'],
+    });
+    spy.mockRestore();
+    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+    expect(withInclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+  });
+
+  it('honors --exclude by suppressing a path that would otherwise be flagged', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    await writeRoute(
+      root,
+      'app/api/legacy/route.ts',
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const without = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+    });
+    const withExclude = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      exclude: ['app/api/legacy/**'],
+    });
+    spy.mockRestore();
+    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+    expect(withExclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+  });
+
   it('renders text output with summary counts when format is text', async () => {
     const root = await tempDir();
     const reg = await writeRegistry(root, []);

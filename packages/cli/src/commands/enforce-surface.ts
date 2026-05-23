@@ -141,6 +141,8 @@ export async function enforceSurfaceCommand(
     commandsRegistry: resolve(options.commandsRegistry),
     entitiesRegistry: resolve(options.entitiesRegistry),
     bypassRegistry: resolve(options.bypassRegistry),
+    includeGlobs: options.include,
+    excludeGlobs: options.exclude,
   };
 
   const raw: AuditFinding[] = [];

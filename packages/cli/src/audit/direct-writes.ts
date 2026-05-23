@@ -17,15 +17,15 @@ import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
 
 const ROUTE_GLOBS = [
-  'app/api/**/route.ts',
-  'src/app/api/**/route.ts',
-  'apps/*/app/api/**/route.ts',
-  'app/actions/**/*.ts',
-  'src/app/actions/**/*.ts',
-  'apps/*/app/actions/**/*.ts',
-  'jobs/**/*.ts',
-  'src/jobs/**/*.ts',
-  'apps/*/jobs/**/*.ts',
+  'app/api/**/route.{ts,js,mjs,cjs}',
+  'src/app/api/**/route.{ts,js,mjs,cjs}',
+  'apps/*/app/api/**/route.{ts,js,mjs,cjs}',
+  'app/actions/**/*.{ts,js,mjs,cjs}',
+  'src/app/actions/**/*.{ts,js,mjs,cjs}',
+  'apps/*/app/actions/**/*.{ts,js,mjs,cjs}',
+  'jobs/**/*.{ts,js,mjs,cjs}',
+  'src/jobs/**/*.{ts,js,mjs,cjs}',
+  'apps/*/jobs/**/*.{ts,js,mjs,cjs}',
 ];
 
 const ALLOWLIST_SEGMENTS = [
@@ -65,8 +65,14 @@ export const directWritesDetector: Detector = {
   description: 'Flag direct ORM writes outside runtime adapters',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
-    for (const pattern of ROUTE_GLOBS) {
-      const matches = await glob(pattern, { cwd: ctx.root, absolute: true });
+    const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = ctx.excludeGlobs;
+    for (const pattern of scanPatterns) {
+      const matches = await glob(pattern, {
+        cwd: ctx.root,
+        absolute: true,
+        ignore: ignorePatterns,
+      });
       for (const file of matches) {
         findings.push(...(await scanFile(file, ctx.root)));
       }

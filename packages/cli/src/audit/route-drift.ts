@@ -56,8 +56,14 @@ export const routeDriftDetector: Detector = {
   description: 'Flag per-command routes that drift from the canonical dispatcher',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
-    for (const pattern of ROUTE_GLOBS) {
-      const matches = await glob(pattern, { cwd: ctx.root, absolute: true });
+    const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = ctx.excludeGlobs;
+    for (const pattern of scanPatterns) {
+      const matches = await glob(pattern, {
+        cwd: ctx.root,
+        absolute: true,
+        ignore: ignorePatterns,
+      });
       for (const file of matches) {
         findings.push(...(await scanFile(file, ctx.root)));
       }
