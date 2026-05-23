@@ -121,6 +121,13 @@
           "description": "Spaces of indentation in generated code.",
           "default": 2
         },
+        "unauthorizedStatus": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 499,
+          "description": "HTTP status returned when the auth helper rejects the request OR when it throws (invalid/expired token). Auth failures MUST NEVER surface as 500.",
+          "default": 401
+        },
         "tenantProvider": {
           "type": "object",
           "additionalProperties": false,
@@ -137,7 +144,8 @@
           "required": ["importPath", "functionName", "lookupKey"]
         },
         "dispatcher": { "$ref": "#/definitions/DispatcherOptions" },
-        "concreteCommandRoutes": { "$ref": "#/definitions/ConcreteCommandRoutesOptions" }
+        "concreteCommandRoutes": { "$ref": "#/definitions/ConcreteCommandRoutesOptions" },
+        "readRoutes": { "$ref": "#/definitions/ReadRoutesOptions" }
       }
     },
     "DispatcherOptions": {
@@ -168,24 +176,46 @@
         },
         "deriveInstanceId": {
           "type": "boolean",
-          "description": "When true (and executionMode is externalExecutor), the handler derives an instanceId from body.instanceId or body.id and passes it to the executor.",
-          "default": false
+          "description": "When true (default), the dispatcher extracts an instanceId from body.instanceId or body.id and forwards it to runCommand / the executor. Non-create commands need this to address the target instance; create commands ignore it harmlessly.",
+          "default": true
+        },
+        "path": {
+          "type": "string",
+          "description": "Dispatcher route path relative to appDir. Override only if your app uses a non-canonical prefix (e.g. /api/v1/manifest/...).",
+          "default": "/manifest/[entity]/commands/[command]/route.ts"
         }
       }
     },
     "ConcreteCommandRoutesOptions": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Policy for the deprecated per-command 'concrete' routes (the nextjs.command surface).",
+      "description": "Policy for the deprecated per-command 'concrete' routes (the nextjs.command surface). Opt-in: the canonical dispatcher is the single write surface by default.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "When false, nextjs.command artifacts are suppressed entirely.",
-          "default": true
+          "description": "When false (default), nextjs.command artifacts are suppressed entirely and 'manifest generate --surface all' does not emit them. Opt in only if you still need per-command routes for legacy callers.",
+          "default": false
         },
         "legacyAliasesOnly": {
           "type": "boolean",
-          "description": "When true (default), generated concrete routes carry the DEPRECATED ALIAS banner and point callers at the dispatcher. Set false only if you intentionally treat per-command routes as a first-class surface.",
+          "description": "When true (default), emitted concrete routes carry the DEPRECATED ALIAS banner pointing at the dispatcher. Set false only if you intentionally treat per-command routes as a first-class surface.",
+          "default": true
+        }
+      }
+    },
+    "ReadRoutesOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Policy for direct database read routes (GET list, GET detail). Direct reads bypass the runtime engine and assume a Prisma-compatible client at databaseImportPath.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When false, nextjs.route and nextjs.detail surfaces emit no artifact (info diagnostic only).",
+          "default": true
+        },
+        "directDbReads": {
+          "type": "boolean",
+          "description": "When false, read route stubs are emitted without inlining a Prisma call — useful for projects that route reads through a separate query layer.",
           "default": true
         }
       }

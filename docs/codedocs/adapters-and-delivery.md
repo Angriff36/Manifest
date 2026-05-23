@@ -3,6 +3,18 @@ title: "Adapters and Delivery"
 description: "See how Manifest plugs in storage, audit, outbox, idempotency, and deterministic effect boundaries."
 ---
 
+> **AUTO-GENERATED REFERENCE.** This file in `docs/codedocs/` is a
+> code-derived reference snapshot of repository structure and signatures.
+> It is intended for tooling (Context7, search indexers, etc.) and is
+> NOT verified prose on every regeneration. For normative, hand-curated
+> documentation see [`docs/spec/`](../spec/) — in particular
+> [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) for language
+> semantics and [`docs/spec/config/manifest.config.md`](../spec/config/manifest.config.md)
+> for projection configuration. Projections are described here as
+> **tooling, not language semantics** — they consume IR and emit
+> artifacts; they do not redefine policy/guard/constraint behaviour.
+
+
 Manifest keeps the core runtime small by expressing integration points as explicit interfaces. Storage adapters, audit sinks, outbox stores, and idempotency stores are all opt-in contracts, which means you can change operational behavior without changing language semantics.
 
 ## What This Concept Is

@@ -105,6 +105,7 @@ describe('nextjs.dispatcher executionMode', () => {
     const code = target.generate(ir, {
       surface: 'nextjs.dispatcher',
       options: {
+        // deriveInstanceId is now true by default — pin explicitly for clarity.
         dispatcher: { executionMode: 'externalExecutor', deriveInstanceId: true },
       },
     }).artifacts[0].code;
@@ -114,7 +115,7 @@ describe('nextjs.dispatcher executionMode', () => {
     expect(code).toContain('instanceId,');
   });
 
-  it('externalExecutor without deriveInstanceId does NOT emit instanceId', async () => {
+  it('externalExecutor with explicit deriveInstanceId:false does NOT emit instanceId', async () => {
     const ir = await sampleIR();
     const code = target.generate(ir, {
       surface: 'nextjs.dispatcher',
@@ -158,30 +159,47 @@ describe('nextjs.command concreteCommandRoutes config', () => {
     return result.ir!;
   }
 
-  it('legacyAliasesOnly: true (default) keeps DEPRECATED ALIAS banner', async () => {
+  it('default concreteCommandRoutes.enabled is false — surface returns info diagnostic', async () => {
+    // Goal step 3: dispatcher-only by default. Concrete per-command routes
+    // must be opt-in. With no options, requesting nextjs.command yields no
+    // artifact and an info diagnostic.
+    const ir = await sampleIR();
+    const result = target.generate(ir, {
+      surface: 'nextjs.command',
+      entity: 'Recipe',
+      command: 'create',
+    });
+    expect(result.artifacts).toHaveLength(0);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: 'CONCRETE_COMMAND_ROUTES_DISABLED', severity: 'info' })
+    );
+  });
+
+  it('opt-in concreteCommandRoutes.enabled:true keeps DEPRECATED ALIAS banner by default', async () => {
     const ir = await sampleIR();
     const code = target.generate(ir, {
       surface: 'nextjs.command',
       entity: 'Recipe',
       command: 'create',
+      options: { concreteCommandRoutes: { enabled: true } },
     }).artifacts[0].code;
 
     expect(code).toContain('DEPRECATED ALIAS');
   });
 
-  it('legacyAliasesOnly: false drops the DEPRECATED ALIAS banner', async () => {
+  it('opt-in + legacyAliasesOnly:false drops the DEPRECATED ALIAS banner', async () => {
     const ir = await sampleIR();
     const code = target.generate(ir, {
       surface: 'nextjs.command',
       entity: 'Recipe',
       command: 'create',
-      options: { concreteCommandRoutes: { legacyAliasesOnly: false } },
+      options: { concreteCommandRoutes: { enabled: true, legacyAliasesOnly: false } },
     }).artifacts[0].code;
 
     expect(code).not.toContain('DEPRECATED ALIAS');
   });
 
-  it('concreteCommandRoutes.enabled: false suppresses concrete routes', async () => {
+  it('explicit concreteCommandRoutes.enabled:false suppresses concrete routes', async () => {
     const ir = await sampleIR();
     const result = target.generate(ir, {
       surface: 'nextjs.command',
@@ -203,6 +221,8 @@ describe('nextjs.command concreteCommandRoutes config', () => {
       entity: 'Recipe',
       command: 'create',
       options: {
+        // Must opt in to concrete routes since default is now false.
+        concreteCommandRoutes: { enabled: true },
         dispatcher: {
           executionMode: 'externalExecutor',
           executorImportPath: '@my-app/manifest-executor',
@@ -228,14 +248,18 @@ describe('exported defaults', () => {
     expect(NEXTJS_DEFAULTS.deletedAtProperty).toBe('deletedAt');
   });
 
-  it('DISPATCHER_DEFAULTS preserves inline mode as the back-compat default', () => {
+  it('DISPATCHER_DEFAULTS: inline mode + deriveInstanceId=true (extract for non-create)', () => {
     expect(DISPATCHER_DEFAULTS.enabled).toBe(true);
     expect(DISPATCHER_DEFAULTS.executionMode).toBe('inline');
-    expect(DISPATCHER_DEFAULTS.deriveInstanceId).toBe(false);
+    // Goal step 4: non-create commands must extract instanceId — default ON.
+    expect(DISPATCHER_DEFAULTS.deriveInstanceId).toBe(true);
+    expect(DISPATCHER_DEFAULTS.path).toBe('/manifest/[entity]/commands/[command]/route.ts');
   });
 
-  it('CONCRETE_COMMAND_ROUTES_DEFAULTS marks per-command routes as legacy aliases', () => {
-    expect(CONCRETE_COMMAND_ROUTES_DEFAULTS.enabled).toBe(true);
+  it('CONCRETE_COMMAND_ROUTES_DEFAULTS: opt-in (enabled=false), legacyAliasesOnly=true', () => {
+    // Goal step 3: dispatcher-only by default. Concrete per-command routes
+    // must be opt-in.
+    expect(CONCRETE_COMMAND_ROUTES_DEFAULTS.enabled).toBe(false);
     expect(CONCRETE_COMMAND_ROUTES_DEFAULTS.legacyAliasesOnly).toBe(true);
   });
 
@@ -244,15 +268,16 @@ describe('exported defaults', () => {
     expect(snap).toMatchInlineSnapshot(`
       {
         "concreteCommandRoutes": {
-          "enabled": true,
+          "enabled": false,
           "legacyAliasesOnly": true,
         },
         "dispatcher": {
-          "deriveInstanceId": false,
+          "deriveInstanceId": true,
           "enabled": true,
           "executionMode": "inline",
           "executorImportName": "executeManifestCommand",
           "executorImportPath": "@/lib/manifest-executor",
+          "path": "/manifest/[entity]/commands/[command]/route.ts",
         },
         "nextjs": {
           "appDir": "apps/api/app/api",
@@ -268,6 +293,11 @@ describe('exported defaults', () => {
           "runtimeImportPath": "@/lib/manifest-runtime",
           "strictMode": true,
           "tenantIdProperty": "tenantId",
+          "unauthorizedStatus": 401,
+        },
+        "readRoutes": {
+          "directDbReads": true,
+          "enabled": true,
         },
         "routes": {
           "basePath": "/api",

@@ -153,6 +153,16 @@ export interface NextJsProjectionOptions {
   indentSize?: number;
 
   /**
+   * HTTP status returned when the auth helper rejects the request OR when
+   * it throws (e.g. invalid/expired token). Default 401. Configurable so
+   * apps that standardise on 403 to avoid leaking user-existence can
+   * override without forking the generator.
+   *
+   * Auth failures MUST NEVER surface as 500.
+   */
+  unauthorizedStatus?: number;
+
+  /**
    * Dispatcher configuration for the canonical write surface at
    *   POST /api/manifest/[entity]/commands/[command]
    *
@@ -180,25 +190,57 @@ export interface NextJsProjectionOptions {
     /** Named export to call on the external executor module */
     executorImportName?: string;
     /**
-     * When true, derive an `instanceId` from the URL/body and pass it to
-     * the executor. Disabled by default to avoid surprising callers of
-     * non-instance commands.
+     * When true (default), the dispatcher extracts an `instanceId` from
+     * `body.instanceId` or `body.id` and forwards it to runCommand /
+     * the configured executor. Non-create commands (update, archive,
+     * release, …) need this to address the target instance; create
+     * commands ignore it harmlessly.
      */
     deriveInstanceId?: boolean;
+    /**
+     * Dispatcher route path relative to `appDir`. Default
+     * `/manifest/[entity]/commands/[command]/route.ts`. Override only
+     * if your app uses a non-canonical prefix (e.g. `/api/v1/manifest/...`).
+     */
+    path?: string;
   };
 
   /**
    * Policy for the deprecated per-command "concrete" routes
    * (the `nextjs.command` surface).
    *
-   * - `enabled: false` suppresses concrete command routes entirely.
-   * - `legacyAliasesOnly: true` (default) keeps them as deprecated aliases
-   *   that carry the DEPRECATED ALIAS banner and point callers at the
-   *   dispatcher. Set to `false` only if you intentionally treat per-command
-   *   routes as a first-class surface.
+   * - `enabled: false` (default) — the canonical dispatcher is the single
+   *   write surface. Concrete per-command routes are not emitted by
+   *   `--surface all` and `manifest.command` requests return an info
+   *   diagnostic. Apps that still need them for legacy callers must
+   *   explicitly opt in with `enabled: true`.
+   * - `legacyAliasesOnly: true` (default) — emitted concrete routes
+   *   carry the DEPRECATED ALIAS banner pointing at the dispatcher.
+   *   Set to `false` only if you intentionally treat per-command routes
+   *   as a first-class surface.
    */
   concreteCommandRoutes?: {
     enabled?: boolean;
     legacyAliasesOnly?: boolean;
+  };
+
+  /**
+   * Policy for direct database read routes (GET list, GET detail).
+   *
+   * Direct reads bypass the runtime engine for read performance.
+   * They assume a Prisma-compatible client at `databaseImportPath`.
+   *
+   * - `enabled: false` suppresses both list and detail read routes
+   *   (no GET handlers emitted for the entity).
+   * - `directDbReads: false` emits read route stubs without inlining a
+   *   Prisma call — useful for projects that route reads through a
+   *   separate query layer.
+   *
+   * Defaults: { enabled: true, directDbReads: true } — preserves the
+   * historical behaviour.
+   */
+  readRoutes?: {
+    enabled?: boolean;
+    directDbReads?: boolean;
   };
 }

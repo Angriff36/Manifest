@@ -177,7 +177,8 @@ describe('manifest config inspect (print-effective)', () => {
 
     // unspecified dispatcher keys fall through to defaults
     expect(parsed.projections.nextjs.options.dispatcher.executorImportName).toBe('executeManifestCommand');
-    expect(parsed.projections.nextjs.options.dispatcher.deriveInstanceId).toBe(false);
+    // deriveInstanceId default flipped to true (goal step 4: extract for non-create)
+    expect(parsed.projections.nextjs.options.dispatcher.deriveInstanceId).toBe(true);
 
     // unspecified top-level keys still default
     expect(parsed.projections.nextjs.options.tenantIdProperty).toBe('tenantId');
