@@ -1,0 +1,273 @@
+---
+title: "Entities: data structures and behavior"
+description: "Define typed data structures with properties, computed values, relationships, constraints, concurrency controls, and state transitions in the Manifest language."
+sidebarTitle: "Entities"
+---
+
+An entity is the primary building block in Manifest. It combines a typed data schema with behavioral constraints, commands, and computed properties into a single declaration. The compiler turns entities into IR that the runtime can instantiate, query, and mutate.
+
+## Basic declaration
+
+Use the `entity` keyword followed by a name and a block. Property declarations go inside the block.
+
+```manifest
+entity Product {
+  property required name: string
+  property price: number = 0
+  property inStock: boolean = true
+  property description: string = ""
+}
+```
+
+## Properties
+
+Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+
+### Modifiers
+
+Place modifiers between the `property` keyword and the name:
+
+| Modifier   | Meaning |
+|------------|---------|
+| `required` | The caller must supply a value (or a `defaultValue` must exist). |
+| `optional` | Explicitly marks the property as not required. Equivalent to the default behavior. |
+| `readonly` | Prevents mutation after creation (enforced by convention; scanner warns on violation). |
+| `unique`   | Signals to adapters that values must be unique within the entity collection. |
+
+```manifest
+entity User {
+  property required id: string
+  property required email: string
+  property optional displayName: string = ""
+  property readonly createdAt: number = 0
+}
+```
+
+### Default values
+
+Any property can carry a literal default. When you create an instance and omit that property, the runtime applies the default. Explicitly supplying a value — including an empty string `""` — skips the default entirely.
+
+```manifest
+entity Task {
+  property status: string = "pending"
+  property priority: number = 1
+  property completed: boolean = false
+}
+```
+
+<Note>
+Defaults apply only when the property is **omitted** from the creation payload. An empty string `""` counts as a provided value and overrides the default.
+</Note>
+
+## Relationships
+
+Relationships declare connections between entities. The runtime resolves them synchronously from the current store context.
+
+| Keyword     | Cardinality | Returns |
+|-------------|-------------|---------|
+| `hasMany`   | One-to-many | Array of related instances (never `null`; empty array when none) |
+| `hasOne`    | One-to-one  | Single related instance or `null` |
+| `belongsTo` | Many-to-one | Single related instance or `null` |
+| `ref`       | Simple reference | Single related instance or `null` |
+
+```manifest
+entity Author {
+  property required name: string
+  hasMany books: Book
+  computed bookCount: number = self.books.length
+}
+
+entity Book {
+  property required title: string
+  property year: number = 2024
+  belongsTo author: Author
+}
+```
+
+For `belongsTo` and `ref`, the foreign key property on the source instance holds the target ID. For `hasMany` and `hasOne`, the runtime queries the target entity for instances whose foreign key matches the current instance's ID.
+
+<Tip>
+Accessing a relationship on a non-existent instance returns `null` for singular relationships and `[]` for `hasMany`. Circular relationships are handled gracefully.
+</Tip>
+
+## Constraints
+
+Constraints are boolean expressions that validate entity state. You can attach them at the entity level (evaluated whenever an instance is created or mutated) or at the command level (evaluated before that command runs — see [Commands](/language/commands)).
+
+```manifest
+entity Product {
+  property required name: string
+  property price: number = 0
+
+  constraint pricePositive: self.price > 0 "Price must be positive"
+  constraint nameNotEmpty: self.name != "" "Name cannot be empty"
+}
+```
+
+### Constraint severity
+
+Each constraint has a severity that controls what happens when it evaluates to `false`:
+
+| Severity | Behavior |
+|----------|----------|
+| `ok`     | Informational only. The outcome is always `passed` regardless of the expression result. |
+| `warn`   | Produces a `ConstraintOutcome` with the real result but does **not** halt execution. |
+| `block`  | Halts execution when the expression evaluates to `false` (default). |
+
+```manifest
+entity Task {
+  property status: string = "pending"
+  property priority: number = 1
+  property dueDate: number = 0
+
+  constraint okInfo {
+    expression: priority > 0
+    severity: ok
+    message: "Priority is positive"
+  }
+
+  constraint warnHighPriority {
+    expression: priority <= 5
+    severity: warn
+    message: "Priority is higher than recommended"
+  }
+
+  constraint blockStatus {
+    expression: status in ["pending", "in_progress", "completed", "cancelled"]
+    severity: block
+    message: "Status must be one of the allowed values"
+  }
+}
+```
+
+The long-form block syntax also supports `messageTemplate` and `details` for structured diagnostics:
+
+```manifest
+constraint amountLimit:block self.amount > 10000 {
+  messageTemplate: "Amount {currentAmount} exceeds limit of {maxAmount}"
+  details: {
+    maxAmount: 10000
+    currentAmount: self.amount
+    excessAmount: self.amount - 10000
+  }
+}
+```
+
+### Overrideable constraints
+
+Mark a `block` constraint `overrideable` to allow authorized bypass at runtime. Pair it with an `overridePolicy` to control who can authorize the override.
+
+```manifest
+entity FinancialRecord {
+  property required amount: number = 0
+  property required status: string = "pending"
+
+  command process() {
+    constraint overrideable requiresApproval {
+      expression: self.status == "approved" or self.amount <= 500
+      severity: block
+      message: "Must be approved before processing"
+      overridePolicy: canApproveLargeAmounts
+    }
+
+    mutate status = "processed"
+    emit RecordProcessed
+  }
+}
+
+policy canApproveLargeAmounts override:
+  user.role == "manager" or user.role == "admin"
+  "Only managers and admins can approve large amounts"
+```
+
+When a caller supplies an `OverrideRequest` matching the constraint code, the runtime checks the policy, marks the outcome `overridden: true`, and emits a synthetic `OverrideApplied` event.
+
+## Concurrency controls (vNext)
+
+Entities can declare optimistic concurrency controls using `versionProperty` and `versionAtProperty`. The runtime compares the caller-supplied version against the stored value on every mutation.
+
+```manifest
+entity Document {
+  property required id: string = ""
+  property title: string = ""
+  property content: string = ""
+
+  versionProperty version: number
+  versionAtProperty versionAt: number
+
+  command update(newTitle: string, currentVersion: number) {
+    guard self.version == currentVersion
+    mutate title = newTitle
+    emit DocumentUpdated
+  }
+}
+```
+
+If the caller's version does not match, the runtime returns a `ConcurrencyConflict` and does not apply any mutations:
+
+```typescript
+{
+  entityType: "Document",
+  entityId: "doc-1",
+  expectedVersion: 2,
+  actualVersion: 3,
+  conflictCode: "VERSION_MISMATCH"
+}
+```
+
+## State transitions (vNext)
+
+Declare allowed state changes with the `transition` keyword. The runtime validates every mutation of the property against the rules before applying it.
+
+```manifest
+entity Document {
+  property required id: string
+  property status: string = "draft"
+
+  transition status from "draft"     to ["review", "archived"]
+  transition status from "review"    to ["published", "draft"]
+  transition status from "published" to ["archived"]
+
+  command submit() {
+    mutate status = "review"
+  }
+
+  command approve() {
+    mutate status = "published"
+  }
+
+  command archive() {
+    mutate status = "archived"
+  }
+}
+```
+
+<Note>
+Transition validation runs **before** entity constraint validation. If the current value has no matching `from` rule, the transition is unconstrained from that state. Properties not mentioned in any transition rule are always unconstrained.
+</Note>
+
+## Default policies (vNext)
+
+Attach a `default policy` to an entity to apply it to every command that does not declare its own policy list:
+
+```manifest
+entity Task {
+  property required title: string
+  property status: string = "pending"
+
+  default policy RequireAuth execute: user.id != null "Authentication required"
+
+  command complete() {
+    guard self.assigneeId == user.id or user.role == "admin"
+    mutate status = "completed"
+    emit TaskCompleted
+  }
+
+  command reassign(newAssigneeId: string) {
+    guard user.role == "admin" or user.role == "manager"
+    mutate assigneeId = newAssigneeId
+  }
+}
+```
+
+Both `complete` and `reassign` inherit `RequireAuth` because neither declares an explicit policy. See [Guards and Policies](/language/guards-policies) for the full inheritance rules.

@@ -1,0 +1,97 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Manifest",
+  "projectDescription": "A declarative domain modeling language with a reference runtime that lets developers define entities, commands, guards, policies, and events that compile to an executable Intermediate Representation.",
+  "theme": "luma",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Language",
+            "pages": [
+              "language/entities",
+              "language/commands",
+              "language/guards-policies",
+              "language/events",
+              "language/stores",
+              "language/computed-properties"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
+              "integration/overview",
+              "integration/projections",
+              "integration/embedded-runtime",
+              "integration/nextjs"
+            ]
+          },
+          {
+            "group": "Adapters",
+            "pages": [
+              "adapters/custom-stores",
+              "adapters/audit-sink",
+              "adapters/outbox"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "cli/overview",
+              "cli/commands",
+              "cli/configuration"
+            ]
+          },
+          {
+            "group": "Help",
+            "pages": [
+              "faq",
+              "troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Declarative entity and command definitions with typed properties",
+    "Guard-based authorization with strict ordered evaluation",
+    "Policy system scoped to read, write, execute, and all operations",
+    "Event emission with outbox pattern support",
+    "Compiles to portable Intermediate Representation (IR) JSON",
+    "Next.js projection for auto-generated API routes",
+    "Pluggable store adapters: memory, PostgreSQL, Supabase, custom",
+    "Audit sink for durable command execution records",
+    "CLI for compile, generate, build, and validate workflows",
+    "Deterministic execution mode for testing and reproducibility",
+    "vNext: constraint severity, overrides, concurrency controls, idempotency"
+  ],
+  "publicApiSurface": [
+    "RuntimeEngine (class) — @angriff36/manifest",
+    "RuntimeEngine.runCommand(commandName, input, options)",
+    "RuntimeEngine.onEvent(handler)",
+    "compileToIR(source) — @angriff36/manifest/ir-compiler",
+    "Store interface — custom persistence adapter",
+    "AuditSink interface — @angriff36/manifest/audit",
+    "MemoryAuditSink — @angriff36/manifest/audit/memory",
+    "PostgresAuditSink — @angriff36/manifest/audit/postgres",
+    "OutboxStore interface — @angriff36/manifest/outbox",
+    "MemoryOutboxStore — @angriff36/manifest/outbox/memory",
+    "PostgresOutboxStore — @angriff36/manifest/outbox/postgres",
+    "Next.js projection: nextjs.route, nextjs.command, ts.types, ts.client — @angriff36/manifest/projections/nextjs",
+    "CLI: manifest init, manifest compile, manifest generate, manifest build, manifest validate"
+  ]
+}

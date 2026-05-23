@@ -1,0 +1,143 @@
+---
+title: "Computed properties: derived values"
+description: "Declare derived values with the computed keyword. Manifest evaluates them against the current instance automatically and prevents infinite recursion."
+sidebarTitle: "Computed properties"
+---
+
+A computed property is a read-only value derived from an expression rather than stored directly. You declare it with the `computed` keyword inside an entity block. The runtime evaluates it on demand, using the current instance fields and any declared dependencies.
+
+## Syntax
+
+```manifest
+computed <name>: <type> = <expression>
+```
+
+The expression can reference `self`, `this`, any property on the instance, other computed properties, and the standard built-ins (`now()`, `uuid()`).
+
+```manifest
+entity Item {
+  property required price: number
+  property quantity: number = 1
+  property discountPercent: number = 0
+
+  computed total: number = price * quantity
+  computed discountedTotal: number = total * (1 - discountPercent / 100)
+  computed hasDiscount: boolean = discountPercent > 0
+  computed isExpensive: boolean = total > 100
+}
+```
+
+## Evaluation context
+
+When the runtime evaluates a computed property, the context contains:
+
+| Binding | Value |
+|---------|-------|
+| `self` / `this` | The current entity instance |
+| All property values | Direct field access by name |
+| Any dependencies listed in IR | Other computed properties that have already resolved |
+| `user` | The current user object (if the runtime provides one) |
+| `context` | The runtime context object |
+
+```manifest
+entity Author {
+  property required name: string
+  hasMany books: Book
+
+  computed bookCount: number = self.books.length
+}
+```
+
+Relationship traversal (`self.books`) is fully supported in computed expressions. The runtime resolves the relationship synchronously before evaluating the expression.
+
+## Chaining computed properties
+
+A computed property can reference another computed property on the same entity. The runtime resolves them in dependency order:
+
+```manifest
+entity WorkflowStep {
+  property status: string = "pending"
+  property executedAt: number = 0
+
+  computed isPending: boolean = self.status == "pending"
+  computed isInProgress: boolean = self.status == "in_progress"
+  computed isCompleted: boolean = self.status == "completed"
+  computed canStart: boolean = self.isPending
+  computed canComplete: boolean = self.isInProgress
+}
+```
+
+`canStart` depends on `isPending`, which depends on `status`. The runtime evaluates in bottom-up order.
+
+## When computed properties re-evaluate
+
+Computed properties are evaluated fresh each time they are accessed — there is no caching layer in the default runtime. They reflect the state of the instance at the moment of access. This means:
+
+- After a `mutate` action inside a command, any subsequent access to a computed property reflects the updated field values.
+- Computed properties based on `now()` return a different value on each evaluation if the time source advances.
+
+## Infinite recursion prevention
+
+The runtime detects dependency cycles. If evaluating a computed property would cause infinite recursion, the runtime returns `undefined` for that property instead of throwing. This is defined behavior, not an error condition.
+
+```manifest
+entity Circular {
+  // If A depends on B and B depends on A, both evaluate to undefined
+  computed a: number = self.b + 1
+  computed b: number = self.a + 1
+}
+```
+
+<Warning>
+A computed property that returns `undefined` due to a cycle will silently produce `undefined` in guard and action expressions. If you rely on a computed value being non-null, ensure there are no cycles in the dependency graph.
+</Warning>
+
+## Using computed properties in guards and actions
+
+Computed properties are first-class values in the evaluation context. You can reference them in guards, policies, and action expressions:
+
+```manifest
+entity Task {
+  property required title: string
+  property required status: string = "todo"
+  property required assigneeId: string = ""
+  property required createdAt: number = 0
+
+  computed isOverdue: boolean = (now() - self.createdAt) > 86400000 and self.status != "done"
+  computed assignedUser: string = self.assigneeId != "" ? self.assigneeId : "Unassigned"
+  computed isHighPriority: boolean = self.priority != null and self.priority >= 3
+
+  command updateStatus(newStatus: string) {
+    guard newStatus != null and newStatus != ""
+    guard newStatus == "todo" or newStatus == "in-progress" or newStatus == "done"
+    mutate status = newStatus
+    emit TaskStatusUpdated
+  }
+
+  command assignTask(userId: string) {
+    guard userId != null and userId != ""
+    guard self.assigneeId == "" or user.role == "admin"
+    mutate assigneeId = userId
+    emit TaskAssigned
+  }
+}
+```
+
+Guards like `self.assigneeId == ""` reference the raw property. A guard referencing `self.isHighPriority` would evaluate the computed property first and use the result.
+
+## Computed properties in the TypeScript output
+
+When you use the Next.js projection or TypeScript types surface, computed properties appear as read-only fields on the generated interface. They are not persisted in the store — they are derived each time the instance is loaded.
+
+```typescript
+interface Task {
+  title: string;
+  status: string;
+  assigneeId: string;
+  createdAt: number;
+  // Computed — derived at read time
+  readonly isOverdue: boolean;
+  readonly assignedUser: string;
+  readonly isHighPriority: boolean;
+}
+```

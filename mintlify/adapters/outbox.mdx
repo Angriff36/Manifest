@@ -1,0 +1,217 @@
+---
+title: "Durable event delivery with the Manifest outbox"
+description: "Use OutboxStore to persist emitted events for at-least-once delivery. Covers the enqueue/claim/markDelivered lifecycle, crash recovery, and known limitations."
+sidebarTitle: "Outbox Store"
+---
+
+When a command emits one or more events, you often need to deliver those events to downstream consumers reliably — even if your process crashes immediately after the command succeeds. The `OutboxStore` adapter gives you a durable queue for emitted events that a background worker can drain with at-least-once delivery guarantees.
+
+## How the outbox works
+
+After a successful `runCommand` call that emits events, the runtime calls `outboxStore.enqueue(entries)` once, batching all events from that invocation into a single call. A separate delivery worker then polls the store using `claim`, delivers the events, and calls `markDelivered` or `markFailed`.
+
+```
+runCommand → success → enqueue(entries)
+                            │
+              ┌─────────────▼─────────────┐
+              │      OutboxStore          │
+              │  pending entries queue    │
+              └─────────────┬─────────────┘
+                            │
+              delivery worker: claim → deliver → markDelivered
+```
+
+## The OutboxStore interface
+
+The full interface, from `@angriff36/manifest/outbox`:
+
+```typescript
+interface OutboxStore {
+  /**
+   * Enqueue one or more outbox entries. Called by the runtime after a
+   * successful command. Pass a tx handle to participate in the caller's
+   * transaction; without one, enqueue runs independently (best-effort).
+   */
+  enqueue(entries: OutboxEntry[], tx?: unknown): Promise<void>;
+
+  /**
+   * Claim up to batchSize pending entries for delivery. Durable
+   * implementations should use SELECT … FOR UPDATE SKIP LOCKED so
+   * concurrent workers receive disjoint batches.
+   */
+  claim(batchSize: number): Promise<OutboxEntry[]>;
+
+  /** Mark entries as successfully delivered. */
+  markDelivered(entryIds: string[]): Promise<void>;
+
+  /** Mark entries as failed with a reason. */
+  markFailed(entryIds: string[], error: string): Promise<void>;
+}
+```
+
+## The OutboxEntry shape
+
+Each entry the runtime enqueues has the following shape:
+
+```typescript
+interface OutboxEntry {
+  /** Stable id assigned at enqueue time. Use this as your dedup token. */
+  entryId: string;
+  /** Timestamp the entry was enqueued (ms since epoch). */
+  enqueuedAt: number;
+  /** The full EmittedEvent payload from the command. */
+  event: EmittedEvent;
+  /** Current status: 'pending' | 'delivered' | 'failed'. */
+  status: OutboxEntryStatus;
+  /** Number of times this entry has been claimed. */
+  attempts: number;
+  /** Last error message, present when status === 'failed'. */
+  lastError?: string;
+}
+```
+
+## Delivery semantics: at-least-once
+
+<Warning>
+The outbox provides **at-least-once** delivery, not exactly-once. Your consumers **must be idempotent**.
+
+A worker that delivers an event and then crashes before calling `markDelivered` will redeliver the same entry after stale-claim recovery. Use `entryId` — or a domain-level idempotency key — as a dedup token in every consumer.
+</Warning>
+
+The three reasons duplication can occur:
+
+1. A worker claims an entry, delivers it, crashes before `markDelivered` runs, and `releaseStaleClaims` recovers the entry for redelivery.
+2. `releaseStaleClaims` is called while the original worker is still alive, producing a second concurrent delivery.
+3. Network retries from the consumer side can produce repeat reads within a single worker.
+
+## First-party stores
+
+<CodeGroup>
+
+```typescript MemoryOutboxStore (development / tests)
+import { MemoryOutboxStore } from '@angriff36/manifest/outbox/memory';
+
+const outboxStore = new MemoryOutboxStore();
+```
+
+```typescript PostgresOutboxStore (production)
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const outboxStore = new PostgresOutboxStore(pool);
+```
+
+</CodeGroup>
+
+`MemoryOutboxStore` is an in-memory analogue of `SELECT FOR UPDATE SKIP LOCKED` — `claim` skips entries that are already claimed or resolved. Use it in tests.
+
+`PostgresOutboxStore` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so concurrent workers receive disjoint batches. Apply the schema before first use:
+
+<Tip>
+The schema file is included in the published package at `node_modules/@angriff36/manifest/src/manifest/outbox/stores/postgres.sql`. Run it against your database once during deployment.
+</Tip>
+
+## Wiring in an outbox store
+
+Pass your store via `RuntimeOptions.outboxStore`:
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const runtime = new RuntimeEngine(ir, {
+  userId: session.userId,
+  tenantId: session.tenantId,
+  outboxStore: new PostgresOutboxStore(pool)
+});
+
+// After a successful command, entries are automatically enqueued.
+const result = await runtime.runCommand('placeOrder', input, {
+  entityName: 'Order',
+  instanceId: orderId
+});
+```
+
+Then run a delivery worker that polls the store:
+
+```typescript
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+
+async function deliveryWorker(store: PostgresOutboxStore) {
+  while (true) {
+    const entries = await store.claim(25);
+    if (entries.length === 0) {
+      await sleep(1000);
+      continue;
+    }
+
+    const delivered: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+
+    for (const entry of entries) {
+      try {
+        await publishToEventBus(entry.event);
+        delivered.push(entry.entryId);
+      } catch (err) {
+        failed.push({ id: entry.entryId, error: String(err) });
+      }
+    }
+
+    if (delivered.length > 0) await store.markDelivered(delivered);
+    for (const f of failed) await store.markFailed([f.id], f.error);
+  }
+}
+```
+
+## Crash recovery
+
+If a worker claims entries and then crashes before calling `markDelivered` or `markFailed`, those rows are left with `status='pending'` but a non-null `claimed_at`. The `claim` method will not return them again (the `claimed_at IS NULL` filter excludes them).
+
+Call `releaseStaleClaims(entryIds)` on `PostgresOutboxStore` to reset those entries so a follow-up `claim` picks them up:
+
+```typescript
+// Only call this after you are certain the original worker is dead.
+await outboxStore.releaseStaleClaims(staleEntryIds);
+```
+
+<Warning>
+Only release claims when you are certain the original worker is no longer running. Releasing a claim held by a live worker produces a second delivery. The `attempts` counter increments on every successful claim, so you can use it to bound retries and dead-letter entries that exceed a threshold.
+</Warning>
+
+## Transactional limitation
+
+<Note>
+The current `RuntimeEngine` does **not** share a transaction boundary between entity state mutation and outbox enqueue. The `enqueue` call runs on a separate database connection from the entity `update` inside `_executeCommandInternal`.
+
+This means: if the entity mutation succeeds but `outboxStore.enqueue` fails, the state change is persisted without a durable outbox row. The runtime logs the failure to `stderr` as:
+
+```
+[Manifest Runtime] OutboxStore.enqueue failed
+```
+
+The `CommandResult` is not affected — the command still returns success to your caller.
+
+**Mitigation:** `PostgresOutboxStore.enqueue(entries, tx)` accepts a caller-supplied `PoolClient`. If you open your own transaction and pass the same client to both a `PostgresStore` write and `PostgresOutboxStore.enqueue(entries, sameClient)`, you get atomicity at the adapter level. Making `RuntimeEngine` open and thread that transaction automatically is deferred to a future release.
+</Note>
+
+## Import paths
+
+| What | Import path |
+|------|-------------|
+| `OutboxStore` interface and `OutboxEntry` type | `@angriff36/manifest/outbox` |
+| `MemoryOutboxStore` | `@angriff36/manifest/outbox/memory` |
+| `PostgresOutboxStore` | `@angriff36/manifest/outbox/postgres` |
+
+## Failure policy: fail-open
+
+Like the audit sink, `OutboxStore.enqueue` errors are caught and logged to `stderr`. They do not alter `CommandResult` or block the caller. Monitor for:
+
+```
+[Manifest Runtime] OutboxStore.enqueue failed
+```
+
+Alert on this line in production if your application depends on durable event delivery.

@@ -1,0 +1,217 @@
+---
+title: 'Embed the Manifest runtime in your handlers'
+sidebarTitle: 'Embedded Runtime'
+description: 'Instantiate RuntimeEngine in your own handlers to control command orchestration, event routing, and response shaping with full Manifest semantics enforced.'
+---
+
+The Embedded Runtime pattern gives you direct access to `RuntimeEngine` in your own handlers. Use it when you need custom orchestration around command execution, a bespoke event-handling pipeline, or precise control over how `CommandResult` maps to your API response format.
+
+## When to use this pattern
+
+Reach for the Embedded Runtime when:
+
+- You need to compose multiple commands in a single request.
+- You want to publish emitted events to a queue, outbox, or tracing system using your own logic.
+- You need custom response shaping that does not match generated route conventions.
+- You are writing a framework adapter for a platform that does not have a Manifest projection yet.
+
+For straightforward CRUD routes in Next.js, consider the [Projections pattern](/integration/projections) instead — it generates the boilerplate for you.
+
+## Minimal flow
+
+1. Compile your `.manifest` source to IR, or load a pre-built IR artifact.
+2. Construct `RuntimeEngine` with the IR and a runtime context object.
+3. Call `runCommand` for each mutation.
+4. Inspect `CommandResult` and handle emitted events in your application code.
+
+## Instantiating RuntimeEngine
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { RuntimeEngine } from '@angriff36/manifest';
+
+const source = await fs.readFile('invoice.manifest', 'utf-8');
+const { ir, diagnostics } = await compileToIR(source);
+
+if (!ir) {
+  throw new Error('Compilation failed');
+}
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: 'user-1', role: 'admin' },
+  context: { requestId: 'req-abc' },
+});
+```
+
+The second argument is the **runtime context**. If your guards or policies reference `user` or `context` bindings, you must supply those fields here. Omitting required context is a valid execution failure — the runtime will not inject permissive defaults.
+
+## Calling runCommand
+
+```typescript
+const result = await runtime.runCommand(
+  'approve',
+  { reason: 'validated' },
+  { entityName: 'Invoice', instanceId: 'inv-1' }
+);
+```
+
+`runCommand` takes three arguments:
+
+1. **Command name** — the name of the command as declared in your `.manifest` file.
+2. **Input** — the command's input parameters as a plain object.
+3. **Options** — an object with `entityName` and `instanceId`.
+
+The runtime executes in this fixed order on every call:
+
+1. Build evaluation context (`self`, `this`, params, runtime context)
+2. Evaluate applicable policies — denies halt execution immediately
+3. Evaluate guards in declared order — the first falsey guard halts execution
+4. Execute actions in declared order (`mutate`, `emit`, `compute`)
+5. Emit declared events
+6. Return `CommandResult`
+
+## Handling CommandResult
+
+`CommandResult` has a `success` boolean. When `success` is `false`, inspect the failure reason:
+
+```typescript
+const result = await runtime.runCommand(
+  'approve',
+  { reason: 'validated' },
+  { entityName: 'Invoice', instanceId: 'inv-1' }
+);
+
+if (result.success) {
+  // Command executed; access emitted events
+  console.log('Emitted events:', result.events);
+} else {
+  // Surface diagnostics — do not alter or suppress them.
+  if (result.guardFailure) {
+    // Guard failed: result.guardFailure contains the failing guard index and expression
+    console.error('Guard failed:', result.guardFailure);
+  }
+
+  if (result.policyDenial) {
+    // A policy denied execution
+    console.error('Policy denied:', result.policyDenial);
+  }
+
+  console.error('Error:', result.error);
+}
+```
+
+<Note>
+  Diagnostics explain failures; they never compensate for them. Do not catch `CommandResult` failures and silently succeed — surface the failure to the caller with an appropriate HTTP status code.
+</Note>
+
+## Handling events with onEvent
+
+Use `onEvent` to register a listener before calling `runCommand`. The listener receives events in emission order as the command executes.
+
+```typescript
+const unsubscribe = runtime.onEvent((event) => {
+  console.log(event.name, event.channel, event.payload);
+
+  // Publish to a queue, write to an outbox, send a webhook, etc.
+});
+
+try {
+  await runtime.runCommand(
+    'approve',
+    {},
+    { entityName: 'Invoice', instanceId: 'inv-1' }
+  );
+} finally {
+  unsubscribe();
+}
+```
+
+`onEvent` returns an unsubscribe function. Call it in a `finally` block to avoid listener leaks across requests.
+
+## Request identity hardening
+
+When `runCommand` is called from an HTTP handler, **strip all client-supplied identity fields from the request body** before passing input to the runtime. A client can supply arbitrary values for `id`, `userId`, `tenantId`, `orgId`, or `user`. Passing those values directly enables parameter tampering and identity spoofing.
+
+Derive identity exclusively from:
+- Your auth provider (e.g., Clerk's `auth()`, NextAuth's `getServerSession`)
+- URL path parameters
+
+Then inject those authoritative values into the command input:
+
+```typescript
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // 1. Resolve identity from trusted server-side sources
+  const { userId } = await auth();
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const entityId = params.id; // from the URL path
+
+  // 2. Parse the body
+  const body = await request.json();
+
+  // 3. Strip any identity fields the client may have sent
+  const {
+    id: _id,
+    userId: _userId,
+    tenantId: _tenantId,
+    orgId: _orgId,
+    user: _user,
+    ...safeInput
+  } = body;
+
+  // 4. Build runtime with authoritative context
+  const runtime = new RuntimeEngine(ir, {
+    user: { id: userId, role: 'admin' },
+  });
+
+  // 5. Execute with safe input + injected identity
+  const result = await runtime.runCommand(
+    'approve',
+    { ...safeInput, entityId },
+    { entityName: 'Invoice', instanceId: entityId }
+  );
+
+  if (!result.success) {
+    return Response.json({ error: result.error }, { status: 422 });
+  }
+
+  return Response.json({ success: true, events: result.events });
+}
+```
+
+<Warning>
+  Preserving non-identity business fields (such as `stationId` or `reason`) from the request body is correct and intended. Only strip the identity fields listed above.
+</Warning>
+
+## Deterministic options for testing
+
+In tests, pass `generateId` and `now` to `RuntimeEngine` to make IDs and timestamps deterministic. This is required for stable conformance-style assertions.
+
+```typescript
+let idCounter = 0;
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: 'test-user', role: 'admin' },
+}, {
+  generateId: () => `test-id-${++idCounter}`,
+  now: () => new Date('2026-01-01T00:00:00Z'),
+});
+
+const result = await runtime.runCommand(
+  'create',
+  { title: 'Test item' },
+  { entityName: 'Todo', instanceId: 'test-id-1' }
+);
+// result.instance.id is always 'test-id-1' — stable across test runs
+```
+
+## What not to do
+
+- **Do not bypass `runCommand` for mutations.** Calling your database directly from a handler that is supposed to enforce Manifest guards, policies, or events silently removes that enforcement.
+- **Do not reorder or short-circuit the execution pipeline.** Policies run before guards; guards run before actions; actions run before emits. The spec requires this order.
+- **Do not inject permissive context defaults to force success.** If a guard requires `user.role` and you have not provided it, the failure is correct. Surface it.
+- **Do not suppress diagnostics.** Diagnostics are the primary debugging signal. Swallowing them leaves callers without actionable error information.
