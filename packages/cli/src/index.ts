@@ -38,7 +38,7 @@ import {
   runtimeCheckCommand,
   diffSourceVsIRCommand,
 } from './commands/doctor.js';
-import { getConfig } from './utils/config.js';
+import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
 import { realpath, readFile } from 'node:fs/promises';
@@ -127,19 +127,15 @@ program
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
   .action(async (ir, options = {}) => {
-    const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
+    // resolveNextJsProjectionOptions returns the user's raw nextjs options
+    // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
+    // CLI flag overrides are layered on inside generateCommand.
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
 
-    // Use CLI options, fall back to config, fall back to defaults
-    const finalOptions = {
+    await generateCommand(ir, {
       ...options,
-      auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-      database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-      runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-      response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
-    };
-
-    await generateCommand(ir, finalOptions);
+      projectionOptionsFromConfig,
+    });
   });
 
 /**
@@ -162,17 +158,18 @@ program
   .option('--response <path>', 'Response helpers import path')
   .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
 
-    // Use CLI options, fall back to config, fall back to defaults
     const finalOptions = {
       ...options,
-      auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-      database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-      runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-      response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
-      irOutput: options.irOutput || config?.output || 'ir/',
-      codeOutput: options.codeOutput || config?.projections?.nextjs?.output || config?.projections?.['nextjs']?.output || 'generated/',
+      irOutput:
+        options.irOutput || config?.output || 'ir/',
+      codeOutput:
+        options.codeOutput ||
+        config?.projections?.nextjs?.output ||
+        config?.projections?.['nextjs']?.output ||
+        'generated/',
+      projectionOptionsFromConfig,
     };
 
     await buildCommand(source, finalOptions);

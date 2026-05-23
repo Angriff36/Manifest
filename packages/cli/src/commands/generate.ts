@@ -32,6 +32,16 @@ interface GenerateOptions {
   database: string;
   runtime: string;
   response: string;
+  /**
+   * Pre-resolved projection options sourced from manifest.config.{yaml,ts}.
+   * The CLI layer in index.ts merges these with --auth/--database/etc.
+   * flag overrides before invoking generateCommand.
+   *
+   * Keeping this generic (`Record<string, unknown>`) means we never have
+   * to update GenerateOptions when new projection-level config keys land
+   * — the projection's normalizeOptions is the contract.
+   */
+  projectionOptionsFromConfig?: Record<string, unknown>;
 }
 
 /**
@@ -77,18 +87,25 @@ async function generateFromIR(
   spinner.text = `Creating ${options.projection} projection`;
 
   if (options.projection === 'nextjs') {
-    const projectionOptions = {
-      authProvider: options.auth as any,
-      databaseImportPath: options.database,
-      runtimeImportPath: options.runtime,
-      responseImportPath: options.response,
+    // Full projection options = user config (incl. dispatcher.*, concreteCommandRoutes.*)
+    // overlaid with CLI flag overrides (--auth, --database, --runtime, --response).
+    // Unset keys fall through to NEXTJS_DEFAULTS inside the projection.
+    const projectionOptions: Record<string, unknown> = {
+      ...(options.projectionOptionsFromConfig ?? {}),
+      // CLI flags win when explicitly provided. The CLI layer in index.ts
+      // already substitutes config values for missing flags, so any value
+      // arriving here represents an active intent.
+      ...(options.auth !== undefined ? { authProvider: options.auth as unknown } : {}),
+      ...(options.database !== undefined ? { databaseImportPath: options.database } : {}),
+      ...(options.runtime !== undefined ? { runtimeImportPath: options.runtime } : {}),
+      ...(options.response !== undefined ? { responseImportPath: options.response } : {}),
     };
 
     const projection = new NextJsProjection();
 
     // Generate based on surface
     if (options.surface === 'all') {
-      // Generate all surfaces
+      // Generate all surfaces (including the canonical dispatcher)
       await generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'route') {
       // Generate GET routes for all entities
@@ -96,6 +113,9 @@ async function generateFromIR(
     } else if (options.surface === 'command') {
       // Generate POST routes for all commands
       await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+    } else if (options.surface === 'dispatcher') {
+      // Generate the canonical dispatcher route
+      await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
       await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
@@ -113,7 +133,13 @@ async function generateFromIR(
 }
 
 /**
- * Generate all projection surfaces
+ * Generate all projection surfaces, including the canonical dispatcher.
+ *
+ * The dispatcher is emitted alongside the legacy per-command routes so
+ * downstream apps get the full canonical-write-path surface. The dispatcher
+ * artifact respects `dispatcher.enabled` and `dispatcher.executionMode`
+ * config keys — when `enabled: false`, the projection itself returns no
+ * artifact and we surface the info-diagnostic instead.
  */
 async function generateAllSurfaces(
   projection: any,
@@ -128,11 +154,33 @@ async function generateAllSurfaces(
   spinner.text = 'Generating commands...';
   await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
 
+  spinner.text = 'Generating dispatcher...';
+  await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
+
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
   spinner.text = 'Generating client...';
   await generateClient(projection, ir, outputDir, spinner, projectionOptions);
+}
+
+/**
+ * Generate the canonical Manifest dispatcher route. Single artifact at
+ * `<appDir>/manifest/[entity]/commands/[command]/route.ts`.
+ */
+async function generateDispatcher(
+  projection: any,
+  ir: any,
+  outputDir: string,
+  spinner: Ora,
+  projectionOptions: any
+): Promise<void> {
+  spinner.text = 'Generating dispatcher...';
+  const result = projection.generate(ir, {
+    surface: 'nextjs.dispatcher',
+    options: projectionOptions,
+  });
+  await writeProjectionResult(result, outputDir);
 }
 
 /**
