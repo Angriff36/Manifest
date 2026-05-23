@@ -19,7 +19,7 @@ import {
   DISPATCHER_DEFAULTS,
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   READ_ROUTES_DEFAULTS,
-} from './defaults';
+} from './defaults.js';
 
 /**
  * Re-export the canonical defaults so consumers of
@@ -37,7 +37,7 @@ export {
   ROUTES_DEFAULTS,
   getManifestDefaultsSnapshot,
   type ManifestDefaultsSnapshot,
-} from './defaults';
+} from './defaults.js';
 
 // Re-export the projection-interface types so downstream consumers of
 // `@angriff36/manifest/projections/nextjs` can type the projection
