@@ -57,6 +57,17 @@ jobs:
           fi
           echo "Publishing version $PKG_VERSION"
 
+      - name: Build root library
+        # packages/cli depends on @angriff36/manifest via type imports.
+        # Without build:lib first, the CLI build and any test that touches
+        # the published surface (enforce-surface.cli.test.ts spawns the
+        # built CLI) fails to resolve modules.
+        run: pnpm run build:lib
+
+      - name: Build CLI dist
+        working-directory: packages/cli
+        run: pnpm build
+
       - name: TypeScript type check
         run: pnpm run typecheck
 
