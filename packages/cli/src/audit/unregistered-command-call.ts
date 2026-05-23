@@ -12,6 +12,7 @@
  */
 
 import fs from 'node:fs/promises';
+import ts from 'typescript';
 
 interface CommandRegistryEntry {
   entity: string;
@@ -38,4 +39,60 @@ export async function loadCommandSet(registryPath: string): Promise<Set<string>>
     ids.add(c.commandId ?? `${c.entity}.${c.command}`);
   }
   return ids;
+}
+
+export interface RunCommandCall {
+  /** Static command id when the first argument is a string literal, else null. */
+  commandId: string | null;
+  /** True when the first argument is not a static string literal. */
+  dynamic: boolean;
+  line: number;
+  column: number;
+}
+
+/**
+ * Walk a TS/JS source file's AST and return every call to `runtime.runCommand`
+ * or `<expr>.runtime.runCommand`. Static-string first arguments are extracted;
+ * dynamic forms are reported with `commandId: null` and `dynamic: true`.
+ */
+export function extractRunCommandCalls(source: string, filename: string): RunCommandCall[] {
+  const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
+  const out: RunCommandCall[] = [];
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'runCommand'
+    ) {
+      const left = node.expression.expression;
+      const isRuntime =
+        (ts.isIdentifier(left) && left.text === 'runtime') ||
+        (ts.isPropertyAccessExpression(left) && left.name.text === 'runtime');
+      if (isRuntime) {
+        const start = node.getStart(sf);
+        const { line, character } = sf.getLineAndCharacterOfPosition(start);
+        const arg0 = node.arguments[0];
+        if (arg0 && ts.isStringLiteralLike(arg0)) {
+          out.push({
+            commandId: arg0.text,
+            dynamic: false,
+            line: line + 1,
+            column: character + 1,
+          });
+        } else {
+          out.push({
+            commandId: null,
+            dynamic: true,
+            line: line + 1,
+            column: character + 1,
+          });
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sf);
+  return out;
 }
