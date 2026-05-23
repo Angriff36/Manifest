@@ -24,10 +24,6 @@ interface BuildOptions {
   projectionOptionsFromConfig?: Record<string, unknown>;
 }
 
-interface IRFile {
-  source: string;
-  output: string;
-}
 
 /**
  * Build command handler
@@ -47,11 +43,6 @@ export async function buildCommand(
     // Run compile (silent mode, we handle output)
     const compileSpinner = ora('Compiling').start();
 
-    // Collect IR files that would be generated
-    const irFiles: IRFile[] = [];
-
-    // For now, we'll call compileCommand but capture the output
-    // In a real implementation, we'd make compileCommand return the IR files
     await compileCommand(source, {
       output: options.irOutput,
       glob: options.glob,
@@ -86,8 +77,8 @@ export async function buildCommand(
     console.log(`  Surface:    ${options.surface}`);
     console.log('');
 
-  } catch (error: any) {
-    spinner.fail(`Build failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }

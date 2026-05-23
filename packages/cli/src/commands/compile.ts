@@ -100,7 +100,8 @@ async function compileFile(
   if (options.diagnostics && result.diagnostics && result.diagnostics.length > 0) {
     console.log('');
     console.log(chalk.bold('Diagnostics:'));
-    result.diagnostics.forEach((d: any) => {
+    interface CompileDiagnostic { severity?: string; message?: string; }
+    result.diagnostics.forEach((d: CompileDiagnostic) => {
       if (d.severity === 'error') {
         console.error(chalk.red(`  ✖ ${d.message}`));
       } else if (d.severity === 'warning') {
@@ -141,8 +142,9 @@ export async function compileCommand(source: string | undefined, options: Compil
       try {
         await compileFile(file, options, fileSpinner);
         successCount++;
-      } catch (error: any) {
-        fileSpinner.fail(`Failed to compile ${path.relative(process.cwd(), file)}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        fileSpinner.fail(`Failed to compile ${path.relative(process.cwd(), file)}: ${msg}`);
         errorCount++;
       }
     }
@@ -155,8 +157,8 @@ export async function compileCommand(source: string | undefined, options: Compil
       spinner.warn(`Compiled ${successCount} file(s), ${errorCount} failed`);
       process.exit(1);
     }
-  } catch (error: any) {
-    spinner.fail(`Compilation failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Compilation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }

@@ -4,7 +4,7 @@
  * Tests the manifest compile command for IR generation.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';

@@ -66,6 +66,11 @@ async function getPackageVersion(): Promise<string> {
   } catch {
     // fall through
   }
+  // Deliberate sentinel: returned only when the walk-up cannot locate
+  // package.json (e.g. the CLI is loaded outside the package layout).
+  // This is the "version is unknown" marker, not a real version string —
+  // hence the lint-rule exemption on the literal below.
+  // eslint-disable-next-line manifest/no-hardcoded-versions
   return '0.0.0';
 }
 

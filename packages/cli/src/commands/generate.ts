@@ -9,6 +9,13 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
+import type {
+  NextJsProjection,
+  ProjectionResult,
+  ProjectionDiagnostic,
+  NextJsProjectionOptions,
+} from '@angriff36/manifest/projections/nextjs';
+import type { IR } from '@angriff36/manifest/ir';
 
 // Import from the main Manifest package
 async function loadDependencies() {
@@ -43,6 +50,10 @@ interface GenerateOptions {
    */
   projectionOptionsFromConfig?: Record<string, unknown>;
 }
+
+// Local type aliases: use the real projection types from the main
+// package. The CLI is a thin wrapper — `projection.generate(ir, request)`
+// returns the canonical ProjectionResult.
 
 /**
  * Get all IR files from input pattern
@@ -146,11 +157,11 @@ async function generateFromIR(
  * "skipped" lines for every entity/command.
  */
 async function generateAllSurfaces(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   const readRoutesEnabled = projectionOptions?.readRoutes?.enabled !== false; // default true
   const dispatcherEnabled = projectionOptions?.dispatcher?.enabled !== false; // default true
@@ -189,16 +200,16 @@ async function generateAllSurfaces(
  * `<appDir>/manifest/[entity]/commands/[command]/route.ts`.
  */
 async function generateDispatcher(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   spinner.text = 'Generating dispatcher...';
   const result = projection.generate(ir, {
     surface: 'nextjs.dispatcher',
-    options: projectionOptions,
+    options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);
 }
@@ -207,11 +218,11 @@ async function generateDispatcher(
  * Generate GET routes for entities
  */
 async function generateRoutes(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   const entities = ir.entities || [];
 
@@ -221,7 +232,7 @@ async function generateRoutes(
     const result = projection.generate(ir, {
       surface: 'nextjs.route',
       entity: entity.name,
-      options: projectionOptions,
+      options: projectionOptions as unknown as Record<string, unknown>,
     });
     await writeProjectionResult(result, outputDir);
   }
@@ -231,11 +242,11 @@ async function generateRoutes(
  * Generate POST routes for commands
  */
 async function generateCommands(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   const commands = ir.commands || [];
 
@@ -247,7 +258,7 @@ async function generateCommands(
         surface: 'nextjs.command',
         entity: command.entity,
         command: command.name,
-        options: projectionOptions,
+        options: projectionOptions as unknown as Record<string, unknown>,
       });
       await writeProjectionResult(result, outputDir);
     }
@@ -258,17 +269,17 @@ async function generateCommands(
  * Generate TypeScript types
  */
 async function generateTypes(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   spinner.text = 'Generating TypeScript types...';
 
   const result = projection.generate(ir, {
     surface: 'ts.types',
-    options: projectionOptions,
+    options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);
 }
@@ -277,17 +288,17 @@ async function generateTypes(
  * Generate client SDK
  */
 async function generateClient(
-  projection: any,
-  ir: any,
+  projection: NextJsProjection,
+  ir: IR,
   outputDir: string,
   spinner: Ora,
-  projectionOptions: any
+  projectionOptions: NextJsProjectionOptions
 ): Promise<void> {
   spinner.text = 'Generating client SDK...';
 
   const result = projection.generate(ir, {
     surface: 'ts.client',
-    options: projectionOptions,
+    options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);
 }
@@ -296,12 +307,12 @@ async function generateClient(
  * Write projection result to file(s)
  */
 async function writeProjectionResult(
-  result: any,
+  result: ProjectionResult,
   outputDir: string
 ): Promise<void> {
   // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
-    result.diagnostics.forEach((d: any) => {
+    result.diagnostics.forEach((d: ProjectionDiagnostic) => {
       if (d.severity === 'error') {
         console.error(chalk.red(`  Error: ${d.message}`));
       } else if (d.severity === 'warning') {
@@ -362,8 +373,9 @@ export async function generateCommand(
       try {
         await generateFromIR(irFile, options, fileSpinner);
         successCount++;
-      } catch (error: any) {
-        fileSpinner.fail(`Failed to generate from ${path.relative(process.cwd(), irFile)}: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        fileSpinner.fail(`Failed to generate from ${path.relative(process.cwd(), irFile)}: ${msg}`);
         errorCount++;
       }
     }
@@ -376,8 +388,8 @@ export async function generateCommand(
       spinner.warn(`Generated from ${successCount} file(s), ${errorCount} failed`);
       process.exit(1);
     }
-  } catch (error: any) {
-    spinner.fail(`Generation failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }

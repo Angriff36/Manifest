@@ -10,7 +10,23 @@ import { fileURLToPath } from 'url';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
-import Ajv from 'ajv';
+import Ajv, { type AnySchema, type ErrorObject } from 'ajv';
+
+/** Generic IR-like value parsed from a JSON file. Validation operates on
+ *  arbitrary JSON; we don't constrain its shape here. */
+type IRValue = unknown;
+
+/** A loaded JSON schema. Ajv accepts any JSON-shaped schema. */
+type LoadedSchema = AnySchema;
+
+/** Node fs error shape we narrow against for ENOENT detection. */
+interface NodeFsError extends Error { code?: string; }
+function isNodeFsError(e: unknown): e is NodeFsError {
+  return e instanceof Error && typeof (e as { code?: unknown }).code === 'string';
+}
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
 /**
  * Resolve the bundled schema path — works whether the CLI is run from inside
@@ -33,14 +49,14 @@ interface ValidateOptions {
 /**
  * Load JSON schema
  */
-async function loadSchema(schemaPath: string | undefined): Promise<any> {
+async function loadSchema(schemaPath: string | undefined): Promise<LoadedSchema> {
   if (!schemaPath) {
     // Use the schema bundled with the package — works in any consumer project
     const defaultPath = bundledSchemaPath();
     try {
       const content = await fs.readFile(defaultPath, 'utf-8');
-      return JSON.parse(content);
-    } catch (error) {
+      return JSON.parse(content) as LoadedSchema;
+    } catch {
       throw new Error(
         `Bundled schema not found at ${defaultPath}. ` +
         `This is a packaging bug — please report it. ` +
@@ -51,7 +67,7 @@ async function loadSchema(schemaPath: string | undefined): Promise<any> {
 
   const resolved = path.resolve(process.cwd(), schemaPath);
   const content = await fs.readFile(resolved, 'utf-8');
-  return JSON.parse(content);
+  return JSON.parse(content) as LoadedSchema;
 }
 
 /**
@@ -80,36 +96,37 @@ async function getIRFiles(irInput: string | undefined): Promise<string[]> {
 /**
  * Format an Ajv error into a human-readable string
  */
-function formatAjvError(error: any): string {
+function formatAjvError(error: ErrorObject): string {
   const field = error.instancePath
     ? error.instancePath.replace(/^\//, '').replace(/\//g, '.')
     : 'root';
+  const params = (error.params ?? {}) as Record<string, unknown>;
 
   switch (error.keyword) {
     case 'required': {
-      const missing = error.params?.missingProperty ?? '';
+      const missing = (params.missingProperty as string | undefined) ?? '';
       const prefix = error.instancePath ? `${field}.` : '';
       return `Missing required field: ${prefix}${missing}`;
     }
     case 'additionalProperties': {
-      const extra = error.params?.additionalProperty ?? '';
+      const extra = (params.additionalProperty as string | undefined) ?? '';
       return `Unknown field: ${field}.${extra}`;
     }
     case 'type':
-      return `${field} must be of type ${error.params?.type}`;
+      return `${field} must be of type ${params.type as string | undefined}`;
     case 'const':
-      return `${field} must be ${JSON.stringify(error.params?.allowedValue)}`;
+      return `${field} must be ${JSON.stringify(params.allowedValue)}`;
     case 'enum':
-      return `${field} must be one of: ${(error.params?.allowedValues ?? []).join(', ')}`;
+      return `${field} must be one of: ${((params.allowedValues as unknown[]) ?? []).join(', ')}`;
     default:
-      return `${field}: ${error.message}`;
+      return `${field}: ${error.message ?? ''}`;
   }
 }
 
 /**
  * Validate IR against schema using Ajv
  */
-async function validateIR(irPath: string, schema: any, _strict: boolean): Promise<{
+async function validateIR(irPath: string, schema: LoadedSchema, _strict: boolean): Promise<{
   valid: boolean;
   errors: string[];
   warnings: string[];
@@ -118,7 +135,7 @@ async function validateIR(irPath: string, schema: any, _strict: boolean): Promis
 
   try {
     const irContent = await fs.readFile(irPath, 'utf-8');
-    const ir = JSON.parse(irContent);
+    const ir = JSON.parse(irContent) as IRValue;
 
     const ajv = new Ajv({ allErrors: true });
     const validate = ajv.compile(schema);
@@ -130,8 +147,8 @@ async function validateIR(irPath: string, schema: any, _strict: boolean): Promis
 
     return { valid, errors, warnings };
 
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (isNodeFsError(error) && error.code === 'ENOENT') {
       return {
         valid: false,
         errors: [`File not found: ${irPath}`],
@@ -233,8 +250,8 @@ export async function validateCommand(
       process.exit(1);
     }
 
-  } catch (error: any) {
-    spinner.fail(`Validation failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Validation failed: ${errorMessage(error)}`);
     console.error(error);
     process.exit(1);
   }

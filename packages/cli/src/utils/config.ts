@@ -12,7 +12,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
-import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 
 // ============================================================================
@@ -220,9 +219,16 @@ async function loadModule(modulePath: string): Promise<unknown> {
   // Try jiti first for TypeScript support
   try {
     const jiti = await import('jiti').then(m => m.default || m);
-    const load = (jiti as Function)(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
-      interopDefault: true,
-    } as Record<string, unknown>);
+    // jiti's exported factory shape is `(cwd, opts) => loader`; typed as a
+    // concrete signature so we don't lean on `Function`.
+    const jitiFactory = jiti as unknown as (
+      cwd: string,
+      opts: Record<string, unknown>,
+    ) => (specifier: string) => unknown;
+    const load = jitiFactory(
+      typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(),
+      { interopDefault: true },
+    );
 
     const module = load(modulePath);
     return module;
@@ -754,7 +760,6 @@ export async function parsePrismaSchema(schemaPath: string): Promise<PrismaSchem
 
         // Check for @id attribute
         const hasId = /@id/.test(fieldLine);
-        const hasDefault = /@default\(/.test(fieldLine);
         const isGenerated = /@default\(autoincrement\)|@updatedAt|@createdAt/.test(fieldLine);
 
         fields.push({

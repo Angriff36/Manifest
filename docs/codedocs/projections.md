@@ -21,7 +21,7 @@ Projections are Manifest's code generation layer. They consume IR and emit artif
 
 The projection contract is defined in `src/manifest/projections/interface.ts`. A projection takes an `IR` plus a request describing a surface and optional options, then returns artifacts and diagnostics. The built-in implementations are `NextJsProjection` in `src/manifest/projections/nextjs/generator.ts` and `RoutesProjection` in `src/manifest/projections/routes/generator.ts`.
 
-This concept depends on [Compilation and IR](/docs/compilation-ir) because projections never parse source themselves. It also depends on the [Runtime Engine](/docs/runtime-engine-concepts) because generated write paths are expected to call `RuntimeEngine.runCommand()` rather than reimplement policy, constraint, or guard logic.
+This concept depends on [Compilation and IR](compilation-ir.md) because projections never parse source themselves. It also depends on the [Runtime Engine](runtime-engine-concepts.md) because generated write paths are expected to call `RuntimeEngine.runCommand()` rather than reimplement policy, constraint, or guard logic.
 
 ```mermaid
 graph TD
@@ -115,4 +115,4 @@ console.log(JSON.parse(result.artifacts[0].code).routes);
 - Use `RoutesProjection` when you need a deterministic route inventory, typed path builders, or governance-friendly route metadata.
 - Use both when you want generated code in your app and a machine-readable transport contract for CI or tooling.
 
-The [Next.js Projection Guide](/docs/guides/nextjs-projection) shows a full compile-and-generate workflow, and the [Projections API Reference](/docs/api-reference/projections) lists the exact surfaces, options, and import paths.
+The [Next.js Projection Guide](guides/nextjs-projection.md) shows a full compile-and-generate workflow, and the [Projections API Reference](api-reference/projections.md) lists the exact surfaces, options, and import paths.

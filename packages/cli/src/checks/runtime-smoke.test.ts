@@ -15,7 +15,6 @@ describe('runRuntimeSmoke', () => {
     const result = await runRuntimeSmoke();
     if (!result.ok) {
       // Print structured failure for debugging when this regresses.
-      // eslint-disable-next-line no-console
       console.log(JSON.stringify(result, null, 2));
     }
     expect(result.fatal).toBeUndefined();
