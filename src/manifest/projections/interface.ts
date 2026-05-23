@@ -151,4 +151,54 @@ export interface NextJsProjectionOptions {
 
   /** Custom indentation (default: 2 spaces) */
   indentSize?: number;
+
+  /**
+   * Dispatcher configuration for the canonical write surface at
+   *   POST /api/manifest/[entity]/commands/[command]
+   *
+   * Defaults preserve the historical inline behaviour (the dispatcher
+   * constructs a `createManifestRuntime` instance per request and calls
+   * `runtime.runCommand`). Set `executionMode` to `'externalExecutor'` when
+   * the downstream app owns runtime construction and the dispatcher should
+   * be a thin transport adapter delegating to an app-supplied executor.
+   *
+   * See docs/spec/config/manifest.config.md for the full key reference and
+   * an externalExecutor migration example.
+   */
+  dispatcher?: {
+    /** Whether the dispatcher surface is emitted at all (default: true) */
+    enabled?: boolean;
+    /**
+     * Where command execution happens:
+     *   - 'inline' (default): emit `createManifestRuntime` + `runtime.runCommand`
+     *   - 'externalExecutor': import the configured executor and call it,
+     *     do NOT inline runtime construction
+     */
+    executionMode?: 'inline' | 'externalExecutor';
+    /** Import path for the external executor (only used in externalExecutor mode) */
+    executorImportPath?: string;
+    /** Named export to call on the external executor module */
+    executorImportName?: string;
+    /**
+     * When true, derive an `instanceId` from the URL/body and pass it to
+     * the executor. Disabled by default to avoid surprising callers of
+     * non-instance commands.
+     */
+    deriveInstanceId?: boolean;
+  };
+
+  /**
+   * Policy for the deprecated per-command "concrete" routes
+   * (the `nextjs.command` surface).
+   *
+   * - `enabled: false` suppresses concrete command routes entirely.
+   * - `legacyAliasesOnly: true` (default) keeps them as deprecated aliases
+   *   that carry the DEPRECATED ALIAS banner and point callers at the
+   *   dispatcher. Set to `false` only if you intentionally treat per-command
+   *   routes as a first-class surface.
+   */
+  concreteCommandRoutes?: {
+    enabled?: boolean;
+    legacyAliasesOnly?: boolean;
+  };
 }
