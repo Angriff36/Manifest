@@ -132,15 +132,15 @@ export function extractRunCommandCalls(source: string, filename: string): RunCom
 }
 
 const SCAN_GLOBS = [
-  'app/**/*.{ts,tsx}',
-  'src/app/**/*.{ts,tsx}',
-  'apps/*/app/**/*.{ts,tsx}',
-  'pages/api/**/*.{ts,tsx}',
-  'src/pages/api/**/*.{ts,tsx}',
-  'app/actions/**/*.{ts,tsx}',
-  'src/app/actions/**/*.{ts,tsx}',
-  'jobs/**/*.{ts,tsx}',
-  'src/jobs/**/*.{ts,tsx}',
+  'app/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/app/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'apps/*/app/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'pages/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/pages/api/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'app/actions/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/app/actions/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'jobs/**/*.{ts,tsx,js,jsx,mjs,cjs}',
+  'src/jobs/**/*.{ts,tsx,js,jsx,mjs,cjs}',
 ];
 
 const EXCLUDE_GLOBS = [
@@ -149,10 +149,8 @@ const EXCLUDE_GLOBS = [
   '**/.next/**',
   '**/build/**',
   '**/generated/**',
-  '**/*.test.ts',
-  '**/*.test.tsx',
-  '**/*.spec.ts',
-  '**/*.spec.tsx',
+  '**/*.test.{ts,tsx,js,jsx,mjs,cjs}',
+  '**/*.spec.{ts,tsx,js,jsx,mjs,cjs}',
   '**/__tests__/**',
 ];
 
@@ -171,11 +169,13 @@ export const unregisteredCommandCallDetector: Detector = {
     const known = await loadCommandSet(ctx.commandsRegistry);
     const findings: AuditFinding[] = [];
     const seen = new Set<string>();
-    for (const pat of SCAN_GLOBS) {
+    const scanPatterns = [...SCAN_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = [...EXCLUDE_GLOBS, ...(ctx.excludeGlobs ?? [])];
+    for (const pat of scanPatterns) {
       const files = await glob(pat, {
         cwd: ctx.root,
         absolute: true,
-        ignore: EXCLUDE_GLOBS,
+        ignore: ignorePatterns,
       });
       for (const file of files) {
         if (seen.has(file)) continue;

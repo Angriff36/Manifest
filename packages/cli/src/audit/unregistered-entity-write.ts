@@ -18,15 +18,15 @@ import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
 
 const ROUTE_GLOBS = [
-  'app/api/**/route.ts',
-  'src/app/api/**/route.ts',
-  'apps/*/app/api/**/route.ts',
-  'app/actions/**/*.ts',
-  'src/app/actions/**/*.ts',
-  'apps/*/app/actions/**/*.ts',
-  'jobs/**/*.ts',
-  'src/jobs/**/*.ts',
-  'apps/*/jobs/**/*.ts',
+  'app/api/**/route.{ts,js,mjs,cjs}',
+  'src/app/api/**/route.{ts,js,mjs,cjs}',
+  'apps/*/app/api/**/route.{ts,js,mjs,cjs}',
+  'app/actions/**/*.{ts,js,mjs,cjs}',
+  'src/app/actions/**/*.{ts,js,mjs,cjs}',
+  'apps/*/app/actions/**/*.{ts,js,mjs,cjs}',
+  'jobs/**/*.{ts,js,mjs,cjs}',
+  'src/jobs/**/*.{ts,js,mjs,cjs}',
+  'apps/*/jobs/**/*.{ts,js,mjs,cjs}',
 ];
 
 const EXCLUDE_GLOBS = [
@@ -63,11 +63,13 @@ export const unregisteredEntityWriteDetector: Detector = {
     const known = await loadEntityNames(ctx.entitiesRegistry);
     const findings: AuditFinding[] = [];
     const seen = new Set<string>();
-    for (const pattern of ROUTE_GLOBS) {
+    const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = [...EXCLUDE_GLOBS, ...(ctx.excludeGlobs ?? [])];
+    for (const pattern of scanPatterns) {
       const files = await glob(pattern, {
         cwd: ctx.root,
         absolute: true,
-        ignore: EXCLUDE_GLOBS,
+        ignore: ignorePatterns,
       });
       for (const file of files) {
         if (seen.has(file)) continue;

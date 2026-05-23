@@ -215,6 +215,40 @@ describe('unregisteredCommandCallDetector', () => {
     expect(findings).toEqual([]);
   });
 
+  it('scans .js files for runtime.runCommand calls', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, [{ entity: 'User', command: 'create' }]);
+    await writeRoute(
+      root,
+      'app/api/legacy/route.js',
+      `exports.POST = async function(){ return runtime.runCommand('Foo.bar', {}); };`
+    );
+    const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].code).toBe('UNREGISTERED_COMMAND_CALL');
+    expect(findings[0].file).toMatch(/\.js$/);
+  });
+
+  it('scans .mjs and .cjs files as well', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    await writeRoute(
+      root,
+      'app/actions/m.mjs',
+      `export const f = () => runtime.runCommand('Foo.bar', {});`
+    );
+    await writeRoute(
+      root,
+      'app/actions/c.cjs',
+      `module.exports.f = () => runtime.runCommand('Baz.qux', {});`
+    );
+    const findings = await unregisteredCommandCallDetector.run({ root, commandsRegistry: reg });
+    expect(findings).toHaveLength(2);
+    expect(findings.map(f => f.file).sort()).toEqual(
+      ['app/actions/c.cjs', 'app/actions/m.mjs']
+    );
+  });
+
   it('ignores test files via exclude globs', async () => {
     const root = await tempDir();
     const reg = await writeRegistry(root, []);

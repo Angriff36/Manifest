@@ -29,6 +29,14 @@ const ROUTE_GLOBS = [
 const CANONICAL_PATH_SEGMENT = '/api/manifest/[entity]/commands/[command]';
 const RUNTIME_CALL_RE = /\brunCommand\s*\(/;
 const DEPRECATED_BANNER_RE = /DEPRECATED ALIAS/;
+// Route-drift only reasons about Next.js route files (basename
+// `route.{ts,tsx,js,jsx,mjs,cjs}`). When `--include` widens the scan
+// surface, those extra globs may match arbitrary helpers (e.g. a user
+// asking to scan an entire `lib/` tree) which are not routes; we must
+// NOT flag those as ROUTE_DRIFT, because the detector's whole concept
+// (alternative semantics in a per-command route) does not apply to
+// helpers.
+const ROUTE_FILE_BASENAME_RE = /[\\/]route\.(?:ts|tsx|js|jsx|mjs|cjs)$/;
 
 function isCanonicalDispatcher(filePath: string): boolean {
   // Both forward- and back-slash variants must be tolerated on Windows.
@@ -56,9 +64,21 @@ export const routeDriftDetector: Detector = {
   description: 'Flag per-command routes that drift from the canonical dispatcher',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
-    for (const pattern of ROUTE_GLOBS) {
-      const matches = await glob(pattern, { cwd: ctx.root, absolute: true });
+    const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = ctx.excludeGlobs;
+    const seen = new Set<string>();
+    for (const pattern of scanPatterns) {
+      const matches = await glob(pattern, {
+        cwd: ctx.root,
+        absolute: true,
+        ignore: ignorePatterns,
+      });
       for (const file of matches) {
+        if (seen.has(file)) continue;
+        seen.add(file);
+        // --include can pull in non-route helpers; route-drift's diagnostic
+        // only makes sense for files Next.js actually treats as routes.
+        if (!ROUTE_FILE_BASENAME_RE.test(file)) continue;
         findings.push(...(await scanFile(file, ctx.root)));
       }
     }

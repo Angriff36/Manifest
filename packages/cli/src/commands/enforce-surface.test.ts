@@ -189,6 +189,103 @@ describe('enforceSurfaceCommand', () => {
     expect(Array.isArray(j.findings)).toBe(true);
   });
 
+  it('honors --include by widening the scan surface', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    // File lives outside the default scan globs (no app/, no api/).
+    await writeRoute(
+      root,
+      'lib/server/legacy.ts',
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const without = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+    });
+    const withInclude = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      include: ['lib/**/*.{ts,js}'],
+    });
+    spy.mockRestore();
+    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+    expect(withInclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+  });
+
+  it('honors --exclude by suppressing a path that would otherwise be flagged', async () => {
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    await writeRoute(
+      root,
+      'app/api/legacy/route.ts',
+      `export async function POST(){ return runtime.runCommand('Foo.bar', {}); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const without = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+    });
+    const withExclude = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      format: 'json',
+      exclude: ['app/api/legacy/**'],
+    });
+    spy.mockRestore();
+    expect(without.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeDefined();
+    expect(withExclude.findings.find(f => f.code === 'UNREGISTERED_COMMAND_CALL')).toBeUndefined();
+  });
+
+  it('does not flag --include non-route files as ROUTE_SURFACE_DRIFT', async () => {
+    // route-drift only reasons about Next.js route files. If --include
+    // pulls in a plain helper that happens to call runtime.runCommand,
+    // we must NOT report ROUTE_SURFACE_DRIFT on it.
+    const root = await tempDir();
+    const reg = await writeRegistry(root, [{ entity: 'User', command: 'create' }]);
+    await writeRoute(
+      root,
+      'lib/server/helpers.ts',
+      `export async function doIt(){ return runtime.runCommand('User.create', {}); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const res = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      include: ['lib/**/*.{ts,js}'],
+      format: 'json',
+    });
+    spy.mockRestore();
+    expect(res.findings.find(f => f.code === 'ROUTE_SURFACE_DRIFT')).toBeUndefined();
+  });
+
+  it('deduplicates findings when --include overlaps default globs', async () => {
+    // Default ROUTE_GLOBS already covers `app/api/**/route.ts`. Passing
+    // `--include 'app/api/**/*.ts'` matches the same file. Without dedup,
+    // the file is scanned twice and emits duplicate findings — which then
+    // cascade into duplicate BYPASS_VIOLATION entries downstream.
+    const root = await tempDir();
+    const reg = await writeRegistry(root, []);
+    await writeRoute(
+      root,
+      'app/api/legacy/route.ts',
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+    );
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const res = await enforceSurfaceCommand({
+      root,
+      commandsRegistry: reg,
+      include: ['app/api/**/*.ts'],
+      format: 'json',
+    });
+    spy.mockRestore();
+    const directWrites = res.findings.filter(f => f.code === 'DIRECT_WRITE_BYPASS');
+    expect(directWrites).toHaveLength(1);
+  });
+
   it('renders text output with summary counts when format is text', async () => {
     const root = await tempDir();
     const reg = await writeRegistry(root, []);

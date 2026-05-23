@@ -86,9 +86,20 @@ export const eventFabricationDetector: Detector = {
   description: 'Flag semantic event creation outside runtime adapters',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
-    for (const pattern of ROUTE_GLOBS) {
-      const matches = await glob(pattern, { cwd: ctx.root, absolute: true });
+    const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
+    const ignorePatterns = ctx.excludeGlobs;
+    // Default globs and user --include patterns may overlap; dedup so a
+    // single file does not produce duplicate EVENT_FABRICATION findings.
+    const seen = new Set<string>();
+    for (const pattern of scanPatterns) {
+      const matches = await glob(pattern, {
+        cwd: ctx.root,
+        absolute: true,
+        ignore: ignorePatterns,
+      });
       for (const file of matches) {
+        if (seen.has(file)) continue;
+        seen.add(file);
         findings.push(...(await scanFile(file, ctx.root)));
       }
     }
