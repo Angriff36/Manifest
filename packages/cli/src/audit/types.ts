@@ -17,6 +17,16 @@ export interface AuditFinding {
   file?: string;
   /** Detector that produced the finding. */
   detector: string;
+  /** 1-based line number when AST-located. */
+  line?: number;
+  /** 1-based column when AST-located. */
+  column?: number;
+  /** Governed entity inferred from the finding, if any. */
+  entity?: string;
+  /** Governed command inferred from the finding, if any. */
+  command?: string;
+  /** Remediation hint shown to humans and agents. */
+  suggestion?: string;
 }
 
 export interface DetectorContext {
@@ -24,6 +34,8 @@ export interface DetectorContext {
   root: string;
   /** Optional path to a commands registry JSON (commands.json). */
   commandsRegistry?: string;
+  /** Optional path to an entities registry JSON (entities.json). */
+  entitiesRegistry?: string;
   /** Optional path to a bypass registry JSON (bypasses.json). */
   bypassRegistry?: string;
 }
