@@ -100,6 +100,7 @@
     "docs:check:metadata": "node scripts/check-doc-metadata.mjs",
     "docs:check:links": "node scripts/check-doc-links.mjs",
     "docs:check": "npm run docs:check:metadata && npm run docs:check:links",
+    "docs:dev": "cd docs-site && mintlify dev",
     "verify:docs": "npm run docs:check && npm test",
     "verify:docs:quick": "npm run docs:check",
     "conformance:regen": "tsx scripts/regen-conformance.ts",

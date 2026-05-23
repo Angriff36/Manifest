@@ -1,0 +1,175 @@
+---
+title: "Generate API routes with Manifest projections"
+description: "Projections are a code-generation tool that reads compiled Manifest IR and emits Next.js routes, TypeScript types, and a client SDK for your application."
+---
+
+A **projection** reads your compiled Intermediate Representation (IR) and emits platform-specific artifacts. Projections are tooling — they do not redefine runtime semantics. Adding or changing a projection never changes what a Manifest program *means*; it only changes what code gets generated from it.
+
+## What projections produce
+
+The Next.js projection ships four surfaces:
+
+| Surface            | CLI identifier   | What it generates                                                               |
+| ------------------ | ---------------- | ------------------------------------------------------------------------------- |
+| Entity read routes | `nextjs.route`   | Next.js App Router GET handlers using direct database queries                   |
+| Command routes     | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand`                   |
+| TypeScript types   | `ts.types`       | `interface` declarations derived from your IR entity definitions                |
+| Client SDK         | `ts.client`      | Typed fetch wrappers for calling your routes from browser or server-client code |
+
+## Reads vs. writes
+
+This is the most important rule for projections:
+
+* **Read routes (`nextjs.route`) may bypass the runtime.** Generated GET handlers use direct database queries (Prisma by default). This is intentional — read policies are not enforced by default in Manifest semantics, and direct queries are more efficient.
+* **Write routes (`nextjs.command`) MUST use `RuntimeEngine.runCommand`.** Bypassing `runCommand` for mutations bypasses guard evaluation, policy checks, constraint validation, and event emission. The spec requires these to run in a fixed order on every mutation.
+
+<Warning>
+  Never replace `RuntimeEngine.runCommand` with direct database writes in a command route. Doing so silently strips all semantic enforcement from that operation.
+</Warning>
+
+## Using the projection CLI
+
+The CLI is a development tool that wraps the projection API. Use it during scaffolding to generate initial route files.
+
+```bash theme={null}
+# Compile + generate all surfaces in one step
+manifest build recipe.manifest --projection nextjs --code-output app/api/
+
+# Generate a specific surface from compiled IR
+manifest generate ir/recipe.ir.json --surface route --output app/api/
+manifest generate ir/recipe.ir.json --surface command --output app/api/
+manifest generate ir/recipe.ir.json --surface types --output lib/manifest-types.ts
+manifest generate ir/recipe.ir.json --surface client --output lib/manifest-client.ts
+
+# Configure the auth provider
+manifest generate ir/recipe.ir.json --auth clerk --output app/api/
+```
+
+<Note>
+  The CLI uses `tsx` and is intended for development-time scaffolding. For production build pipelines, call the projection functions directly in your build scripts.
+</Note>
+
+## Using the projection API programmatically
+
+Import `NextJsProjection` and call the appropriate generator method in your build script.
+
+```typescript theme={null}
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { NextJsProjection } from '@angriff36/manifest/projections/nextjs';
+import fs from 'fs/promises';
+
+const source = await fs.readFile('recipe.manifest', 'utf-8');
+const { ir, diagnostics } = await compileToIR(source);
+
+if (diagnostics.some(d => d.severity === 'error')) {
+  for (const d of diagnostics) console.error(d.message);
+  process.exit(1);
+}
+
+const projection = new NextJsProjection();
+
+// Generate the entity read route
+const routeResult = projection.generateRoute(ir, 'Recipe');
+await fs.writeFile('app/api/recipes/route.ts', routeResult.code);
+
+// Generate TypeScript types
+const typesResult = projection.generateTypes(ir);
+await fs.writeFile('lib/manifest-types.ts', typesResult.code);
+
+// Generate the client SDK
+const clientResult = projection.generateClient(ir);
+await fs.writeFile('lib/manifest-client.ts', clientResult.code);
+```
+
+### Configuration options
+
+Pass an options object as the third argument to `generateRoute` to customize the output:
+
+```typescript theme={null}
+const result = projection.generateRoute(ir, 'Recipe', {
+  authProvider: 'clerk',          // 'clerk' | 'nextauth' | 'custom' | 'none'
+  authImportPath: '@/lib/auth',   // custom import path for auth utilities
+  databaseImportPath: '@/lib/database',
+  responseImportPath: '@/lib/manifest-response',
+  includeTenantFilter: true,      // include `where: { tenantId }` in queries
+  includeSoftDeleteFilter: true,  // include `where: { deletedAt: null }`
+  tenantIdProperty: 'tenantId',   // property name for tenant isolation
+  deletedAtProperty: 'deletedAt', // property name for soft-delete timestamps
+  appDir: 'app/api',              // output directory prefix
+  strictMode: true,               // emit TypeScript strict-mode compatible code
+});
+```
+
+## Auth provider examples
+
+<CodeGroup>
+  ```typescript Clerk theme={null}
+  const result = projection.generateRoute(ir, 'Recipe', {
+    authProvider: 'clerk',
+    // Generated import: import { auth } from "@clerk/nextjs/server";
+  });
+  ```
+
+  ```typescript NextAuth theme={null}
+  const result = projection.generateRoute(ir, 'Recipe', {
+    authProvider: 'nextauth',
+    // Generated import: import { getServerSession } from "next-auth";
+  });
+  ```
+
+  ```typescript Custom theme={null}
+  const result = projection.generateRoute(ir, 'Recipe', {
+    authProvider: 'custom',
+    authImportPath: '@/lib/my-auth',
+    // Generated import: import { getUser } from "@/lib/my-auth";
+  });
+  ```
+
+  ```typescript None theme={null}
+  const result = projection.generateRoute(ir, 'Recipe', {
+    authProvider: 'none',
+    // Generated: const userId = "anonymous";
+  });
+  ```
+</CodeGroup>
+
+## Tenant and soft-delete filtering
+
+```typescript theme={null}
+// Multi-tenant with soft delete (defaults)
+const result = projection.generateRoute(ir, 'Recipe', {
+  includeTenantFilter: true,
+  tenantIdProperty: 'tenantId',
+  includeSoftDeleteFilter: true,
+  deletedAtProperty: 'deletedAt',
+  // Generated WHERE: { tenantId, deletedAt: null }
+});
+
+// Single-tenant, no soft delete
+const result = projection.generateRoute(ir, 'Recipe', {
+  includeTenantFilter: false,
+  includeSoftDeleteFilter: false,
+  // Generated WHERE: { }
+});
+
+// Custom property names
+const result = projection.generateRoute(ir, 'Recipe', {
+  tenantIdProperty: 'orgId',
+  deletedAtProperty: 'removedAt',
+  // Generated WHERE: { orgId, removedAt: null }
+});
+```
+
+## The projection boundary
+
+Projections handle transport concerns: authentication, HTTP conventions, response shaping, and read-path strategy. They do not own runtime responsibilities.
+
+| Projection owns                       | Runtime owns                    |
+| ------------------------------------- | ------------------------------- |
+| Reading IR and emitting code          | Building the evaluation context |
+| Configuring auth and database imports | Enforcing policies              |
+| Choosing the read-path strategy       | Evaluating guards in order      |
+| Adapting to framework conventions     | Executing actions               |
+|                                       | Emitting declared events        |
+
+Projections are tooling. They cannot introduce new language semantics — only the runtime and its specification can define how Manifest programs behave. If you find a mismatch between what a generated route does and what the Manifest spec requires, the generated code is wrong, not the spec.

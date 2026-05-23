@@ -1,0 +1,279 @@
+---
+title: "Manifest CLI command reference"
+description: "Full syntax, options, and usage examples for the core build pipeline: manifest init, compile, generate, build, and validate."
+---
+
+Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
+
+This page covers the **build pipeline**. For the v0.6.0+ governance and audit commands, see [Governance & audit](/cli/governance).
+
+***
+
+## `manifest init`
+
+Runs an interactive prompt that collects your project settings and writes a `manifest.config.yaml` to the project root. If a config file already exists, the command exits without overwriting it unless you pass `--force`.
+
+```bash theme={null}
+manifest init
+```
+
+### Questions asked
+
+| Prompt                                  | Default         |
+| --------------------------------------- | --------------- |
+| Where are your `.manifest` files?       | `**/*.manifest` |
+| Where should IR output go?              | `ir/`           |
+| Will you be generating code from IR?    | No              |
+| What projection target?                 | `nextjs`        |
+| Where should generated code be written? | `app/api`       |
+
+If the target is `nextjs` or `remix`, the generated code output defaults to `app/api`. For any other target it defaults to `generated`.
+
+### Options
+
+<ParamField path="--force" type="boolean" default="false">
+  Overwrite an existing `manifest.config.yaml`. The command is interactive and requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+</ParamField>
+
+### Examples
+
+```bash theme={null}
+# Interactive setup
+manifest init
+
+# Overwrite an existing config
+manifest init --force
+```
+
+<Warning>
+  `manifest init --force` requires an interactive terminal. In headless or non-TTY environments the command writes a minimal default config instead of prompting.
+</Warning>
+
+***
+
+## `manifest compile [source]`
+
+Parses one or more `.manifest` source files and writes the compiled IR as `.ir.json` files. When no source is provided, the CLI uses the glob pattern from your config (or `**/*.manifest` by default).
+
+```bash theme={null}
+manifest compile [source] [options]
+```
+
+`source` can be a single `.manifest` file path, a directory, or omitted to use the config glob.
+
+### Options
+
+<ParamField path="-o, --output" type="string" default="ir/">
+  Output directory or file path. When the output is a directory, each source file produces a matching `.ir.json` file inside it.
+</ParamField>
+
+<ParamField path="-g, --glob" type="string">
+  Glob pattern to select multiple source files. Use this when you pass a directory as `source` and want a non-default pattern.
+</ParamField>
+
+<ParamField path="-d, --diagnostics" type="boolean" default="false">
+  Print compiler diagnostics (errors, warnings, and informational messages) to the console after each file is compiled.
+</ParamField>
+
+<ParamField path="--pretty" type="boolean" default="true">
+  Pretty-print the IR JSON output with two-space indentation. Disable for compact output.
+</ParamField>
+
+### Examples
+
+```bash theme={null}
+# Compile a single file; output goes to the config output dir if set
+manifest compile modules/recipe.manifest
+
+# Compile a single file to a specific directory
+manifest compile modules/recipe.manifest --output ir/
+
+# Compile all .manifest files matching a glob
+manifest compile --glob "modules/**/*.manifest" --output ir/
+
+# Compile and show diagnostics
+manifest compile modules/recipe.manifest --output ir/ --diagnostics
+```
+
+***
+
+## `manifest generate <ir>`
+
+Reads one or more compiled IR files and generates code using the specified projection and surface. `<ir>` can be a single `.ir.json` file or a directory; when it is a directory, the CLI processes every `.ir.json` file found inside it.
+
+```bash theme={null}
+manifest generate <ir> [options]
+```
+
+### Options
+
+<ParamField path="-p, --projection" type="string" default="nextjs">
+  Projection to use for code generation. Supported value: `nextjs`.
+</ParamField>
+
+<ParamField path="-s, --surface" type="string" default="all">
+  Which surface(s) to generate. Accepted values:
+
+  * `route` — GET route handlers for entity list and retrieve operations
+  * `command` — POST route handlers for entity commands (create, update, delete)
+  * `types` — TypeScript type definitions
+  * `client` — Client SDK functions
+  * `all` — All four surfaces
+</ParamField>
+
+<ParamField path="-o, --output" type="string">
+  Output directory for generated files. Falls back to the config's `projections.nextjs.output` value when not provided.
+</ParamField>
+
+<ParamField path="--auth" type="string">
+  Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to config, then defaults to `clerk`.
+</ParamField>
+
+<ParamField path="--database" type="string">
+  Database import path used in generated files (e.g. `@/lib/database`). Falls back to config, then defaults to `@/lib/database`.
+</ParamField>
+
+<ParamField path="--runtime" type="string">
+  Runtime import path (e.g. `@/lib/manifest-runtime`). Falls back to config, then defaults to `@/lib/manifest-runtime`.
+</ParamField>
+
+<ParamField path="--response" type="string">
+  Response helpers import path (e.g. `@/lib/manifest-response`). Falls back to config, then defaults to `@/lib/manifest-response`.
+</ParamField>
+
+### Examples
+
+```bash theme={null}
+# Generate using all config defaults
+manifest generate ir/recipe.ir.json
+
+# Override the output directory
+manifest generate ir/recipe.ir.json --output apps/api/app/api/
+
+# Generate only TypeScript types
+manifest generate ir/recipe.ir.json --surface types --output generated/types.ts
+
+# Generate from a directory of IR files with workspace imports
+manifest generate ir/ \
+  --output apps/api/app/api/ \
+  --auth @repo/auth/server \
+  --database @repo/database \
+  --runtime @repo/manifest/runtime \
+  --response @repo/manifest/response
+```
+
+***
+
+## `manifest build [source]`
+
+Runs compile and generate as a single pipeline. The source `.manifest` files are compiled to IR in `--ir-output`, then code is generated from that IR into `--code-output`. All config defaults apply to both stages.
+
+```bash theme={null}
+manifest build [source] [options]
+```
+
+`source` can be a single `.manifest` file, a glob pattern, or omitted to use the config `src` field.
+
+### Options
+
+<ParamField path="-p, --projection" type="string" default="nextjs">
+  Projection name for the generate stage.
+</ParamField>
+
+<ParamField path="-s, --surface" type="string" default="all">
+  Surface(s) to generate. Same values as `manifest generate`.
+</ParamField>
+
+<ParamField path="--ir-output" type="string">
+  Directory to write compiled IR files. Falls back to the config `output` field, then defaults to `ir/`.
+</ParamField>
+
+<ParamField path="--code-output" type="string">
+  Directory to write generated code files. Falls back to `projections.nextjs.output` in config, then defaults to `generated/`.
+</ParamField>
+
+<ParamField path="-g, --glob" type="string">
+  Glob pattern for selecting multiple source files during the compile stage.
+</ParamField>
+
+<ParamField path="--auth" type="string">
+  Auth provider or import path, passed through to the generate stage.
+</ParamField>
+
+<ParamField path="--database" type="string">
+  Database import path, passed through to the generate stage.
+</ParamField>
+
+<ParamField path="--runtime" type="string">
+  Runtime import path, passed through to the generate stage.
+</ParamField>
+
+<ParamField path="--response" type="string">
+  Response helpers import path, passed through to the generate stage.
+</ParamField>
+
+### Examples
+
+```bash theme={null}
+# Use all config defaults (recommended after manifest init)
+manifest build
+
+# Build a single source file with explicit outputs
+manifest build modules/recipe.manifest \
+  --ir-output ir/ \
+  --code-output app/api/
+
+# Build multiple files via glob with workspace imports
+manifest build \
+  --glob "modules/**/*.manifest" \
+  --ir-output ir/ \
+  --code-output apps/api/app/api/ \
+  --auth @repo/auth/server
+```
+
+***
+
+## `manifest validate [ir]`
+
+Validates one or more IR JSON files against the IR v1 JSON schema using [Ajv](https://ajv.js.org). When `ir` is omitted, the CLI searches the current directory for all `*.ir.json` files (excluding `node_modules`, `dist`, and `.next`).
+
+```bash theme={null}
+manifest validate [ir] [options]
+```
+
+### Options
+
+<ParamField path="--schema" type="string">
+  Path to a custom JSON schema file. When omitted, the CLI uses the IR v1 schema bundled with the installed package automatically.
+</ParamField>
+
+<ParamField path="--strict" type="boolean" default="false">
+  Treat warnings as failures. When set, any file with warnings causes a non-zero exit code.
+</ParamField>
+
+### Examples
+
+```bash theme={null}
+# Validate all IR files in the ir/ directory
+manifest validate ir/
+
+# Validate a specific IR file
+manifest validate ir/recipe.ir.json
+
+# Fail on warnings as well as errors
+manifest validate ir/ --strict
+
+# Validate against a custom schema
+manifest validate ir/ --schema custom-schema.json
+```
+
+<Note>
+  The bundled schema path is resolved relative to the installed package, so `manifest validate` works correctly whether you run it from inside the Manifest repo or from a consumer project.
+</Note>
+
+***
+
+## See also
+
+* [Governance & audit commands](/cli/governance) — the v0.6.0+ enforcement and audit suite
+* [Configuration reference](/cli/configuration) — every field in `manifest.config.yaml`

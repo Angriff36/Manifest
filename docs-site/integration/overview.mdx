@@ -1,0 +1,131 @@
+---
+title: "Integrating Manifest into your application"
+description: "Choose between Projections and the Embedded Runtime to integrate Manifest. Learn when to use each pattern and how to keep identity fields safe."
+---
+
+Manifest gives you two distinct integration patterns: **Projections**, which generate platform-specific code from your compiled IR, and the **Embedded Runtime**, which lets you drive command execution directly inside your own handlers. Most production applications use both.
+
+This page explains the boundary between them, how to decide which to reach for first, and a security rule that applies to both.
+
+## The two patterns
+
+<Tabs>
+  <Tab title="Projections">
+    Projections are a **code-generation tool**, not a change to language semantics. They read your compiled Intermediate Representation (IR) and emit artifacts—Next.js App Router routes, TypeScript types, and a client SDK—that you can drop straight into your project.
+
+    ```bash theme={null}
+    # Compile + generate all surfaces for your .manifest file
+    manifest build recipe.manifest --projection nextjs --code-output app/api/
+
+    # Or use the CLI to generate individual surfaces from compiled IR
+    manifest generate ir/recipe.ir.json --surface route --output app/api/
+    manifest generate ir/recipe.ir.json --surface command --output app/api/
+    ```
+
+    The four generated surfaces are:
+
+    | Surface          | What it produces                                              |
+    | ---------------- | ------------------------------------------------------------- |
+    | `nextjs.route`   | GET handlers with direct database queries                     |
+    | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
+    | `ts.types`       | TypeScript interfaces derived from your entity definitions    |
+    | `ts.client`      | Typed fetch wrappers for calling your routes from client code |
+
+    **Read operations** in generated routes use direct database queries and intentionally bypass the runtime for performance. **Write operations** always flow through `RuntimeEngine.runCommand` so that guards, policies, constraints, and event emissions run in the order the spec requires.
+  </Tab>
+
+  <Tab title="Embedded Runtime">
+    The Embedded Runtime lets you instantiate `RuntimeEngine` directly in your own handlers and call `runCommand` yourself. You control request parsing, response shaping, event routing, and any custom side-effect pipeline.
+
+    ```typescript theme={null}
+    import { RuntimeEngine } from '@angriff36/manifest';
+
+    const runtime = new RuntimeEngine(ir, {
+      user: { id: 'user-1', role: 'admin' },
+      context: { requestId: 'req-1' },
+    });
+
+    const result = await runtime.runCommand(
+      'approve',
+      { reason: 'validated' },
+      { entityName: 'Invoice', instanceId: 'inv-1' }
+    );
+
+    if (!result.success) {
+      // result.error, result.guardFailure, result.policyDenial
+      // Surface these in your response — do not alter execution semantics.
+    }
+    ```
+
+    The runtime enforces the full execution order on every `runCommand` call:
+
+    1. Build evaluation context (`self`, `this`, params, runtime context)
+    2. Evaluate applicable policies
+    3. Evaluate guards in declared order — halts on the first failure
+    4. Execute actions in declared order
+    5. Emit declared events
+    6. Return `CommandResult`
+  </Tab>
+</Tabs>
+
+## Decision guide
+
+Use **Projections** when:
+
+* You want generated route code that follows Next.js App Router conventions without writing boilerplate by hand.
+* Your mutation flow can be expressed as a named Manifest command and you are comfortable with the generated handler structure.
+
+Use the **Embedded Runtime** when:
+
+* You need custom orchestration around command execution — for example, composing multiple commands, injecting computed context, or conditionally routing results.
+* You need a custom event-handling pipeline: publishing to a queue, writing to an outbox, or triggering side effects in a specific order.
+
+<Note>
+  These patterns are not mutually exclusive. A common setup uses generated routes for straightforward CRUD entities and the Embedded Runtime for commands that require complex orchestration.
+</Note>
+
+## Security: never trust client-supplied identity fields
+
+This rule applies regardless of which pattern you use.
+
+When a command is executed from an HTTP handler, the request body is **untrusted**. A client can supply any value for `id`, `userId`, `tenantId`, `orgId`, or `user`. If those values flow unmodified into `runCommand`, a caller can act on behalf of another user or mutate a resource they do not own.
+
+**Always strip client-supplied identity fields and inject authoritative values from your auth context and URL path parameters before calling `runCommand`.**
+
+```typescript theme={null}
+// Correct: derive identity from trusted server-side sources
+const { userId } = await auth();                  // from your auth provider
+const { id: entityId } = params;                  // from the URL path param
+
+const body = await request.json();
+
+// Strip any identity fields the client may have sent
+const { id: _id, userId: _userId, tenantId: _tenantId, orgId: _orgId, user: _user, ...safeInput } = body;
+
+// Inject authoritative identity before execution
+const result = await runtime.runCommand(
+  'update',
+  { ...safeInput, userId, entityId },
+  { entityName: 'Invoice', instanceId: entityId }
+);
+```
+
+<Warning>
+  Do not pass `await request.json()` directly to `runCommand` without stripping identity fields. This is the most common source of privilege-escalation bugs in Manifest-backed APIs.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Projections" icon="wand-sparkles" href="/integration/projections">
+    Learn how to use the projection API programmatically and understand the four generated surfaces.
+  </Card>
+
+  <Card title="Embedded Runtime" icon="cpu" href="/integration/embedded-runtime">
+    Instantiate RuntimeEngine, handle CommandResult variants, and wire up event handlers.
+  </Card>
+
+  <Card title="Next.js guide" icon="triangle" href="/integration/nextjs">
+    End-to-end walkthrough: install, write a `.manifest` file, generate routes, and add auth.
+  </Card>
+</CardGroup>

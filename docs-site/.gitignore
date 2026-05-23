@@ -1,0 +1,3 @@
+# Mintlify local dev cache
+.mintlify/
+node_modules/

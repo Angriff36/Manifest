@@ -1,0 +1,191 @@
+---
+title: "Configure Manifest with manifest.config.yaml"
+description: "Full reference for manifest.config.yaml: configure source globs, IR output directory, Next.js projection options, auth providers, and monorepo import paths."
+---
+
+`manifest.config.yaml` is the project-level config file that the CLI loads from your project root before executing any command. You create it by running `manifest init` or by writing it by hand. Every field is optional — the CLI falls back to built-in defaults for any field you omit.
+
+## Config file locations
+
+The CLI searches for a config file in the following order, using the first one it finds:
+
+1. `manifest.config.yaml`
+2. `manifest.config.yml`
+3. `.manifestrc.yaml`
+4. `.manifestrc.yml`
+
+All four files live at your project root (the directory where you run `manifest` commands).
+
+## Option priority
+
+When resolving any value, the CLI checks three sources in this order:
+
+1. **CLI flag** (highest priority) — value passed directly on the command line
+2. **Config file** — value from `manifest.config.yaml`
+3. **Built-in default** (lowest priority) — fallback hardcoded in the CLI
+
+You can always override a config value for a single run without modifying the file.
+
+## Top-level fields
+
+<ParamField path="$schema" type="string">
+  Optional JSON Schema URL for editor validation and autocomplete. Set to `https://manifest.dev/config.schema.json` to get inline validation in editors that support JSON Schema.
+</ParamField>
+
+<ParamField path="src" type="string" default="**/*.manifest">
+  Glob pattern that selects your `.manifest` source files. Used by `manifest compile` and `manifest build` when no `source` argument is passed on the command line.
+
+  ```yaml theme={null}
+  src: modules/**/*.manifest
+  ```
+</ParamField>
+
+<ParamField path="output" type="string" default="ir/">
+  Directory where compiled IR JSON files are written. Used by `manifest compile` as the default `--output` value, and by `manifest build` as the default `--ir-output` value.
+
+  ```yaml theme={null}
+  output: ir/
+  ```
+</ParamField>
+
+<ParamField path="prismaSchema" type="string">
+  Path to your Prisma schema file, used by property alignment checks. When omitted, the CLI searches `prisma/schema.prisma`, `schema.prisma`, and `db/schema.prisma` in that order.
+
+  ```yaml theme={null}
+  prismaSchema: prisma/schema.prisma
+  ```
+</ParamField>
+
+## `projections`
+
+The `projections` block configures code generation for each target framework. Currently the only built-in projection is `nextjs`.
+
+### `projections.nextjs.output`
+
+<ParamField path="projections.nextjs.output" type="string" default="generated/">
+  Directory where the Next.js projection writes generated route files. Used by `manifest generate` and `manifest build` as the default `--output` / `--code-output` value.
+
+  ```yaml theme={null}
+  projections:
+    nextjs:
+      output: app/api/
+  ```
+</ParamField>
+
+### `projections.nextjs.options`
+
+These options control the import paths and filtering behavior written into generated route files.
+
+<ParamField path="projections.nextjs.options.authProvider" type="string" default="clerk">
+  Auth provider name. Used when `authImportPath` is not set. Accepted values: `clerk`, `nextauth`, `custom`, `none`.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.authImportPath" type="string">
+  Import path for your auth helper. When set, this takes precedence over `authProvider`. Can be a local alias (`@/lib/auth`) or a workspace package (`@repo/auth/server`).
+</ParamField>
+
+<ParamField path="projections.nextjs.options.databaseImportPath" type="string" default="@/lib/database">
+  Import path for your database client, injected into generated route files.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.runtimeImportPath" type="string" default="@/lib/manifest-runtime">
+  Import path for the Manifest runtime helper, injected into generated route files.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.responseImportPath" type="string" default="@/lib/manifest-response">
+  Import path for the Manifest response helper, injected into generated route files.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.includeTenantFilter" type="boolean" default="true">
+  When `true`, generated read routes include a `WHERE tenantId = <tenant>` filter. Set to `false` for single-tenant applications.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.includeSoftDeleteFilter" type="boolean" default="true">
+  When `true`, generated read routes include a `WHERE deletedAt IS NULL` filter. Set to `false` if your data model does not use soft deletes.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.tenantIdProperty" type="string" default="tenantId">
+  Property name used for tenant scoping in generated filters.
+</ParamField>
+
+<ParamField path="projections.nextjs.options.deletedAtProperty" type="string" default="deletedAt">
+  Property name used for soft-delete filtering in generated queries.
+</ParamField>
+
+## Workspace monorepo imports
+
+In a pnpm/yarn workspace (e.g. Turborepo or a custom monorepo), your shared packages are available under a workspace prefix like `@repo/`. Set the import path options to point at those packages instead of local `@/lib/` aliases:
+
+```yaml theme={null}
+projections:
+  nextjs:
+    output: apps/api/app/api/
+    options:
+      authImportPath: "@repo/auth/server"
+      databaseImportPath: "@repo/database"
+      runtimeImportPath: "@repo/manifest/runtime"
+      responseImportPath: "@repo/manifest/response"
+```
+
+Generated routes will then import from those workspace packages:
+
+```typescript theme={null}
+import { auth } from "@repo/auth/server";
+import { database } from "@repo/database";
+import { createRuntime } from "@repo/manifest/runtime";
+import { manifestSuccessResponse, manifestErrorResponse } from "@repo/manifest/response";
+```
+
+## Complete example
+
+The following file shows every field with representative values:
+
+```yaml theme={null}
+# manifest.config.yaml
+$schema: https://manifest.dev/config.schema.json
+
+src: modules/**/*.manifest
+output: ir/
+
+projections:
+  nextjs:
+    output: app/api/
+    options:
+      authProvider: clerk
+      authImportPath: "@/lib/auth"
+      databaseImportPath: "@/lib/database"
+      runtimeImportPath: "@/lib/manifest-runtime"
+      responseImportPath: "@/lib/manifest-response"
+      includeTenantFilter: true
+      includeSoftDeleteFilter: true
+      tenantIdProperty: tenantId
+      deletedAtProperty: deletedAt
+```
+
+And the equivalent for a workspace monorepo with all options set explicitly:
+
+```yaml theme={null}
+# manifest.config.yaml (monorepo)
+$schema: https://manifest.dev/config.schema.json
+
+src: modules/**/*.manifest
+output: ir/
+
+projections:
+  nextjs:
+    output: apps/api/app/api/
+    options:
+      authProvider: clerk
+      authImportPath: "@repo/auth/server"
+      databaseImportPath: "@repo/database"
+      runtimeImportPath: "@repo/manifest/runtime"
+      responseImportPath: "@repo/manifest/response"
+      includeTenantFilter: true
+      includeSoftDeleteFilter: false
+      tenantIdProperty: tenantId
+      deletedAtProperty: deletedAt
+```
+
+<Tip>
+  After editing `manifest.config.yaml`, run `manifest build` with no flags to confirm the CLI picks up your changes. The build summary printed at the end shows the resolved `ir-output` and `code-output` paths.
+</Tip>
