@@ -23,9 +23,16 @@ interface CommandRegistryEntry {
   commandId?: string;
 }
 
-interface CommandRegistry {
+interface WrappedCommandRegistry {
   commands: CommandRegistryEntry[];
 }
+
+// Real downstream consumers emit either of two shapes:
+//   1. Wrapped:   { irHash, compilerVersion, commands: [ ... ] }
+//   2. Flat:      [ { entity, command, commandId }, ... ]
+// Tolerate both so the loader works against the canonical Manifest emit
+// pipeline AND against repos that produce per-domain flat registries.
+type CommandRegistryShape = WrappedCommandRegistry | CommandRegistryEntry[];
 
 export async function loadCommandSet(registryPath: string): Promise<Set<string>> {
   let raw: string;
@@ -36,10 +43,14 @@ export async function loadCommandSet(registryPath: string): Promise<Set<string>>
       `Failed to read commands registry at ${registryPath}: ${(err as Error).message}`
     );
   }
-  const parsed = JSON.parse(raw) as CommandRegistry;
+  const parsed = JSON.parse(raw) as CommandRegistryShape;
+  const entries: CommandRegistryEntry[] = Array.isArray(parsed)
+    ? parsed
+    : (parsed.commands ?? []);
   const ids = new Set<string>();
-  for (const c of parsed.commands ?? []) {
-    ids.add(c.commandId ?? `${c.entity}.${c.command}`);
+  for (const c of entries) {
+    if (c?.commandId) ids.add(c.commandId);
+    else if (c?.entity && c?.command) ids.add(`${c.entity}.${c.command}`);
   }
   return ids;
 }

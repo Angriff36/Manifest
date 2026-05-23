@@ -40,15 +40,28 @@ const EXCLUDE_GLOBS = [
 const WRITE_RE =
   /\bprisma\s*\.\s*(\w+)\s*\.\s*(create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(/g;
 
-interface EntitiesRegistry {
-  entities: Array<{ name: string }>;
+interface EntityRegistryEntry {
+  name: string;
 }
+
+interface WrappedEntitiesRegistry {
+  entities: EntityRegistryEntry[];
+}
+
+// Same dual-shape tolerance as loadCommandSet: accept the canonical
+// wrapped emit ({ entities: [ ... ] }) and the flat-array form some
+// downstream consumers emit ([ { name }, ... ]).
+type EntitiesRegistryShape = WrappedEntitiesRegistry | EntityRegistryEntry[];
 
 async function loadEntityNames(p: string): Promise<Set<string>> {
   const raw = await fs.readFile(p, 'utf-8');
-  const parsed = JSON.parse(raw) as EntitiesRegistry;
+  const parsed = JSON.parse(raw) as EntitiesRegistryShape;
+  const entries: EntityRegistryEntry[] = Array.isArray(parsed)
+    ? parsed
+    : (parsed.entities ?? []);
   const out = new Set<string>();
-  for (const e of parsed.entities ?? []) {
+  for (const e of entries) {
+    if (!e?.name) continue;
     out.add(e.name);
     out.add(e.name.charAt(0).toLowerCase() + e.name.slice(1));
   }

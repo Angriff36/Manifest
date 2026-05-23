@@ -28,6 +28,26 @@ async function writeFile(root: string, rel: string, body: string) {
 }
 
 describe('unregisteredEntityWriteDetector', () => {
+  it('accepts a flat-array entities registry (downstream consumer shape)', async () => {
+    const root = await tempDir();
+    const reg = path.join(root, 'entities.json');
+    await fs.writeFile(
+      reg,
+      JSON.stringify([{ name: 'User' }, { name: 'Order' }])
+    );
+    await writeFile(
+      root,
+      'app/api/x/route.ts',
+      `export async function POST(){ return prisma.user.create({ data: {} }); }`
+    );
+    const findings = await unregisteredEntityWriteDetector.run({
+      root,
+      entitiesRegistry: reg,
+    });
+    // `user` matches registered entity `User` -> no false-positive finding.
+    expect(findings).toEqual([]);
+  });
+
   it('flags prisma.model.create when model has no entity in registry', async () => {
     const root = await tempDir();
     const reg = await writeEntities(root, ['User']);
