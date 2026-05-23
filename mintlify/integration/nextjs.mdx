@@ -77,8 +77,10 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     </Note>
   </Step>
 
-  <Step title="Review the generated read route">
-    The generated GET handler uses a direct database query — it does not call `RuntimeEngine`. This is intentional: read policies are not enforced at the query level by default, and direct queries are more efficient.
+  <Step title="Review the generated read routes">
+    The generated GET handlers use direct database queries — they do not call `RuntimeEngine`. This is intentional: read policies are not enforced at the query level by default, and direct queries are more efficient.
+
+    **List route** (`app/api/recipes/route.ts`):
 
     ```typescript
     // app/api/recipes/route.ts — auto-generated, illustrative
@@ -91,7 +93,10 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
       try {
         const { userId } = await auth();
         if (!userId) {
-          return manifestErrorResponse("Unauthorized", 401);
+          return manifestErrorResponse(
+            { error: "Unauthorized", diagnostics: [{ kind: "auth_error", message: "Missing user" }] },
+            401
+          );
         }
 
         const userMapping = await database.userTenantMapping.findUnique({
@@ -99,7 +104,10 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
         });
 
         if (!userMapping) {
-          return manifestErrorResponse("User not mapped to tenant", 400);
+          return manifestErrorResponse(
+            { error: "User not mapped to tenant", diagnostics: [{ kind: "tenant_error", message: "No mapping" }] },
+            400
+          );
         }
 
         const { tenantId } = userMapping;
@@ -112,64 +120,97 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
 
         return manifestSuccessResponse({ recipes });
       } catch (error) {
-        console.error("Error fetching recipes:", error);
-        return manifestErrorResponse("Internal server error", 500);
+        return manifestErrorResponse(
+          { error: "Internal server error", diagnostics: [{ kind: "runtime_error", message: String(error) }] },
+          500
+        );
       }
     }
     ```
-  </Step>
 
-  <Step title="Review the generated command route">
-    The generated POST handler **must** call `RuntimeEngine.runCommand`. Guards, policies, constraints, and event emissions only run through the runtime.
-
-    The generated handler strips client-supplied identity fields (`id`, `userId`, `tenantId`, `orgId`, `user`) from the request body and injects authoritative values from Clerk and the URL path before calling the runtime:
+    **Detail route** (`app/api/recipes/[id]/route.ts`) emits `findFirst` when the `where` clause combines `id` with tenant or soft-delete filters, since Prisma 7 requires `findUnique` to address a unique constraint exactly:
 
     ```typescript
-    // app/api/recipes/commands/publish/route.ts — auto-generated, illustrative
+    const recipe = await database.recipe.findFirst({
+      where: { id: params.id, tenantId, deletedAt: null },
+    });
+    ```
+
+    <Note>
+      Read routes are controlled by `projections.nextjs.options.readRoutes`. Set `readRoutes.enabled: false` to suppress them entirely, or `readRoutes.directDbReads: false` to emit handler stubs without inline Prisma calls — useful when reads flow through a separate query layer. See the [configuration reference](/cli/configuration).
+    </Note>
+  </Step>
+
+  <Step title="Review the generated dispatcher route">
+    The canonical write surface is a single dispatcher route mounted at `POST /api/manifest/[entity]/commands/[command]`. It handles every command for every entity through one handler that delegates to `RuntimeEngine.runCommand`.
+
+    The dispatcher extracts an `instanceId` from `body.instanceId` or `body.id` and forwards it to the runtime, so non-create commands (publish, archive, update, …) automatically address the right instance. Create commands ignore the field harmlessly.
+
+    ```typescript
+    // app/api/manifest/[entity]/commands/[command]/route.ts — auto-generated, illustrative
     import { NextRequest } from "next/server";
     import { auth } from "@clerk/nextjs/server";
-    import { RuntimeEngine } from "@angriff36/manifest";
-    import { ir } from "@/lib/manifest-ir";
+    import { createManifestRuntime } from "@/lib/manifest-runtime";
     import { manifestSuccessResponse, manifestErrorResponse } from "@/lib/manifest-response";
 
     export async function POST(
       request: NextRequest,
-      { params }: { params: { id: string } }
+      { params }: { params: { entity: string; command: string } }
     ) {
-      const { userId } = await auth();
-      if (!userId) {
-        return manifestErrorResponse("Unauthorized", 401);
+      try {
+        const { userId } = await auth();
+        if (!userId) {
+          return manifestErrorResponse(
+            { error: "Unauthorized", diagnostics: [{ kind: "auth_error", message: "Missing user" }] },
+            401
+          );
+        }
+
+        const body = await request.json();
+
+        // Strip client-supplied identity fields — never trust these
+        const { id, instanceId, userId: _userId, tenantId: _tenantId, orgId: _orgId, user: _user, ...safeInput } = body;
+        const derivedInstanceId = instanceId ?? id;
+
+        const runtime = await createManifestRuntime({ userId });
+
+        const result = await runtime.runCommand(params.command, safeInput, {
+          entityName: params.entity,
+          ...(derivedInstanceId ? { instanceId: derivedInstanceId } : {}),
+        });
+
+        if (!result.success) {
+          return manifestErrorResponse(
+            { error: result.error ?? "Command failed", diagnostics: result.diagnostics ?? [] },
+            422
+          );
+        }
+
+        return manifestSuccessResponse({ events: result.events });
+      } catch (error) {
+        const message = String(error);
+        // Auth helpers that throw on bad tokens map to unauthorizedStatus (default 401), never 500
+        if (/unauth|token|session/i.test(message)) {
+          return manifestErrorResponse(
+            { error: "Unauthorized", diagnostics: [{ kind: "auth_error", message }] },
+            401
+          );
+        }
+        return manifestErrorResponse(
+          { error: "Internal server error", diagnostics: [{ kind: "runtime_error", message }] },
+          500
+        );
       }
-
-      const body = await request.json();
-
-      // Strip client-supplied identity fields — never trust these
-      const {
-        id: _id,
-        userId: _userId,
-        tenantId: _tenantId,
-        orgId: _orgId,
-        user: _user,
-        ...safeInput
-      } = body;
-
-      const runtime = new RuntimeEngine(ir, {
-        user: { id: userId, role: 'author' },
-      });
-
-      const result = await runtime.runCommand(
-        'publish',
-        { ...safeInput },
-        { entityName: 'Recipe', instanceId: params.id }
-      );
-
-      if (!result.success) {
-        return manifestErrorResponse(result.error ?? 'Command failed', 422);
-      }
-
-      return manifestSuccessResponse({ events: result.events });
     }
     ```
+
+    <Note>
+      **Per-command "concrete" routes are opt-in.** Earlier versions of Manifest also emitted a separate route file per command (`app/api/recipes/commands/publish/route.ts`). As of v0.8.0 these are off by default — the dispatcher is the canonical write surface. Set `projections.nextjs.options.concreteCommandRoutes.enabled: true` only if you still need them for legacy callers.
+    </Note>
+
+    <Tip>
+      To keep runtime construction in your app (shared executor, custom store wiring, extra context), switch the dispatcher to `executionMode: externalExecutor` in `manifest.config.yaml`. The generated route will then import and delegate to your executor instead of inlining `createManifestRuntime` and `runCommand`. See the [externalExecutor migration](/cli/configuration#externalexecutor-migration) section.
+    </Tip>
   </Step>
 
   <Step title="Wire up Clerk auth">
@@ -212,7 +253,10 @@ const userMapping = await database.userTenantMapping.findUnique({
 });
 
 if (!userMapping) {
-  return manifestErrorResponse("User not mapped to tenant", 400);
+  return manifestErrorResponse(
+    { error: "User not mapped to tenant", diagnostics: [{ kind: "tenant_error", message: "No mapping" }] },
+    400
+  );
 }
 
 const { tenantId } = userMapping;
@@ -314,7 +358,10 @@ try {
   );
 
   if (!result.success) {
-    return manifestErrorResponse(result.error ?? 'Command failed', 422);
+    return manifestErrorResponse(
+      { error: result.error ?? 'Command failed', diagnostics: result.diagnostics ?? [] },
+      422
+    );
   }
 
   return manifestSuccessResponse({ events: result.events });
