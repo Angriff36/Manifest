@@ -322,7 +322,7 @@ Prints the canonical defaults snapshot — every value Manifest applies when an 
 manifest config print-defaults
 ```
 
-Output is key-sorted JSON across five blocks: `nextjs`, `tenantProvider`, `dispatcher`, `concreteCommandRoutes`, `routes`. See the [configuration reference](/cli/configuration) for what each key controls.
+Output is key-sorted JSON across six blocks: `nextjs`, `tenantProvider`, `dispatcher`, `concreteCommandRoutes`, `readRoutes`, `routes`. See the [configuration reference](/cli/configuration) for what each key controls.
 
 ### `manifest config inspect`
 
@@ -343,13 +343,23 @@ manifest config inspect --json
       "options": {
         "appDir": "apps/api/app/api",
         "authProvider": "clerk",
+        "concreteCommandRoutes": {
+          "enabled": false,
+          "legacyAliasesOnly": true
+        },
         "dispatcher": {
-          "deriveInstanceId": false,
+          "deriveInstanceId": true,
           "enabled": true,
           "executionMode": "inline",
           "executorImportName": "executeManifestCommand",
-          "executorImportPath": "@/lib/manifest-executor"
+          "executorImportPath": "@/lib/manifest-executor",
+          "path": "/manifest/[entity]/commands/[command]/route.ts"
         },
+        "readRoutes": {
+          "directDbReads": true,
+          "enabled": true
+        },
+        "unauthorizedStatus": 401,
         ...
       }
     }
