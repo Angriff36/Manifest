@@ -58,6 +58,27 @@ export interface RunCommandCall {
  * or `<expr>.runtime.runCommand`. Static-string first arguments are extracted;
  * dynamic forms are reported with `commandId: null` and `dynamic: true`.
  */
+/**
+ * Resolve `entityName` from an options-object argument like
+ * `{ entityName: 'ScheduleShift', ... }`. Returns null if the argument is
+ * not an object literal or the property isn't a static string.
+ */
+function readEntityNameFromOptions(node: ts.Expression | undefined): string | null {
+  if (!node || !ts.isObjectLiteralExpression(node)) return null;
+  for (const prop of node.properties) {
+    if (
+      ts.isPropertyAssignment(prop) &&
+      ((ts.isIdentifier(prop.name) && prop.name.text === 'entityName') ||
+        (ts.isStringLiteralLike(prop.name) && prop.name.text === 'entityName'))
+    ) {
+      const v = prop.initializer;
+      if (ts.isStringLiteralLike(v)) return v.text;
+      return null;
+    }
+  }
+  return null;
+}
+
 export function extractRunCommandCalls(source: string, filename: string): RunCommandCall[] {
   const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
   const out: RunCommandCall[] = [];
@@ -76,9 +97,19 @@ export function extractRunCommandCalls(source: string, filename: string): RunCom
         const start = node.getStart(sf);
         const { line, character } = sf.getLineAndCharacterOfPosition(start);
         const arg0 = node.arguments[0];
+        const arg2 = node.arguments[2];
+        const optsEntity = readEntityNameFromOptions(arg2);
+
         if (arg0 && ts.isStringLiteralLike(arg0)) {
+          let commandId = arg0.text;
+          // Support runCommand(command, payload, { entityName: 'X' }) by
+          // composing `entityName.command` when the first arg is a bare
+          // command name (no dot).
+          if (optsEntity && !commandId.includes('.')) {
+            commandId = `${optsEntity}.${commandId}`;
+          }
           out.push({
-            commandId: arg0.text,
+            commandId,
             dynamic: false,
             line: line + 1,
             column: character + 1,

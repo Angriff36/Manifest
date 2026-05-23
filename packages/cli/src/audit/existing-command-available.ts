@@ -21,10 +21,17 @@ import ts from 'typescript';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
 import { loadCommandSet, extractRunCommandCalls } from './unregistered-command-call.js';
 
+// Restrict to server-side surface only. The detector triggers on function
+// names; broad client-side scans produce false positives on React hooks
+// like `useCreateShipment` and route helpers like `createLead` that wrap
+// fetch calls to API routes (where the runtime dispatch actually happens).
 const SCAN_GLOBS = [
-  'app/**/*.{ts,tsx}',
-  'src/app/**/*.{ts,tsx}',
-  'apps/*/app/**/*.{ts,tsx}',
+  'app/api/**/*.{ts,tsx}',
+  'src/app/api/**/*.{ts,tsx}',
+  'apps/*/app/api/**/*.{ts,tsx}',
+  'app/actions/**/*.{ts,tsx}',
+  'src/app/actions/**/*.{ts,tsx}',
+  'apps/*/app/actions/**/*.{ts,tsx}',
   'pages/api/**/*.{ts,tsx}',
   'src/pages/api/**/*.{ts,tsx}',
   'jobs/**/*.{ts,tsx}',

@@ -110,6 +110,25 @@ describe('extractRunCommandCalls', () => {
     const calls = extractRunCommandCalls(src, 'x.ts');
     expect(calls).toEqual([]);
   });
+
+  it('composes entity.command from the 3rd-arg options object', () => {
+    // Capsule-Pro pattern: runCommand(command, payload, { entityName: 'X' })
+    const src = `
+      const result = await runtime.runCommand('create', body, {
+        entityName: 'ScheduleShift',
+      });
+    `;
+    const calls = extractRunCommandCalls(src, 'actions.ts');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].commandId).toBe('ScheduleShift.create');
+    expect(calls[0].dynamic).toBe(false);
+  });
+
+  it('keeps the literal commandId when it already contains a dot, even with entityName options', () => {
+    const src = `runtime.runCommand('User.create', body, { entityName: 'Other' });`;
+    const calls = extractRunCommandCalls(src, 'x.ts');
+    expect(calls[0].commandId).toBe('User.create');
+  });
 });
 
 describe('unregisteredCommandCallDetector', () => {
