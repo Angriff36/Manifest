@@ -13,6 +13,29 @@ import type {
   ProjectionDiagnostic,
   NextJsProjectionOptions,
 } from '../interface';
+import {
+  NEXTJS_DEFAULTS,
+  DEFAULT_TENANT_PROVIDER,
+  DISPATCHER_DEFAULTS,
+  CONCRETE_COMMAND_ROUTES_DEFAULTS,
+} from './defaults';
+
+/**
+ * Re-export the canonical defaults so consumers of
+ * `@angriff36/manifest/projections/nextjs` get the defaults from the same
+ * entry point as the projection class. Anything that needs to render or
+ * snapshot the defaults (CLI inspect, tests, downstream tooling) must use
+ * these names, not redeclare them.
+ */
+export {
+  NEXTJS_DEFAULTS,
+  DEFAULT_TENANT_PROVIDER,
+  DISPATCHER_DEFAULTS,
+  CONCRETE_COMMAND_ROUTES_DEFAULTS,
+  ROUTES_DEFAULTS,
+  getManifestDefaultsSnapshot,
+  type ManifestDefaultsSnapshot,
+} from './defaults';
 
 /**
  * Internal result shape used by private generation methods.
@@ -20,6 +43,26 @@ import type {
 interface CodeResult {
   code: string;
   diagnostics: ProjectionDiagnostic[];
+}
+
+/**
+ * Normalized dispatcher options — every field required so generation paths
+ * can branch without nullish-checks.
+ */
+interface NormalizedDispatcherOptions {
+  enabled: boolean;
+  executionMode: 'inline' | 'externalExecutor';
+  executorImportPath: string;
+  executorImportName: string;
+  deriveInstanceId: boolean;
+}
+
+/**
+ * Normalized concrete-command-routes policy.
+ */
+interface NormalizedConcreteCommandRoutesOptions {
+  enabled: boolean;
+  legacyAliasesOnly: boolean;
 }
 
 /**
@@ -44,41 +87,46 @@ interface NormalizedNextJsOptions {
     functionName: string;
     lookupKey: 'orgId' | 'userId';
   };
+  dispatcher: NormalizedDispatcherOptions;
+  concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions;
 }
 
 /**
- * Default options for Next.js projection.
- */
-const DEFAULT_OPTIONS: Omit<NormalizedNextJsOptions, 'includeComments' | 'indentSize'> = {
-  authProvider: 'clerk',
-  authImportPath: '@repo/auth/server',
-  databaseImportPath: '@repo/database',
-  responseImportPath: '@/lib/manifest-response',
-  runtimeImportPath: '@/lib/manifest-runtime',
-  includeTenantFilter: true,
-  includeSoftDeleteFilter: true,
-  tenantIdProperty: 'tenantId',
-  deletedAtProperty: 'deletedAt',
-  appDir: 'apps/api/app/api',
-  strictMode: true,
-};
-
-const DEFAULT_TENANT_PROVIDER: NonNullable<NormalizedNextJsOptions['tenantProvider']> = {
-  importPath: '@/app/lib/tenant',
-  functionName: 'getTenantIdForOrg',
-  lookupKey: 'orgId',
-};
-
-/**
- * Normalize user options with defaults.
+ * Normalize user options with defaults from `./defaults`.
+ *
+ * Defaults are imported (not redeclared) so the projection, the CLI's
+ * `manifest config print-defaults`, and the JSON schema all agree.
  */
 function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOptions {
+  const dispatcher: NormalizedDispatcherOptions = {
+    enabled: options?.dispatcher?.enabled ?? DISPATCHER_DEFAULTS.enabled,
+    executionMode: options?.dispatcher?.executionMode ?? DISPATCHER_DEFAULTS.executionMode,
+    executorImportPath: options?.dispatcher?.executorImportPath ?? DISPATCHER_DEFAULTS.executorImportPath,
+    executorImportName: options?.dispatcher?.executorImportName ?? DISPATCHER_DEFAULTS.executorImportName,
+    deriveInstanceId: options?.dispatcher?.deriveInstanceId ?? DISPATCHER_DEFAULTS.deriveInstanceId,
+  };
+  const concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions = {
+    enabled: options?.concreteCommandRoutes?.enabled ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.enabled,
+    legacyAliasesOnly:
+      options?.concreteCommandRoutes?.legacyAliasesOnly ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.legacyAliasesOnly,
+  };
   return {
-    ...DEFAULT_OPTIONS,
-    ...options,
-    includeComments: options?.includeComments ?? true,
-    indentSize: options?.indentSize ?? 2,
+    authProvider: options?.authProvider ?? NEXTJS_DEFAULTS.authProvider,
+    authImportPath: options?.authImportPath ?? NEXTJS_DEFAULTS.authImportPath,
+    databaseImportPath: options?.databaseImportPath ?? NEXTJS_DEFAULTS.databaseImportPath,
+    responseImportPath: options?.responseImportPath ?? NEXTJS_DEFAULTS.responseImportPath,
+    runtimeImportPath: options?.runtimeImportPath ?? NEXTJS_DEFAULTS.runtimeImportPath,
+    includeTenantFilter: options?.includeTenantFilter ?? NEXTJS_DEFAULTS.includeTenantFilter,
+    includeSoftDeleteFilter: options?.includeSoftDeleteFilter ?? NEXTJS_DEFAULTS.includeSoftDeleteFilter,
+    tenantIdProperty: options?.tenantIdProperty ?? NEXTJS_DEFAULTS.tenantIdProperty,
+    deletedAtProperty: options?.deletedAtProperty ?? NEXTJS_DEFAULTS.deletedAtProperty,
+    appDir: options?.appDir ?? NEXTJS_DEFAULTS.appDir,
+    strictMode: options?.strictMode ?? NEXTJS_DEFAULTS.strictMode,
+    includeComments: options?.includeComments ?? NEXTJS_DEFAULTS.includeComments,
+    indentSize: options?.indentSize ?? NEXTJS_DEFAULTS.indentSize,
     tenantProvider: options?.tenantProvider ?? DEFAULT_TENANT_PROVIDER,
+    dispatcher,
+    concreteCommandRoutes,
   };
 }
 
@@ -347,11 +395,22 @@ export class NextJsProjection implements ProjectionTarget {
             diagnostics: [{ severity: 'error', code: 'MISSING_COMMAND', message: 'surface "nextjs.command" requires command' }],
           };
         }
+        const commandOpts = normalizeOptions(options);
+        if (!commandOpts.concreteCommandRoutes.enabled) {
+          return {
+            artifacts: [],
+            diagnostics: [{
+              severity: 'info',
+              code: 'CONCRETE_COMMAND_ROUTES_DISABLED',
+              message: 'concreteCommandRoutes.enabled is false — skipping per-command route emission. Use nextjs.dispatcher instead.',
+              entity: request.entity,
+            }],
+          };
+        }
         const commandResult = this._command(ir, request.entity, request.command, options);
         if (commandResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: commandResult.diagnostics };
         }
-        const commandOpts = normalizeOptions(options);
         return {
           artifacts: [{
             id: `nextjs.command:${request.entity}.${request.command}`,
@@ -364,11 +423,21 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.dispatcher': {
+        const dispatcherOpts = normalizeOptions(options);
+        if (!dispatcherOpts.dispatcher.enabled) {
+          return {
+            artifacts: [],
+            diagnostics: [{
+              severity: 'info',
+              code: 'DISPATCHER_DISABLED',
+              message: 'dispatcher.enabled is false — skipping nextjs.dispatcher emission.',
+            }],
+          };
+        }
         const dispatcherResult = this._dispatcher(options);
         if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
         }
-        const dispatcherOpts = normalizeOptions(options);
         return {
           artifacts: [{
             id: 'nextjs.dispatcher',
@@ -534,24 +603,31 @@ export class NextJsProjection implements ProjectionTarget {
     command: IRCommand,
     options: NormalizedNextJsOptions
   ): string {
-    const { responseImportPath, runtimeImportPath } = options;
+    const { responseImportPath, runtimeImportPath, dispatcher } = options;
+    const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
 
     const lines: string[] = [];
 
     lines.push(`// Auto-generated Next.js command handler for ${entity.name}.${command.name}`);
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
     lines.push('//');
-    lines.push('// DEPRECATED ALIAS: this concrete per-command route is retained for');
-    lines.push('// backwards compatibility only. The canonical write path is the');
-    lines.push('// nextjs.dispatcher projection at:');
-    lines.push('//   POST /api/manifest/[entity]/commands/[command]');
-    lines.push('// See docs/spec/adapters.md § "Canonical Dispatcher (Transport Boundary)".');
-    lines.push('//');
+    if (options.concreteCommandRoutes.legacyAliasesOnly) {
+      lines.push('// DEPRECATED ALIAS: this concrete per-command route is retained for');
+      lines.push('// backwards compatibility only. The canonical write path is the');
+      lines.push('// nextjs.dispatcher projection at:');
+      lines.push('//   POST /api/manifest/[entity]/commands/[command]');
+      lines.push('// See docs/spec/adapters.md § "Canonical Dispatcher (Transport Boundary)".');
+      lines.push('//');
+    }
     lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints.');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
-    lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
+    if (useExternalExecutor) {
+      lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+    } else {
+      lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
+    }
     if (options.includeTenantFilter) {
       if (options.tenantProvider) {
         lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
@@ -570,13 +646,33 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     lines.push('    const body = await request.json();');
     lines.push('');
-    const tenantCtx = options.includeTenantFilter
-      ? `{ user: { id: userId, ${options.tenantIdProperty}: ${options.tenantIdProperty} } }`
-      : `{ user: { id: userId, ${options.tenantIdProperty}: "__no_tenant__" } }`;
-    lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
-    lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
-    lines.push(`      entityName: "${entity.name}",`);
-    lines.push('    });');
+    if (useExternalExecutor) {
+      const tenantField = options.tenantIdProperty;
+      const tenantValueExpr = options.includeTenantFilter ? tenantField : '"__no_tenant__"';
+      lines.push(`    const result = await ${dispatcher.executorImportName}({`);
+      lines.push(`      entityName: "${entity.name}",`);
+      lines.push(`      commandName: "${command.name}",`);
+      lines.push('      input: body,');
+      lines.push('      context: {');
+      if (options.includeTenantFilter) {
+        lines.push(`        tenantId: ${tenantValueExpr},`);
+        lines.push(`        orgId: ${tenantValueExpr},`);
+      }
+      lines.push('        actorId: userId,');
+      lines.push('        requestId: request.headers.get("x-request-id") ?? undefined,');
+      lines.push('        source: "route",');
+      lines.push(`        user: { id: userId, ${tenantField}: ${tenantValueExpr} },`);
+      lines.push('      },');
+      lines.push('    });');
+    } else {
+      const tenantCtx = options.includeTenantFilter
+        ? `{ user: { id: userId, ${options.tenantIdProperty}: ${options.tenantIdProperty} } }`
+        : `{ user: { id: userId, ${options.tenantIdProperty}: "__no_tenant__" } }`;
+      lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
+      lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
+      lines.push(`      entityName: "${entity.name}",`);
+      lines.push('    });');
+    }
     lines.push('');
     lines.push(`    const normalized = normalizeCommandResult("${entity.name}", "${command.name}", result);`);
     lines.push('');
@@ -617,7 +713,8 @@ export class NextJsProjection implements ProjectionTarget {
   }
 
   private _generateDispatcherHandler(options: NormalizedNextJsOptions): string {
-    const { responseImportPath, runtimeImportPath } = options;
+    const { responseImportPath, runtimeImportPath, dispatcher } = options;
+    const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
     const lines: string[] = [];
 
     lines.push('// Auto-generated canonical Manifest dispatcher.');
@@ -625,10 +722,20 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Canonical write path for governed commands. Per-command');
     lines.push('// concrete routes (nextjs.command) are deprecated aliases');
     lines.push('// that delegate here.');
+    if (useExternalExecutor) {
+      lines.push('//');
+      lines.push(`// executionMode = "externalExecutor": delegates to ${dispatcher.executorImportName}`);
+      lines.push(`// imported from "${dispatcher.executorImportPath}". The dispatcher does NOT`);
+      lines.push('// construct a Manifest runtime — the executor owns that.');
+    }
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
-    lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
+    if (useExternalExecutor) {
+      lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+    } else {
+      lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
+    }
     if (options.includeTenantFilter) {
       if (options.tenantProvider) {
         lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
@@ -660,23 +767,57 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     const tenantField = options.tenantIdProperty;
     const tenantValueExpr = options.includeTenantFilter ? tenantField : '"__no_tenant__"';
-    // Typed RuntimeContext: tenantId/orgId/actorId/requestId/source.
-    // Legacy `user` shorthand preserved for downstream callers still
-    // reading it; new code MUST prefer actorId.
-    lines.push('    const runtime = await createManifestRuntime({');
-    if (options.includeTenantFilter) {
-      lines.push(`      tenantId: ${tenantValueExpr},`);
-      lines.push(`      orgId: ${tenantValueExpr},`);
+    if (useExternalExecutor) {
+      // externalExecutor mode: delegate to app-owned executor; do NOT construct
+      // a runtime inline. The executor receives full RuntimeContext + the
+      // raw entity/command keys parsed from the URL, plus the input body.
+      if (dispatcher.deriveInstanceId) {
+        lines.push('    // deriveInstanceId: pull instanceId from common body locations.');
+        lines.push('    const instanceId = typeof body?.instanceId === "string"');
+        lines.push('      ? body.instanceId');
+        lines.push('      : typeof body?.id === "string"');
+        lines.push('        ? body.id');
+        lines.push('        : undefined;');
+        lines.push('');
+      }
+      lines.push(`    const result = await ${dispatcher.executorImportName}({`);
+      lines.push('      entityName: entity,');
+      lines.push('      commandName: command,');
+      lines.push('      input: body,');
+      if (dispatcher.deriveInstanceId) {
+        lines.push('      instanceId,');
+      }
+      lines.push('      context: {');
+      if (options.includeTenantFilter) {
+        lines.push(`        tenantId: ${tenantValueExpr},`);
+        lines.push(`        orgId: ${tenantValueExpr},`);
+      }
+      lines.push('        actorId: userId,');
+      lines.push('        requestId: request.headers.get("x-request-id") ?? undefined,');
+      lines.push('        source: "route",');
+      lines.push(`        user: { id: userId, ${tenantField}: ${tenantValueExpr} },`);
+      lines.push('      },');
+      lines.push('    });');
+    } else {
+      // inline mode: construct the runtime per request and call runCommand.
+      // Typed RuntimeContext: tenantId/orgId/actorId/requestId/source.
+      // Legacy `user` shorthand preserved for downstream callers still
+      // reading it; new code MUST prefer actorId.
+      lines.push('    const runtime = await createManifestRuntime({');
+      if (options.includeTenantFilter) {
+        lines.push(`      tenantId: ${tenantValueExpr},`);
+        lines.push(`      orgId: ${tenantValueExpr},`);
+      }
+      lines.push('      actorId: userId,');
+      lines.push('      requestId: request.headers.get("x-request-id") ?? undefined,');
+      lines.push('      source: "route",');
+      lines.push(`      user: { id: userId, ${tenantField}: ${tenantValueExpr} },`);
+      lines.push('    });');
+      lines.push('');
+      lines.push('    const result = await runtime.runCommand(command, body, {');
+      lines.push('      entityName: entity,');
+      lines.push('    });');
     }
-    lines.push('      actorId: userId,');
-    lines.push('      requestId: request.headers.get("x-request-id") ?? undefined,');
-    lines.push('      source: "route",');
-    lines.push(`      user: { id: userId, ${tenantField}: ${tenantValueExpr} },`);
-    lines.push('    });');
-    lines.push('');
-    lines.push('    const result = await runtime.runCommand(command, body, {');
-    lines.push('      entityName: entity,');
-    lines.push('    });');
     lines.push('');
     lines.push('    const normalized = normalizeCommandResult(entity, command, result);');
     lines.push('');

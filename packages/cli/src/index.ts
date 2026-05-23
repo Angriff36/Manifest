@@ -26,6 +26,11 @@ import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
+  configValidateCommand,
+  configPrintDefaultsCommand,
+  configInspectCommand,
+} from './commands/config.js';
+import {
   cacheStatusCommand,
   doctorCommand,
   duplicatesCommand,
@@ -33,7 +38,7 @@ import {
   runtimeCheckCommand,
   diffSourceVsIRCommand,
 } from './commands/doctor.js';
-import { getConfig } from './utils/config.js';
+import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
 import { realpath, readFile } from 'node:fs/promises';
@@ -122,19 +127,15 @@ program
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
   .action(async (ir, options = {}) => {
-    const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
+    // resolveNextJsProjectionOptions returns the user's raw nextjs options
+    // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
+    // CLI flag overrides are layered on inside generateCommand.
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
 
-    // Use CLI options, fall back to config, fall back to defaults
-    const finalOptions = {
+    await generateCommand(ir, {
       ...options,
-      auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-      database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-      runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-      response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
-    };
-
-    await generateCommand(ir, finalOptions);
+      projectionOptionsFromConfig,
+    });
   });
 
 /**
@@ -157,17 +158,18 @@ program
   .option('--response <path>', 'Response helpers import path')
   .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
 
-    // Use CLI options, fall back to config, fall back to defaults
     const finalOptions = {
       ...options,
-      auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-      database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-      runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-      response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
-      irOutput: options.irOutput || config?.output || 'ir/',
-      codeOutput: options.codeOutput || config?.projections?.nextjs?.output || config?.projections?.['nextjs']?.output || 'generated/',
+      irOutput:
+        options.irOutput || config?.output || 'ir/',
+      codeOutput:
+        options.codeOutput ||
+        config?.projections?.nextjs?.output ||
+        config?.projections?.['nextjs']?.output ||
+        'generated/',
+      projectionOptionsFromConfig,
     };
 
     await buildCommand(source, finalOptions);
@@ -555,6 +557,41 @@ program
       packageRoot: options.packageRoot,
     });
     if (!result.ok) process.exit(1);
+  });
+
+/**
+ * manifest config
+ *
+ * Inspection and validation surface for manifest.config.{yaml,yml,ts,js}.
+ * Generic to Manifest itself — not tied to any downstream consumer.
+ */
+const configProgram = program
+  .command('config')
+  .description('Inspect and validate manifest.config.{yaml,ts,js}');
+
+configProgram
+  .command('validate')
+  .description('Validate manifest.config against the JSON schema')
+  .option('--json', 'JSON output (and non-zero exit on failure)', false)
+  .action(async (options = {}) => {
+    await configValidateCommand({ json: !!options.json });
+  });
+
+configProgram
+  .command('print-defaults')
+  .description('Print the canonical defaults Manifest applies when no config is set')
+  .option('--json', 'JSON output (default: yes)', true)
+  .action(async (options = {}) => {
+    await configPrintDefaultsCommand({ json: options.json !== false });
+  });
+
+configProgram
+  .command('inspect')
+  .alias('print-effective')
+  .description('Print the effective config (defaults + user overrides). Stable, key-sorted; safe for CI snapshots.')
+  .option('--json', 'JSON output (default: yes)', true)
+  .action(async (options = {}) => {
+    await configInspectCommand({ json: options.json !== false });
   });
 
 /**

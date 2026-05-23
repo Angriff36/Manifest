@@ -20,6 +20,8 @@ interface BuildOptions {
   database: string;
   runtime: string;
   response: string;
+  /** Forwarded to generate.ts so dispatcher/concreteCommandRoutes config flows through. */
+  projectionOptionsFromConfig?: Record<string, unknown>;
 }
 
 interface IRFile {
@@ -70,6 +72,7 @@ export async function buildCommand(
       database: options.database,
       runtime: options.runtime,
       response: options.response,
+      projectionOptionsFromConfig: options.projectionOptionsFromConfig,
     });
 
     spinner.succeed(`Build complete: IR → ${options.irOutput}, Code → ${options.codeOutput}`);

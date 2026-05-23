@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.lang/spec/config/manifest.config.schema.json",
+  "title": "Manifest Build Configuration",
+  "description": "Schema for manifest.config.yaml / manifest.config.yml / .manifestrc.yaml. The runtime-level TypeScript config (manifest.config.ts) is validated structurally by the loader, not by this schema — it contains JavaScript functions and class references that cannot be expressed in JSON.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema for editor IntelliSense."
+    },
+    "src": {
+      "type": "string",
+      "description": "Glob pattern for source .manifest files.",
+      "default": "**/*.manifest"
+    },
+    "output": {
+      "type": "string",
+      "description": "Directory where compiled IR JSON files are written.",
+      "default": "ir/"
+    },
+    "prismaSchema": {
+      "type": "string",
+      "description": "Optional path to a Prisma schema file used for property alignment checks. When omitted, Manifest searches prisma/schema.prisma, schema.prisma, and db/schema.prisma."
+    },
+    "projections": {
+      "type": "object",
+      "description": "Per-projection configuration. Each key matches a registered projection name (e.g. 'nextjs', 'routes').",
+      "additionalProperties": false,
+      "properties": {
+        "nextjs": { "$ref": "#/definitions/NextJsProjectionConfig" },
+        "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" }
+      }
+    }
+  },
+  "definitions": {
+    "NextJsProjectionConfig": {
+      "type": "object",
+      "description": "Configuration for the Next.js App Router projection.",
+      "additionalProperties": false,
+      "properties": {
+        "output": {
+          "type": "string",
+          "description": "Directory where generated TypeScript files are written.",
+          "default": "generated/"
+        },
+        "options": { "$ref": "#/definitions/NextJsProjectionOptions" }
+      }
+    },
+    "NextJsProjectionOptions": {
+      "type": "object",
+      "description": "Surface-specific options for the Next.js projection. Every key here has a default exported from src/manifest/projections/nextjs/defaults.ts.",
+      "additionalProperties": false,
+      "properties": {
+        "authProvider": {
+          "type": "string",
+          "enum": ["clerk", "nextauth", "custom", "none"],
+          "description": "Auth provider that wraps generated route handlers.",
+          "default": "clerk"
+        },
+        "authImportPath": {
+          "type": "string",
+          "description": "Module path for the auth helpers (auth(), getServerSession, etc.).",
+          "default": "@repo/auth/server"
+        },
+        "databaseImportPath": {
+          "type": "string",
+          "description": "Module path for the database client used by direct-read routes.",
+          "default": "@repo/database"
+        },
+        "responseImportPath": {
+          "type": "string",
+          "description": "Module path for manifestErrorResponse / manifestSuccessResponse / normalizeCommandResult helpers.",
+          "default": "@/lib/manifest-response"
+        },
+        "runtimeImportPath": {
+          "type": "string",
+          "description": "Module path for createManifestRuntime. Only used when dispatcher.executionMode is 'inline'.",
+          "default": "@/lib/manifest-runtime"
+        },
+        "includeTenantFilter": {
+          "type": "boolean",
+          "description": "When true, generated read routes filter by tenantIdProperty and POST handlers resolve a tenantId before executing.",
+          "default": true
+        },
+        "includeSoftDeleteFilter": {
+          "type": "boolean",
+          "description": "When true, generated read routes filter by `${deletedAtProperty}: null`.",
+          "default": true
+        },
+        "tenantIdProperty": {
+          "type": "string",
+          "description": "Name of the tenant scope property used in WHERE clauses and tenant context.",
+          "default": "tenantId"
+        },
+        "deletedAtProperty": {
+          "type": "string",
+          "description": "Name of the soft-delete timestamp property.",
+          "default": "deletedAt"
+        },
+        "appDir": {
+          "type": "string",
+          "description": "App Router base directory. Generated route pathHints are relative to this.",
+          "default": "apps/api/app/api"
+        },
+        "strictMode": {
+          "type": "boolean",
+          "description": "Whether generated TypeScript should be strict-mode friendly.",
+          "default": true
+        },
+        "includeComments": {
+          "type": "boolean",
+          "description": "Whether to emit explanatory comments above generated handlers.",
+          "default": true
+        },
+        "indentSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Spaces of indentation in generated code.",
+          "default": 2
+        },
+        "tenantProvider": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Override the default userTenantMapping.findUnique pattern with a project-supplied tenant lookup helper.",
+          "properties": {
+            "importPath": { "type": "string", "description": "Module path for the lookup helper." },
+            "functionName": { "type": "string", "description": "Named export to call (e.g. getTenantIdForOrg)." },
+            "lookupKey": {
+              "type": "string",
+              "enum": ["orgId", "userId"],
+              "description": "Which auth-context field to pass as the lookup key."
+            }
+          },
+          "required": ["importPath", "functionName", "lookupKey"]
+        },
+        "dispatcher": { "$ref": "#/definitions/DispatcherOptions" },
+        "concreteCommandRoutes": { "$ref": "#/definitions/ConcreteCommandRoutesOptions" }
+      }
+    },
+    "DispatcherOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the canonical write surface at POST /api/manifest/[entity]/commands/[command]. See docs/spec/config/manifest.config.md § Dispatcher.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When false, the nextjs.dispatcher surface emits no artifact.",
+          "default": true
+        },
+        "executionMode": {
+          "type": "string",
+          "enum": ["inline", "externalExecutor"],
+          "description": "Where command execution happens. 'inline' constructs createManifestRuntime per request (back-compat default). 'externalExecutor' imports the configured executor and delegates — the dispatcher does not inline runtime construction.",
+          "default": "inline"
+        },
+        "executorImportPath": {
+          "type": "string",
+          "description": "Module path for the external executor. Only used in externalExecutor mode.",
+          "default": "@/lib/manifest-executor"
+        },
+        "executorImportName": {
+          "type": "string",
+          "description": "Named export to call on the external executor module.",
+          "default": "executeManifestCommand"
+        },
+        "deriveInstanceId": {
+          "type": "boolean",
+          "description": "When true (and executionMode is externalExecutor), the handler derives an instanceId from body.instanceId or body.id and passes it to the executor.",
+          "default": false
+        }
+      }
+    },
+    "ConcreteCommandRoutesOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Policy for the deprecated per-command 'concrete' routes (the nextjs.command surface).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When false, nextjs.command artifacts are suppressed entirely.",
+          "default": true
+        },
+        "legacyAliasesOnly": {
+          "type": "boolean",
+          "description": "When true (default), generated concrete routes carry the DEPRECATED ALIAS banner and point callers at the dispatcher. Set false only if you intentionally treat per-command routes as a first-class surface.",
+          "default": true
+        }
+      }
+    },
+    "RoutesProjectionConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Configuration for the Canonical Routes projection (routes.manifest, routes.ts).",
+      "properties": {
+        "output": {
+          "type": "string",
+          "description": "Directory where the route manifest and typed path builders are written.",
+          "default": "generated/"
+        },
+        "options": { "$ref": "#/definitions/RoutesProjectionOptions" }
+      }
+    },
+    "RoutesProjectionOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Options for the Canonical Routes projection. Defaults mirror src/manifest/projections/nextjs/defaults.ts → ROUTES_DEFAULTS.",
+      "properties": {
+        "basePath": {
+          "type": "string",
+          "description": "Base path prefix prepended to every route.",
+          "default": "/api"
+        },
+        "includeAuth": {
+          "type": "boolean",
+          "description": "Whether route entries carry auth=true expectations.",
+          "default": true
+        },
+        "includeTenant": {
+          "type": "boolean",
+          "description": "Whether route entries carry tenant=true expectations.",
+          "default": true
+        },
+        "manualRoutes": {
+          "type": "array",
+          "description": "Hand-declared routes merged into the canonical route surface.",
+          "items": { "$ref": "#/definitions/ManualRouteDeclaration" }
+        }
+      }
+    },
+    "ManualRouteDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "method"],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "auth": { "type": "boolean", "default": false },
+        "tenant": { "type": "boolean", "default": false },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type", "location"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "location": { "type": "string", "enum": ["path", "query", "body"] },
+              "required": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

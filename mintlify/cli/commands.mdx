@@ -283,3 +283,80 @@ manifest validate ir/ --schema custom-schema.json
 <Note>
 The bundled schema path is resolved relative to the installed package, so `manifest validate` works correctly whether you run it from inside the Manifest repo or from a consumer project.
 </Note>
+
+---
+
+## `manifest config`
+
+Inspection surface for `manifest.config.{yaml,yml,ts,js}`. Three subcommands let you prove what Manifest will actually do before regenerating code — the cornerstone of the CI drift workflow described in [Configuration](/cli/configuration).
+
+```bash
+manifest config <subcommand> [options]
+```
+
+### `manifest config validate`
+
+JSON-schema validates the build config against [`docs/spec/config/manifest.config.schema.json`](https://github.com/Angriff36/Manifest/blob/main/docs/spec/config/manifest.config.schema.json), the same schema referenced via `$schema:` in your config file.
+
+```bash
+manifest config validate
+manifest config validate --json
+```
+
+<ParamField path="--json" type="boolean" default="false">
+  Emit structured JSON (`{ configPath, ok, diagnostics }`) instead of human-readable output. Useful for CI pipelines that need machine-parseable failures.
+</ParamField>
+
+The command exits non-zero on the first schema violation and prints a dotted-path diagnostic for each error, e.g.:
+
+```text
+  - projections.nextjs.options.authProvider: must be equal to one of the allowed values (allowed: clerk, nextauth, custom, none)
+  - projections.nextjs.options: unknown property "unknownOption" (additionalProperties: false)
+```
+
+### `manifest config print-defaults`
+
+Prints the canonical defaults snapshot — every value Manifest applies when an option is unset. Sourced from `src/manifest/projections/nextjs/defaults.ts` so the projection, the schema, and this command can never disagree.
+
+```bash
+manifest config print-defaults
+```
+
+Output is key-sorted JSON across five blocks: `nextjs`, `tenantProvider`, `dispatcher`, `concreteCommandRoutes`, `routes`. See the [configuration reference](/cli/configuration) for what each key controls.
+
+### `manifest config inspect`
+
+Aliased as `print-effective`. Prints the **effective** configuration — defaults merged with user overrides from your config file. The output is deterministic and key-sorted, making it safe to snapshot in CI.
+
+```bash
+manifest config inspect
+manifest config inspect --json
+```
+
+```json
+{
+  "configPath": "/work/app/manifest.config.yaml",
+  "build": { "output": "ir/", "src": "**/*.manifest" },
+  "projections": {
+    "nextjs": {
+      "output": "generated/",
+      "options": {
+        "appDir": "apps/api/app/api",
+        "authProvider": "clerk",
+        "dispatcher": {
+          "deriveInstanceId": false,
+          "enabled": true,
+          "executionMode": "inline",
+          "executorImportName": "executeManifestCommand",
+          "executorImportPath": "@/lib/manifest-executor"
+        },
+        ...
+      }
+    }
+  }
+}
+```
+
+<Tip>
+Commit the inspect output as a snapshot under VCS (e.g. `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it. Drift in either Manifest defaults or your local config will then surface as a diff before it changes emitted code.
+</Tip>

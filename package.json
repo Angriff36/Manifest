@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -78,6 +78,7 @@
     "src/manifest/outbox/stores/*.sql",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/registry/*.schema.json",
+    "docs/spec/config/*.schema.json",
     "README*",
     "LICENSE*",
     "package.json"
