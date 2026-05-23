@@ -88,4 +88,4 @@ A few details in the source are especially important. `RuntimeEngine` builds an 
 
 In practice, you use Manifest in one of two modes. The first is embedded runtime mode: you compile source to IR, instantiate `RuntimeEngine`, wire stores and adapters, and call `runCommand()` yourself. The second is projection mode: you compile source to IR, feed the IR into `NextJsProjection` or `RoutesProjection`, and write the returned artifacts into your app. The CLI in `packages/cli` automates both flows, but the code paths still route through the same compiler, IR, runtime, and projection modules described above.
 
-The pages that follow go deeper into each of those layers: [Compilation and IR](/docs/compilation-ir), [Runtime Engine](/docs/runtime-engine-concepts), [Adapters and Delivery](/docs/adapters-and-delivery), and [Projections](/docs/projections).
+The pages that follow go deeper into each of those layers: [Compilation and IR](compilation-ir.md), [Runtime Engine](runtime-engine-concepts.md), [Adapters and Delivery](adapters-and-delivery.md), and [Projections](api-reference/projections.md).

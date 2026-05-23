@@ -223,7 +223,7 @@ output: yaml-ir/`
 }`
       );
 
-      const { build, runtime } = await loadAllConfigs(tempDir);
+      const { runtime } = await loadAllConfigs(tempDir);
 
       expect(runtime).not.toBeNull();
       expect(runtime?.stores).toBeDefined();

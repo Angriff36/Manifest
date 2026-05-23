@@ -1,4 +1,3 @@
-import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import {
@@ -12,6 +11,7 @@ import {
   readMergeReports,
   type DuplicateReportEntry,
   type EntitySurfaceDiff,
+  type RouteManifestCommandHit,
 } from './doctor-lib.js';
 
 interface CommonOptions {
@@ -20,8 +20,8 @@ interface CommonOptions {
   irRoot?: string[];
 }
 
-interface InspectEntityOptions extends CommonOptions {}
-interface DiffSourceVsIROptions extends CommonOptions {}
+type InspectEntityOptions = CommonOptions;
+type DiffSourceVsIROptions = CommonOptions;
 interface DuplicatesOptions {
   json?: boolean;
   entity?: string;
@@ -522,7 +522,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       readMergeReports({ cwd }),
       entityName && commandName
         ? inspectRouteSurfaceForCommand({ entityName, commandName, routePath: options.route, cwd })
-        : Promise.resolve({ routeExists: false, matches: [] as any[] }),
+        : Promise.resolve({ routeExists: false, matches: [] as RouteManifestCommandHit[] }),
     ]);
     spinner.stop();
 

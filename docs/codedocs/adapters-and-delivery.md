@@ -21,7 +21,7 @@ Manifest keeps the core runtime small by expressing integration points as explic
 
 The root runtime export in `src/manifest/runtime-engine.ts` defines `Store`, `IdempotencyStore`, `RuntimeOptions`, and the effect-boundary errors. Dedicated modules define the audit and outbox contracts: `src/manifest/audit/audit-sink.ts` and `src/manifest/outbox/outbox-store.ts`. First-party implementations live under `src/manifest/audit/sinks/*`, `src/manifest/outbox/stores/*`, and `src/manifest/stores.node.ts`.
 
-This concept connects directly to the [Runtime Engine](/docs/runtime-engine-concepts) because `runCommand()` is where these contracts get called. It also influences [Projections](/docs/projections), because generated handlers still need to construct runtime instances with the right adapters underneath.
+This concept connects directly to the [Runtime Engine](runtime-engine-concepts.md) because `runCommand()` is where these contracts get called. It also influences [Projections](api-reference/projections.md), because generated handlers still need to construct runtime instances with the right adapters underneath.
 
 ```mermaid
 flowchart TD
@@ -110,4 +110,4 @@ const runtime = new RuntimeEngine(ir, {
 - `@angriff36/manifest/outbox` exports the `OutboxStore` contract and `OutboxEntry` shape.
 - `@angriff36/manifest/outbox/memory` and `@angriff36/manifest/outbox/postgres` export concrete outbox implementations.
 
-For signatures, constructor options, and method-level examples, continue to [Adapters API Reference](/docs/api-reference/adapters).
+For signatures, constructor options, and method-level examples, continue to [Adapters API Reference](api-reference/adapters.md).

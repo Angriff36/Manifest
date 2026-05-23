@@ -39,6 +39,20 @@ export {
   type ManifestDefaultsSnapshot,
 } from './defaults';
 
+// Re-export the projection-interface types so downstream consumers of
+// `@angriff36/manifest/projections/nextjs` can type the projection
+// boundary without reaching into '../interface' directly. CLI commands
+// (build.ts, generate.ts) consume these to type their `projection.generate`
+// pass-through helpers.
+export type {
+  ProjectionRequest,
+  ProjectionArtifact,
+  ProjectionDiagnostic,
+  ProjectionResult,
+  ProjectionTarget,
+  NextJsProjectionOptions,
+} from '../interface';
+
 /**
  * Internal result shape used by private generation methods.
  */

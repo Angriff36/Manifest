@@ -21,7 +21,7 @@ Compilation is the boundary between Manifest's language syntax and everything th
 
 The compiler pipeline starts in `src/manifest/lexer.ts`, moves through `src/manifest/parser.ts`, and ends in `src/manifest/ir-compiler.ts`. The output is the `IR` interface defined in `src/manifest/ir.ts`. That IR exists so Manifest does not have to couple runtime logic, projection generation, or CLI tooling to parser internals. Once you have IR, every downstream part of the system can operate on one contract instead of many partial views.
 
-This concept is tightly related to the [Runtime Engine](/docs/runtime-engine-concepts) and [Projections](/docs/projections). The runtime uses IR commands, policies, entities, events, and stores directly. Projections use the same IR to generate route handlers and typed artifacts. The CLI also uses IR for validation and route or registry inventory.
+This concept is tightly related to the [Runtime Engine](runtime-engine-concepts.md) and [Projections](api-reference/projections.md). The runtime uses IR commands, policies, entities, events, and stores directly. Projections use the same IR to generate route handlers and typed artifacts. The CLI also uses IR for validation and route or registry inventory.
 
 ```mermaid
 flowchart TD
@@ -122,4 +122,4 @@ export interface CompileToIRResult {
 }
 ```
 
-If you want the full public signatures, continue to [Compiler and IR API Reference](/docs/api-reference/compiler-and-ir) and [Types](/docs/types).
+If you want the full public signatures, continue to [Compiler and IR API Reference](api-reference/compiler-and-ir.md) and [Types](types.md).

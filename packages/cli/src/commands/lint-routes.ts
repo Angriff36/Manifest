@@ -295,8 +295,8 @@ export async function lintRoutesCommand(options: LintRoutesOptions = {}): Promis
         process.exit(1);
       }
     }
-  } catch (error: any) {
-    spinner.fail(`Route linting failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Route linting failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }

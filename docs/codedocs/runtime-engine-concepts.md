@@ -21,7 +21,7 @@ description: "Learn how RuntimeEngine evaluates commands, context, constraints, 
 
 The runtime exists to make Manifest programs executable without leaking framework assumptions into domain logic. In source terms, it lives in `src/manifest/runtime-engine.ts` and is exported from the package root as `@angriff36/manifest`. It knows how to initialize stores, resolve entities and commands from IR, evaluate expressions, mutate instances, enforce policies and guards, emit events, and call adapter contracts for audit or outbox delivery.
 
-This concept depends directly on the [Compilation and IR](/docs/compilation-ir) layer because every runtime decision uses IR data, not parser nodes. It also connects to [Adapters and Delivery](/docs/adapters-and-delivery) because `RuntimeOptions` is where storage, audit, outbox, idempotency, and deterministic-mode behavior are wired in.
+This concept depends directly on the [Compilation and IR](compilation-ir.md) layer because every runtime decision uses IR data, not parser nodes. It also connects to [Adapters and Delivery](adapters-and-delivery.md) because `RuntimeOptions` is where storage, audit, outbox, idempotency, and deterministic-mode behavior are wired in.
 
 ```mermaid
 sequenceDiagram
@@ -119,4 +119,4 @@ The public root export includes much more than `runCommand()`. In practice, the 
 - `onEvent`, `getEventLog`, `serialize`, and `restore` for integration tests, observability, and state snapshots.
 - `verifyIRHash`, `assertValidProvenance`, and `RuntimeEngine.create()` for provenance-sensitive production startup.
 
-For exact signatures and constructor tables, continue to [Runtime Engine API Reference](/docs/api-reference/runtime-engine).
+For exact signatures and constructor tables, continue to [Runtime Engine API Reference](api-reference/runtime-engine.md).

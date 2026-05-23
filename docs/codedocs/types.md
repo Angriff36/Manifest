@@ -224,4 +224,4 @@ Use route types when you consume `RoutesProjection` outputs, and registry types 
 - `@angriff36/manifest/projections/routes`: `RouteEntry`, `RouteManifest`, `RouteParam`, `RoutesProjectionOptions`, `ManualRouteDeclaration`.
 - `@angriff36/manifest/registry/emit`: `EntityClassification`, `CommandRegistryEntry`, `EntityRegistryEntry`, `CommandRegistry`, `EntityRegistry`.
 
-For the method-bearing classes associated with those types, use the API pages under [API Reference](/docs/api-reference/runtime-engine).
+For the method-bearing classes associated with those types, use the API pages under [API Reference](api-reference/runtime-engine.md).

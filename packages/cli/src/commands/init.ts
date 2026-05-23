@@ -147,8 +147,11 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     // Show next steps
     showPostInit(answers, config);
 
-  } catch (error: any) {
-    if (error.isTtyError) {
+  } catch (error: unknown) {
+    // inquirer sets `isTtyError: true` on the thrown error when there is no
+    // TTY. Narrow against that field without committing to `any`.
+    const isTtyError = !!(error && typeof error === 'object' && (error as { isTtyError?: boolean }).isTtyError);
+    if (isTtyError) {
       // Not running in a TTY - use minimal defaults
       console.log(chalk.yellow('Not an interactive terminal - using defaults'));
       const defaultConfig: ManifestConfig = {
@@ -163,7 +166,8 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
       console.log('Edit manifest.config.yaml to customize paths and outputs.');
       console.log('');
     } else {
-      console.error(chalk.red(`Init failed: ${error.message}`));
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(chalk.red(`Init failed: ${msg}`));
       console.error(error);
       process.exit(1);
     }

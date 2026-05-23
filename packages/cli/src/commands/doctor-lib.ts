@@ -461,40 +461,48 @@ export async function inspectCompiledIR(options: {
   const files = await discoverIRFiles(options);
   const entities = new Map<string, IREntityDefinition[]>();
 
+  // Loosely-typed IR shape — we only consume a small slice of the IR JSON
+  // here and validate each field with typeof / Array.isArray. Using `unknown`
+  // forces the narrowing instead of leaking `any` through.
+  type LooseIRNode = Record<string, unknown>;
+  const isObj = (v: unknown): v is LooseIRNode => !!v && typeof v === 'object';
+  const strField = (v: unknown, k: string): string | null =>
+    isObj(v) && typeof v[k] === 'string' ? (v[k] as string) : null;
+
   for (const file of files) {
-    let parsed: any;
+    let parsed: LooseIRNode | undefined;
     try {
-      parsed = JSON.parse(await fs.readFile(file, 'utf-8'));
+      parsed = JSON.parse(await fs.readFile(file, 'utf-8')) as LooseIRNode;
     } catch {
       continue;
     }
 
-    const irEntities = Array.isArray(parsed?.entities) ? parsed.entities : [];
-    const irCommands = Array.isArray(parsed?.commands) ? parsed.commands : [];
-    const irEvents = Array.isArray(parsed?.events) ? parsed.events : [];
-    const irPolicies = Array.isArray(parsed?.policies) ? parsed.policies : [];
+    const irEntities = Array.isArray(parsed?.entities) ? (parsed.entities as LooseIRNode[]) : [];
+    const irCommands = Array.isArray(parsed?.commands) ? (parsed.commands as LooseIRNode[]) : [];
+    const irEvents = Array.isArray(parsed?.events) ? (parsed.events as LooseIRNode[]) : [];
+    const irPolicies = Array.isArray(parsed?.policies) ? (parsed.policies as LooseIRNode[]) : [];
 
     for (const entity of irEntities) {
-      const entityName = typeof entity?.name === 'string' ? entity.name : null;
+      const entityName = strField(entity, 'name');
       if (!entityName) continue;
 
       const commands = irCommands
-        .filter((c: any) => c?.entity === entityName && typeof c?.name === 'string')
-        .map((c: any) => c.name);
+        .filter((c) => c?.entity === entityName && typeof c?.name === 'string')
+        .map((c) => c.name as string);
       const emits = irCommands
-        .filter((c: any) => c?.entity === entityName && Array.isArray(c?.emits))
-        .flatMap((c: any) => c.emits.filter((e: unknown) => typeof e === 'string'));
+        .filter((c) => c?.entity === entityName && Array.isArray(c?.emits))
+        .flatMap((c) => (c.emits as unknown[]).filter((e): e is string => typeof e === 'string'));
       const properties = Array.isArray(entity?.properties)
-        ? entity.properties
-            .map((p: any) => (typeof p?.name === 'string' ? p.name : null))
-            .filter((v: string | null): v is string => !!v)
+        ? (entity.properties as LooseIRNode[])
+            .map((p) => strField(p, 'name'))
+            .filter((v): v is string => !!v)
         : [];
       const policies = Array.isArray(entity?.policies)
-        ? entity.policies.filter((p: unknown) => typeof p === 'string')
+        ? (entity.policies as unknown[]).filter((p): p is string => typeof p === 'string')
         : [];
       const events = irEvents
-        .map((e: any) => (typeof e?.name === 'string' ? e.name : null))
-        .filter((v: string | null): v is string => !!v);
+        .map((e) => strField(e, 'name'))
+        .filter((v): v is string => !!v);
 
       const list = entities.get(entityName) || [];
       list.push({
@@ -505,8 +513,8 @@ export async function inspectCompiledIR(options: {
         policies: uniqueSorted([
           ...policies,
           ...irPolicies
-            .filter((p: any) => p?.entity === entityName && typeof p?.name === 'string')
-            .map((p: any) => p.name),
+            .filter((p) => p?.entity === entityName && typeof p?.name === 'string')
+            .map((p) => p.name as string),
         ]),
         emits: uniqueSorted(emits),
         events: uniqueSorted(events),
@@ -601,11 +609,15 @@ export async function inspectRouteSurfaceForCommand(options: {
   cwd?: string;
 }): Promise<{ routeExists: boolean; matches: RouteManifestCommandHit[] }> {
   const files = await findRoutesManifestFiles(options.cwd || process.cwd());
+  interface LooseRouteSource { kind?: string; entity?: string; command?: string; }
+  interface LooseRoute { path?: string; method?: string; source?: LooseRouteSource; }
+  interface LooseRouteManifest { routes?: LooseRoute[]; }
+
   const matches: RouteManifestCommandHit[] = [];
   for (const file of files) {
-    let json: any;
+    let json: LooseRouteManifest | undefined;
     try {
-      json = JSON.parse(await fs.readFile(file, 'utf-8'));
+      json = JSON.parse(await fs.readFile(file, 'utf-8')) as LooseRouteManifest;
     } catch {
       continue;
     }
@@ -617,13 +629,13 @@ export async function inspectRouteSurfaceForCommand(options: {
         source?.entity === options.entityName &&
         source?.command === options.commandName;
       const samePath = options.routePath ? route?.path === options.routePath : true;
-      if (sameCommand && samePath) {
+      if (sameCommand && samePath && source && route.path && route.method) {
         matches.push({
           routePath: route.path,
           method: route.method,
-          sourceKind: source.kind,
-          sourceEntity: source.entity,
-          sourceCommand: source.command,
+          sourceKind: source.kind!,
+          sourceEntity: source.entity!,
+          sourceCommand: source.command!,
           manifestFile: file,
         });
       }

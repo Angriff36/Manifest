@@ -739,7 +739,6 @@ export class RuntimeEngine {
 
     try {
       // Compute hash of the current IR (excluding the irHash field itself)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { irHash: _irHash, ...provenanceWithoutIrHash } = prov;
       const canonical = {
         ...this.ir,
@@ -1209,7 +1208,6 @@ export class RuntimeEngine {
     } catch (sinkError) {
       // Fail-open: audit sink errors MUST NOT alter command execution.
       // Surface the failure on stderr so operators can wire alerts off it.
-      // eslint-disable-next-line no-console
       console.warn(
         '[Manifest Runtime] AuditSink.emit failed; record dropped:',
         sinkError instanceof Error ? sinkError.message : sinkError
@@ -1248,7 +1246,6 @@ export class RuntimeEngine {
     try {
       await store.enqueue(entries);
     } catch (storeError) {
-      // eslint-disable-next-line no-console
       console.warn(
         '[Manifest Runtime] OutboxStore.enqueue failed; events not durably persisted:',
         storeError instanceof Error ? storeError.message : storeError

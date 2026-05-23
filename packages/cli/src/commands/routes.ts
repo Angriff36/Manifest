@@ -57,9 +57,13 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
 
     const projection = new RoutesProjection();
 
-    // 3. Compile all files and collect routes
-    const allRoutes: any[] = [];
-    const allDiagnostics: any[] = [];
+    // 3. Compile all files and collect routes — use the canonical
+    // RouteEntry shape from the routes projection so downstream
+    // serialization and filtering keep their static types.
+    type RouteEntry = import('@angriff36/manifest/projections/routes').RouteEntry;
+    interface CollectedDiagnostic { file?: string; severity: 'error' | 'warning' | 'info'; message: string; }
+    const allRoutes: RouteEntry[] = [];
+    const allDiagnostics: CollectedDiagnostic[] = [];
     let filesCompiled = 0;
 
     for (const file of files) {
@@ -70,7 +74,7 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
         allDiagnostics.push({
           file: path.relative(cwd, file),
           severity: 'error',
-          message: `Compilation failed: ${result.diagnostics.map((d: any) => d.message).join('; ')}`,
+          message: `Compilation failed: ${result.diagnostics.map((d: { message: string }) => d.message).join('; ')}`,
         });
         continue;
       }
@@ -161,8 +165,8 @@ export async function routesCommand(options: RoutesCommandOptions = {}): Promise
     if (allDiagnostics.some(d => d.severity === 'error')) {
       process.exit(1);
     }
-  } catch (error: any) {
-    spinner.fail(`Route generation failed: ${error.message}`);
+  } catch (error: unknown) {
+    spinner.fail(`Route generation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }
