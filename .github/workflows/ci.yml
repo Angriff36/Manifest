@@ -39,6 +39,13 @@ jobs:
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
+      - name: Build root library
+        # packages/cli depends on @angriff36/manifest via type imports
+        # (src/checks/runtime-smoke.ts, src/commands/*.ts). Without
+        # build:lib first, the CLI build below cannot resolve those modules.
+        # Matches the prepublishOnly script.
+        run: pnpm run build:lib
+
       - name: Build CLI dist
         # enforce-surface.cli.test.ts spawns the built CLI to verify
         # commander registration. Without a fresh build, CI runs the
