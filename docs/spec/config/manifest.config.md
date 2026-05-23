@@ -1,0 +1,335 @@
+# Manifest Configuration Reference
+
+`manifest.config.{yaml,yml,ts,js}` is the **single declaration point** for
+everything Manifest's projections and runtime do at code-generation time.
+This document is the canonical reference: every documented key here exists
+in the JSON schema at
+[`docs/spec/config/manifest.config.schema.json`](./manifest.config.schema.json)
+and in the exported defaults at
+[`src/manifest/projections/nextjs/defaults.ts`](../../../src/manifest/projections/nextjs/defaults.ts).
+
+If those three artifacts ever disagree, **the JSON schema wins** — it is
+the executable contract that the CLI validates against.
+
+---
+
+## File formats
+
+Manifest accepts both formats; if both exist, the TypeScript runtime
+config takes precedence over YAML for its `build` sub-block.
+
+| File                          | Role                                  | Validated by |
+|-------------------------------|---------------------------------------|--------------|
+| `manifest.config.yaml` / `.yml` | Build-level (declarative)           | JSON schema  |
+| `.manifestrc.yaml` / `.yml`   | Build-level (alternate name)          | JSON schema  |
+| `manifest.config.ts` / `.js`  | Runtime-level (stores, resolveUser)   | Structural (loader) |
+
+The TypeScript file may *also* contain a `build` block — that block is
+merged on top of YAML and validated identically.
+
+Add this line to your YAML config for editor IntelliSense:
+
+```yaml
+$schema: https://manifest.lang/spec/config/manifest.config.schema.json
+```
+
+---
+
+## Top-level keys
+
+| Key            | Default            | Type       | What it controls |
+|----------------|--------------------|------------|------------------|
+| `src`          | `**/*.manifest`    | string     | Glob for source `.manifest` files. |
+| `output`       | `ir/`              | string     | Directory for compiled IR JSON. |
+| `prismaSchema` | (auto-discovered)  | string     | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
+| `projections`  | `{}`               | object     | Per-projection config blocks. |
+
+---
+
+## `projections.nextjs`
+
+| Key       | Default        | Type     | What it controls |
+|-----------|----------------|----------|------------------|
+| `output`  | `generated/`   | string   | Directory where generated TypeScript files are written. |
+| `options` | (see below)    | object   | Surface-specific options for the Next.js projection. |
+
+### `projections.nextjs.options`
+
+Every key here is **Manifest-generic** — it shapes the code Manifest
+emits but encodes no downstream-app branding.
+
+| Key                       | Default                       | Allowed values                              | Generated behaviour |
+|---------------------------|-------------------------------|---------------------------------------------|---------------------|
+| `authProvider`            | `clerk`                       | `clerk`, `nextauth`, `custom`, `none`       | Selects the auth check template. `none` emits an `anonymous` user; `custom` imports `{ getUser }`; the others import their respective helpers. |
+| `authImportPath`          | `@repo/auth/server`           | string                                      | Module that exports the auth helper. Combined with `authProvider` to produce the `import { auth } from "..."` line. |
+| `databaseImportPath`      | `@repo/database`              | string                                      | Module that exports the `database` client used by direct-read routes. |
+| `responseImportPath`      | `@/lib/manifest-response`     | string                                      | Module that exports `manifestErrorResponse`, `manifestSuccessResponse`, `normalizeCommandResult`. |
+| `runtimeImportPath`       | `@/lib/manifest-runtime`      | string                                      | Module that exports `createManifestRuntime`. **Only used when `dispatcher.executionMode` is `inline`.** |
+| `includeTenantFilter`     | `true`                        | boolean                                     | When true, read routes emit `where: { tenantId, ... }` and POST handlers resolve a tenant before executing. |
+| `includeSoftDeleteFilter` | `true`                        | boolean                                     | When true, read routes emit `where: { deletedAt: null, ... }`. |
+| `tenantIdProperty`        | `tenantId`                    | string                                      | Name of the tenant-scope property used in WHERE clauses and tenant context. |
+| `deletedAtProperty`       | `deletedAt`                   | string                                      | Name of the soft-delete timestamp property. |
+| `appDir`                  | `apps/api/app/api`            | string                                      | App Router base directory. All `pathHint`s are relative to this. |
+| `strictMode`              | `true`                        | boolean                                     | Whether generated TypeScript is strict-mode friendly. |
+| `includeComments`         | `true`                        | boolean                                     | Whether to emit explanatory comments above generated handlers. |
+| `indentSize`              | `2`                           | integer 1–8                                 | Spaces of indentation in generated code. |
+| `tenantProvider`          | `{ importPath: '@/app/lib/tenant', functionName: 'getTenantIdForOrg', lookupKey: 'orgId' }` | object                  | Override the default `userTenantMapping.findUnique` pattern with a project-supplied lookup. See **`tenantProvider`** below. |
+| `dispatcher`              | (see below)                   | object                                      | Configuration for the canonical write surface. See **`dispatcher`** below. |
+| `concreteCommandRoutes`   | (see below)                   | object                                      | Policy for the deprecated per-command routes. See **`concreteCommandRoutes`** below. |
+
+### `tenantProvider`
+
+```yaml
+projections:
+  nextjs:
+    options:
+      tenantProvider:
+        importPath: "@my-app/data"
+        functionName: "getTenantIdForOrg"
+        lookupKey: "orgId"    # or "userId"
+```
+
+| Key            | Required | Type                       | What it controls |
+|----------------|----------|----------------------------|------------------|
+| `importPath`   | yes      | string                     | Module that exports the lookup helper. |
+| `functionName` | yes      | string                     | Named export to call. |
+| `lookupKey`    | yes      | `orgId` \| `userId`        | Which auth-context field is passed as the lookup argument. |
+
+### `dispatcher`
+
+The dispatcher is the canonical Manifest write surface at
+`POST /api/manifest/[entity]/commands/[command]`. Two execution modes are
+supported, and any downstream repo can switch between them by editing config
+alone — no projection-source edits.
+
+```yaml
+projections:
+  nextjs:
+    options:
+      dispatcher:
+        enabled: true
+        executionMode: inline           # or "externalExecutor"
+        executorImportPath: "@/lib/manifest-executor"
+        executorImportName: "executeManifestCommand"
+        deriveInstanceId: false
+```
+
+| Key                     | Default                         | Type                                  | Generated behaviour |
+|-------------------------|---------------------------------|---------------------------------------|---------------------|
+| `enabled`               | `true`                          | boolean                               | When `false`, the `nextjs.dispatcher` surface emits no artifact and surfaces an info-diagnostic. |
+| `executionMode`         | `inline`                        | `inline` \| `externalExecutor`        | `inline` (default, back-compat): handler calls `createManifestRuntime(...)` then `runtime.runCommand(...)`. `externalExecutor`: handler imports the configured executor and delegates — **no `createManifestRuntime` or `runtime.runCommand` appears in the emitted code.** |
+| `executorImportPath`    | `@/lib/manifest-executor`       | string                                | Module path for the external executor. Only used in `externalExecutor` mode. |
+| `executorImportName`    | `executeManifestCommand`        | string                                | Named export to call on the external executor module. |
+| `deriveInstanceId`      | `false`                         | boolean                               | When `true` and `executionMode` is `externalExecutor`, the handler derives an `instanceId` from `body.instanceId` or `body.id` and passes it to the executor. Off by default to avoid surprising callers of non-instance commands. |
+
+### `concreteCommandRoutes`
+
+Per-command "concrete" routes (the `nextjs.command` surface) were the
+original write path before the dispatcher existed. They remain emitted as
+deprecated aliases by default.
+
+```yaml
+projections:
+  nextjs:
+    options:
+      concreteCommandRoutes:
+        enabled: true
+        legacyAliasesOnly: true
+```
+
+| Key                  | Default | Type    | Generated behaviour |
+|----------------------|---------|---------|---------------------|
+| `enabled`            | `true`  | boolean | When `false`, `nextjs.command` artifacts are suppressed entirely (an info-diagnostic is returned). |
+| `legacyAliasesOnly`  | `true`  | boolean | When `true` (default), generated concrete routes carry the `DEPRECATED ALIAS` banner pointing callers at the dispatcher. Set `false` only if you intentionally treat per-command routes as a first-class surface. |
+
+---
+
+## `projections.routes`
+
+The Canonical Routes projection emits a deterministic route manifest and
+typed path builders. Configuration mirrors `ROUTES_DEFAULTS` in
+`defaults.ts`.
+
+| Key                          | Default  | Type     | What it controls |
+|------------------------------|----------|----------|------------------|
+| `output`                     | `generated/` | string   | Directory for `routes.manifest.json` and `routes.ts`. |
+| `options.basePath`           | `/api`   | string   | Base path prefix for every route. |
+| `options.includeAuth`        | `true`   | boolean  | Whether emitted route entries carry `auth: true`. |
+| `options.includeTenant`      | `true`   | boolean  | Whether emitted route entries carry `tenant: true`. |
+| `options.manualRoutes`       | `[]`     | array    | Hand-declared routes merged into the canonical surface. |
+
+---
+
+## Inspection CLI
+
+Three commands surface what Manifest will actually do.
+
+```bash
+# Validate manifest.config.yaml against the JSON schema.
+manifest config validate
+manifest config validate --json     # structured output, non-zero exit on failure
+
+# Print the canonical defaults snapshot.
+manifest config print-defaults
+
+# Print the *effective* config = defaults + user overrides.
+# Stable, key-sorted output — safe to snapshot in CI.
+manifest config inspect
+manifest config inspect --json      # default
+```
+
+Effective-config output excerpt:
+
+```json
+{
+  "configPath": "/work/app/manifest.config.yaml",
+  "build": { "output": "ir/", "src": "**/*.manifest" },
+  "projections": {
+    "nextjs": {
+      "output": "generated/",
+      "options": {
+        "appDir": "apps/api/app/api",
+        "authProvider": "clerk",
+        "dispatcher": {
+          "enabled": true,
+          "executionMode": "inline",
+          ...
+        },
+        ...
+      }
+    }
+  }
+}
+```
+
+---
+
+## externalExecutor migration example
+
+Use `executionMode: externalExecutor` when a downstream app owns its
+Manifest runtime construction (a shared executor, custom store wiring,
+extra context injection) and wants the dispatcher to be a thin transport
+adapter.
+
+**Step 1 — author an executor in your app.** Place it where the
+`executorImportPath` points; the function shape is your contract.
+
+```ts
+// apps/api/lib/manifest-executor.ts (or wherever you wire your runtime)
+
+import { createManifestRuntime } from "./manifest-runtime";
+
+export interface ManifestExecutorCall {
+  entityName: string;
+  commandName: string;
+  input: unknown;
+  instanceId?: string;
+  context: {
+    tenantId?: string;
+    orgId?: string;
+    actorId?: string;
+    requestId?: string;
+    source?: string;
+    user?: Record<string, unknown>;
+  };
+}
+
+export async function executeManifestCommand(call: ManifestExecutorCall) {
+  const runtime = await createManifestRuntime(call.context);
+  return runtime.runCommand(call.commandName, call.input, {
+    entityName: call.entityName,
+    ...(call.instanceId ? { instanceId: call.instanceId } : {}),
+  });
+}
+```
+
+**Step 2 — flip config.** Use placeholder paths matching *your* layout:
+
+```yaml
+# manifest.config.yaml
+projections:
+  nextjs:
+    options:
+      dispatcher:
+        executionMode: externalExecutor
+        executorImportPath: "@my-app/manifest-executor"
+        executorImportName: "executeManifestCommand"
+        deriveInstanceId: false
+```
+
+**Step 3 — regenerate.** The generated dispatcher at
+`<appDir>/manifest/[entity]/commands/[command]/route.ts` now imports your
+executor and delegates to it. The emitted handler no longer contains
+`createManifestRuntime` or `runtime.runCommand`.
+
+```ts
+// Generated output (excerpt) under externalExecutor mode:
+import { executeManifestCommand } from "@my-app/manifest-executor";
+...
+const result = await executeManifestCommand({
+  entityName: entity,
+  commandName: command,
+  input: body,
+  context: { tenantId, orgId, actorId: userId, ... }
+});
+```
+
+**Step 4 — confirm with the CLI.**
+
+```bash
+manifest config inspect --json | jq '.projections.nextjs.options.dispatcher'
+# {
+#   "deriveInstanceId": false,
+#   "enabled": true,
+#   "executionMode": "externalExecutor",
+#   "executorImportName": "executeManifestCommand",
+#   "executorImportPath": "@my-app/manifest-executor"
+# }
+```
+
+---
+
+## CI / drift guidance
+
+Downstream repos should commit their `manifest.config.yaml` and pin
+generation output. Recommended CI gate:
+
+```bash
+# 1. Fail on invalid config.
+manifest config validate
+
+# 2. Snapshot the effective config (commit the snapshot under VCS).
+manifest config inspect --json > .manifest/effective-config.snapshot.json
+git diff --exit-code .manifest/effective-config.snapshot.json
+
+# 3. Regenerate code from IR.
+manifest build
+
+# 4. Fail on drift between checked-in and just-generated code.
+git diff --exit-code
+```
+
+This four-step flow guarantees:
+
+1. The config is structurally valid against the published schema.
+2. The effective config (= defaults + overrides) has not drifted from the
+   last reviewed snapshot — defaults can't change without showing up here.
+3. Any change in either Manifest defaults *or* the local config produces a
+   diff under VCS instead of silently changing emitted output.
+
+---
+
+## Where each default lives
+
+| Layer                                   | Path |
+|-----------------------------------------|------|
+| Canonical default values                | [`src/manifest/projections/nextjs/defaults.ts`](../../../src/manifest/projections/nextjs/defaults.ts) |
+| JSON schema (what's allowed)            | [`docs/spec/config/manifest.config.schema.json`](./manifest.config.schema.json) |
+| Schema-enforced CLI validator           | [`packages/cli/src/utils/config-validate.ts`](../../../packages/cli/src/utils/config-validate.ts) |
+| Inspection CLI                          | [`packages/cli/src/commands/config.ts`](../../../packages/cli/src/commands/config.ts) |
+| Projection consumer (`normalizeOptions`)| [`src/manifest/projections/nextjs/generator.ts`](../../../src/manifest/projections/nextjs/generator.ts) |
+
+Adding a new key requires touching all five so they stay in sync. The
+`getManifestDefaultsSnapshot` export plus the
+`manifest config print-defaults` snapshot test catch any drift between
+defaults.ts and the generator's `normalizeOptions`.

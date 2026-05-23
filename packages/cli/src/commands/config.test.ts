@@ -41,8 +41,12 @@ async function captureOutput<T>(fn: () => Promise<T>): Promise<{ stdout: string;
 }
 
 // Lightweight ANSI stripper so chalk colours don't break assertions.
+// The ESC escape is the entire point of the regex; the no-control-regex
+// rule has no in-pattern opt-out beyond a localised disable.
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
 function stripAnsi(s: string): string {
-  return s.replace(/\[[0-9;]*m/g, '');
+  return s.replace(ANSI_RE, '');
 }
 
 describe('manifest config validate', () => {
