@@ -182,6 +182,70 @@ policy canApproveLargeAmounts override:
 
 When a caller supplies an `OverrideRequest` matching the constraint code, the runtime checks the policy, marks the outcome `overridden: true`, and emits a synthetic `OverrideApplied` event.
 
+## Composite keys and foreign key structure
+
+### Composite primary keys
+
+Declare `key [field1, field2]` inside an entity to define a composite primary key. The listed fields together form the entity's identity — no single `id` field is needed.
+
+```manifest
+entity Order {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+  property total: number = 0
+}
+```
+
+When the Prisma projection sees a `key`, it emits `@@id([tenantId, id])` instead of a single `@id` field. The runtime still uses the named fields but treats the entity as identified by the tuple.
+
+### Alternate keys
+
+Declare `unique [field1, field2]` to define a non-PK uniqueness constraint (an alternate key). You can declare multiple.
+
+```manifest
+entity AdminChatParticipant {
+  key [tenantId, id]
+  unique [tenantId, threadId, userId]
+  property required tenantId: string
+  property required id: string
+  property required threadId: string
+  property required userId: string
+}
+```
+
+The Prisma projection emits `@@unique([...])` for each group. Other projections use it to derive uniqueness constraints on the target platform.
+
+### Composite foreign keys
+
+For `belongsTo` and `ref` relationships, declare the FK columns explicitly when your relationship spans multiple columns:
+
+```manifest
+// Single-column FK using the shorthand (backward-compatible)
+belongsTo author: Author with authorId
+
+// Composite FK — explicit fields and references
+belongsTo thread: AdminChatThread fields [tenantId, threadId] references [tenantId, id] onDelete cascade
+
+// Cross-order composite FK
+belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenantId] onDelete cascade
+```
+
+`fields` names properties on the current entity; `references` names the corresponding columns on the target. If `references` is omitted, `[id]` is assumed.
+
+**Runtime note**: The Manifest runtime uses a single-key in-memory store. Composite FKs are a projection concern — the runtime only resolves single-column FKs. A `belongsTo` with `fields.length > 1` returns `null` at runtime. Use a `storeProvider` adapter backed by a real database when composite-FK resolution is required.
+
+### Referential actions
+
+Add `onDelete` and/or `onUpdate` to any `belongsTo` or `ref` to declare referential integrity behavior. Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
+
+```manifest
+belongsTo tenant: Account with tenantId onDelete restrict
+belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onDelete cascade onUpdate restrict
+```
+
+When no action is declared, the projection emits nothing and the target platform uses its own default.
+
 ## Concurrency controls (vNext)
 
 Entities can declare optimistic concurrency controls using `versionProperty` and `versionAtProperty`. The runtime compares the caller-supplied version against the stored value on every mutation.

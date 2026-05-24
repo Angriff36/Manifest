@@ -48,7 +48,8 @@
               "integration/overview",
               "integration/projections",
               "integration/embedded-runtime",
-              "integration/nextjs"
+              "integration/nextjs",
+              "integration/prisma"
             ]
           },
           {

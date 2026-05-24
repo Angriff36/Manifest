@@ -6,9 +6,17 @@ description: 'Projections are a code-generation tool that reads compiled Manifes
 
 A **projection** reads your compiled Intermediate Representation (IR) and emits platform-specific artifacts. Projections are tooling — they do not redefine runtime semantics. Adding or changing a projection never changes what a Manifest program *means*; it only changes what code gets generated from it.
 
-## What projections produce
+## Available projections
 
-The Next.js projection ships four surfaces:
+| Projection | Import | Surfaces | What it generates |
+| --- | --- | --- | --- |
+| `NextJsProjection` | `@angriff36/manifest/projections/nextjs` | `nextjs.route`, `nextjs.command`, `ts.types`, `ts.client`, `nextjs.detail`, `nextjs.dispatcher` | Next.js App Router route handlers, TypeScript types, and a typed client SDK |
+| `PrismaProjection` | `@angriff36/manifest/projections/prisma` | `prisma.schema` | `schema.prisma` + optional `prisma.config.ts` companion (Prisma 7+) |
+| `RoutesProjection` | `@angriff36/manifest/projections/routes` | `routes.manifest`, `routes.ts` | A JSON route manifest and TypeScript route registry derived from your IR |
+
+## What the Next.js projection produces
+
+The Next.js projection ships four primary surfaces:
 
 | Surface | CLI identifier | What it generates |
 | --- | --- | --- |

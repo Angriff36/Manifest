@@ -1,0 +1,268 @@
+---
+title: 'Generate a Prisma schema with Manifest'
+sidebarTitle: 'Prisma'
+description: 'The Prisma projection reads compiled Manifest IR and emits a schema.prisma file and a prisma.config.ts companion. Supports composite PKs, composite FKs, alternate keys, and referential actions.'
+---
+
+The **Prisma projection** reads your compiled IR and emits a `schema.prisma` artifact ready for `prisma migrate` and `prisma generate`. When you set a `provider`, a `prisma.config.ts` companion is also emitted — Prisma 7+ requires the connection URL there rather than in the schema file.
+
+## Install
+
+```bash
+npm install @angriff36/manifest
+```
+
+## Basic usage
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
+import fs from 'fs/promises';
+
+const source = await fs.readFile('schema.manifest', 'utf-8');
+const { ir } = await compileToIR(source);
+
+const projection = new PrismaProjection();
+
+const result = projection.generate(ir, {
+  surface: 'prisma.schema',
+  options: {
+    provider: 'postgresql',
+    tableMappings: { Order: 'orders' },
+    typeMappings: { Order: { totalAmount: 'Decimal' } },
+  },
+});
+
+// When provider is set, two artifacts are emitted:
+//   result.artifacts[0] → schema.prisma
+//   result.artifacts[1] → prisma.config.ts
+await fs.writeFile('prisma/schema.prisma', result.artifacts[0].code);
+await fs.writeFile('prisma/prisma.config.ts', result.artifacts[1].code);
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `provider` | `'postgresql' \| 'mysql' \| 'sqlite' \| ...` | — | Emits a `datasource db { provider "..." }` block. When set, a `prisma.config.ts` companion is also emitted. |
+| `urlEnvVar` | `string` | `"DATABASE_URL"` | Environment variable for the connection URL in `prisma.config.ts`. |
+| `tableMappings` | `Record<EntityName, string>` | `{}` | `@@map(...)` table name overrides per entity. |
+| `columnMappings` | `Record<EntityName, Record<PropName, string>>` | `{}` | `@map(...)` column name overrides per property. |
+| `precision` | `Record<EntityName, Record<PropName, { precision, scale }>>` | `{}` | `@db.Decimal(p, s)` per field. |
+| `typeMappings` | `Record<EntityName, Record<PropName, string>>` | `{}` | Override IR type → Prisma scalar (required for `number`-typed fields that map to `Decimal` or `BigInt`). |
+| `foreignKeys` | `Record<EntityName, Record<RelName, string>>` | `{}` | FK field name override for `belongsTo`/`ref` without an explicit `fields [...]` annotation. |
+| `indexes` | `Record<EntityName, IndexEntry[]>` | `[]` | Additional `@@index([...])` declarations. |
+| `output` | `string` | `"schema.prisma"` | `pathHint` for the schema artifact. |
+
+## Prisma 7+ and `prisma.config.ts`
+
+Prisma 7 removed the `url` property from the `datasource db` block in `schema.prisma`. The connection URL is now configured in a separate `prisma.config.ts` file. The Prisma projection handles this automatically:
+
+- **Without `provider`**: only `schema.prisma` is emitted (no datasource block at all). Use this when you manage `schema.prisma` with a shared datasource file.
+- **With `provider`**: two artifacts are emitted — `schema.prisma` with the datasource provider block, and `prisma.config.ts` with the URL reference.
+
+```typescript
+// prisma.config.ts — emitted automatically when provider is set
+import { defineConfig } from 'prisma/config';
+
+export default defineConfig({
+  datasources: { db: { url: process.env.DATABASE_URL } },
+});
+```
+
+Use `urlEnvVar` to customize the variable name:
+
+```typescript
+const result = projection.generate(ir, {
+  surface: 'prisma.schema',
+  options: {
+    provider: 'postgresql',
+    urlEnvVar: 'POSTGRES_CONNECTION_STRING',
+  },
+});
+// prisma.config.ts will use process.env.POSTGRES_CONNECTION_STRING
+```
+
+## IR features
+
+The following IR constructs are mapped to Prisma schema syntax:
+
+### Composite primary keys
+
+Declare `key [field1, field2]` in your Manifest source to produce a `@@id([...])` block:
+
+```manifest
+entity Order {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+  property total: number = 0
+}
+```
+
+Emits:
+
+```prisma
+model Order {
+  tenantId String
+  id       String
+  total    Float  @default(0)
+
+  @@id([tenantId, id])
+}
+```
+
+### Alternate keys
+
+Declare `unique [field1, field2]` to produce a `@@unique([...])` constraint:
+
+```manifest
+entity AdminChatParticipant {
+  key [tenantId, id]
+  unique [tenantId, threadId, userId]
+  property required tenantId: string
+  property required id: string
+  property required threadId: string
+  property required userId: string
+}
+```
+
+Emits:
+
+```prisma
+model AdminChatParticipant {
+  tenantId String
+  id       String
+  threadId String
+  userId   String
+
+  @@id([tenantId, id])
+  @@unique([tenantId, threadId, userId])
+}
+```
+
+### Composite foreign keys
+
+Use `fields [...] references [...]` on a `belongsTo` or `ref` to produce a multi-column `@relation`:
+
+```manifest
+belongsTo thread: AdminChatThread fields [tenantId, threadId] references [tenantId, id] onDelete cascade
+```
+
+Emits:
+
+```prisma
+thread AdminChatThread @relation(fields: [tenantId, threadId], references: [tenantId, id], onDelete: Cascade)
+```
+
+Single-column FKs using the `with <name>` shorthand work the same way as before:
+
+```manifest
+belongsTo author: Author with authorId
+```
+
+Emits:
+
+```prisma
+author Author @relation(fields: [authorId], references: [id])
+```
+
+### Referential actions
+
+`onDelete` and `onUpdate` on any `belongsTo` or `ref` are passed through to the `@relation` attribute. Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
+
+When no action is declared, nothing is emitted — Prisma uses its own default.
+
+```manifest
+belongsTo tenant: Account with tenantId onDelete restrict
+belongsTo order: Order fields [tenantId, orderId] references [tenantId, id] onDelete cascade onUpdate restrict
+```
+
+Emits:
+
+```prisma
+tenant Account @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+order  Order   @relation(fields: [tenantId, orderId], references: [tenantId, id], onDelete: Cascade, onUpdate: Restrict)
+```
+
+## Diagnostics
+
+The projection emits diagnostics alongside the schema artifact. Check `result.diagnostics` after generating.
+
+| Code | Severity | Meaning |
+|------|----------|---------|
+| `PRISMA_AMBIGUOUS_NUMBER` | `error` | A `number`-typed property has no `typeMappings` override. The column is skipped. Add a `typeMappings` entry for that field mapping it to `Float`, `Decimal`, or `BigInt`. |
+| `PRISMA_NO_ID_PROPERTY` | `error` | An entity has no `id` property and no `key [...]` declaration. The model is skipped. Add an `id` property or a composite `key`. |
+| `PRISMA_SKIPPED_NON_DURABLE` | `info` | An entity's store is `memory` or `localStorage`. Skipped — non-durable stores don't produce database tables. |
+| `PRISMA_SKIPPED_NO_STORE` | `info` | An entity has no store declaration. Skipped. |
+| `PRISMA_SKIPPED_EXTERNAL` | `info` | An entity is marked `external`. Skipped. |
+
+```typescript
+const result = projection.generate(ir, {
+  surface: 'prisma.schema',
+  options: { provider: 'postgresql' },
+});
+
+const errors = result.diagnostics.filter(d => d.severity === 'error');
+if (errors.length > 0) {
+  for (const d of errors) console.error(`[${d.code}] ${d.message}`);
+  process.exit(1);
+}
+```
+
+## CLI usage
+
+```bash
+# Compile and generate a Prisma schema in one step
+manifest build schema.manifest --projection prisma --code-output prisma/
+
+# Generate from pre-compiled IR
+manifest generate ir/schema.ir.json --surface prisma.schema --output prisma/schema.prisma
+```
+
+## Full example
+
+```manifest
+entity Account {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+  property required name: string
+
+  store Account in durable
+}
+
+entity Order {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+  property total: number = 0
+
+  belongsTo account: Account fields [tenantId, tenantId] references [tenantId, tenantId] onDelete restrict
+
+  store Order in durable
+}
+```
+
+```typescript
+const result = projection.generate(ir, {
+  surface: 'prisma.schema',
+  options: {
+    provider: 'postgresql',
+    typeMappings: {
+      Order: { total: 'Decimal' },
+    },
+    tableMappings: {
+      Account: 'accounts',
+      Order: 'orders',
+    },
+  },
+});
+
+await fs.writeFile('prisma/schema.prisma', result.artifacts[0].code);
+await fs.writeFile('prisma/prisma.config.ts', result.artifacts[1].code);
+```
+
+<Note>
+The Prisma projection is a **tooling concern only** — it reads IR and emits schema files. It does not change what your Manifest program means at runtime. Composite FKs are a schema-level construct; the Manifest runtime resolves only single-column FKs. Entities with composite PKs or FKs that require real database-backed resolution must use a `storeProvider` adapter.
+</Note>
