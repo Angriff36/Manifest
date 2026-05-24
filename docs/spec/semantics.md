@@ -161,8 +161,33 @@ not authoritative for Manifest semantics.
 ## Stores
 - Stores define persistence targets for entities.
 - A runtime MUST support at least `memory` stores.
-- Other targets (`localStorage`, `postgres`, `supabase`) are adapters (see `adapters.md`).
+- Other targets (`localStorage`, `postgres`, `supabase`, `durable`) are adapters (see `adapters.md`).
+- `durable` (v0.9.0+) is the backend-neutral semantic target. It declares that
+  the entity is persisted in *some* durable store; the specific technology
+  (Prisma, raw SQL, supabase-js, …) is chosen by the consumer at runtime via a
+  custom `storeProvider`, and at compile time by the storage projection's
+  config. A conforming runtime MUST reject `durable` at command-execution time
+  unless a custom `storeProvider` is bound for the entity, with a diagnostic
+  identifying the entity and stating that `durable` requires a runtime store
+  adapter. Storage projections (e.g. the Prisma projection) MUST treat
+  `durable`, `postgres`, and `supabase` identically as schema-emission targets,
+  and MUST skip `memory`/`localStorage`.
 - When creating an instance via a store, omitted properties receive their default values as specified in the Properties section.
+
+## External entities (v0.9.0+)
+- An entity declared as `external entity X { ... }` has `IREntity.external === true` in IR.
+- The flag is a sparse optional: absent means owned (the default), present
+  means external. Legacy IR fixtures pre-v0.9.0 (which never emitted the
+  field) remain byte-identical.
+- `external` is a binary marker with a single semantic: storage projections
+  MUST skip external entities (emit no model / no migration). The flag has no
+  effect on runtime command execution, policy evaluation, constraint
+  evaluation, or any other downstream tool — non-storage projections MAY
+  read the flag if useful, but the spec only obliges the storage-projection
+  behavior.
+- Future flags expressing related-but-distinct concerns (e.g.
+  external-but-emit-types) MUST be added as separate fields, NOT by
+  redefining `external`.
 
 ## Policies
 - Policies are boolean expressions with an action scope.

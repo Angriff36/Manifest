@@ -110,38 +110,51 @@ manifest generate <ir> [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection to use for code generation. Supported value: `nextjs`. The projection determines the framework and file shape of the generated output.
+  Projection to use for code generation. Supported values: `nextjs`, `prisma`. The projection determines the framework and file shape of the generated output. Dispatch is generic via the projection registry — adding a new projection means registering it, not editing the CLI.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
-  Which surface(s) to generate. Accepted values:
+  Which surface(s) to generate. Values depend on the projection:
 
-  - `route` — GET route handlers for entity list and retrieve operations
-  - `command` — POST route handlers for entity commands (create, update, delete)
-  - `types` — TypeScript type definitions
-  - `client` — Client SDK functions
-  - `all` — All four surfaces
+  **nextjs** (default): `route` (GET handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes)
+
+  **prisma**: `prisma.schema` (single `schema.prisma` artifact). The CLI default `all` is treated as "the projection's first declared surface" for non-nextjs projections.
 </ParamField>
 
 <ParamField path="-o, --output" type="string">
-  Output directory for generated files. Falls back to the config's `projections.nextjs.output` value when not provided.
+  Output directory for generated files. Falls back to the config's `projections.<name>.output` value (e.g. `projections.nextjs.output`, `projections.prisma.output`) when not provided.
 </ParamField>
 
 <ParamField path="--auth" type="string">
-  Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to `projections.nextjs.options.authImportPath`, then `authProvider`, then defaults to `clerk`.
+  *(nextjs only)* Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to `projections.nextjs.options.authImportPath`, then `authProvider`, then defaults to `clerk`.
 </ParamField>
 
 <ParamField path="--database" type="string">
-  Database import path used in generated files (e.g. `@/lib/database` or `@repo/database`). Falls back to `projections.nextjs.options.databaseImportPath`, then defaults to `@/lib/database`.
+  *(nextjs only)* Database import path used in generated files (e.g. `@/lib/database` or `@repo/database`). Falls back to `projections.nextjs.options.databaseImportPath`, then defaults to `@/lib/database`.
 </ParamField>
 
 <ParamField path="--runtime" type="string">
-  Runtime import path (e.g. `@/lib/manifest-runtime` or `@repo/manifest/runtime`). Falls back to `projections.nextjs.options.runtimeImportPath`, then defaults to `@/lib/manifest-runtime`.
+  *(nextjs only)* Runtime import path (e.g. `@/lib/manifest-runtime` or `@repo/manifest/runtime`). Falls back to `projections.nextjs.options.runtimeImportPath`, then defaults to `@/lib/manifest-runtime`.
 </ParamField>
 
 <ParamField path="--response" type="string">
-  Response helpers import path (e.g. `@/lib/manifest-response` or `@repo/manifest/response`). Falls back to `projections.nextjs.options.responseImportPath`, then defaults to `@/lib/manifest-response`.
+  *(nextjs only)* Response helpers import path (e.g. `@/lib/manifest-response` or `@repo/manifest/response`). Falls back to `projections.nextjs.options.responseImportPath`, then defaults to `@/lib/manifest-response`.
 </ParamField>
+
+#### Examples
+
+```bash
+# Default: nextjs, all surfaces
+manifest generate ir/
+
+# Just the canonical dispatcher route
+manifest generate ir/ --surface dispatcher --output app/api
+
+# Prisma schema from compiled IR
+manifest generate ir/ --projection prisma --surface prisma.schema --output prisma
+```
+
+Projection-specific options (table names, column mappings, decimal precision, indexes, type overrides, foreign-key names for prisma; auth provider, tenant filters, dispatcher mode for nextjs) live in `manifest.config.yaml` under `projections.<name>.options`. See [Configuration](/cli/configuration) and the per-projection guides ([Next.js](/integration/nextjs), [Prisma](/integration/prisma)).
 
 ### Examples
 

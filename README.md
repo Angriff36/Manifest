@@ -20,7 +20,11 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 - **Full Language Parser & Compiler**: Parses Manifest source code and compiles to IR v1
 - **Reference Runtime Engine**: Executes commands with policy checks, guard evaluation, and event emission
 - **Conformance Test Suite**: 919+ tests covering compilation, runtime semantics, governance audits, adapter contracts, and edge cases
-- **Projections System**: Generate platform-specific code from IR. Next.js projection ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path
+- **Projections System**: Generate platform-specific code from IR.
+  - **Next.js projection** ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path.
+  - **Prisma projection** (v0.9.0+, `@manifest/projection-prisma`) emits a `schema.prisma` from compiled IR with full `@relation` wiring, decimal precision for `money`/`decimal` types, and a hard `PRISMA_AMBIGUOUS_NUMBER` diagnostic for bare `number` columns (loud at compile time beats silent rounding in production). App-agnostic by construction.
+- **Backend-neutral store target**: `store X in durable` (v0.9.0+) — declares persistence without naming a technology. Storage projections emit for `durable`/`postgres`/`supabase`; the runtime requires a custom `storeProvider` to resolve `durable` at execution time.
+- **External entities**: `external entity X { ... }` (v0.9.0+) — marks an entity as referenced-but-not-persisted by this manifest. Storage projections skip them.
 - **Audit Sink + Outbox Store adapters**: First-party `MemoryAuditSink` / `MemoryOutboxStore` for tests and local development; `PostgresAuditSink` / `PostgresOutboxStore` for durable production use (SQL schemas ship with the package). Runtime emits exactly one audit record per `runCommand` attempt and enqueues outbox entries on emit. See `docs/spec/adapters.md`.
 - **Governance audit CLI**: `manifest audit-governance` runs five detectors (direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations); `manifest integration-check` is the umbrella validator for downstream consumers
 - **Runtime UI**: Interactive development environment for testing Manifest programs
