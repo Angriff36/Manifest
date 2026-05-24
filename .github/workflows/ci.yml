@@ -39,6 +39,14 @@ jobs:
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
+      - name: Install manifest-projection-prisma dependencies (frozen lockfile)
+        # Sibling-of-root workspace package — also a separate pnpm project
+        # (own lockfile + own node_modules) for the same reason as CLI: each
+        # package owns its dependency closure. `link:../..` for @angriff36/
+        # manifest is resolved by pnpm to a relative symlink at install time.
+        working-directory: packages/manifest-projection-prisma
+        run: pnpm install --frozen-lockfile
+
       - name: Build root library
         # packages/cli depends on @angriff36/manifest via type imports
         # (src/checks/runtime-smoke.ts, src/commands/*.ts). Without

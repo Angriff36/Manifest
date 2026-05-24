@@ -47,6 +47,14 @@ jobs:
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
+      - name: Install manifest-projection-prisma dependencies (frozen lockfile)
+        # Sibling-of-root pnpm project (own lockfile + own node_modules).
+        # `link:../..` for @angriff36/manifest is resolved by pnpm to a
+        # relative symlink at install time, so projection-prisma's tsc can
+        # type-resolve against the root's built dist.
+        working-directory: packages/manifest-projection-prisma
+        run: pnpm install --frozen-lockfile
+
       - name: Verify tag version matches package.json
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"

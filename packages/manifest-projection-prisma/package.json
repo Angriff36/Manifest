@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@angriff36/manifest": "workspace:*"
+    "@angriff36/manifest": "link:../.."
   },
   "devDependencies": {
     "typescript": "^5.5.3",
