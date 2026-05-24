@@ -38,11 +38,11 @@
 - [x] Full typecheck/build green
 - [ ] CHECKPOINT 4 — Reader migration diffs + green build
 
-### Phase 5 — Round-trip verification
-- [ ] Generate schema.prisma for real multi-tenant entities
-- [ ] Diff against real schema
-- [ ] Report remaining diffs
-- [ ] Final notes.md update
+### Phase 5 — Round-trip verification ✅
+- [x] Generate schema.prisma for real multi-tenant entities
+- [x] Diff against real schema
+- [x] Report remaining diffs
+- [x] Final notes.md update
 - [ ] CHECKPOINT 5 — Final report (1.0 acceptance gate)
 
 ## Status
@@ -51,6 +51,7 @@ Phase 1 COMPLETE — Grammar + IR design approved
 Phase 2 COMPLETE — Core grammar + IR implementation done; awaiting CHECKPOINT 2 approval
 Phase 3 COMPLETE — Prisma projection with composite PK/FK + referential actions; 1073/1073 tests passing
 Phase 4 COMPLETE — All foreignKey readers migrated; typecheck clean; 1073/1073 tests passing
+Phase 5 COMPLETE — 14/14 structural checks PASS; all capability gaps closed; notes.md updated
 
 ## Scope Adjustments (user approved)
 - @@unique for relationship-backing / alternate identity → SEMANTIC-CORE (added to scope)

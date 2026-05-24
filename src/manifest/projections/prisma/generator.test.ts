@@ -801,6 +801,34 @@ describe('PrismaProjection — composite PK, composite FK, and referential actio
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
   });
 
+  it('composite PK entity whose key includes a property named `id` does NOT emit @id on that column', () => {
+    // Real-world case: entity has key [tenantId, id] — `id` is a composite PK column,
+    // not a single-column identity. Emitting both `id String @id` AND `@@id([tenantId, id])`
+    // would produce an invalid Prisma schema.
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Participant',
+      key: ['tenantId', 'id'],
+      properties: [
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    });
+    ir.stores.push(durableStore('Participant'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+@@id\(\[tenantId, id\]\)$/m);
+    // `id` column must appear as a plain column, NOT carrying @id
+    expect(code).toMatch(/^\s+id String$/m);
+    expect(code).not.toMatch(/(?<!@)@id\b/m);
+  });
+
   it('alternate key (unique [...]) emits @@unique([...]) on the target entity', () => {
     const ir = emptyIR();
     ir.entities.push({

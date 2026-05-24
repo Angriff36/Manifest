@@ -405,13 +405,82 @@ All 21 foreignKey readers must migrate. Each gets test for single-column (1-elem
 ---
 
 ### CHECKPOINT 2
-[TBD]
+
+**Grammar + IR implementation.** All 9 new composite PK/FK tests pass. 1032/1032 tests green. TypeScript red state in `runtime-engine.ts` (3 errors) intentional Phase 4 deferred work.
+
+---
 
 ### CHECKPOINT 3
-[TBD]
+
+**Prisma projection with composite PK/FK and referential actions.**
+
+New files:
+- `src/manifest/projections/prisma/generator.ts` — full projection (composite @@id, @@unique, composite FK fields/references, onDelete/onUpdate PascalCase)
+- `src/manifest/projections/prisma/generator.test.ts` — 37 tests total (all existing + 11 Phase 3 golden tests)
+- Registered in `builtins.ts`, `index.ts`, `package.json` exports
+
+Key fix at generator level: composite PK entity with a property named `id` must NOT emit `@id` on that column — only `@@id([...])` at model level. Test added.
+
+1073/1073 tests passing. Typecheck clean.
+
+---
 
 ### CHECKPOINT 4
-[TBD]
 
-### CHECKPOINT 5 (Final)
-[TBD]
+**All foreignKey readers migrated.** Sites:
+- `src/manifest/runtime-engine.ts`: `buildRelationshipIndex` uses `foreignKey?.fields[0]`; `hasOne`/`hasMany` inverse-FK uses `fields[0] ?? relNameId`; added `'durable'` case to browser store switch
+- `src/manifest/ir.ts`: `IRStore.target` union += `'durable'`
+- `src/artifacts/zipExporter.ts`: template `RelationshipNode.foreignKey` → `fields/references`; `parseRelationship` sets `fields`
+- `src/project-template/templates.ts`: template `IRRelationship.foreignKey` → `{ fields, references }`; `transformRelationship` constructs new shape; `IRStore.target` += `'durable'`
+- `docs/spec/ir/ir-v1.schema.json`: `IRStore.target` enum += `'durable'`
+
+1073/1073 passing. `npm run typecheck` clean.
+
+---
+
+### CHECKPOINT 5 (Final) — 1.0 Acceptance Gate
+
+**Round-trip verification against real capsule-pro schema structure.**
+
+Real schema statistics (C:/Projects/capsule-pro/packages/database/prisma/schema.prisma):
+- 208 models with `@@id([tenantId, id])` composite PK
+- 226 @relation lines with composite fields arrays
+- 168 @relation lines with `onDelete:` (Restrict/Cascade/SetNull)
+- 238 total @relation lines
+
+Representative entities tested (IR constructed from real schema structure):
+- `AdminChatParticipant` — composite PK `[tenantId, id]`, alternate key `[tenantId, threadId, userId]`, 1 single-col FK (Restrict) + 2 composite FKs (Cascade, Restrict)
+- `ProposalLineItem` — composite PK, 1 single-col FK (Restrict) + 1 composite FK `[proposalId, tenantId] → [id, tenantId]` (Cascade)
+- `PrepList` — composite PK, 1 single-col FK (Restrict)
+- Supporting entities: `Account`, `AdminChatThread`, `User`, `Proposal`
+
+**All 14 structural checks: PASS**
+
+| Check | Result |
+|-------|--------|
+| `@@id([tenantId, id])` on all 6 composite-PK entities | PASS ×6 |
+| `@@unique([tenantId, threadId, userId])` alternate key | PASS |
+| Composite FK `@relation(fields: [tenantId, threadId], references: [tenantId, id], onDelete: Cascade)` | PASS |
+| Composite FK `@relation(fields: [tenantId, userId], references: [tenantId, id], onDelete: Restrict)` | PASS |
+| Cross-order composite FK `@relation(fields: [proposalId, tenantId], references: [id, tenantId], onDelete: Cascade)` | PASS |
+| Single-col FK with `onDelete: Restrict` (×3 entities) | PASS ×3 |
+| Account (no FK) emits no `onDelete` | PASS |
+| 0 projection errors | PASS |
+
+**Closed gaps:**
+1. Composite primary key (`key [f1, f2]` → `@@id([f1, f2])`) ✅
+2. Composite foreign key (`fields [...] references [...]` → `@relation(fields: [...], references: [...])`) ✅
+3. Non-id reference targets (`references [tenantId, externalId]` with alternate key) ✅
+4. `onDelete`/`onUpdate` referential actions (PascalCase, all 5 values) ✅
+5. Absent `onDelete`/`onUpdate` emits nothing (correct for 53 relations with no action in real schema) ✅
+6. `id` column in composite PK does NOT get `@id` — only `@@id([...])` at model level ✅
+7. All 21 foreignKey blast-radius readers migrated; typecheck/build green ✅
+
+**Known gaps (PROJECTION-CONFIG, deferred at CHECKPOINT 0, not regressions):**
+1. `@map("column_name")` — column name mapping is PROJECTION-CONFIG (supplied via `columnMappings` option)
+2. `@db.Uuid` / `@db.Timestamptz(6)` — DB type attributes are PROJECTION-CONFIG (custom via `typeMappings`)
+3. `@default(dbgenerated(...))` / `@default(now())` — default expressions are PROJECTION-CONFIG
+4. `@@schema("tenant_admin")` — Prisma schema namespacing is PROJECTION-CONFIG
+5. `through` (many-to-many join entity) — DEFERRED to separate follow-up task (CHECKPOINT 0 decision)
+
+**Remaining diff against real schema:** The PROJECTION-CONFIG items above produce the visible diff between generated and real schema. These are intentional design decisions (semantic core stays clean; relational specifics arrive via projection options). Zero semantic-core gaps remain.

@@ -162,8 +162,10 @@ function emitPropertyLine(
     return { line: null, diagnostics };
   }
 
-  // Required / optional. `id`-named properties are always required + @id.
-  const isId = prop.name === 'id';
+  // @id is auto-added for a property named 'id' UNLESS the entity uses a composite key
+  // (in that case @@id([...]) is emitted at model level; the id column is not special).
+  const hasCompositeKey = entity.key && entity.key.length > 0;
+  const isId = prop.name === 'id' && !hasCompositeKey;
   const isRequired = isId || prop.modifiers.includes('required');
   const nullableSuffix = isRequired ? '' : '?';
 
