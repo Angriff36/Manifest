@@ -1,29 +1,40 @@
-# Contracts Signpost
-
-Last updated: 2026-02-12
+Last updated: 2026-05-24
 Status: Active
 Authority: Advisory
 Enforced by: None
 
-This folder is a label layer only.
+# Contracts Signpost
 
-Contracts are binding language law, and the **canonical** location is:
+This folder is a **label layer only**. It does not contain binding law and must not
+duplicate normative files from `docs/spec/`.
 
-- `docs/spec/**`
+## Where the actual contracts live
 
-Do not create a second copy of normative files here.
-Do not split authority between `docs/spec/**` and `docs/contracts/**`.
+| Contract | Location |
+|---|---|
+| IR schema (executable contract anchor) | `docs/spec/ir/ir-v1.schema.json` |
+| Runtime meaning of IR nodes | `docs/spec/semantics.md` |
+| Built-in identifiers and functions | `docs/spec/builtins.md` |
+| Adapter hooks (audit, outbox, stores, dispatcher) | `docs/spec/adapters.md` |
+| Conformance test rules | `docs/spec/conformance.md` |
+| vNext features: constraints, overrides, composite keys, referential actions | `docs/spec/manifest-vnext.md` |
+| Registry schemas | `docs/spec/registry/README.md` |
+| Conformance fixtures (executable semantics evidence) | `src/manifest/conformance/**` |
 
-If you are looking for the executable contract anchor, start with:
+## What is NOT a contract
 
-- `docs/spec/ir/ir-v1.schema.json`
+**Projections are not contracts.** The Prisma projection (`PrismaProjection`) reads IR and
+emits `schema.prisma` as a **derivative artifact**. The Next.js projection emits route
+handlers as a derivative artifact. These are tooling outputs — they do not define language
+semantics and do not belong in the contracts tier.
 
-If you are looking for runtime meaning and enforcement:
+If you are looking for how the Prisma projection works, see:
+- `docs/codedocs/api-reference/projections.md`
+- `docs/proposals/storage-projection/README.md`
 
-- `docs/spec/semantics.md`
-- `docs/spec/conformance.md`
-- `src/manifest/conformance/**`
+## Files in this folder
 
-If you need clear scope boundaries for common infra-style questions:
+- `deployment-boundaries.md` — what is and is not language semantics (scope boundary guide)
+- `house-style.md` — language design principles (determinism, explicitness, strict guard semantics)
 
-- `docs/contracts/deployment-boundaries.md`
+These are advisory. They do not grant or restrict runtime behavior — `docs/spec/**` does that.
