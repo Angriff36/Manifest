@@ -38,6 +38,7 @@ import {
   PropertyModifier,
   IRProvenance,
   IRTransition,
+  IRForeignKey,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -283,6 +284,8 @@ export class IRCompiler {
       constraints,
       policies: regularPolicies,
       ...(defaultPolicies.length > 0 ? { defaultPolicies } : {}),
+      ...(e.key ? { key: e.key } : {}),
+      ...(e.alternateKeys && e.alternateKeys.length > 0 ? { alternateKeys: e.alternateKeys } : {}),
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
@@ -316,12 +319,19 @@ export class IRCompiler {
   }
 
   private transformRelationship(r: RelationshipNode): IRRelationship {
+    let foreignKey: IRForeignKey | undefined;
+    if (r.fields) {
+      foreignKey = { fields: r.fields };
+      if (r.references) foreignKey.references = r.references;
+    }
     return {
       name: r.name,
       kind: r.kind,
       target: r.target,
-      foreignKey: r.foreignKey,
-      through: r.through,
+      ...(foreignKey ? { foreignKey } : {}),
+      ...(r.through ? { through: r.through } : {}),
+      ...(r.onDelete ? { onDelete: r.onDelete } : {}),
+      ...(r.onUpdate ? { onUpdate: r.onUpdate } : {}),
     };
   }
 

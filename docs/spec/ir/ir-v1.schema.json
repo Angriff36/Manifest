@@ -97,6 +97,16 @@
           "items": { "type": "string" },
           "description": "Policy names inherited by all commands unless overridden (vNext)"
         },
+        "key": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Composite primary key column names, e.g. [\"tenantId\", \"id\"]"
+        },
+        "alternateKeys": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "string" } },
+          "description": "Alternate unique constraints for non-PK FK reference targets"
+        },
         "versionProperty": { "type": "string", "description": "Name of version field for optimistic concurrency control" },
         "versionAtProperty": { "type": "string", "description": "Name of timestamp field for version tracking" },
         "transitions": {
@@ -147,6 +157,23 @@
         "dependencies": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "IRForeignKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Local FK column names"
+        },
+        "references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Remote/referenced column names. Absent means projection defaults to [\"id\"]"
+        }
+      }
+    },
     "IRRelationship": {
       "type": "object",
       "additionalProperties": false,
@@ -155,8 +182,18 @@
         "name": { "type": "string" },
         "kind": { "enum": ["hasMany", "hasOne", "belongsTo", "ref"] },
         "target": { "type": "string" },
-        "foreignKey": { "type": "string" },
-        "through": { "type": "string" }
+        "foreignKey": { "$ref": "#/definitions/IRForeignKey" },
+        "through": { "type": "string" },
+        "onDelete": {
+          "type": "string",
+          "enum": ["cascade", "restrict", "setNull", "setDefault", "noAction"],
+          "description": "Referential action on parent delete. Absent = let projection/DB default."
+        },
+        "onUpdate": {
+          "type": "string",
+          "enum": ["cascade", "restrict", "setNull", "setDefault", "noAction"],
+          "description": "Referential action on parent update. Absent = let projection/DB default."
+        }
       }
     },
     "IRConstraint": {

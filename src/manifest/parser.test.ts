@@ -137,7 +137,7 @@ entity User {
       expect(entity.relationships[0].through).toBe('UserFriend');
     });
 
-    it('should parse relationship with foreignKey clause', () => {
+    it('should parse relationship with with clause (backward-compat single-col FK)', () => {
       const source = `
 entity Post {
   belongsTo author: User with userId
@@ -145,7 +145,8 @@ entity Post {
 `;
       const result = new Parser().parse(source);
       const entity = result.program.entities[0];
-      expect(entity.relationships[0].foreignKey).toBe('userId');
+      expect(entity.relationships[0].fields).toEqual(['userId']);
+      expect(entity.relationships[0].references).toBeUndefined();
     });
 
     it('should parse entity with store declaration', () => {

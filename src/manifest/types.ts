@@ -43,6 +43,10 @@ export interface EntityNode extends ASTNode {
   policies: PolicyNode[];
   transitions: TransitionNode[];
   store?: string;
+  /** Composite primary key column names, e.g. ["tenantId", "id"] */
+  key?: string[];
+  /** Alternate unique constraints for non-PK FK references targets */
+  alternateKeys?: string[][];
   /** Optimistic concurrency: property name for version number */
   versionProperty?: string;
   /** Optimistic concurrency: property name for version timestamp */
@@ -65,13 +69,20 @@ export interface ComputedPropertyNode extends ASTNode {
   dependencies: string[];
 }
 
+export type RefAction = 'cascade' | 'restrict' | 'setNull' | 'setDefault' | 'noAction';
+
 export interface RelationshipNode extends ASTNode {
   type: 'Relationship';
   kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
   name: string;
   target: string;
-  foreignKey?: string;
+  /** Local FK column names. Single-element for `with <col>` shorthand; multi-element for composite FK. */
+  fields?: string[];
+  /** Remote/referenced column names. Absent means projection defaults to ["id"]. */
+  references?: string[];
   through?: string;
+  onDelete?: RefAction;
+  onUpdate?: RefAction;
 }
 
 export interface CommandNode extends ASTNode {

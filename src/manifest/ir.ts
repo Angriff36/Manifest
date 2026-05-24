@@ -52,6 +52,10 @@ export interface IREntity {
   policies: string[];
   /** Policy names inherited by all commands unless overridden (vNext) */
   defaultPolicies?: string[];
+  /** Composite primary key column names, e.g. ["tenantId", "id"] */
+  key?: string[];
+  /** Alternate unique constraints for non-PK FK reference targets, e.g. [["tenantId", "externalId"]] */
+  alternateKeys?: string[][];
   /** Name of version field for optimistic concurrency control */
   versionProperty?: string;
   /** Name of timestamp field for version tracking */
@@ -76,12 +80,25 @@ export interface IRComputedProperty {
   dependencies: string[];
 }
 
+export type RefAction = 'cascade' | 'restrict' | 'setNull' | 'setDefault' | 'noAction';
+
+export interface IRForeignKey {
+  /** Local FK column names */
+  fields: string[];
+  /** Remote/referenced column names. Absent → projection defaults to ["id"] */
+  references?: string[];
+}
+
 export interface IRRelationship {
   name: string;
   kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
   target: string;
-  foreignKey?: string;
+  /** Structured FK. Mutually exclusive with `through`. */
+  foreignKey?: IRForeignKey;
+  /** Join-table entity name for many-to-many. Mutually exclusive with `foreignKey`. */
   through?: string;
+  onDelete?: RefAction;
+  onUpdate?: RefAction;
 }
 
 export interface IRConstraint {

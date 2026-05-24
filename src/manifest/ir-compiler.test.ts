@@ -1267,7 +1267,7 @@ describe('IRCompiler', () => {
       expect(relationship?.through).toBe('AuthorPost');
     });
 
-    it('should handle foreign key relationships', async () => {
+    it('should handle foreign key relationships (with clause → structured FK)', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
         entity Post {
@@ -1276,7 +1276,8 @@ describe('IRCompiler', () => {
       `);
 
       const relationship = result.ir?.entities[0].relationships[0];
-      expect(relationship?.foreignKey).toBe('authorId');
+      expect(relationship?.foreignKey).toEqual({ fields: ['authorId'] });
+      expect(relationship?.foreignKey?.references).toBeUndefined();
     });
 
     it('should handle ref relationships', async () => {
@@ -1289,6 +1290,142 @@ describe('IRCompiler', () => {
 
       const relationship = result.ir?.entities[0].relationships[0];
       expect(relationship?.kind).toBe('ref');
+    });
+
+    // Phase 2: composite PK / FK tests
+    describe('composite PK and FK (v1.0)', () => {
+      it('entity key [...] emits IREntity.key', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Order {
+            key [tenantId, orderId]
+            property tenantId: string required
+            property orderId: string required
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const entity = result.ir?.entities[0];
+        expect(entity?.key).toEqual(['tenantId', 'orderId']);
+      });
+
+      it('entity unique [...] emits IREntity.alternateKeys', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Organization {
+            key [tenantId, id]
+            unique [tenantId, externalId]
+            property tenantId: string required
+            property id: string required
+            property externalId: string required
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const entity = result.ir?.entities[0];
+        expect(entity?.key).toEqual(['tenantId', 'id']);
+        expect(entity?.alternateKeys).toEqual([['tenantId', 'externalId']]);
+      });
+
+      it('fields [...] references [...] emits structured foreignKey', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Order {
+            property tenantId: string required
+            property orgTenantId: string required
+            property orgId: string required
+            belongsTo org: Organization fields [orgTenantId, orgId] references [tenantId, id]
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.foreignKey).toEqual({ fields: ['orgTenantId', 'orgId'], references: ['tenantId', 'id'] });
+      });
+
+      it('fields [...] without references stores foreignKey with absent references', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            belongsTo author: User fields [authorId]
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.foreignKey).toEqual({ fields: ['authorId'] });
+        expect(rel?.foreignKey?.references).toBeUndefined();
+      });
+
+      it('references [single] without fields infers local from relName+Id', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            belongsTo author: User references [id]
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.foreignKey).toEqual({ fields: ['authorId'], references: ['id'] });
+      });
+
+      it('onDelete and onUpdate are preserved in IR', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            belongsTo author: User with authorId onDelete cascade onUpdate restrict
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.onDelete).toBe('cascade');
+        expect(rel?.onUpdate).toBe('restrict');
+      });
+
+      it('through relation has no foreignKey and no onDelete/onUpdate', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            hasMany tags: Tag through PostTag
+          }
+        `);
+        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.through).toBe('PostTag');
+        expect(rel?.foreignKey).toBeUndefined();
+        expect(rel?.onDelete).toBeUndefined();
+      });
+
+      it('computed properties do not appear in key or alternateKeys', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Invoice {
+            key [tenantId, id]
+            unique [tenantId, number]
+            property tenantId: string required
+            property id: string required
+            property number: string required
+            computed total: number = 0
+          }
+        `);
+        const entity = result.ir?.entities[0];
+        const computedNames = entity?.computedProperties.map(cp => cp.name) ?? [];
+        const allKeyCols = [
+          ...(entity?.key ?? []),
+          ...(entity?.alternateKeys ?? []).flat(),
+        ];
+        for (const col of allKeyCols) {
+          expect(computedNames).not.toContain(col);
+        }
+      });
+
+      it('absent onDelete/onUpdate leaves those fields undefined', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            belongsTo author: User with authorId
+          }
+        `);
+        const rel = result.ir?.entities[0].relationships[0];
+        expect(rel?.onDelete).toBeUndefined();
+        expect(rel?.onUpdate).toBeUndefined();
+      });
     });
 
     it('should handle complex constraint with all vNext features', async () => {

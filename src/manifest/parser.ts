@@ -4,7 +4,7 @@ import {
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
-  ComputedPropertyNode, RelationshipNode, TransitionNode
+  ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction
 } from './types';
 
 export class Parser {
@@ -78,6 +78,8 @@ export class Parser {
     const behaviors: BehaviorNode[] = [], commands: CommandNode[] = [], constraints: ConstraintNode[] = [], policies: PolicyNode[] = [];
     const transitions: TransitionNode[] = [];
     let store: string | undefined;
+    let key: string[] | undefined;
+    const alternateKeys: string[][] = [];
     let versionProperty: string | undefined;
     let versionAtProperty: string | undefined;
 
@@ -142,6 +144,14 @@ export class Parser {
           this.advance(); // consume type name
         }
       }
+      else if (this.check('KEYWORD', 'key')) {
+        this.advance();
+        key = this.parseIdentifierArray();
+      }
+      else if (this.check('KEYWORD', 'unique') && this.tokens[this.pos + 1]?.value === '[') {
+        this.advance();
+        alternateKeys.push(this.parseIdentifierArray());
+      }
       else if (this.check('KEYWORD', 'transition')) transitions.push(this.parseTransition());
       else if (this.check('KEYWORD', 'event')) {
         // Entity-scoped events are not supported - emit warning to prevent silent data loss
@@ -159,7 +169,13 @@ export class Parser {
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, transitions, store, versionProperty, versionAtProperty };
+    return {
+      type: 'Entity', name, properties, computedProperties, relationships, behaviors,
+      commands, constraints, policies, transitions, store,
+      ...(key ? { key } : {}),
+      ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
+      versionProperty, versionAtProperty,
+    };
   }
 
   private parseProperty(): PropertyNode {
@@ -260,15 +276,70 @@ export class Parser {
     return Array.from(deps);
   }
 
+  private parseIdentifierArray(): string[] {
+    this.consume('PUNCTUATION', '[');
+    const items: string[] = [];
+    while (!this.check('PUNCTUATION', ']') && !this.isEnd()) {
+      items.push(this.consumeIdentifierOrKeyword().value);
+      if (this.check('PUNCTUATION', ',')) this.advance();
+    }
+    this.consume('PUNCTUATION', ']');
+    return items;
+  }
+
   private parseRelationship(): RelationshipNode {
     const kind = this.advance().value as RelationshipNode['kind'];
     const name = this.consumeIdentifier().value;
     this.consume('OPERATOR', ':');
     const target = this.consumeIdentifier().value;
-    let foreignKey: string | undefined, through: string | undefined;
+
+    let fields: string[] | undefined;
+    let references: string[] | undefined;
+    let through: string | undefined;
+    let onDelete: RefAction | undefined;
+    let onUpdate: RefAction | undefined;
+
     if (this.check('KEYWORD', 'through')) { this.advance(); through = this.consumeIdentifier().value; }
-    if (this.check('KEYWORD', 'with')) { this.advance(); foreignKey = this.consumeIdentifier().value; }
-    return { type: 'Relationship', kind, name, target, foreignKey, through };
+
+    if (this.check('KEYWORD', 'fields')) {
+      this.advance();
+      fields = this.parseIdentifierArray();
+    }
+
+    if (this.check('KEYWORD', 'references')) {
+      this.advance();
+      references = this.parseIdentifierArray();
+    }
+
+    // `with <single>` backward-compat: parsed as fields: [name], references absent
+    if (this.check('KEYWORD', 'with')) {
+      this.advance();
+      fields = [this.consumeIdentifier().value];
+    }
+
+    // Case 3: references only, no fields — infer local from relName + "Id" (single only)
+    if (references && !fields) {
+      if (references.length > 1) {
+        this.errors.push({
+          message: `Composite references [...] requires explicit fields [...]`,
+          position: this.current()?.position,
+          severity: 'error',
+        });
+      }
+      fields = [`${name}Id`];
+    }
+
+    if (this.check('KEYWORD', 'onDelete')) {
+      this.advance();
+      onDelete = this.advance().value as RefAction;
+    }
+
+    if (this.check('KEYWORD', 'onUpdate')) {
+      this.advance();
+      onUpdate = this.advance().value as RefAction;
+    }
+
+    return { type: 'Relationship', kind, name, target, fields, references, through, onDelete, onUpdate };
   }
 
   private parseCommand(): CommandNode {

@@ -35,7 +35,10 @@ export const KEYWORDS = new Set([
   // vNext optimistic concurrency keywords
   'versionProperty', 'versionAtProperty',
   // vNext state transition keywords
-  'transition'
+  'transition',
+  // composite PK / FK keywords (v1.0)
+  'key', 'fields', 'references', 'onDelete', 'onUpdate',
+  'cascade', 'restrict', 'setNull', 'setDefault', 'noAction'
 ]);
 
 const OPERATORS = new Set([
