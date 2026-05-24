@@ -64,6 +64,16 @@ jobs:
         # built CLI) fails to resolve modules.
         run: pnpm run build:lib
 
+      - name: Build manifest-projection-prisma
+        # The CLI's `register-extras.ts` imports `PrismaProjection` from
+        # @manifest/projection-prisma. The CLI's tsconfig path-map points
+        # at that package's own dist (../manifest-projection-prisma/dist/
+        # index.d.ts). Without this build, the CLI build below fails with
+        # TS2307. Order: projection-prisma's own tsc paths point at root
+        # dist (../../dist/manifest/*), so build:lib must run first.
+        working-directory: packages/manifest-projection-prisma
+        run: pnpm run build
+
       - name: Build CLI dist
         working-directory: packages/cli
         run: pnpm build
