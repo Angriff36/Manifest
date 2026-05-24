@@ -12,6 +12,7 @@ import type { ProjectionTarget } from './interface';
 import { registerProjection } from './registry.js';
 import { NextJsProjection } from './nextjs/generator.js';
 import { RoutesProjection } from './routes/generator.js';
+import { PrismaProjection } from './prisma/generator.js';
 
 /**
  * Register all built-in projections.
@@ -28,6 +29,12 @@ export function registerBuiltinProjections(): void {
 
   // Canonical routes projection (route surface artifact)
   registerProjection(new RoutesProjection());
+
+  // Prisma schema projection — folded into the main package as of v0.9.2
+  // (was previously a separate `@manifest/projection-prisma` workspace
+  // package that was never published; one tarball is simpler for consumers
+  // and avoids the wrong-scope packaging mistake).
+  registerProjection(new PrismaProjection());
 
   // Future projections - ADD HERE:
   // import { HonoProjection } from './hono/generator';
@@ -52,5 +59,6 @@ export function listBuiltinProjections(): ProjectionTarget[] {
   return [
     new NextJsProjection(),
     new RoutesProjection(),
+    new PrismaProjection(),
   ];
 }

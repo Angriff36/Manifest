@@ -6,11 +6,19 @@ sidebarTitle: "Prisma"
 
 The **Prisma projection** reads compiled Manifest IR and emits a `schema.prisma` artifact. It is compile-time only — it does not connect to a database, run migrations, or know anything about any specific application. All relational concepts (table names, column names, decimal precision, composite indexes, foreign-key field names) live in projection config; Manifest core stays backend-neutral.
 
-The projection ships in its own workspace package (`@manifest/projection-prisma`) and is registered with the CLI automatically. Running `manifest generate -p prisma` is enough.
+As of **v0.9.2** the projection ships **inside the main `@angriff36/manifest` package** — installing the main package gives you the projection, the CLI integration, and the registry registration. Running `manifest generate -p prisma` is enough.
 
 <Note>
-The package is currently bundled inside the CLI (`private: true`). External consumers do not import it directly; they invoke it through `manifest generate -p prisma`. Standalone npm publishing is a future step.
+Earlier v0.9.x releases attempted to ship the projection as a separate `@manifest/projection-prisma` workspace package. That package was never published (wrong scope, blocked downstream installs), and v0.9.2 folds it into core. Internal code separation is preserved — the projection still lives at `src/manifest/projections/prisma/` alongside the Next.js and routes projections — but consumers see a single package, a single publish, and a single install.
 </Note>
+
+For programmatic use, import from the main package:
+
+```ts
+import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
+// or, equivalently:
+import { PrismaProjection } from '@angriff36/manifest/projections';
+```
 
 ## Quickstart
 
@@ -413,7 +421,7 @@ The CLI's `--projection` flag accepts `prisma` alongside `nextjs`. The surface n
 For build scripts that need direct control:
 
 ```typescript
-import { PrismaProjection } from '@manifest/projection-prisma';
+import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
 import { compileToIR } from '@angriff36/manifest/ir-compiler';
 import fs from 'fs/promises';
 

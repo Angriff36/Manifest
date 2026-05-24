@@ -23,7 +23,7 @@
       "@angriff36/manifest/projections": ["../../dist/manifest/projections/index.d.ts"],
       "@angriff36/manifest/projections/nextjs": ["../../dist/manifest/projections/nextjs/generator.d.ts"],
       "@angriff36/manifest/projections/routes": ["../../dist/manifest/projections/routes/generator.d.ts"],
-      "@manifest/projection-prisma": ["../manifest-projection-prisma/dist/index.d.ts"],
+      "@angriff36/manifest/projections/prisma": ["../../dist/manifest/projections/prisma/generator.d.ts"],
       "@angriff36/manifest/registry/emit": ["../../dist/manifest/registry/emit.d.ts"],
       "@angriff36/manifest/audit": ["../../dist/manifest/audit/audit-sink.d.ts"],
       "@angriff36/manifest/audit/memory": ["../../dist/manifest/audit/sinks/memory.d.ts"],

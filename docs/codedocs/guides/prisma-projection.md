@@ -15,31 +15,36 @@ Use this guide when you want to emit a `schema.prisma` from compiled Manifest IR
 
 ## Architectural position
 
-The Prisma projection is a workspace package (`packages/manifest-projection-prisma/`) — not part of the core `@angriff36/manifest` library. It is the first projection that ships as its own package; the existing Next.js and routes projections live inside the core package's `src/manifest/projections/`. That separation is deliberate: it proves the projection contract is genuinely pluggable, and it keeps the core package free of Prisma-specific imports.
+As of v0.9.2, the Prisma projection lives inside the core `@angriff36/manifest` package at `src/manifest/projections/prisma/`, alongside the Next.js and routes projections. It is auto-registered by `src/manifest/projections/builtins.ts`.
 
 ```
 @angriff36/manifest           ← core: lexer, parser, IR, runtime, registry
   └─ src/manifest/projections/
       ├─ interface.ts         ← ProjectionTarget contract (shared)
       ├─ registry.ts          ← getProjection / registerProjection
-      ├─ builtins.ts          ← nextjs + routes auto-registered
-      ├─ nextjs/              ← Next.js projection (in-core)
-      └─ routes/              ← Routes projection (in-core)
-
-packages/manifest-projection-prisma   ← out-of-core, workspace package
-  └─ src/
-      ├─ generator.ts         ← PrismaProjection (implements ProjectionTarget)
-      ├─ options.ts           ← PrismaProjectionOptions (config types)
-      ├─ type-mapping.ts      ← IR type.name → Prisma scalar table
-      └─ index.ts             ← barrel export
+      ├─ builtins.ts          ← nextjs + routes + prisma auto-registered
+      ├─ nextjs/              ← Next.js projection
+      ├─ routes/              ← Routes projection
+      └─ prisma/              ← Prisma projection (folded in at v0.9.2)
+          ├─ generator.ts     ← PrismaProjection (implements ProjectionTarget)
+          ├─ options.ts       ← PrismaProjectionOptions (config types)
+          ├─ type-mapping.ts  ← IR type.name → Prisma scalar table
+          ├─ index.ts         ← barrel export
+          └─ generator.test.ts
 
 packages/cli
   └─ src/projections/
-      ├─ register-extras.ts   ← registers PrismaProjection from the CLI side
+      ├─ register-extras.ts   ← reserved hook for future out-of-core projections (no-op as of v0.9.2)
       └─ dispatch.ts          ← pure registry-driven dispatch helper
 ```
 
-The CLI imports both the core registry (`@angriff36/manifest/projections`) and the projection package (`@manifest/projection-prisma`), registers Prisma at startup, and dispatches by name. Core never imports the Prisma projection — the boundary holds.
+The CLI imports the core registry (`@angriff36/manifest/projections`) and dispatches by name. Built-in projections (nextjs, routes, prisma) auto-register via `builtins.ts` on first registry access — no CLI-side registration needed for them.
+
+### Why the fold (v0.9.2)
+
+v0.9.0 and v0.9.1 shipped the Prisma projection as a separate `@manifest/projection-prisma` workspace package. That separation was correct for the **source layout** (kept core's app-agnostic invariant testable in isolation) but wrong for the **distribution**: the package was `private: true`, never published, and named under a scope (`@manifest`) that we don't own on the registry. Consumers installing `@angriff36/manifest@0.9.1` got a CLI that imported a package that didn't exist on the registry.
+
+The v0.9.2 fold preserves what mattered (the projection's code is still file-system-separated from core's lexer/parser/IR/runtime; its tests still pass in isolation; the project's app-agnostic test still scans the emitted schema for forbidden tokens) and drops what didn't (a second package to version, publish, and consume in lockstep). The projection imports from the core via relative paths (`../../ir`, `../interface`) instead of from the package name.
 
 ## Contract
 
@@ -182,12 +187,17 @@ Internally (`packages/cli/src/commands/generate.ts`):
 
 Core's `src/manifest/projections/builtins.ts` is never touched.
 
-## Package boundary: how the worktree resolves it
+## Package boundary: how the worktree resolves it (v0.9.2+)
 
-- `packages/manifest-projection-prisma/package.json` is `private: true`. The package is not published standalone; the CLI bundles it via a `link:../manifest-projection-prisma` dep.
-- Its `dependencies` include `@angriff36/manifest: link:../..` (relative symlink at install time), so its own `tsc` build can type-resolve against the root's built dist.
-- Its `exports` map points at `./dist/index.js` and `./dist/index.d.ts`. The package must be built (`npm run build` inside the package, which runs `tsc`) before the CLI's `tsc` can resolve `@manifest/projection-prisma`. CI runs this between the root build:lib and the CLI build steps; locally `pnpm install && npm run build` from the package root does it.
-- The CLI's `tsconfig.json` has a path mapping `"@manifest/projection-prisma": ["../manifest-projection-prisma/dist/index.d.ts"]` that mirrors the runtime symlink resolution.
+There is no longer a separate package for the Prisma projection. Source lives at `src/manifest/projections/prisma/` and is included in the main package's `tsconfig.lib.json` glob (`src/manifest/**/*`). The built dist lands at `dist/manifest/projections/prisma/*.js`, which the main package's `exports` map exposes at `./projections/prisma`.
+
+Consumers needing programmatic access import via either of:
+```ts
+import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
+import { PrismaProjection } from '@angriff36/manifest/projections';
+```
+
+Both resolve at runtime to the same dist file; the second form is the barrel re-export from `src/manifest/projections/index.ts` and also gives you access to the registry helpers (`getProjection`, `registerProjection`, `hasProjection`).
 
 ## Tests and the app-agnostic invariant
 

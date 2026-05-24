@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -29,6 +29,10 @@
     "./projections/routes": {
       "types": "./dist/manifest/projections/routes/generator.d.ts",
       "import": "./dist/manifest/projections/routes/generator.js"
+    },
+    "./projections/prisma": {
+      "types": "./dist/manifest/projections/prisma/generator.d.ts",
+      "import": "./dist/manifest/projections/prisma/generator.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",

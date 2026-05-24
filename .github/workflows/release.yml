@@ -47,14 +47,6 @@ jobs:
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
-      - name: Install manifest-projection-prisma dependencies (frozen lockfile)
-        # Sibling-of-root pnpm project (own lockfile + own node_modules).
-        # `link:../..` for @angriff36/manifest is resolved by pnpm to a
-        # relative symlink at install time, so projection-prisma's tsc can
-        # type-resolve against the root's built dist.
-        working-directory: packages/manifest-projection-prisma
-        run: pnpm install --frozen-lockfile
-
       - name: Verify tag version matches package.json
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
@@ -71,16 +63,6 @@ jobs:
         # the published surface (enforce-surface.cli.test.ts spawns the
         # built CLI) fails to resolve modules.
         run: pnpm run build:lib
-
-      - name: Build manifest-projection-prisma
-        # The CLI's `register-extras.ts` imports `PrismaProjection` from
-        # @manifest/projection-prisma. The CLI's tsconfig path-map points
-        # at that package's own dist (../manifest-projection-prisma/dist/
-        # index.d.ts). Without this build, the CLI build below fails with
-        # TS2307. Order: projection-prisma's own tsc paths point at root
-        # dist (../../dist/manifest/*), so build:lib must run first.
-        working-directory: packages/manifest-projection-prisma
-        run: pnpm run build
 
       - name: Build CLI dist
         working-directory: packages/cli

@@ -22,14 +22,14 @@
  *   - Unknown `type.name` produces a hard error diagnostic. No fallback.
  */
 
-import type { IR, IREntity, IRProperty, IRRelationship, IRStore, IRValue } from '@angriff36/manifest/ir';
+import type { IR, IREntity, IRProperty, IRRelationship, IRStore, IRValue } from '../../ir';
 import type {
   ProjectionArtifact,
   ProjectionDiagnostic,
   ProjectionRequest,
   ProjectionResult,
   ProjectionTarget,
-} from '@angriff36/manifest/projections/nextjs';
+} from '../interface';
 
 import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry } from './options.js';
 import {

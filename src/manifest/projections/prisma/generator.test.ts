@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { IR, IREntity, IRStore } from '@angriff36/manifest/ir';
+import type { IR, IREntity, IRStore } from '../../ir';
 import { PrismaProjection } from './generator.js';
 
 // ---------------------------------------------------------------------------

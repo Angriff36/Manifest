@@ -11,9 +11,6 @@ importers:
       '@angriff36/manifest':
         specifier: link:../..
         version: link:../..
-      '@manifest/projection-prisma':
-        specifier: link:../manifest-projection-prisma
-        version: link:../manifest-projection-prisma
       ajv:
         specifier: ^8.18.0
         version: 8.18.0

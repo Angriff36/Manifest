@@ -39,31 +39,12 @@ jobs:
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
-      - name: Install manifest-projection-prisma dependencies (frozen lockfile)
-        # Sibling-of-root workspace package — also a separate pnpm project
-        # (own lockfile + own node_modules) for the same reason as CLI: each
-        # package owns its dependency closure. `link:../..` for @angriff36/
-        # manifest is resolved by pnpm to a relative symlink at install time.
-        working-directory: packages/manifest-projection-prisma
-        run: pnpm install --frozen-lockfile
-
       - name: Build root library
         # packages/cli depends on @angriff36/manifest via type imports
         # (src/checks/runtime-smoke.ts, src/commands/*.ts). Without
         # build:lib first, the CLI build below cannot resolve those modules.
         # Matches the prepublishOnly script.
         run: pnpm run build:lib
-
-      - name: Build manifest-projection-prisma
-        # The CLI's `register-extras.ts` imports `PrismaProjection` from
-        # @manifest/projection-prisma. That workspace package emits its own
-        # dist (via its own tsc), and the CLI's tsconfig path-map resolves
-        # `@manifest/projection-prisma` to that dist. Without this build,
-        # the CLI build step below fails with TS2307 Cannot find module.
-        # Order matters: projection-prisma depends on root dist, so root
-        # `build:lib` must run first.
-        working-directory: packages/manifest-projection-prisma
-        run: pnpm run build
 
       - name: Build CLI dist
         # enforce-surface.cli.test.ts spawns the built CLI to verify
