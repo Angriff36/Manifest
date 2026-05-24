@@ -16,6 +16,7 @@ import type {
   NextJsProjectionOptions,
 } from '@angriff36/manifest/projections/nextjs';
 import type { IR } from '@angriff36/manifest/ir';
+import { dispatch as runProjection } from '../projections/dispatch.js';
 
 // Import from the main Manifest package
 async function loadDependencies() {
@@ -137,7 +138,27 @@ async function generateFromIR(
       throw new Error(`Unknown surface: ${options.surface}`);
     }
   } else {
-    throw new Error(`Unknown projection: ${options.projection} (supported: nextjs)`);
+    // Generic dispatch: any registered projection that isn't nextjs goes
+    // through the registry helper. No name special-casing here —
+    // `getProjection(name)` is the single point of resolution. The nextjs
+    // branch above retains its CLI-specific multi-surface orchestration
+    // because that fan-out (route/command/dispatcher/types/client/all) is
+    // a CLI ergonomics choice, not a contract of the projection itself.
+    //
+    // Surface defaults to the projection's first declared surface when the
+    // CLI default 'all' is supplied (the literal 'all' is a nextjs-ism and
+    // is meaningless to other projections). Anything else passes through
+    // verbatim so consumers can target specific surfaces.
+    const surface = (options.surface === 'all' || options.surface === undefined)
+      ? undefined
+      : options.surface;
+    const result = runProjection({
+      ir,
+      projectionName: options.projection,
+      surface,
+      options: options.projectionOptionsFromConfig,
+    });
+    await writeProjectionResult(result, outputDir);
   }
 
   spinner.succeed(`Generated ${options.projection} code from ${path.basename(irFile)}`);

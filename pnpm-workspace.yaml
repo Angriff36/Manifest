@@ -1,0 +1,13 @@
+# pnpm workspace declaration.
+#
+# Lists every package pnpm should treat as a `workspace:*`-resolvable member.
+# Previously the repo had two pnpm projects (root + packages/cli) and relied on
+# pnpm's parent-directory traversal to resolve `@angriff36/manifest: workspace:*`
+# from inside packages/cli. That heuristic does not extend to sibling discovery,
+# so when the Prisma projection package was added at packages/manifest-projection-prisma
+# and the CLI took a workspace dep on it, pnpm could not find it.
+#
+# This file fixes that by declaring the canonical workspace shape.
+packages:
+  - '.'
+  - 'packages/*'

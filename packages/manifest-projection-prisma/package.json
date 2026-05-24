@@ -1,0 +1,31 @@
+{
+  "name": "@manifest/projection-prisma",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prisma schema projection for Manifest IR. Compile-time only — emits a prisma schema artifact from a Manifest IR + projection config. Carries no application, database-instance, or domain knowledge. Consumed by @manifest/cli; not (yet) published as a standalone package.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./options": {
+      "types": "./dist/options.d.ts",
+      "import": "./dist/options.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@angriff36/manifest": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vitest": "latest"
+  }
+}

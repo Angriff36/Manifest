@@ -58,6 +58,11 @@ export interface IREntity {
   versionAtProperty?: string;
   /** Optional allowed state transitions for validation */
   transitions?: IRTransition[];
+  /**
+   * When true, this entity is referenced but not persisted by this manifest.
+   * Sparse optional: absent = owned. Storage projections MUST skip external entities.
+   */
+  external?: boolean;
 }
 
 export interface IRProperty {
@@ -104,7 +109,18 @@ export interface IRConstraint {
 
 export interface IRStore {
   entity: string;
-  target: 'memory' | 'localStorage' | 'postgres' | 'supabase';
+  /**
+   * Storage target.
+   *
+   * - `'memory'` / `'localStorage'` — non-persistent (per-process or per-browser).
+   * - `'durable'` — backend-neutral semantic signal: "this entity is persisted
+   *   somewhere durable". The technology (Prisma, raw SQL, supabase-js, …) is
+   *   chosen by the consumer via runtime store bindings and/or projection config.
+   *   Storage projections SHOULD treat `'durable'`, `'postgres'`, and `'supabase'`
+   *   as schema-emission targets.
+   * - `'postgres'` / `'supabase'` — backend-specific (legacy / direct binding).
+   */
+  target: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable';
   config: Record<string, IRValue>;
 }
 

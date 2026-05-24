@@ -27,6 +27,11 @@ export class Parser {
       if (this.isEnd()) break;
       try {
         if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
+        else if (this.check('KEYWORD', 'external')) {
+          // `external entity Foo { ... }` — entity is referenced, not persisted by this manifest
+          this.advance(); // consume 'external'
+          program.entities.push(this.parseEntity(true));
+        }
         else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
         else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
@@ -56,7 +61,12 @@ export class Parser {
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
       if (this.check('PUNCTUATION', '}')) break;
-      if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
+      if (this.check('KEYWORD', 'external')) {
+        // `external entity Foo { ... }` inside a module body
+        this.advance(); // consume 'external'
+        entities.push(this.parseEntity(true));
+      }
+      else if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
@@ -68,7 +78,7 @@ export class Parser {
     return { type: 'Module', name, entities, commands, policies, stores, events };
   }
 
-  private parseEntity(): EntityNode {
+  private parseEntity(external: boolean = false): EntityNode {
     this.consume('KEYWORD', 'entity');
     const name = this.consumeIdentifier().value;
     this.consume('PUNCTUATION', '{');
@@ -159,7 +169,11 @@ export class Parser {
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, transitions, store, versionProperty, versionAtProperty };
+    // Sparse optional: only include `external` when true so absent-default stays absent in AST/IR
+    return {
+      type: 'Entity', name, properties, computedProperties, relationships, behaviors, commands, constraints, policies, transitions, store, versionProperty, versionAtProperty,
+      ...(external ? { external: true as const } : {}),
+    };
   }
 
   private parseProperty(): PropertyNode {

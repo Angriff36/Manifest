@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -17,6 +17,10 @@
     "./ir-compiler": {
       "types": "./dist/manifest/ir-compiler.d.ts",
       "import": "./dist/manifest/ir-compiler.js"
+    },
+    "./projections": {
+      "types": "./dist/manifest/projections/index.d.ts",
+      "import": "./dist/manifest/projections/index.js"
     },
     "./projections/nextjs": {
       "types": "./dist/manifest/projections/nextjs/generator.d.ts",

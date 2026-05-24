@@ -181,13 +181,13 @@ export class IRCompiler {
     const entityScopedStores: IRStore[] = [
       ...program.entities.filter(e => e.store).map(e => ({
         entity: e.name,
-        target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+        target: e.store === 'filesystem' ? 'localStorage' : e.store as IRStore['target'],
         config: {},
       })),
       ...program.modules.flatMap(m =>
         m.entities.filter(e => e.store).map(e => ({
           entity: e.name,
-          target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+          target: e.store === 'filesystem' ? 'localStorage' : e.store as IRStore['target'],
           config: {},
         }))
       ),
@@ -286,6 +286,8 @@ export class IRCompiler {
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
+      // Sparse optional: only emit `external` when true so legacy IR fixtures stay byte-identical
+      ...(e.external ? { external: true as const } : {}),
     };
   }
 

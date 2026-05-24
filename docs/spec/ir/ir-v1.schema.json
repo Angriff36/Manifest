@@ -103,6 +103,11 @@
           "type": "array",
           "items": { "$ref": "#/definitions/IRTransition" },
           "description": "Optional allowed state transitions for validation"
+        },
+        "external": {
+          "type": "boolean",
+          "const": true,
+          "description": "When true, this entity is referenced but not persisted by this manifest. Sparse optional: absent = owned. Storage projections MUST skip external entities."
         }
       }
     },
@@ -189,7 +194,7 @@
       "required": ["entity", "target", "config"],
       "properties": {
         "entity": { "type": "string" },
-        "target": { "enum": ["memory", "localStorage", "postgres", "supabase"] },
+        "target": { "enum": ["memory", "localStorage", "postgres", "supabase", "durable"] },
         "config": {
           "type": "object",
           "additionalProperties": { "$ref": "#/definitions/IRValue" }

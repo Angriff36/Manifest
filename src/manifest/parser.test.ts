@@ -47,6 +47,47 @@ entity Bar {
       expect(entity.properties).toHaveLength(0);
     });
 
+    it('should parse an entity without the external marker as owned (external absent)', () => {
+      // Default ownership is "owned" — the `external` field must remain absent
+      // on the AST so the sparse-optional invariant holds (legacy fixtures and
+      // ASTs stay byte-identical when ownership is not declared).
+      const source = 'entity Plain {}';
+      const result = new Parser().parse(source);
+      const entity = result.program.entities[0];
+      expect(entity.external).toBeUndefined();
+    });
+
+    it('should parse an `external entity` declaration and mark it external on the AST', () => {
+      // `external` is a binary marker: present and true means "not persisted by
+      // this manifest". Storage projections key off this exact flag.
+      const source = 'external entity ImportedUser { property required id: string }';
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities).toHaveLength(1);
+      const entity = result.program.entities[0];
+      expect(entity.name).toBe('ImportedUser');
+      expect(entity.external).toBe(true);
+      // Body still parses normally — `external` only changes ownership, not shape.
+      expect(entity.properties).toHaveLength(1);
+      expect(entity.properties[0].name).toBe('id');
+    });
+
+    it('should parse `external entity` inside a module body', () => {
+      const source = `
+module imports {
+  external entity ExternalOrg {
+    property required id: string
+  }
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const module = result.program.modules[0];
+      expect(module.entities).toHaveLength(1);
+      expect(module.entities[0].name).toBe('ExternalOrg');
+      expect(module.entities[0].external).toBe(true);
+    });
+
     it('should parse entity with properties', () => {
       const source = `
 entity User {
@@ -834,6 +875,17 @@ entity User {
       const result = new Parser().parse(source);
       const store = result.program.stores[0];
       expect(store.target).toBe('postgres');
+    });
+
+    it('should parse `store ... in durable` (backend-neutral semantic target)', () => {
+      // `durable` is the backend-neutral store target. The technology is chosen
+      // later by the consumer's projection config and/or runtime store binding.
+      const source = 'store User in durable';
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const store = result.program.stores[0];
+      expect(store.target).toBe('durable');
+      expect(store.entity).toBe('User');
     });
 
     it('should parse store with config object', () => {

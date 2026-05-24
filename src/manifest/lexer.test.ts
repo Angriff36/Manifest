@@ -97,6 +97,28 @@ describe('Lexer', () => {
       expect(tokens.filter(t => t.type === 'KEYWORD')).toHaveLength(4);
     });
 
+    it('should tokenize the durable store target keyword', () => {
+      // `durable` is the backend-neutral semantic store target. Required so the
+      // grammar accepts `store Foo in durable` and so that `durable` cannot be
+      // used as an identifier (it is a reserved word).
+      const source = 'durable';
+      const tokens = new Lexer(source).tokenize();
+
+      const kw = tokens.find(t => t.type === 'KEYWORD' && t.value === 'durable');
+      expect(kw).toBeDefined();
+    });
+
+    it('should tokenize the external entity-modifier keyword', () => {
+      // `external` marks an entity as referenced-but-not-persisted. Required so
+      // the grammar accepts `external entity Foo {}` and so that `external`
+      // cannot be used as an identifier (it is a reserved word).
+      const source = 'external';
+      const tokens = new Lexer(source).tokenize();
+
+      const kw = tokens.find(t => t.type === 'KEYWORD' && t.value === 'external');
+      expect(kw).toBeDefined();
+    });
+
     it('should tokenize all reserved words from KEYWORDS set', () => {
       // Verify that all items in KEYWORDS set are correctly tokenized
       for (const keyword of KEYWORDS) {

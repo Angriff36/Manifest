@@ -3,7 +3,11 @@ import path from 'path';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts', 'packages/cli/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'packages/cli/**/*.test.ts',
+      'packages/manifest-projection-prisma/**/*.test.ts',
+    ],
     environment: 'node',
     setupFiles: ['./test-setup.ts'],
     deps: {
@@ -21,6 +25,13 @@ export default defineConfig({
       '@angriff36/manifest/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
       '@angriff36/manifest/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
       '@angriff36/manifest/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
+      // Whole-projections-module entry — exposes registerProjection, getProjection, hasProjection,
+      // NextJsProjection, RoutesProjection, registerBuiltinProjections. The CLI dispatch helper
+      // imports from here so it can discover any registered projection (not just nextjs).
+      '@angriff36/manifest/projections': path.resolve(__dirname, './src/manifest/projections/index.ts'),
+      // Workspace projection package — registered from the CLI at startup so the boundary holds
+      // (Prisma is not bundled into core's builtins.ts).
+      '@manifest/projection-prisma': path.resolve(__dirname, './packages/manifest-projection-prisma/src/index.ts'),
       '@angriff36/manifest/registry/emit': path.resolve(__dirname, './src/manifest/registry/emit.ts'),
       '@angriff36/manifest/audit/memory': path.resolve(__dirname, './src/manifest/audit/sinks/memory.ts'),
       '@angriff36/manifest/audit/postgres': path.resolve(__dirname, './src/manifest/audit/sinks/postgres.ts'),

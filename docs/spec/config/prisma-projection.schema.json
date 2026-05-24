@@ -1,0 +1,84 @@
+{
+  "$id": "https://manifest.lang/spec/config/prisma-projection-v1.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prisma projection options (v1)",
+  "description": "Consumer-facing config surface for @manifest/projection-prisma. Supplied to the projection at compile time via `projections.prisma.options` in manifest.config.yaml. NONE of these keys exist in Manifest core grammar or IR; they all live here on the projection side.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "description": "Optional Prisma datasource provider. When set, the projection emits a datasource block.",
+      "enum": ["postgresql", "mysql", "sqlite", "sqlserver", "mongodb", "cockroachdb"]
+    },
+    "output": {
+      "description": "Output path hint for the emitted artifact. Default: 'schema.prisma'. The projection itself does not write files; this value flows to ProjectionArtifact.pathHint.",
+      "type": "string"
+    },
+    "tableMappings": {
+      "description": "Per-entity table-name override. Key = IR entity name; value = literal table name. Emits @@map(\"...\").",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "columnMappings": {
+      "description": "Per-entity, per-property column-name override. Nested shape: Record<EntityName, Record<PropertyName, string>>. NO dotted-string \"Entity.property\" keys are accepted at this layer.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+    "precision": {
+      "description": "Per-entity, per-property decimal precision and scale. Nested shape: Record<EntityName, Record<PropertyName, {precision, scale}>>. Locked at Checkpoint 1 amendment — no flattened keys.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": ["precision", "scale"],
+          "additionalProperties": false,
+          "properties": {
+            "precision": { "type": "integer", "minimum": 1 },
+            "scale": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "indexes": {
+      "description": "Per-entity composite/named index definitions. Each entry is either a column-name array (composite @@index) or an object with `fields` and optional `name`.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            {
+              "type": "object",
+              "required": ["fields"],
+              "additionalProperties": false,
+              "properties": {
+                "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                "name": { "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "typeMappings": {
+      "description": "Per-entity, per-property type override. Bypasses the default IR-type-name → Prisma-type table. Nested shape: Record<EntityName, Record<PropertyName, string>>. Value is a Prisma scalar literal (e.g. 'Int', 'Decimal').",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+    "foreignKeys": {
+      "description": "Per-entity, per-relationship FK field name override. Overrides the default `${relationshipName}Id` (and the IR's `foreignKey` annotation) for belongsTo/ref relations. Nested shape: Record<EntityName, Record<RelationshipName, string>>.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    }
+  }
+}

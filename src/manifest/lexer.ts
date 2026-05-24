@@ -14,7 +14,7 @@ import { Token, Position } from './types';
  * Do NOT create a second list elsewhere.
  */
 export const KEYWORDS = new Set([
-  'entity', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose',
+  'entity', 'external', 'property', 'behavior', 'constraint', 'flow', 'effect', 'expose', 'compose',
   'command', 'module', 'policy', 'store', 'event', 'computed', 'derived',
   'hasMany', 'hasOne', 'belongsTo', 'ref', 'through',
   'on', 'when', 'then', 'emit', 'mutate', 'compute', 'guard', 'publish', 'persist',
@@ -24,7 +24,7 @@ export const KEYWORDS = new Set([
   'required', 'unique', 'indexed', 'private', 'readonly', 'optional',
   'rest', 'graphql', 'websocket', 'function', 'server',
   'http', 'storage', 'timer', 'custom',
-  'memory', 'postgres', 'supabase', 'localStorage',
+  'memory', 'postgres', 'supabase', 'localStorage', 'durable',
   'read', 'write', 'delete', 'execute', 'all', 'override', 'allow', 'deny',
   'and', 'or', 'not', 'is', 'in', 'contains',
   'user', 'self', 'context',

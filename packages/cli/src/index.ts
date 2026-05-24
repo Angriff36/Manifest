@@ -38,7 +38,13 @@ import {
   runtimeCheckCommand,
   diffSourceVsIRCommand,
 } from './commands/doctor.js';
-import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
+import { getConfig, resolveNextJsProjectionOptions, loadAllConfigs } from './utils/config.js';
+import { registerCliExtraProjections } from './projections/register-extras.js';
+
+// Register CLI-bundled extra projections (Prisma, etc.) at module load so any
+// command that performs `getProjection(name)` can resolve them. Idempotent —
+// the dispatch helper also calls this defensively.
+registerCliExtraProjections();
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
 import { realpath, readFile } from 'node:fs/promises';
@@ -124,18 +130,23 @@ program
   .command('generate')
   .description('Generate code from IR using a projection')
   .argument('<ir>', 'IR file or directory')
-  .option('-p, --projection <name>', 'Projection name (nextjs, ts.types, ts.client)', 'nextjs')
-  .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
+  .option('-p, --projection <name>', 'Projection name (nextjs, prisma)', 'nextjs')
+  .option('-s, --surface <name>', 'Projection surface (nextjs: route|command|types|client|all; prisma: prisma.schema)', 'all')
   .option('-o, --output <path>', 'Output directory')
-  .option('--auth <provider>', 'Auth provider or import path')
-  .option('--database <path>', 'Database import path')
-  .option('--runtime <path>', 'Runtime import path')
-  .option('--response <path>', 'Response helpers import path')
+  .option('--auth <provider>', 'Auth provider or import path (nextjs only)')
+  .option('--database <path>', 'Database import path (nextjs only)')
+  .option('--runtime <path>', 'Runtime import path (nextjs only)')
+  .option('--response <path>', 'Response helpers import path (nextjs only)')
   .action(async (ir, options = {}) => {
-    // resolveNextJsProjectionOptions returns the user's raw nextjs options
-    // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
-    // CLI flag overrides are layered on inside generateCommand.
-    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+    // Projection-options resolution is keyed by projection name: nextjs uses
+    // the existing typed loader (it overlays dispatcher.* / concreteCommandRoutes.*
+    // and is touched by --auth/--database/--runtime/--response flags downstream).
+    // Other projections read their raw options bag from `projections.<name>.options`
+    // in manifest.config.yaml — generic by design, no name special-casing required.
+    const projectionName = (options.projection ?? 'nextjs') as string;
+    const projectionOptionsFromConfig = projectionName === 'nextjs'
+      ? await resolveNextJsProjectionOptions()
+      : (((await loadAllConfigs()).build.projections?.[projectionName]?.options) ?? {}) as Record<string, unknown>;
 
     await generateCommand(ir, {
       ...options,

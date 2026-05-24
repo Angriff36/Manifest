@@ -507,13 +507,22 @@ export class RuntimeEngine {
               `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
               `For server-side use, import SupabaseStore from stores.node.ts.`
             );
+          case 'durable':
+            // `'durable'` is a backend-neutral semantic signal — it intentionally
+            // does NOT map to a built-in store. Consumers MUST supply a custom
+            // store via the storeProvider option (e.g. a Prisma-backed adapter).
+            // This is the deliberate handoff point: core stays backend-neutral.
+            throw new Error(
+              `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
+              `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`
+            );
           default: {
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
             const isPrisma = _unsupportedTarget === 'prisma';
             throw new Error(
               `Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
-              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.` +
+              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase', 'durable'.` +
               (isPrisma ? ` For Prisma, use storeProvider in manifest.config.ts - see docs/proposals/prisma-store-adapter.md` : '')
             );
           }

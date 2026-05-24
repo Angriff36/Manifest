@@ -47,6 +47,11 @@ export interface EntityNode extends ASTNode {
   versionProperty?: string;
   /** Optimistic concurrency: property name for version timestamp */
   versionAtProperty?: string;
+  /**
+   * When true, this entity is referenced but not persisted by this manifest.
+   * Default (absent) = owned. Storage projections SHOULD skip external entities.
+   */
+  external?: boolean;
 }
 
 export interface PropertyNode extends ASTNode {
@@ -106,7 +111,7 @@ export interface PolicyNode extends ASTNode {
 export interface StoreNode extends ASTNode {
   type: 'Store';
   entity: string;
-  target: 'memory' | 'postgres' | 'supabase' | 'localStorage';
+  target: 'memory' | 'postgres' | 'supabase' | 'localStorage' | 'durable';
   config?: Record<string, ExpressionNode>;
 }
 

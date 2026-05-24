@@ -88,6 +88,41 @@ describe('IRCompiler', () => {
       expect(entity?.constraints).toHaveLength(0);
     });
 
+    it('should omit `external` on owned entities (sparse-optional invariant)', async () => {
+      // Default ownership = owned. The `external` field MUST be absent from IR
+      // so legacy IR fixtures stay byte-identical and the conformance suite
+      // remains green. This guards against accidental field-always-emitted bugs.
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR('entity User {}');
+
+      const entity = result.ir?.entities[0];
+      expect(entity).toBeDefined();
+      // Use property existence check, not just truthiness — guard against
+      // someone "fixing" this by emitting `external: false`.
+      expect(Object.prototype.hasOwnProperty.call(entity, 'external')).toBe(false);
+    });
+
+    it('should pass `external` through to IR as a binary flag (`external entity`)', async () => {
+      // `external` is a binary marker — present-and-true means the entity is
+      // referenced but not persisted by this manifest. Storage projections will
+      // key off this flag (Phase 3); core just preserves it.
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        external entity ImportedUser {
+          property required id: string
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const entity = result.ir?.entities[0];
+      expect(entity?.name).toBe('ImportedUser');
+      expect(entity?.external).toBe(true);
+      // Other entity fields still compile normally.
+      expect(entity?.properties).toHaveLength(1);
+      expect(entity?.properties[0].name).toBe('id');
+      expect(entity?.properties[0].modifiers).toContain('required');
+    });
+
     it('should transform entity with properties', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
@@ -576,6 +611,21 @@ describe('IRCompiler', () => {
 
       const store = result.ir?.stores[0];
       expect(store?.target).toBe('supabase');
+    });
+
+    it('should transform `store ... in durable` (backend-neutral target)', async () => {
+      // `'durable'` is the backend-neutral semantic store target. It must flow
+      // through to IR unchanged so consumer projections can interpret it.
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {}
+        store User in durable
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const store = result.ir?.stores[0];
+      expect(store?.entity).toBe('User');
+      expect(store?.target).toBe('durable');
     });
 
     it('should transform store with config', async () => {

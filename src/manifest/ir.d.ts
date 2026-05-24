@@ -42,6 +42,8 @@ export interface IREntity {
     versionProperty?: string;
     /** Name of timestamp field for version tracking */
     versionAtProperty?: string;
+    /** Sparse optional: absent = owned. Storage projections MUST skip external entities. */
+    external?: boolean;
 }
 export interface IRProperty {
     name: string;
@@ -82,7 +84,7 @@ export interface IRConstraint {
 }
 export interface IRStore {
     entity: string;
-    target: 'memory' | 'localStorage' | 'postgres' | 'supabase';
+    target: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable';
     config: Record<string, IRValue>;
 }
 export interface IREvent {
