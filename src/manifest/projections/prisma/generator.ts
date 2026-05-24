@@ -169,7 +169,8 @@ function emitPropertyLine(
   const isRequired = isId || prop.modifiers.includes('required');
   const nullableSuffix = isRequired ? '' : '?';
 
-  // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal, @db.ObjectId
+  // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal, @db.ObjectId,
+  // dbAttributes (@db.*), fieldAttributes (@unique, @default(now()), @updatedAt, etc.)
   const attrs: string[] = [];
   if (isId) attrs.push('@id');
   if (prop.modifiers.includes('unique') && !isId) attrs.push('@unique');
@@ -202,6 +203,23 @@ function emitPropertyLine(
     const idTypeOverride = options.typeMappings?.[entity.name]?.id;
     if (!idTypeOverride || idTypeOverride === 'String') {
       attrs.push('@db.ObjectId');
+    }
+  }
+
+  // Generic @db.* attribute emission from config.
+  // Skip if a @db.Decimal was already emitted by the precision path above.
+  const hasDbDecimal = attrs.some(a => a.startsWith('@db.Decimal'));
+  const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
+  if (dbAttr && !hasDbDecimal) {
+    attrs.push(`@db.${dbAttr}`);
+  }
+
+  // Field-level attributes from config (e.g. @unique, @default(now()), @updatedAt).
+  // Deduplicated against attributes already emitted by the standard pipeline.
+  const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
+  if (fieldAttrs && fieldAttrs.length > 0) {
+    for (const fa of fieldAttrs) {
+      if (!attrs.includes(fa)) attrs.push(fa);
     }
   }
 

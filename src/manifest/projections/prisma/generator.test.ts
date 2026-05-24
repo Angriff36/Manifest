@@ -1106,3 +1106,511 @@ describe('PrismaProjection — composite PK, composite FK, and referential actio
     expect(code).toMatch(/onUpdate: SetDefault/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// dbAttributes conformance tests
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — dbAttributes config', () => {
+  it('emits @db.Uuid on a string field via dbAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'externalRef', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { externalRef: 'Uuid' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+externalRef String @db\.Uuid$/m);
+  });
+
+  it('emits @db.Timestamptz(6) on a DateTime field via dbAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\)$/m);
+  });
+
+  it('emits @db.Date on a DateTime field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'bornOn', type: { name: 'datetime', nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { bornOn: 'Date' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+bornOn DateTime\? @db\.Date$/m);
+  });
+
+  it('emits @db.SmallInt on an Int field via dbAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'priority', type: { name: 'int', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { priority: 'SmallInt' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+priority Int @db\.SmallInt$/m);
+  });
+
+  it('SKIPS dbAttributes when @db.Decimal was already emitted by precision config (no duplicate @db)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'price', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // Both precision AND dbAttributes target the same field.
+    // precision wins → @db.Decimal(12, 2); dbAttributes is skipped.
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        precision: { Widget: { price: { precision: 12, scale: 2 } } },
+        dbAttributes: { Widget: { price: 'Decimal(18, 4)' } },
+      },
+    }).artifacts[0].code;
+
+    // precision-emitted @db.Decimal wins
+    expect(code).toMatch(/^\s+price Decimal @db\.Decimal\(12, 2\)$/m);
+    // No duplicate @db from dbAttributes
+    expect(code).not.toMatch(/@db\.Decimal\(18, 4\)/);
+  });
+
+  it('SKIPS dbAttributes when @db.Decimal was auto-emitted for decimal/money type (no override)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'cost', type: { name: 'money', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // money type auto-emits @db.Decimal(12, 2); dbAttributes should be suppressed.
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { cost: 'Numeric' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+cost Decimal @db\.Decimal\(12, 2\)$/m);
+    expect(code).not.toMatch(/@db\.Numeric/);
+  });
+
+  it('emits dbAttributes on the id field (not blocked by @id)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { id: 'Uuid' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
+  });
+
+  it('coexists with @map from columnMappings on the same field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        columnMappings: { Widget: { createdAt: 'created_at' } },
+        dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+createdAt DateTime @map\("created_at"\) @db\.Timestamptz\(6\)$/m);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fieldAttributes conformance tests
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — fieldAttributes config', () => {
+  it('emits @unique from fieldAttributes on a field without modifiers', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'sku', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { sku: ['@unique'] } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+sku String @unique$/m);
+  });
+
+  it('emits @default(now()) from fieldAttributes on a DateTime field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { createdAt: ['@default(now())'] } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\)$/m);
+  });
+
+  it('emits @updatedAt from fieldAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'updatedAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { updatedAt: ['@updatedAt'] } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+updatedAt DateTime @updatedAt$/m);
+  });
+
+  it('emits @default(dbgenerated(...)) from fieldAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { id: ['@default(dbgenerated("gen_random_uuid()"))'] } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m);
+  });
+
+  it('deduplicates fieldAttributes — does NOT re-add @unique already from modifiers', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'sku', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // @unique is already emitted from modifiers; fieldAttributes should NOT duplicate it.
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { sku: ['@unique'] } } },
+    }).artifacts[0].code;
+
+    // Only one @unique
+    const skuLine = code.split('\n').find((l) => /^\s+sku /.test(l));
+    expect(skuLine).toBeDefined();
+    const uniqueCount = (skuLine!.match(/@unique/g) ?? []).length;
+    expect(uniqueCount).toBe(1);
+  });
+
+  it('deduplicates fieldAttributes — does NOT re-add @default already from prop.defaultValue', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'active',
+          type: { name: 'boolean', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'boolean', value: true },
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // @default(true) already emitted from prop.defaultValue; fieldAttributes should not duplicate.
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { active: ['@default(true)'] } } },
+    }).artifacts[0].code;
+
+    const activeLine = code.split('\n').find((l) => /^\s+active /.test(l));
+    expect(activeLine).toBeDefined();
+    const defaultCount = (activeLine!.match(/@default/g) ?? []).length;
+    expect(defaultCount).toBe(1);
+  });
+
+  it('emits multiple fieldAttributes on the same field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { fieldAttributes: { Widget: { createdAt: ['@default(now())', '@updatedAt'] } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\) @updatedAt$/m);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// dbAttributes + fieldAttributes interaction
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — dbAttributes + fieldAttributes together', () => {
+  it('emits both @db.* and field attributes on the same field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        dbAttributes: { Widget: { createdAt: 'Timestamptz(6)' } },
+        fieldAttributes: { Widget: { createdAt: ['@default(now())'] } },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(
+      /^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m,
+    );
+  });
+
+  it('emits @db.Uuid + @default(dbgenerated(...)) together on id field', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        dbAttributes: { Widget: { id: 'Uuid' } },
+        fieldAttributes: { Widget: { id: ['@default(dbgenerated("gen_random_uuid()"))'] } },
+      },
+    }).artifacts[0].code;
+
+    // dbAttributes are emitted before fieldAttributes in the attr list
+    expect(code).toMatch(
+      /^\s+id String @id @db\.Uuid @default\(dbgenerated\("gen_random_uuid\(\)"\)\)$/m,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Snapshot test: procurement-like entity with all features combined
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — procurement entity snapshot (dbAttributes + fieldAttributes)', () => {
+  it('generates deterministic schema for a composite-key entity with dbAttributes and fieldAttributes', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      {
+        name: 'Vendor',
+        properties: [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'name', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [{ name: 'items', kind: 'hasMany', target: 'ProcurementItem' }],
+        commands: [], constraints: [], policies: [],
+      },
+      {
+        name: 'ProcurementItem',
+        key: ['vendorId', 'lineNo'],
+        properties: [
+          { name: 'vendorId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'lineNo', type: { name: 'int', nullable: false }, modifiers: ['required'] },
+          { name: 'description', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'unitCost', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
+          { name: 'quantity', type: { name: 'int', nullable: false }, modifiers: ['required'] },
+          { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['required'] },
+          { name: 'updatedAt', type: { name: 'datetime', nullable: false }, modifiers: [] },
+        ],
+        computedProperties: [],
+        relationships: [
+          {
+            name: 'vendor',
+            kind: 'belongsTo' as const,
+            target: 'Vendor',
+            foreignKey: { fields: ['vendorId'], references: ['id'] },
+          },
+        ],
+        commands: [], constraints: [], policies: [],
+      },
+    );
+    ir.stores.push(durableStore('Vendor'), durableStore('ProcurementItem'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        provider: 'postgresql',
+        tableMappings: { ProcurementItem: 'procurement_items', Vendor: 'vendors' },
+        dbAttributes: {
+          ProcurementItem: { vendorId: 'Uuid', createdAt: 'Timestamptz(6)', updatedAt: 'Timestamptz(6)' },
+          Vendor: { id: 'Uuid', createdAt: 'Timestamptz(6)' },
+        },
+        fieldAttributes: {
+          ProcurementItem: { createdAt: ['@default(now())'], updatedAt: ['@updatedAt'] },
+          Vendor: { createdAt: ['@default(now())'] },
+        },
+        precision: { ProcurementItem: { unitCost: { precision: 14, scale: 4 } } },
+        indexes: { ProcurementItem: [['description']] },
+      },
+    });
+
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+    const code = result.artifacts[0].code;
+
+    // Vendor: id String @id @db.Uuid
+    expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
+    // Vendor: createdAt DateTime @db.Timestamptz(6) @default(now())
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
+
+    // ProcurementItem: vendorId String @db.Uuid (FK column, property-declared)
+    expect(code).toMatch(/^\s+vendorId String @db\.Uuid$/m);
+    // ProcurementItem: lineNo Int
+    expect(code).toMatch(/^\s+lineNo Int$/m);
+    // ProcurementItem: unitCost Decimal @db.Decimal(14, 4)  — precision wins, dbAttributes skipped
+    expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(14, 4\)$/m);
+    // ProcurementItem: createdAt DateTime @db.Timestamptz(6) @default(now())
+    expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
+    // ProcurementItem: updatedAt DateTime? @db.Timestamptz(6) @updatedAt
+    expect(code).toMatch(/^\s+updatedAt DateTime\? @db\.Timestamptz\(6\) @updatedAt$/m);
+    // Composite PK
+    expect(code).toMatch(/^\s+@@id\(\[vendorId, lineNo\]\)$/m);
+    // Composite FK relation
+    expect(code).toMatch(
+      /^\s+vendor Vendor @relation\(fields: \[vendorId\], references: \[id\]\)$/m,
+    );
+    // Table mapping
+    expect(code).toMatch(/^\s+@@map\("vendors"\)$/m);
+    expect(code).toMatch(/^\s+@@map\("procurement_items"\)$/m);
+    // Index
+    expect(code).toMatch(/^\s+@@index\(\[description\]\)$/m);
+
+    // Determinism: run twice, assert identical output
+    const result2 = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        provider: 'postgresql',
+        tableMappings: { ProcurementItem: 'procurement_items', Vendor: 'vendors' },
+        dbAttributes: {
+          ProcurementItem: { vendorId: 'Uuid', createdAt: 'Timestamptz(6)', updatedAt: 'Timestamptz(6)' },
+          Vendor: { id: 'Uuid', createdAt: 'Timestamptz(6)' },
+        },
+        fieldAttributes: {
+          ProcurementItem: { createdAt: ['@default(now())'], updatedAt: ['@updatedAt'] },
+          Vendor: { createdAt: ['@default(now())'] },
+        },
+        precision: { ProcurementItem: { unitCost: { precision: 14, scale: 4 } } },
+        indexes: { ProcurementItem: [['description']] },
+      },
+    });
+    expect(result.artifacts[0].code).toBe(result2.artifacts[0].code);
+  });
+});

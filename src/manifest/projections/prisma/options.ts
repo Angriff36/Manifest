@@ -107,6 +107,38 @@ export interface PrismaProjectionOptions {
   foreignKeys?: Record<EntityName, Record<string, string>>;
 
   /**
+   * Per-entity, per-property native database type annotations.
+   *
+   * Values are the Prisma `@db.*` suffix WITHOUT the `@db.` prefix.
+   * Emitted as `@db.<value>` after `@map` and before any `@db.Decimal`
+   * precision annotation.
+   *
+   *   dbAttributes: { Widget: { id: "Uuid", createdAt: "Timestamptz(6)" } }
+   * → emits `@db.Uuid` / `@db.Timestamptz(6)` on those fields.
+   *
+   * This is the generic `@db.*` emission path. The only other `@db.*`
+   * emissions are `@db.Decimal(p,s)` (via `precision` config) and
+   * `@db.ObjectId` (auto-emitted for MongoDB String ids). When both
+   * a `dbAttributes` entry and a precision-derived `@db.Decimal` would
+   * apply to the same field, `@db.Decimal` wins and `dbAttributes` is
+   * skipped (Prisma allows only one `@db.*` per field).
+   */
+  dbAttributes?: Record<EntityName, Record<PropertyName, string>>;
+
+  /**
+   * Per-entity, per-property Prisma field attributes to emit verbatim.
+   *
+   * Each string is a complete Prisma attribute (e.g. `"@unique"`,
+   * `"@default(now())"`, `"@updatedAt"`, `"@default(dbgenerated(\"...\"))"`).
+   * Attributes already emitted by the standard pipeline (e.g. `@unique`
+   * from `prop.modifiers`, `@default(...)` from `prop.defaultValue`) are
+   * NOT duplicated — only novel attributes are added.
+   *
+   *   fieldAttributes: { Widget: { id: ["@unique", "@default(dbgenerated(\"gen_random_uuid()\"))"] } }
+   */
+  fieldAttributes?: Record<EntityName, Record<PropertyName, string[]>>;
+
+  /**
    * Environment variable name for the database connection URL in the emitted
    * `prisma.config.ts` companion artifact. Defaults to `"DATABASE_URL"`.
    * Only relevant when `provider` is set (a `prisma.config.ts` is only emitted
@@ -152,6 +184,8 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     indexes: input.indexes ?? {},
     typeMappings: input.typeMappings ?? {},
     foreignKeys: input.foreignKeys ?? {},
+    dbAttributes: input.dbAttributes ?? {},
+    fieldAttributes: input.fieldAttributes ?? {},
     urlEnvVar: input.urlEnvVar,
     output: input.output ?? PRISMA_PROJECTION_DEFAULTS.output,
   };
