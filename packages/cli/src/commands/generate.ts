@@ -159,6 +159,22 @@ async function generateFromIR(
       options: options.projectionOptionsFromConfig,
     });
     await writeProjectionResult(result, outputDir);
+
+    // Codex P1 fix: the generic dispatch path used to mark generation
+    // "succeeded" even when the projection returned error-severity
+    // diagnostics (e.g. UNKNOWN_SURFACE, PRISMA_UNKNOWN_TYPE,
+    // PRISMA_AMBIGUOUS_NUMBER, PRISMA_RELATION_AMBIGUOUS). CI / build
+    // pipelines couldn't detect generation failure. Throw on errors so the
+    // outer loop in generateCommand counts this IR file as failed and the
+    // process exits non-zero.
+    const errorDiagnostics = result.diagnostics.filter((d) => d.severity === 'error');
+    if (errorDiagnostics.length > 0) {
+      const codes = errorDiagnostics.map((d) => d.code ?? 'UNKNOWN').join(', ');
+      throw new Error(
+        `${options.projection} projection returned ${errorDiagnostics.length} error diagnostic(s): ${codes}. ` +
+        `See diagnostic output above for resolution.`,
+      );
+    }
   }
 
   spinner.succeed(`Generated ${options.projection} code from ${path.basename(irFile)}`);

@@ -167,18 +167,42 @@ function emitPropertyLine(
   const isRequired = isId || prop.modifiers.includes('required');
   const nullableSuffix = isRequired ? '' : '?';
 
-  // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal
+  // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal, @db.ObjectId
   const attrs: string[] = [];
   if (isId) attrs.push('@id');
   if (prop.modifiers.includes('unique') && !isId) attrs.push('@unique');
+
+  // Codex P1 fix: MongoDB connector requires the @id field to map to `_id`
+  // and (for the common String → ObjectId pattern) carry `@db.ObjectId`
+  // plus `@default(auto())`. Without these, Prisma rejects the schema.
+  // Apply automatically when provider is `mongodb` AND the user did NOT
+  // supply a column-mapping override for `id` AND no literal `defaultValue`
+  // was declared (the IR `defaultValue` takes precedence so consumers can
+  // still set their own initial value if they want).
+  //
+  // The triplet (auto / _id / ObjectId) is the canonical Mongo-with-Prisma
+  // pattern. Users wanting non-ObjectId IDs (e.g. plain string ULIDs) can
+  // override the type via `typeMappings.<Entity>.id` and supply their own
+  // mapping / default via `columnMappings.<Entity>.id` + an IR default.
+  const isMongo = options.provider === 'mongodb';
+  const colMapOverride = options.columnMappings?.[entity.name]?.[prop.name];
+  if (isId && isMongo && !colMapOverride && !prop.defaultValue) {
+    attrs.push('@default(auto())');
+  }
 
   if (prop.defaultValue) {
     const def = literalToPrismaDefault(prop.defaultValue);
     if (def !== undefined) attrs.push(`@default(${def})`);
   }
 
-  const colMap = options.columnMappings?.[entity.name]?.[prop.name];
-  if (colMap) attrs.push(`@map("${colMap}")`);
+  // `@map` ordering: explicit columnMappings entry wins. Mongo's `_id`
+  // mapping is auto-applied only when the user did NOT specify their own
+  // column mapping for `id`.
+  if (colMapOverride) {
+    attrs.push(`@map("${colMapOverride}")`);
+  } else if (isId && isMongo) {
+    attrs.push('@map("_id")');
+  }
 
   // Decimal-family handling. Any property whose RESOLVED scalar is `Decimal`
   // gets a `@db.Decimal(p, s)` attribute. If the consumer supplied a precision
@@ -193,6 +217,17 @@ function emitPropertyLine(
     attrs.push(`@db.Decimal(${prec.precision}, ${prec.scale})`);
   } else if (isDecimalScalar(scalar)) {
     attrs.push(`@db.Decimal(${DEFAULT_DECIMAL_PRECISION}, ${DEFAULT_DECIMAL_SCALE})`);
+  }
+
+  // Mongo @id: complete the canonical (`@id @default(auto()) @map("_id") @db.ObjectId`)
+  // pattern with the `@db.ObjectId` attribute. Skipped when the consumer
+  // chose a non-String type via `typeMappings.<Entity>.id` (ObjectId only
+  // makes sense for String-typed IDs in Prisma's Mongo connector).
+  if (isId && isMongo && scalar === 'String') {
+    const idTypeOverride = options.typeMappings?.[entity.name]?.id;
+    if (!idTypeOverride || idTypeOverride === 'String') {
+      attrs.push('@db.ObjectId');
+    }
   }
 
   const attrPart = attrs.length ? ' ' + attrs.join(' ') : '';
@@ -238,6 +273,14 @@ function targetIdPrismaType(
  *   - diagnose multi-relation ambiguity (Prisma requires named @relation
  *     when more than one relation exists between the same pair).
  *   - diagnose missing back-relations (Prisma rejects one-sided relations).
+ *
+ * SELF-RELATION HANDLING (Codex P2 fix): when `rel.target === fromEntityName`
+ * (e.g. `Tree belongsTo parent: Tree`), the naive implementation matched
+ * `rel` itself as an "opposite" — that suppressed missing-backside warnings
+ * and tripped false-positive ambiguity. We now filter the relationship
+ * out of its own opposite set by NAME (relationship names are unique within
+ * an entity), which lets cardinality detection work correctly for
+ * self-relations.
  */
 function findOppositeRelations(
   fromEntityName: string,
@@ -246,12 +289,28 @@ function findOppositeRelations(
 ): IRRelationship[] {
   const target = ir.entities.find((e) => e.name === rel.target);
   if (!target) return [];
-  return target.relationships.filter((r) => r.target === fromEntityName);
+  return target.relationships.filter((r) => {
+    if (r.target !== fromEntityName) return false;
+    // For self-relations, exclude the relationship itself by name.
+    if (target.name === fromEntityName && r.name === rel.name) return false;
+    return true;
+  });
 }
 
 interface RelationEmission {
   lines: string[];
   diagnostics: ProjectionDiagnostic[];
+}
+
+/**
+ * Per-projection-run context computed before any model is emitted. Holds the
+ * set of entity names that WILL be emitted as Prisma models (the relationship
+ * emitter uses this to refuse to emit relations pointing at non-emitted
+ * targets — Codex P1 fix for dangling references to skipped models).
+ */
+interface RelationContext {
+  /** Names of entities the projection will actually emit as `model` blocks. */
+  emittedEntities: ReadonlySet<string>;
 }
 
 /**
@@ -261,30 +320,57 @@ interface RelationEmission {
  *   - `hasMany name: T` → `name T[]`
  *   - `hasOne name: T` → `name T?`
  *   - `belongsTo name: T` → `{fk} {fkType}[ @unique]` + `name T @relation(fields: [{fk}], references: [id])`
- *   - `ref name: T` → same shape as `belongsTo`; "ref" signals "loose" back-relation
- *     not required.
+ *   - `ref name: T` → same shape as `belongsTo`. "ref" used to be treated as
+ *     "loose — no back-relation expected"; the Codex review pointed out that
+ *     Prisma still rejects one-sided `@relation` regardless of how the IR
+ *     describes intent, so we now diagnose missing back-relations for ref
+ *     too (PRISMA_RELATION_MISSING_BACKSIDE warning).
  *
- * Diagnostic-only (no field lines emitted because Prisma would reject them):
+ * Skipped emission (Prisma cannot validate the result):
  *   - `through ...` (explicit many-to-many): emit `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED`
  *     info. The consumer wires the join entity's belongsTo relations themselves.
  *   - Multiple relationships between the same pair: emit
  *     `PRISMA_RELATION_AMBIGUOUS` info. Prisma needs named `@relation("name")`
- *     to disambiguate; Phase-3 emission doesn't generate names.
+ *     to disambiguate; the projection does not auto-generate names.
+ *   - Relation targets a non-emitted entity (external, memory store, no store):
+ *     emit `PRISMA_RELATION_TARGET_NOT_EMITTED` warning and skip — Codex P1
+ *     fix for dangling references.
  *
- * Warning-only (field IS emitted, but Prisma may reject):
- *   - `hasMany` / `hasOne` / `belongsTo` with no opposite side declared:
- *     emit `PRISMA_RELATION_MISSING_BACKSIDE` warning explaining what
- *     declaration to add on the other entity. `ref` does NOT warn — that
- *     relation kind is explicitly "loose" by author intent.
+ * Codex P1 / FK collision: when the entity ALREADY declares a property with
+ * the FK field name (e.g. `property required authorId: string` alongside
+ * `belongsTo author: Author`), the relation step does NOT emit a duplicate
+ * FK column line. The relation field is still emitted so Prisma can wire
+ * the existing column.
  */
 function emitRelationship(
   entity: IREntity,
   rel: IRRelationship,
   ir: IR,
   options: PrismaProjectionOptions,
+  context: RelationContext,
 ): RelationEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
+
+  // (0) Dangling target: relation points at an entity the projection will not
+  //     emit (external, memory/localStorage store, no store at all). Prisma
+  //     would reject `@relation T` where `model T` doesn't exist. Diagnose
+  //     and skip — emitting nothing is safer than emitting a broken model.
+  if (!context.emittedEntities.has(rel.target)) {
+    diagnostics.push({
+      severity: 'warning',
+      code: 'PRISMA_RELATION_TARGET_NOT_EMITTED',
+      entity: entity.name,
+      message:
+        `Relationship '${entity.name}.${rel.name}' (${rel.kind} → ${rel.target}) targets an entity that is not emitted as a Prisma model. ` +
+        `${rel.target} may be 'external entity', have a non-persistent store (memory/localStorage), or have no store declaration. ` +
+        `The relation field has been skipped to avoid a dangling reference; declare ${rel.target} as a durable entity, or remove the relationship.`,
+    });
+    lines.push(
+      `  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_TARGET_NOT_EMITTED`,
+    );
+    return { lines, diagnostics };
+  }
 
   // (1) `through` → join-entity-mediated many-to-many. Not Prisma-emittable
   //     on this side; consumer must declare the join entity separately.
@@ -373,27 +459,37 @@ function emitRelationship(
       const isOneToOne = opposites.some((o) => o.kind === 'hasOne');
       const uniqueAttr = isOneToOne ? ' @unique' : '';
 
-      // FK scalar column line — supports the same `columnMappings` knob as
-      // any other property. The FK field name is a "virtual property" from
-      // the consumer's perspective and can be re-mapped to a snake_case
-      // database column via the existing config.
-      const colMap = options.columnMappings?.[entity.name]?.[fkName];
-      const colMapAttr = colMap ? ` @map("${colMap}")` : '';
-      lines.push(`  ${fkName} ${fkType}${uniqueAttr}${colMapAttr}`);
+      // Codex P1 fix: if the entity ALREADY declares a property with this
+      // exact name, the property iteration emitted the column line earlier.
+      // Emitting a second one duplicates the field and Prisma rejects it.
+      // Skip the FK column emission in that case; the relation field still
+      // references the existing column via @relation(fields: [...]).
+      const fkAlreadyDeclared = entity.properties.some((p) => p.name === fkName);
+      if (!fkAlreadyDeclared) {
+        // FK scalar column line — supports the same `columnMappings` knob as
+        // any other property. The FK field name is a "virtual property" from
+        // the consumer's perspective and can be re-mapped to a snake_case
+        // database column via the existing config.
+        const colMap = options.columnMappings?.[entity.name]?.[fkName];
+        const colMapAttr = colMap ? ` @map("${colMap}")` : '';
+        lines.push(`  ${fkName} ${fkType}${uniqueAttr}${colMapAttr}`);
+      }
 
-      // Relation field line.
+      // Relation field line — always emitted, whether the FK column came
+      // from the property iteration or from us.
       lines.push(`  ${rel.name} ${rel.target} @relation(fields: [${fkName}], references: [id])`);
 
-      // belongsTo without a declared back-relation: Prisma rejects this.
-      // `ref` is "loose by design" — no warning, the author is explicitly
-      // signalling that no back-relation is expected on the target.
-      if (rel.kind === 'belongsTo' && opposites.length === 0) {
+      // Missing-backside diagnostic. Codex P1 fix: this used to be gated to
+      // `belongsTo` only, with the rationale that `ref` was "loose by design".
+      // But `ref` emits the same `@relation(...)` shape, which Prisma rejects
+      // without the opposite field. Fire the warning for both kinds.
+      if (opposites.length === 0) {
         diagnostics.push({
           severity: 'warning',
           code: 'PRISMA_RELATION_MISSING_BACKSIDE',
           entity: entity.name,
           message:
-            `Relationship '${entity.name}.${rel.name}: ${rel.target}' (belongsTo) has no back-relation declared on ${rel.target}. ` +
+            `Relationship '${entity.name}.${rel.name}: ${rel.target}' (${rel.kind}) has no back-relation declared on ${rel.target}. ` +
             `Prisma rejects one-sided relations — add 'hasMany' or 'hasOne' on ${rel.target} pointing back to ${entity.name}.`,
         });
       }
@@ -416,6 +512,7 @@ function emitModel(
   entity: IREntity,
   ir: IR,
   options: PrismaProjectionOptions,
+  context: RelationContext,
 ): ModelEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
@@ -459,7 +556,7 @@ function emitModel(
   if (entity.relationships.length > 0) {
     lines.push('');
     for (const rel of entity.relationships) {
-      const { lines: relLines, diagnostics: relDiags } = emitRelationship(entity, rel, ir, options);
+      const { lines: relLines, diagnostics: relDiags } = emitRelationship(entity, rel, ir, options, context);
       lines.push(...relLines);
       diagnostics.push(...relDiags);
     }
@@ -536,9 +633,14 @@ export class PrismaProjection implements ProjectionTarget {
     const storeByEntity = new Map<string, IRStore['target']>();
     for (const s of ir.stores) storeByEntity.set(s.entity, s.target);
 
-    const modelBlocks: string[] = [];
+    // Two-pass emission. Pass 1: decide which entities will be emitted and
+    // record the skip diagnostics for the rest. Pass 2: emit the chosen
+    // entities, passing the set of emitted names so the relationship emitter
+    // can refuse to point at non-emitted targets (Codex P1 fix for dangling
+    // references).
+    const toEmit: IREntity[] = [];
+    const emittedEntities = new Set<string>();
 
-    // Iterate `ir.entities` in source order (Checkpoint 1: no re-sorting).
     for (const entity of ir.entities) {
       // 1. Skip explicitly external entities.
       if (entity.external === true) {
@@ -572,7 +674,15 @@ export class PrismaProjection implements ProjectionTarget {
         continue;
       }
 
-      const { lines, diagnostics: modelDiags } = emitModel(entity, ir, options);
+      toEmit.push(entity);
+      emittedEntities.add(entity.name);
+    }
+
+    // Source order preserved (no re-sort).
+    const context: RelationContext = { emittedEntities };
+    const modelBlocks: string[] = [];
+    for (const entity of toEmit) {
+      const { lines, diagnostics: modelDiags } = emitModel(entity, ir, options, context);
       diagnostics.push(...modelDiags);
       modelBlocks.push(lines.join('\n'));
     }

@@ -667,10 +667,13 @@ describe('PrismaProjection — relationship wiring (Step 3)', () => {
     expect(code).toMatch(/^\s+user User @relation\(fields: \[userId\], references: \[id\]\)$/m);
   });
 
-  it("emits a `ref` relationship like belongsTo, but does NOT warn about missing back-relation", () => {
-    // `ref` is the "loose" relation kind — the author explicitly signals
-    // "no back-relation expected on the target". The projection still emits
-    // the FK + @relation but does NOT raise PRISMA_RELATION_MISSING_BACKSIDE.
+  it("emits a `ref` relationship like belongsTo, AND warns about missing back-relation (Codex v0.9.x fix)", () => {
+    // `ref` was originally treated as "loose by design" — no missing-backside
+    // warning. Codex review pointed out that ref still emits a full Prisma
+    // `@relation(...)`, which Prisma rejects without the opposite field.
+    // The projection now warns for both belongsTo AND ref when the opposite
+    // is missing. Authors who genuinely want a one-sided relation must add
+    // the back-side declaration to the target entity.
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Event', {
@@ -683,11 +686,15 @@ describe('PrismaProjection — relationship wiring (Step 3)', () => {
     const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
     const code = result.artifacts[0].code;
 
-    // Same emission shape as belongsTo.
+    // Same emission shape as belongsTo: FK + @relation.
     expect(code).toMatch(/^\s+createdById String$/m);
     expect(code).toMatch(/^\s+createdBy Actor @relation\(fields: \[createdById\], references: \[id\]\)$/m);
-    // But explicitly no missing-backside warning — `ref` opts out of that check.
-    expect(result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE')).toBeUndefined();
+    // Missing-backside warning now fires for ref too.
+    const warn = result.diagnostics.find(
+      (d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE' && d.entity === 'Event',
+    );
+    expect(warn).toBeDefined();
+    expect(warn?.severity).toBe('warning');
   });
 
   it("uses IR's `foreignKey` annotation when present", () => {
@@ -920,3 +927,176 @@ describe('PrismaProjection — PRISMA_RELATION_UNIMPLEMENTED is retired for hand
     expect(result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_UNIMPLEMENTED')).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression tests for the v0.9.0 Codex review (six bugs).
+// Each `it()` reproduces ONE finding; the corresponding fix in generator.ts
+// flips it from red to green. Do NOT remove these — they guard against the
+// specific failure modes that the happy-path tests above did not cover.
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — Codex review fixes (v0.9.x)', () => {
+  it('Codex P1: does NOT emit a duplicate FK column when entity already declares the FK property explicitly', () => {
+    // Common modeling pattern: author writes `property required authorId: string`
+    // AND `belongsTo author: Author`. Previously the emitter unconditionally
+    // added a second `authorId String` line, producing duplicate-field
+    // validation errors in Prisma. The emitter must reuse the existing
+    // property line, not double-emit.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
+      }),
+      bareEntity('Book', {
+        properties: [
+          // Author explicitly declared the FK as a Manifest property.
+          { name: 'authorId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
+    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    const bookBlock = code.slice(code.indexOf('model Book {'), code.indexOf('\n}', code.indexOf('model Book')));
+    const authorIdLines = bookBlock.match(/^\s+authorId\s/gm) ?? [];
+    expect(authorIdLines).toHaveLength(1); // exactly one, not two
+    // The relation field still emits (so Prisma can match the FK to the relation).
+    expect(bookBlock).toMatch(/^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m);
+  });
+
+  it("Codex P1: emits PRISMA_RELATION_MISSING_BACKSIDE for a one-sided `ref` (not just belongsTo)", () => {
+    // The previous emitter gated the missing-backside warning to belongsTo
+    // only — `ref` was called "loose by design". But `ref` emits a full
+    // Prisma `@relation(...)` which Prisma rejects without the opposite
+    // field. The diagnostic must fire for `ref` too.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Event', {
+        relationships: [{ name: 'createdBy', kind: 'ref', target: 'Actor' }],
+      }),
+      bareEntity('Actor'), // no back-relation declared
+    );
+    ir.stores.push(durableStore('Event'), durableStore('Actor'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    const warn = result.diagnostics.find(
+      (d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE' && d.entity === 'Event',
+    );
+    expect(warn).toBeDefined();
+    expect(warn?.severity).toBe('warning');
+    expect(warn?.message).toMatch(/ref/);
+    expect(warn?.message).toMatch(/Actor/);
+  });
+
+  it('Codex P1: emits PRISMA_RELATION_TARGET_NOT_EMITTED when a relation points to a skipped entity', () => {
+    // If `Book belongsTo author: Author` but Author is `external entity`
+    // (or has store target memory/localStorage / no store), Book's model
+    // references a Prisma model that was never emitted. The schema is
+    // invalid. The projection must diagnose this AND skip emitting the
+    // dangling relation field.
+    const ir = emptyIR();
+    ir.entities.push(
+      { ...bareEntity('Author'), external: true }, // explicitly external → not emitted
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
+    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    const dangling = result.diagnostics.find(
+      (d) => d.code === 'PRISMA_RELATION_TARGET_NOT_EMITTED' && d.entity === 'Book',
+    );
+    expect(dangling).toBeDefined();
+    expect(dangling?.message).toMatch(/Author/);
+
+    const code = result.artifacts[0].code;
+    // The relation field and FK column for the dangling reference must NOT
+    // be emitted — they would point at a non-existent Prisma model.
+    expect(code).not.toMatch(/^\s+author Author @relation/m);
+    expect(code).not.toMatch(/^\s+authorId String$/m);
+  });
+
+  it('Codex P1: emits MongoDB-compatible @id mapping when provider is mongodb', () => {
+    // Prisma's MongoDB connector requires the @id field to map to `_id` and
+    // typically uses ObjectId semantics. Bare `id String @id` is rejected
+    // by Mongo. The projection must auto-emit the Mongo-specific attributes
+    // when provider is mongodb, OR (at minimum) emit a hard diagnostic.
+    // We auto-emit because the canonical pattern is well-known and users
+    // can override via typeMappings / columnMappings.
+    const ir = emptyIR();
+    ir.entities.push(bareEntity('Widget'));
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'mongodb' },
+    }).artifacts[0].code;
+
+    // The @id field must include @map("_id") so Mongo's _id column works.
+    expect(code).toMatch(/^\s+id String @id .*@map\("_id"\)/m);
+    // And the ObjectId db attribute, since Prisma's Mongo connector defaults
+    // to that. Users wanting a different shape override via typeMappings.
+    expect(code).toMatch(/@db\.ObjectId/);
+  });
+
+  it('Codex P2: findOppositeRelations excludes the relationship itself for self-relations', () => {
+    // A self-relation like `Tree belongsTo parent: Tree` previously matched
+    // itself when looking up opposites (target === fromEntity, filter only
+    // checked target name). Result: missing-backside diagnostic suppressed,
+    // generator emitted a one-sided self-relation that Prisma rejects.
+    // Fix: filter out the same relationship by name when computing opposites.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Tree', {
+        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Tree' }],
+      }),
+    );
+    ir.stores.push(durableStore('Tree'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    const warn = result.diagnostics.find(
+      (d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE' && d.entity === 'Tree',
+    );
+    // Without the self-exclusion fix, the relationship would match itself
+    // as an "opposite", the opposites array would be non-empty, and the
+    // warning would NOT fire. The fix makes the warning fire.
+    expect(warn).toBeDefined();
+  });
+
+  it('Codex P2: two-sided self-relations correctly trip PRISMA_RELATION_AMBIGUOUS (Prisma requires named @relation)', () => {
+    // A fully-declared self-relation with BOTH `belongsTo parent: Tree` and
+    // `hasMany children: Tree` is the textbook Prisma-needs-named-relation
+    // case — Prisma cannot match parent ↔ children automatically. With the
+    // self-exclusion fix to findOppositeRelations, the opposites array
+    // correctly contains the OTHER relationship (not itself); the
+    // `sameTargetCount > 1` check then correctly identifies the ambiguity
+    // and the projection refuses to emit without names. The previous
+    // (pre-fix) behavior accidentally also tripped this, but for the wrong
+    // reason (counting self as opposite). The fix preserves the diagnostic
+    // for the right reason.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Tree', {
+        relationships: [
+          { name: 'parent', kind: 'belongsTo', target: 'Tree' },
+          { name: 'children', kind: 'hasMany', target: 'Tree' },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Tree'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    // Ambiguity diagnostic fires for BOTH sides (parent and children).
+    const ambig = result.diagnostics.filter((d) => d.code === 'PRISMA_RELATION_AMBIGUOUS');
+    expect(ambig.length).toBeGreaterThanOrEqual(1);
+    // The relations are NOT emitted as fields — they'd be invalid in Prisma
+    // without @relation("name"). They appear as comment markers only.
+    const code = result.artifacts[0].code;
+    expect(code).not.toMatch(/^\s+parentId String/m);
+    expect(code).not.toMatch(/^\s+parent Tree @relation/m);
+    expect(code).not.toMatch(/^\s+children Tree\[\]$/m);
+  });
+});
+
