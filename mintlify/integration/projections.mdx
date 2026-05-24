@@ -6,6 +6,15 @@ description: 'Projections are a code-generation tool that reads compiled Manifes
 
 A **projection** reads your compiled Intermediate Representation (IR) and emits platform-specific artifacts. Projections are tooling — they do not redefine runtime semantics. Adding or changing a projection never changes what a Manifest program *means*; it only changes what code gets generated from it.
 
+## Available projections
+
+| Projection | CLI identifier | What it generates | Guide |
+| --- | --- | --- | --- |
+| Next.js | `nextjs` | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
+| Prisma  | `prisma` | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma) |
+
+Projections share a single contract — `ProjectionTarget.generate(ir, request)` returns one or more `ProjectionArtifact`s plus structured diagnostics. The CLI's `--projection` flag selects which projection runs; dispatch is generic (the registry resolves the name), so adding a new projection means registering it, not editing a hardcoded dispatch branch.
+
 ## What projections produce
 
 The Next.js projection ships four surfaces:
@@ -16,6 +25,12 @@ The Next.js projection ships four surfaces:
 | Command routes | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
 | TypeScript types | `ts.types` | `interface` declarations derived from your IR entity definitions |
 | Client SDK | `ts.client` | Typed fetch wrappers for calling your routes from browser or server-client code |
+
+The Prisma projection ships a single surface:
+
+| Surface | CLI identifier | What it generates |
+| --- | --- | --- |
+| Schema | `prisma.schema` | One `schema.prisma` file with models, `@relation` wiring, `@db.Decimal` precision, and projection-config-driven `@map`/`@@map`/`@@index` |
 
 ## Reads vs. writes
 
