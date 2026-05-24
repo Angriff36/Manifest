@@ -90,6 +90,82 @@ For `belongsTo` and `ref`, the foreign key property on the source instance holds
 Accessing a relationship on a non-existent instance returns `null` for singular relationships and `[]` for `hasMany`. Circular relationships are handled gracefully.
 </Tip>
 
+## Composite keys and referential actions
+
+Use composite keys when an entity's identity is a tuple of fields (for example, `tenantId + id` for multi-tenant tables) instead of a single `id` column. These declarations are normative IR and are honored by every projection that targets a relational database — including the [Prisma projection](/integration/projections#prisma-projection).
+
+### Composite primary keys
+
+Declare a composite primary key with a block-level `key` declaration. When `key` is present, do **not** also annotate an `id` property as the primary key — its identity is the tuple.
+
+```manifest
+entity Order {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+  property required total: number
+}
+```
+
+### Alternate keys
+
+Declare additional unique constraints that are **not** the primary key with `unique`. Each `unique` line maps to a separate `@@unique([...])` constraint and may be used as the target of a composite foreign key.
+
+```manifest
+entity AdminChatParticipant {
+  key [tenantId, id]
+  unique [tenantId, threadId, userId]
+
+  property required tenantId: string
+  property required id: string
+  property required threadId: string
+  property required userId: string
+}
+```
+
+### Composite foreign keys
+
+`belongsTo` and `ref` accept an explicit field list and (optionally) the columns they reference on the target. The single-column `with <name>` shorthand still works and remains backward-compatible.
+
+```manifest
+// Single-column FK (shorthand)
+belongsTo author: Author with authorId
+
+// Composite FK with explicit references
+belongsTo thread: AdminChatThread
+  fields [tenantId, threadId]
+  references [tenantId, id]
+  onDelete cascade
+```
+
+When `references` is omitted it defaults to `[id]`.
+
+### Referential actions
+
+Attach `onDelete` and `onUpdate` to any `belongsTo` or `ref` to control what happens to dependent rows when the referenced row is deleted or its key is changed.
+
+| Action | Effect |
+| --- | --- |
+| `cascade` | Delete or update dependents along with the referenced row. |
+| `restrict` | Block the delete or update while dependents exist. |
+| `setNull` | Set the dependent foreign-key columns to `null`. |
+| `setDefault` | Set the dependent foreign-key columns to their column defaults. |
+| `noAction` | Defer to the database's own constraint behavior. |
+
+```manifest
+belongsTo tenant: Account with tenantId onDelete restrict
+belongsTo item: LineItem
+  fields [tenantId, itemId]
+  references [tenantId, id]
+  onDelete cascade
+```
+
+Omitting an action emits nothing — the projection target uses its own default. This keeps generated schemas diff-clean against schemas that also omit the action.
+
+<Warning>
+  The embedded runtime is a single-key memory store. For composite foreign keys (`fields.length > 1`), `belongsTo` resolution is not attempted and returns `null` instead of guessing. To resolve composite relationships at runtime, supply a `storeProvider` backed by a real database.
+</Warning>
+
 ## Constraints
 
 Constraints are boolean expressions that validate entity state. You can attach them at the entity level (evaluated whenever an instance is created or mutated) or at the command level (evaluated before that command runs — see [Commands](/language/commands)).

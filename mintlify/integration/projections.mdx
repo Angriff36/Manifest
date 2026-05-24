@@ -163,6 +163,82 @@ const result = projection.generateRoute(ir, 'Recipe', {
 });
 ```
 
+## Prisma projection
+
+The Prisma projection emits a `schema.prisma` artifact (and, when a `provider` is configured, a `prisma.config.ts` companion required by Prisma 7+) from compiled IR. Use it when you want your Manifest IR to be the source of truth for your database schema.
+
+Surface identifier: `prisma.schema`.
+
+### When to use it
+
+Reach for `PrismaProjection` when you need to:
+
+- Generate a Prisma schema from Manifest entities and relationships.
+- Translate composite primary keys, alternate keys, and composite foreign keys into Prisma equivalents.
+- Centralize table/column mappings, decimal precision, and indexes in one config object.
+
+Entities whose store is `memory` or `localStorage`, or that have no store declaration or are marked external, are skipped — only durable entities are emitted.
+
+### Generating a schema
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
+import fs from 'fs/promises';
+
+const source = await fs.readFile('shop.manifest', 'utf-8');
+const { ir } = await compileToIR(source);
+
+const projection = new PrismaProjection();
+
+const result = projection.generate(ir, {
+  surface: 'prisma.schema',
+  options: {
+    provider: 'postgresql',
+    urlEnvVar: 'DATABASE_URL',
+    tableMappings: { Order: 'orders' },
+    typeMappings: { Order: { createdAt: 'BigInt', totalAmount: 'Decimal' } },
+  },
+});
+
+// result.artifacts[0] → schema.prisma
+// result.artifacts[1] → prisma.config.ts (only when `provider` is set)
+await fs.writeFile('prisma/schema.prisma', result.artifacts[0].code);
+if (result.artifacts[1]) {
+  await fs.writeFile('prisma.config.ts', result.artifacts[1].code);
+}
+```
+
+### Configuration options
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `provider` | `'postgresql' \| 'mysql' \| 'sqlite' \| ...` | Emits a `datasource db` block and a `prisma.config.ts` companion. |
+| `urlEnvVar` | `string` | Env var that holds the connection URL in the companion file. Defaults to `DATABASE_URL`. |
+| `tableMappings` | `Record<EntityName, string>` | Adds `@@map(...)` to override table names. |
+| `columnMappings` | `Record<EntityName, Record<PropName, string>>` | Adds `@map(...)` to override column names. |
+| `precision` | `Record<EntityName, Record<PropName, { precision, scale }>>` | Emits `@db.Decimal(p, s)` per field. |
+| `typeMappings` | `Record<EntityName, Record<PropName, string>>` | Overrides the IR-to-Prisma scalar mapping. Required for any property typed `number`. |
+| `foreignKeys` | `Record<EntityName, Record<RelName, string>>` | Overrides the FK field name for a `belongsTo` or `ref` that lacks an IR foreign-key annotation. |
+| `indexes` | `Record<EntityName, IndexEntry[]>` | Adds extra `@@index([...])` lines. |
+| `output` | `string` | Path hint for the schema artifact. Defaults to `schema.prisma`. |
+
+### Diagnostics
+
+The projection returns structured diagnostics; entities or columns that cannot be safely emitted are skipped:
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| `PRISMA_AMBIGUOUS_NUMBER` | error | A property typed `number` has no `typeMappings` entry. Column is skipped. |
+| `PRISMA_NO_ID_PROPERTY` | error | Entity has no `id` property and no `key` block. Model is skipped. |
+| `PRISMA_SKIPPED_NON_DURABLE` | info | Entity store is `memory` or `localStorage`. |
+| `PRISMA_SKIPPED_NO_STORE` | info | Entity has no store declaration. |
+| `PRISMA_SKIPPED_EXTERNAL` | info | Entity is marked external. |
+
+<Note>
+  Because `number` covers both integers and decimals, you must always declare an explicit Prisma type for `number` fields via `typeMappings` (for example `'Int'`, `'BigInt'`, `'Decimal'`, or `'Float'`). The projection refuses to guess.
+</Note>
+
 ## The projection boundary
 
 Projections handle transport concerns: authentication, HTTP conventions, response shaping, and read-path strategy. They do not own runtime responsibilities.
