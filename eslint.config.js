@@ -24,6 +24,8 @@ export default tseslint.config(
       // strict typing. See docs/integrations/capsule-pro/README.md for
       // their purpose.
       'docs/integrations/**/*.ts',
+      // Git worktrees managed by Claude Code tooling — never linted.
+      '.claude/worktrees/**',
     ],
   },
   // Default rule set for everything else.

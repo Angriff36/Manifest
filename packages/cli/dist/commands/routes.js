@@ -42,7 +42,6 @@ export async function routesCommand(options = {}) {
         const { compileToIR } = await import('@angriff36/manifest/ir-compiler');
         const { RoutesProjection } = await import('@angriff36/manifest/projections/routes');
         const projection = new RoutesProjection();
-        // 3. Compile all files and collect routes
         const allRoutes = [];
         const allDiagnostics = [];
         let filesCompiled = 0;
@@ -137,7 +136,7 @@ export async function routesCommand(options = {}) {
         }
     }
     catch (error) {
-        spinner.fail(`Route generation failed: ${error.message}`);
+        spinner.fail(`Route generation failed: ${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         process.exit(1);
     }

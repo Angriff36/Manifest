@@ -11,6 +11,16 @@ interface GenerateOptions {
     database: string;
     runtime: string;
     response: string;
+    /**
+     * Pre-resolved projection options sourced from manifest.config.{yaml,ts}.
+     * The CLI layer in index.ts merges these with --auth/--database/etc.
+     * flag overrides before invoking generateCommand.
+     *
+     * Keeping this generic (`Record<string, unknown>`) means we never have
+     * to update GenerateOptions when new projection-level config keys land
+     * — the projection's normalizeOptions is the contract.
+     */
+    projectionOptionsFromConfig?: Record<string, unknown>;
 }
 /**
  * Generate command handler

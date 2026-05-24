@@ -3,10 +3,8 @@ interface CommonOptions {
     src?: string;
     irRoot?: string[];
 }
-interface InspectEntityOptions extends CommonOptions {
-}
-interface DiffSourceVsIROptions extends CommonOptions {
-}
+type InspectEntityOptions = CommonOptions;
+type DiffSourceVsIROptions = CommonOptions;
 interface DuplicatesOptions {
     json?: boolean;
     entity?: string;

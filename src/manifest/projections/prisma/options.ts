@@ -107,6 +107,14 @@ export interface PrismaProjectionOptions {
   foreignKeys?: Record<EntityName, Record<string, string>>;
 
   /**
+   * Environment variable name for the database connection URL in the emitted
+   * `prisma.config.ts` companion artifact. Defaults to `"DATABASE_URL"`.
+   * Only relevant when `provider` is set (a `prisma.config.ts` is only emitted
+   * when a datasource block is also being emitted).
+   */
+  urlEnvVar?: string;
+
+  /**
    * Output path hint for the emitted artifact. The projection itself does
    * not write files; this value flows through to `ProjectionArtifact.pathHint`
    * so the CLI/consumer writer knows where to put it. Default: `"schema.prisma"`.
@@ -144,6 +152,7 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     indexes: input.indexes ?? {},
     typeMappings: input.typeMappings ?? {},
     foreignKeys: input.foreignKeys ?? {},
+    urlEnvVar: input.urlEnvVar,
     output: input.output ?? PRISMA_PROJECTION_DEFAULTS.output,
   };
 }

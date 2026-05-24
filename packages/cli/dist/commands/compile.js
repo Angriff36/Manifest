@@ -113,7 +113,8 @@ export async function compileCommand(source, options = {}) {
                 successCount++;
             }
             catch (error) {
-                fileSpinner.fail(`Failed to compile ${path.relative(process.cwd(), file)}: ${error.message}`);
+                const msg = error instanceof Error ? error.message : String(error);
+                fileSpinner.fail(`Failed to compile ${path.relative(process.cwd(), file)}: ${msg}`);
                 errorCount++;
             }
         }
@@ -128,7 +129,7 @@ export async function compileCommand(source, options = {}) {
         }
     }
     catch (error) {
-        spinner.fail(`Compilation failed: ${error.message}`);
+        spinner.fail(`Compilation failed: ${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         process.exit(1);
     }

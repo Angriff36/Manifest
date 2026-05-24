@@ -21,9 +21,11 @@ import { auditRoutesCommand } from './commands/audit-routes.js';
 import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import { auditGovernanceCommand } from './commands/audit-governance.js';
+import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
+import { configValidateCommand, configPrintDefaultsCommand, configInspectCommand, } from './commands/config.js';
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
-import { getConfig } from './utils/config.js';
+import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
 import { realpath, readFile } from 'node:fs/promises';
@@ -52,6 +54,11 @@ async function getPackageVersion() {
     catch {
         // fall through
     }
+    // Deliberate sentinel: returned only when the walk-up cannot locate
+    // package.json (e.g. the CLI is loaded outside the package layout).
+    // This is the "version is unknown" marker, not a real version string —
+    // hence the lint-rule exemption on the literal below.
+    // eslint-disable-next-line manifest/no-hardcoded-versions
     return '0.0.0';
 }
 const program = new Command();
@@ -107,17 +114,14 @@ program
     .option('--runtime <path>', 'Runtime import path')
     .option('--response <path>', 'Response helpers import path')
     .action(async (ir, options = {}) => {
-    const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
-    // Use CLI options, fall back to config, fall back to defaults
-    const finalOptions = {
+    // resolveNextJsProjectionOptions returns the user's raw nextjs options
+    // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
+    // CLI flag overrides are layered on inside generateCommand.
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+    await generateCommand(ir, {
         ...options,
-        auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-        database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-        runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-        response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
-    };
-    await generateCommand(ir, finalOptions);
+        projectionOptionsFromConfig,
+    });
 });
 /**
  * manifest build [source]
@@ -139,16 +143,15 @@ program
     .option('--response <path>', 'Response helpers import path')
     .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
-    const nextJsOptions = config?.projections?.nextjs?.options || config?.projections?.['nextjs']?.options || {};
-    // Use CLI options, fall back to config, fall back to defaults
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
     const finalOptions = {
         ...options,
-        auth: options.auth || nextJsOptions.authImportPath || nextJsOptions.authProvider || 'clerk',
-        database: options.database || nextJsOptions.databaseImportPath || '@/lib/database',
-        runtime: options.runtime || nextJsOptions.runtimeImportPath || '@/lib/manifest-runtime',
-        response: options.response || nextJsOptions.responseImportPath || '@/lib/manifest-response',
         irOutput: options.irOutput || config?.output || 'ir/',
-        codeOutput: options.codeOutput || config?.projections?.nextjs?.output || config?.projections?.['nextjs']?.output || 'generated/',
+        codeOutput: options.codeOutput ||
+            config?.projections?.nextjs?.output ||
+            config?.projections?.['nextjs']?.output ||
+            'generated/',
+        projectionOptionsFromConfig,
     };
     await buildCommand(source, finalOptions);
 });
@@ -333,6 +336,36 @@ program
     // Suppress unused-var noise from optional invokedAs lookup.
     void invokedAs;
 });
+/**
+ * `enforce-surface` — the strictest registry-vs-app check.
+ *
+ * Composes the governance detectors with three registry-aware detectors to
+ * stop agents and contributors from inventing duplicate or bypass write
+ * paths when a registered Manifest command already exists.
+ */
+program
+    .command('enforce-surface')
+    .description('Enforce that application code only writes through registered Manifest commands')
+    .requiredOption('--root <path>', 'Repository or application root to scan')
+    .requiredOption('--commands-registry <path>', 'Path to commands.json emitted from Manifest IR')
+    .option('--entities-registry <path>', 'Path to entities.json emitted from Manifest IR')
+    .option('--bypass-registry <path>', 'Path to bypasses.json (approved exceptions)')
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .option('--strict', 'Exit non-zero on any error finding', false)
+    .option('--include <glob...>', 'Additional include globs')
+    .option('--exclude <glob...>', 'Exclude globs (generated files, build output, fixtures, etc.)')
+    .action(async (options = {}) => {
+    await enforceSurfaceCommand({
+        root: options.root,
+        commandsRegistry: options.commandsRegistry,
+        entitiesRegistry: options.entitiesRegistry,
+        bypassRegistry: options.bypassRegistry,
+        format: options.format,
+        strict: !!options.strict,
+        include: options.include,
+        exclude: options.exclude,
+    });
+});
 program
     .command('audit-bypasses')
     .description('Validate the approved-bypass registry against the schema')
@@ -480,6 +513,37 @@ program
     });
     if (!result.ok)
         process.exit(1);
+});
+/**
+ * manifest config
+ *
+ * Inspection and validation surface for manifest.config.{yaml,yml,ts,js}.
+ * Generic to Manifest itself — not tied to any downstream consumer.
+ */
+const configProgram = program
+    .command('config')
+    .description('Inspect and validate manifest.config.{yaml,ts,js}');
+configProgram
+    .command('validate')
+    .description('Validate manifest.config against the JSON schema')
+    .option('--json', 'JSON output (and non-zero exit on failure)', false)
+    .action(async (options = {}) => {
+    await configValidateCommand({ json: !!options.json });
+});
+configProgram
+    .command('print-defaults')
+    .description('Print the canonical defaults Manifest applies when no config is set')
+    .option('--json', 'JSON output (default: yes)', true)
+    .action(async (options = {}) => {
+    await configPrintDefaultsCommand({ json: options.json !== false });
+});
+configProgram
+    .command('inspect')
+    .alias('print-effective')
+    .description('Print the effective config (defaults + user overrides). Stable, key-sorted; safe for CI snapshots.')
+    .option('--json', 'JSON output (default: yes)', true)
+    .action(async (options = {}) => {
+    await configInspectCommand({ json: options.json !== false });
 });
 /**
  * Run the CLI

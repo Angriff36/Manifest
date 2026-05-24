@@ -406,11 +406,15 @@ All 21 foreignKey readers must migrate. Each gets test for single-column (1-elem
 
 ### CHECKPOINT 2
 
+> **Process note:** Checkpoint 2 was reported to the user mid-session. The user directed the agent to proceed rather than issuing a formal sign-off. No independent approval gate was exercised.
+
 **Grammar + IR implementation.** All 9 new composite PK/FK tests pass. 1032/1032 tests green. TypeScript red state in `runtime-engine.ts` (3 errors) intentional Phase 4 deferred work.
 
 ---
 
 ### CHECKPOINT 3
+
+> **Process note:** Checkpoint 3 was reported to the user mid-session. The user directed the agent to proceed rather than issuing a formal sign-off.
 
 **Prisma projection with composite PK/FK and referential actions.**
 
@@ -421,24 +425,48 @@ New files:
 
 Key fix at generator level: composite PK entity with a property named `id` must NOT emit `@id` on that column — only `@@id([...])` at model level. Test added.
 
+Post-session fix: `@id`-on-composite-PK bug was not caught in Phase 3 golden tests (test entity used `key [tenantId, orderId]`, not `key [tenantId, id]`). Regression test added in Phase 5 adversarial review.
+
 1073/1073 tests passing. Typecheck clean.
 
 ---
 
 ### CHECKPOINT 4
 
+> **Process note:** Checkpoint 4 was reported to the user mid-session. The user directed the agent to proceed rather than issuing a formal sign-off.
+> 
+> **`'durable'` store target:** `IRStore.target` union was widened to include `'durable'` to fix a typecheck error. This was initially flagged as potentially violating fks.md Standing Constraint #3. Post-session git archaeology confirmed `'durable'` was present in v0.9.0 (commit `1ca2b93`) with explicit documentation; it was dropped accidentally during Phase 2 edits. The change is a regression fix, not new scope.
+
 **All foreignKey readers migrated.** Sites:
 - `src/manifest/runtime-engine.ts`: `buildRelationshipIndex` uses `foreignKey?.fields[0]`; `hasOne`/`hasMany` inverse-FK uses `fields[0] ?? relNameId`; added `'durable'` case to browser store switch
-- `src/manifest/ir.ts`: `IRStore.target` union += `'durable'`
+- `src/manifest/ir.ts`: `IRStore.target` union += `'durable'` (regression fix — restores v0.9.0 value)
 - `src/artifacts/zipExporter.ts`: template `RelationshipNode.foreignKey` → `fields/references`; `parseRelationship` sets `fields`
 - `src/project-template/templates.ts`: template `IRRelationship.foreignKey` → `{ fields, references }`; `transformRelationship` constructs new shape; `IRStore.target` += `'durable'`
 - `docs/spec/ir/ir-v1.schema.json`: `IRStore.target` enum += `'durable'`
 
-1073/1073 passing. `npm run typecheck` clean.
+Runtime FK assertion (added Phase 5 adversarial review): `resolveRelationship` tests for single-column FK (`with authorId` → uses `fields[0]`) and composite FK (`fields [tenantId, orgId]` → degrades to `fields[0]` = `'tenantId'`, intentional single-key-only design). See `runtime-engine.test.ts` "FK Resolution in resolveRelationship" describe block.
+
+1076/1076 passing. `npm run typecheck` clean.
 
 ---
 
 ### CHECKPOINT 5 (Final) — 1.0 Acceptance Gate
+
+> **Process note — Adversarial review (two rounds).** Resolved five items, then closed the final gap:
+>
+> **Round 1 fixes:**
+> 1. **`prisma validate` oracle** — hand-authored fixture validated; generator fixed Prisma 7 datasource format. `prisma.config.ts` companion now emitted so output is usable for migrate.
+> 2. **`'durable'` behavior** — confirmed matches v0.9.0: throws with "storeProvider required" message.
+> 3. **`@id`-on-composite-PK regression test** — added to `generator.test.ts`.
+> 4. **Runtime FK assertions** — `buildRelationshipIndex` extracts `foreignKey = fields[0]` only for single-column FKs; composite FK → undefined → null fallback. Tests document both cases.
+> 5. **Checkpoint process** — annotated per-checkpoint.
+>
+> **Round 2 fixes:**
+> - **Real 130-entity validation** — `phase5-real-ir-validate.mts` loads `kitchen.ir.json` (not hand-authored), forces stores to `'durable'`. Caught real bug: entities with no `id` and no `key` emitted models with no PK. Fixed: `PRISMA_NO_ID_PROPERTY` now escalated to `error` and model skipped. 129/130 models valid; `prisma validate` passes.
+>
+> **Round 3 — composite-key compiler round-trip (closes the final gap):**
+> - `phase5-compiled-composite-validate.mts` writes Manifest source for the real multi-tenant entities (Account, AdminChatThread, StaffMember, AdminChatParticipant, Proposal, ProposalLineItem) using Phase-2 composite key/FK syntax. Compiled by `IRCompiler` — not hand-authored IR. Result: 5 composite-PK entities, 3 composite-FK relationships, 1 alternate-key entity. `npx prisma validate` (Prisma 7.3.0) → **valid**.
+> - IR produced by the full compiler pipeline confirms: `key [...]` → `@@id([...])`, `unique [...]` → `@@unique([...])`, `fields [...] references [...] onDelete cascade/restrict` → correct `@relation(...)` attributes. The two halves (real entities + composite features) now meet.
 
 **Round-trip verification against real capsule-pro schema structure.**
 

@@ -220,7 +220,7 @@ export async function lintRoutesCommand(options = {}) {
         }
     }
     catch (error) {
-        spinner.fail(`Route linting failed: ${error.message}`);
+        spinner.fail(`Route linting failed: ${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         process.exit(1);
     }

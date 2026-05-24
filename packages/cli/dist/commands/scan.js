@@ -27,21 +27,64 @@ async function loadCompiler() {
 /**
  * Check if an expression string references user context
  */
-function expressionReferencesUser(expression) {
-    // Match user.* patterns (user.id, user.role, user.tenantId, etc.)
-    return /\buser\.[a-zA-Z_]/.test(expression);
-}
 /**
- * Check if a command requires user context based on its guards and policies
+ * Recursively walk an IRExpression (or a legacy `{expression: string}`
+ * wrapper) looking for any reference to `user.*`. This replaces a regex
+ * over the source string; on the v1 IR, guards/policies arrive as a
+ * discriminated union of expression nodes rather than as strings.
  */
-function commandRequiresUserContext(command, policies) {
-    // Check guards for user references
-    for (const guard of command.guards || []) {
-        if (expressionReferencesUser(guard.expression)) {
-            return true;
+function expressionReferencesUser(expr) {
+    if (expr == null)
+        return false;
+    // Legacy string form
+    if (typeof expr === 'string')
+        return /\buser\.[a-zA-Z_]/.test(expr);
+    // Legacy wrapper { expression: string }
+    if (typeof expr === 'object' && 'expression' in expr) {
+        return expressionReferencesUser(expr.expression);
+    }
+    // IRExpression discriminated union
+    if (typeof expr === 'object' && 'kind' in expr) {
+        const e = expr;
+        switch (e.kind) {
+            case 'identifier':
+                return e.name === 'user';
+            case 'member':
+                // user.X — object is `user` identifier (any property dereferenced
+                // counts as referencing user)
+                if (e.object && typeof e.object === 'object' &&
+                    e.object.kind === 'identifier' &&
+                    e.object.name === 'user') {
+                    return true;
+                }
+                return expressionReferencesUser(e.object);
+            case 'binary':
+                return expressionReferencesUser(e.left) || expressionReferencesUser(e.right);
+            case 'unary':
+                return expressionReferencesUser(e.operand);
+            case 'call': {
+                if (expressionReferencesUser(e.callee))
+                    return true;
+                const args = Array.isArray(e.args) ? e.args : [];
+                return args.some(expressionReferencesUser);
+            }
+            default:
+                return false;
         }
     }
-    // Check policies for user references
+    return false;
+}
+/**
+ * Check if a command requires user context based on its guards and policies.
+ * Operates on the canonical IRCommand/IRPolicy shapes from
+ * `@angriff36/manifest/ir`; legacy `{expression: string}` shapes are
+ * still handled by `expressionReferencesUser`.
+ */
+function commandRequiresUserContext(command, policies) {
+    for (const guard of command.guards || []) {
+        if (expressionReferencesUser(guard))
+            return true;
+    }
     const policyMap = new Map(policies.map(p => [p.name, p]));
     for (const policyName of command.policies || []) {
         const policy = policyMap.get(policyName);
@@ -436,7 +479,7 @@ async function scanPropertyAlignmentForIR(ir, runtimeConfig, buildConfig, projec
     catch (error) {
         warnings.push({
             file: schemaPath,
-            message: `Failed to parse Prisma schema: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Failed to parse Prisma schema: ${error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error)}`,
         });
         return warnings;
     }
@@ -461,8 +504,10 @@ async function scanPropertyAlignmentForIR(ir, runtimeConfig, buildConfig, projec
         }
         // Get property mapping if configured
         const propertyMapping = storeBindingsInfo.getPropertyMapping(entity.name);
-        // Scan properties
-        const entityWarnings = scanPropertyAlignment(entity.name, entity.properties.map((p) => ({ name: p.name, type: p.type })), prismaSchema, prismaModelName, propertyMapping);
+        // Scan properties — flatten IRType ({ name, nullable }) to a string
+        // so the helper's shape doesn't have to know about IR's full type
+        // graph. `entity.properties` is optional on IREntity; guard accordingly.
+        const entityWarnings = scanPropertyAlignment(entity.name, (entity.properties ?? []).map((p) => ({ name: p.name, type: p.type.name })), prismaSchema, prismaModelName, propertyMapping);
         // Add file context to warnings
         for (const warning of entityWarnings) {
             warnings.push({
@@ -535,12 +580,12 @@ export async function scanCommand(source, options = {}) {
                 }
             }
             catch (error) {
-                fileSpinner.fail(`Failed to scan ${formatPath(file)}: ${error.message}`);
+                fileSpinner.fail(`Failed to scan ${formatPath(file)}: ${(error instanceof Error ? error.message : String(error))}`);
                 result.errors.push({
                     file,
                     entityName: '',
                     commandName: '',
-                    message: error.message,
+                    message: (error instanceof Error ? error.message : String(error)),
                     suggestion: 'Check the file for syntax errors.',
                 });
             }
@@ -549,7 +594,9 @@ export async function scanCommand(source, options = {}) {
         if (result.errors.length === 0 && allIRs.length > 0) {
             const routeSpinner = ora('Scanning routes for context issues').start();
             try {
-                // Merge all IRs for route scanning
+                // Merge all IRs for route scanning. scanRoutes only reads
+                // `commands` and `policies` — we cast through `Partial<ScanIR>`
+                // because we deliberately produce a partial-IR shape here.
                 const mergedIR = {
                     commands: allIRs.flatMap(ir => ir.commands || []),
                     policies: allIRs.flatMap(ir => ir.policies || []),
@@ -568,7 +615,7 @@ export async function scanCommand(source, options = {}) {
                 }
             }
             catch (error) {
-                routeSpinner.info(`Route scanning skipped: ${error.message}`);
+                routeSpinner.info(`Route scanning skipped: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
             }
         }
         // Scan property alignment (Prisma schema validation) - P1-B
@@ -577,7 +624,8 @@ export async function scanCommand(source, options = {}) {
             try {
                 // Get build config for schema path
                 const configs = await loadAllConfigs(process.cwd());
-                // Merge all IRs for property scanning
+                // Merge all IRs for property scanning — partial-IR shape; same
+                // cast rationale as the route-scan path above.
                 const mergedIR = {
                     entities: allIRs.flatMap(ir => ir.entities || []),
                     commands: allIRs.flatMap(ir => ir.commands || []),
@@ -593,7 +641,7 @@ export async function scanCommand(source, options = {}) {
                 }
             }
             catch (error) {
-                propertySpinner.info(`Property alignment scanning skipped: ${error.message}`);
+                propertySpinner.info(`Property alignment scanning skipped: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
             }
         }
         // Output results
@@ -615,7 +663,7 @@ export async function scanCommand(source, options = {}) {
                     console.log(`    Command '${error.entityName}.${error.commandName}' has no policy.`);
                 }
                 else {
-                    console.log(`    ${error.message}`);
+                    console.log(`    ${(error instanceof Error ? error.message : String(error))}`);
                 }
                 if (error.suggestion) {
                     console.log(chalk.gray(`    → ${error.suggestion.split('\n').join('\n    → ')}`));
@@ -666,7 +714,7 @@ export async function scanCommand(source, options = {}) {
         }
     }
     catch (error) {
-        spinner.fail(`Scan failed: ${error.message}`);
+        spinner.fail(`Scan failed: ${(error instanceof Error ? (error instanceof Error ? error.message : String(error)) : String(error))}`);
         console.error(error);
         process.exit(1);
     }

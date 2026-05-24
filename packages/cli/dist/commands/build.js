@@ -20,10 +20,6 @@ export async function buildCommand(source, options) {
         spinner.text = 'Step 1/2: Compiling .manifest to IR...';
         // Run compile (silent mode, we handle output)
         const compileSpinner = ora('Compiling').start();
-        // Collect IR files that would be generated
-        const irFiles = [];
-        // For now, we'll call compileCommand but capture the output
-        // In a real implementation, we'd make compileCommand return the IR files
         await compileCommand(source, {
             output: options.irOutput,
             glob: options.glob,
@@ -41,6 +37,7 @@ export async function buildCommand(source, options) {
             database: options.database,
             runtime: options.runtime,
             response: options.response,
+            projectionOptionsFromConfig: options.projectionOptionsFromConfig,
         });
         spinner.succeed(`Build complete: IR → ${options.irOutput}, Code → ${options.codeOutput}`);
         // Show summary
@@ -53,7 +50,7 @@ export async function buildCommand(source, options) {
         console.log('');
     }
     catch (error) {
-        spinner.fail(`Build failed: ${error.message}`);
+        spinner.fail(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         process.exit(1);
     }

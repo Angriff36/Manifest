@@ -13,6 +13,8 @@ interface BuildOptions {
     database: string;
     runtime: string;
     response: string;
+    /** Forwarded to generate.ts so dispatcher/concreteCommandRoutes config flows through. */
+    projectionOptionsFromConfig?: Record<string, unknown>;
 }
 /**
  * Build command handler

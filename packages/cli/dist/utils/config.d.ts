@@ -133,7 +133,13 @@ export declare function configExists(cwd?: string): Promise<boolean>;
  */
 export declare function getActiveConfigPath(cwd?: string): Promise<string | null>;
 /**
- * Get Next.js projection options from config
+ * Get Next.js projection options from config.
+ *
+ * Legacy partial-shape getter retained for back-compat with internal call
+ * sites. New code should prefer `resolveNextJsProjectionOptions`, which
+ * returns the full NextJsProjectionOptions surface (including dispatcher
+ * and concreteCommandRoutes) and never invents defaults — the projection
+ * applies them itself from src/manifest/projections/nextjs/defaults.ts.
  */
 export declare function getNextJsOptions(cwd?: string): Promise<{
     authProvider: string;
@@ -147,6 +153,20 @@ export declare function getNextJsOptions(cwd?: string): Promise<{
     deletedAtProperty: string;
     appDir: string;
 }>;
+/**
+ * Resolve the full Next.js projection options object from a manifest
+ * config, without applying defaults.
+ *
+ * The returned shape is the user-supplied subset of NextJsProjectionOptions
+ * (typed as `Record<string, unknown>` here to avoid pulling the main
+ * package's types into the CLI). The projection's `normalizeOptions` is
+ * responsible for filling unset keys from NEXTJS_DEFAULTS / DISPATCHER_DEFAULTS
+ * / CONCRETE_COMMAND_ROUTES_DEFAULTS so there is exactly one defaults source.
+ *
+ * Returning the raw user shape lets the CLI layer it under CLI flag
+ * overrides (--auth, --database, etc.) before passing to the projection.
+ */
+export declare function resolveNextJsProjectionOptions(cwd?: string): Promise<Record<string, unknown>>;
 /**
  * Get output paths from config
  */

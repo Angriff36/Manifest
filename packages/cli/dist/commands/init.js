@@ -124,7 +124,10 @@ export async function initCommand(options = {}) {
         showPostInit(answers, config);
     }
     catch (error) {
-        if (error.isTtyError) {
+        // inquirer sets `isTtyError: true` on the thrown error when there is no
+        // TTY. Narrow against that field without committing to `any`.
+        const isTtyError = !!(error && typeof error === 'object' && error.isTtyError);
+        if (isTtyError) {
             // Not running in a TTY - use minimal defaults
             console.log(chalk.yellow('Not an interactive terminal - using defaults'));
             const defaultConfig = {
@@ -139,7 +142,8 @@ export async function initCommand(options = {}) {
             console.log('');
         }
         else {
-            console.error(chalk.red(`Init failed: ${error.message}`));
+            const msg = error instanceof Error ? error.message : String(error);
+            console.error(chalk.red(`Init failed: ${msg}`));
             console.error(error);
             process.exit(1);
         }

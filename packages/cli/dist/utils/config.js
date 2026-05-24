@@ -99,9 +99,10 @@ async function loadModule(modulePath) {
     // Try jiti first for TypeScript support
     try {
         const jiti = await import('jiti').then(m => m.default || m);
-        const load = jiti(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), {
-            interopDefault: true,
-        });
+        // jiti's exported factory shape is `(cwd, opts) => loader`; typed as a
+        // concrete signature so we don't lean on `Function`.
+        const jitiFactory = jiti;
+        const load = jitiFactory(typeof __filename !== 'undefined' ? path.dirname(__filename) : process.cwd(), { interopDefault: true });
         const module = load(modulePath);
         return module;
     }
@@ -238,7 +239,13 @@ export async function getActiveConfigPath(cwd = process.cwd()) {
     return null;
 }
 /**
- * Get Next.js projection options from config
+ * Get Next.js projection options from config.
+ *
+ * Legacy partial-shape getter retained for back-compat with internal call
+ * sites. New code should prefer `resolveNextJsProjectionOptions`, which
+ * returns the full NextJsProjectionOptions surface (including dispatcher
+ * and concreteCommandRoutes) and never invents defaults — the projection
+ * applies them itself from src/manifest/projections/nextjs/defaults.ts.
  */
 export async function getNextJsOptions(cwd = process.cwd()) {
     const { build } = await loadAllConfigs(cwd);
@@ -255,6 +262,25 @@ export async function getNextJsOptions(cwd = process.cwd()) {
         deletedAtProperty: options.deletedAtProperty || 'deletedAt',
         appDir: options.appDir || 'app',
     };
+}
+/**
+ * Resolve the full Next.js projection options object from a manifest
+ * config, without applying defaults.
+ *
+ * The returned shape is the user-supplied subset of NextJsProjectionOptions
+ * (typed as `Record<string, unknown>` here to avoid pulling the main
+ * package's types into the CLI). The projection's `normalizeOptions` is
+ * responsible for filling unset keys from NEXTJS_DEFAULTS / DISPATCHER_DEFAULTS
+ * / CONCRETE_COMMAND_ROUTES_DEFAULTS so there is exactly one defaults source.
+ *
+ * Returning the raw user shape lets the CLI layer it under CLI flag
+ * overrides (--auth, --database, etc.) before passing to the projection.
+ */
+export async function resolveNextJsProjectionOptions(cwd = process.cwd()) {
+    const { build } = await loadAllConfigs(cwd);
+    const options = (build.projections?.nextjs?.options ?? {});
+    // Shallow clone so callers can mutate without disturbing cached config.
+    return { ...options };
 }
 /**
  * Get output paths from config
@@ -479,7 +505,6 @@ export async function parsePrismaSchema(schemaPath) {
                 const [, fieldName, fieldType, modifier] = fieldMatch;
                 // Check for @id attribute
                 const hasId = /@id/.test(fieldLine);
-                const hasDefault = /@default\(/.test(fieldLine);
                 const isGenerated = /@default\(autoincrement\)|@updatedAt|@createdAt/.test(fieldLine);
                 fields.push({
                     name: fieldName,

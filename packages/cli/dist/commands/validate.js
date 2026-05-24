@@ -10,6 +10,12 @@ import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
 import Ajv from 'ajv';
+function isNodeFsError(e) {
+    return e instanceof Error && typeof e.code === 'string';
+}
+function errorMessage(e) {
+    return e instanceof Error ? e.message : String(e);
+}
 /**
  * Resolve the bundled schema path — works whether the CLI is run from inside
  * the manifest repo or installed as a package in a consumer project.
@@ -33,7 +39,7 @@ async function loadSchema(schemaPath) {
             const content = await fs.readFile(defaultPath, 'utf-8');
             return JSON.parse(content);
         }
-        catch (error) {
+        catch {
             throw new Error(`Bundled schema not found at ${defaultPath}. ` +
                 `This is a packaging bug — please report it. ` +
                 `Workaround: specify --schema <path>`);
@@ -70,24 +76,25 @@ function formatAjvError(error) {
     const field = error.instancePath
         ? error.instancePath.replace(/^\//, '').replace(/\//g, '.')
         : 'root';
+    const params = (error.params ?? {});
     switch (error.keyword) {
         case 'required': {
-            const missing = error.params?.missingProperty ?? '';
+            const missing = params.missingProperty ?? '';
             const prefix = error.instancePath ? `${field}.` : '';
             return `Missing required field: ${prefix}${missing}`;
         }
         case 'additionalProperties': {
-            const extra = error.params?.additionalProperty ?? '';
+            const extra = params.additionalProperty ?? '';
             return `Unknown field: ${field}.${extra}`;
         }
         case 'type':
-            return `${field} must be of type ${error.params?.type}`;
+            return `${field} must be of type ${params.type}`;
         case 'const':
-            return `${field} must be ${JSON.stringify(error.params?.allowedValue)}`;
+            return `${field} must be ${JSON.stringify(params.allowedValue)}`;
         case 'enum':
-            return `${field} must be one of: ${(error.params?.allowedValues ?? []).join(', ')}`;
+            return `${field} must be one of: ${(params.allowedValues ?? []).join(', ')}`;
         default:
-            return `${field}: ${error.message}`;
+            return `${field}: ${error.message ?? ''}`;
     }
 }
 /**
@@ -107,7 +114,7 @@ async function validateIR(irPath, schema, _strict) {
         return { valid, errors, warnings };
     }
     catch (error) {
-        if (error.code === 'ENOENT') {
+        if (isNodeFsError(error) && error.code === 'ENOENT') {
             return {
                 valid: false,
                 errors: [`File not found: ${irPath}`],
@@ -190,7 +197,7 @@ export async function validateCommand(ir, options) {
         }
     }
     catch (error) {
-        spinner.fail(`Validation failed: ${error.message}`);
+        spinner.fail(`Validation failed: ${errorMessage(error)}`);
         console.error(error);
         process.exit(1);
     }

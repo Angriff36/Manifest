@@ -19,6 +19,9 @@ async function loadDependencies() {
     };
     return { NextJsProjection, loadIR };
 }
+// Local type aliases: use the real projection types from the main
+// package. The CLI is a thin wrapper — `projection.generate(ir, request)`
+// returns the canonical ProjectionResult.
 /**
  * Get all IR files from input pattern
  */
@@ -49,16 +52,23 @@ async function generateFromIR(irFile, options, spinner) {
     // Create projection
     spinner.text = `Creating ${options.projection} projection`;
     if (options.projection === 'nextjs') {
+        // Full projection options = user config (incl. dispatcher.*, concreteCommandRoutes.*)
+        // overlaid with CLI flag overrides (--auth, --database, --runtime, --response).
+        // Unset keys fall through to NEXTJS_DEFAULTS inside the projection.
         const projectionOptions = {
-            authProvider: options.auth,
-            databaseImportPath: options.database,
-            runtimeImportPath: options.runtime,
-            responseImportPath: options.response,
+            ...(options.projectionOptionsFromConfig ?? {}),
+            // CLI flags win when explicitly provided. The CLI layer in index.ts
+            // already substitutes config values for missing flags, so any value
+            // arriving here represents an active intent.
+            ...(options.auth !== undefined ? { authProvider: options.auth } : {}),
+            ...(options.database !== undefined ? { databaseImportPath: options.database } : {}),
+            ...(options.runtime !== undefined ? { runtimeImportPath: options.runtime } : {}),
+            ...(options.response !== undefined ? { responseImportPath: options.response } : {}),
         };
         const projection = new NextJsProjection();
         // Generate based on surface
         if (options.surface === 'all') {
-            // Generate all surfaces
+            // Generate all surfaces (including the canonical dispatcher)
             await generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'route') {
@@ -68,6 +78,10 @@ async function generateFromIR(irFile, options, spinner) {
         else if (options.surface === 'command') {
             // Generate POST routes for all commands
             await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+        }
+        else if (options.surface === 'dispatcher') {
+            // Generate the canonical dispatcher route
+            await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
         }
         else if (options.surface === 'types') {
             // Generate TypeScript types
@@ -87,17 +101,59 @@ async function generateFromIR(irFile, options, spinner) {
     spinner.succeed(`Generated ${options.projection} code from ${path.basename(irFile)}`);
 }
 /**
- * Generate all projection surfaces
+ * Generate all projection surfaces.
+ *
+ * The dispatcher is the canonical write surface and is always emitted
+ * (unless `dispatcher.enabled: false`). Per-command concrete routes are
+ * **opt-in** (`concreteCommandRoutes.enabled: true`) — by default
+ * `--surface all` does NOT emit them, per the goal of dispatcher-only
+ * canonical writes. Read routes respect `readRoutes.enabled`.
+ *
+ * The projection itself returns info-diagnostics when these gates are
+ * closed, but skipping at the CLI layer avoids spamming the spinner with
+ * "skipped" lines for every entity/command.
  */
 async function generateAllSurfaces(projection, ir, outputDir, spinner, projectionOptions) {
-    spinner.text = 'Generating routes...';
-    await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
-    spinner.text = 'Generating commands...';
-    await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+    const readRoutesEnabled = projectionOptions?.readRoutes?.enabled !== false; // default true
+    const dispatcherEnabled = projectionOptions?.dispatcher?.enabled !== false; // default true
+    const concreteCommandsEnabled = projectionOptions?.concreteCommandRoutes?.enabled === true; // default false (opt-in)
+    if (readRoutesEnabled) {
+        spinner.text = 'Generating routes...';
+        await generateRoutes(projection, ir, outputDir, spinner, projectionOptions);
+    }
+    else {
+        spinner.info('Skipping read routes (readRoutes.enabled: false)');
+    }
+    if (concreteCommandsEnabled) {
+        spinner.text = 'Generating concrete command routes (opt-in)...';
+        await generateCommands(projection, ir, outputDir, spinner, projectionOptions);
+    }
+    else {
+        spinner.info('Skipping concrete per-command routes (concreteCommandRoutes.enabled: false — dispatcher is canonical)');
+    }
+    if (dispatcherEnabled) {
+        spinner.text = 'Generating dispatcher...';
+        await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
+    }
+    else {
+        spinner.info('Skipping dispatcher (dispatcher.enabled: false)');
+    }
     spinner.text = 'Generating types...';
     await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
     spinner.text = 'Generating client...';
     await generateClient(projection, ir, outputDir, spinner, projectionOptions);
+}
+/**
+ * Generate the canonical Manifest dispatcher route. Single artifact at
+ * `<appDir>/manifest/[entity]/commands/[command]/route.ts`.
+ */
+async function generateDispatcher(projection, ir, outputDir, spinner, projectionOptions) {
+    spinner.text = 'Generating dispatcher...';
+    const result = projection.generate(ir, {
+        surface: 'nextjs.dispatcher',
+        options: projectionOptions,
+    });
+    await writeProjectionResult(result, outputDir);
 }
 /**
  * Generate GET routes for entities
@@ -212,7 +268,8 @@ export async function generateCommand(ir, options) {
                 successCount++;
             }
             catch (error) {
-                fileSpinner.fail(`Failed to generate from ${path.relative(process.cwd(), irFile)}: ${error.message}`);
+                const msg = error instanceof Error ? error.message : String(error);
+                fileSpinner.fail(`Failed to generate from ${path.relative(process.cwd(), irFile)}: ${msg}`);
                 errorCount++;
             }
         }
@@ -227,7 +284,7 @@ export async function generateCommand(ir, options) {
         }
     }
     catch (error) {
-        spinner.fail(`Generation failed: ${error.message}`);
+        spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
         console.error(error);
         process.exit(1);
     }

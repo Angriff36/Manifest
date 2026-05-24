@@ -316,6 +316,8 @@ export async function discoverIRFiles(options = {}) {
 export async function inspectCompiledIR(options = {}) {
     const files = await discoverIRFiles(options);
     const entities = new Map();
+    const isObj = (v) => !!v && typeof v === 'object';
+    const strField = (v, k) => isObj(v) && typeof v[k] === 'string' ? v[k] : null;
     for (const file of files) {
         let parsed;
         try {
@@ -329,7 +331,7 @@ export async function inspectCompiledIR(options = {}) {
         const irEvents = Array.isArray(parsed?.events) ? parsed.events : [];
         const irPolicies = Array.isArray(parsed?.policies) ? parsed.policies : [];
         for (const entity of irEntities) {
-            const entityName = typeof entity?.name === 'string' ? entity.name : null;
+            const entityName = strField(entity, 'name');
             if (!entityName)
                 continue;
             const commands = irCommands
@@ -340,14 +342,14 @@ export async function inspectCompiledIR(options = {}) {
                 .flatMap((c) => c.emits.filter((e) => typeof e === 'string'));
             const properties = Array.isArray(entity?.properties)
                 ? entity.properties
-                    .map((p) => (typeof p?.name === 'string' ? p.name : null))
+                    .map((p) => strField(p, 'name'))
                     .filter((v) => !!v)
                 : [];
             const policies = Array.isArray(entity?.policies)
                 ? entity.policies.filter((p) => typeof p === 'string')
                 : [];
             const events = irEvents
-                .map((e) => (typeof e?.name === 'string' ? e.name : null))
+                .map((e) => strField(e, 'name'))
                 .filter((v) => !!v);
             const list = entities.get(entityName) || [];
             list.push({
@@ -442,7 +444,7 @@ export async function inspectRouteSurfaceForCommand(options) {
                 source?.entity === options.entityName &&
                 source?.command === options.commandName;
             const samePath = options.routePath ? route?.path === options.routePath : true;
-            if (sameCommand && samePath) {
+            if (sameCommand && samePath && source && route.path && route.method) {
                 matches.push({
                     routePath: route.path,
                     method: route.method,

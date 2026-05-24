@@ -158,8 +158,11 @@ describe('PrismaProjection — generic fixture (Widget)', () => {
       },
     });
 
-    expect(result.artifacts).toHaveLength(1);
+    // provider is set → schema artifact + prisma.config.ts companion
+    expect(result.artifacts).toHaveLength(2);
     const code = result.artifacts[0].code;
+    expect(result.artifacts[1].id).toBe('prisma.config.ts');
+    expect(result.artifacts[1].code).toMatch(/DATABASE_URL/);
 
     expect(code).toMatch(/datasource db \{/);
     expect(code).toMatch(/provider = "postgresql"/);

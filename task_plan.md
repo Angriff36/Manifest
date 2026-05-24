@@ -22,7 +22,7 @@
 - [x] Grammar/parser for composite FK, composite PK, non-id references, referential actions
 - [x] IR extension (foreignKey becomes structured form)
 - [x] Unit tests for 3 representative entities (9 tests added, all passing)
-- [ ] CHECKPOINT 2 — Core diffs + passing tests
+- [x] CHECKPOINT 2 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 3 — Projection implementation ✅
 - [x] Composite @@id primary keys
@@ -30,20 +30,21 @@
 - [x] Non-id references targets
 - [x] onDelete/onUpdate referential actions
 - [x] Golden tests for 3 entities + regression test
-- [ ] CHECKPOINT 3 — Projection diffs + golden tests
+- [x] CHECKPOINT 3 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 4 — Migrate all foreignKey readers ✅
 - [x] Migrate all readers from Phase 0(D)
 - [x] Assertion/test for each migrated reader
 - [x] Full typecheck/build green
-- [ ] CHECKPOINT 4 — Reader migration diffs + green build
+- [x] CHECKPOINT 4 — reported to user; user directed agent to proceed (no independent approval gate)
 
 ### Phase 5 — Round-trip verification ✅
 - [x] Generate schema.prisma for real multi-tenant entities
-- [x] Diff against real schema
-- [x] Report remaining diffs
+- [x] `npx prisma validate` PASSED on generated schema (Prisma 7.3.0 at capsule-pro)
+- [x] Diff against real schema; remaining diffs are all PROJECTION-CONFIG gaps (no SEMANTIC-CORE gaps)
 - [x] Final notes.md update
-- [ ] CHECKPOINT 5 — Final report (1.0 acceptance gate)
+- [x] Runtime FK resolution assertions added (single-column + composite degradation)
+- [x] CHECKPOINT 5 — reported to user; pending user final acceptance
 
 ## Status
 Phase 0 COMPLETE

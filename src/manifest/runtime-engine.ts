@@ -508,9 +508,13 @@ export class RuntimeEngine {
               `For server-side use, import SupabaseStore from stores.node.ts.`
             );
           case 'durable':
+            // `'durable'` is a backend-neutral semantic signal — it intentionally does NOT
+            // map to any built-in store. Consumers MUST supply a custom store adapter via
+            // the storeProvider option (e.g. a Prisma-backed adapter). This is the deliberate
+            // handoff point: core stays backend-neutral. (Matches v0.9.0 behavior.)
             throw new Error(
-              `Durable storage for entity '${entity.name}' is not available in browser environments. ` +
-              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option.`
+              `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
+              `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`
             );
           default: {
             // Exhaustive check for valid IR store targets
@@ -544,7 +548,14 @@ export class RuntimeEngine {
           relationshipName: rel.name,
           kind: rel.kind,
           targetEntity: rel.target,
-          foreignKey: rel.foreignKey?.fields[0],
+          // Only extract the FK field name for single-column FKs.
+          // Composite FKs (fields.length > 1) are left undefined so the runtime
+          // falls back to the `${relName}Id` convention rather than silently
+          // resolving by fields[0] alone and potentially returning the wrong row.
+          // Composite FK resolution requires a full store adapter (e.g. Prisma).
+          foreignKey: rel.foreignKey && rel.foreignKey.fields.length === 1
+            ? rel.foreignKey.fields[0]
+            : undefined,
         });
       }
     }

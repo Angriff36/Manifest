@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "904cbc1846583dccc24c13011980831932d8ff7d5d4e352f930234d8c6c3bde2",
-    "compilerVersion": "0.3.8",
+    "irHash": "c79da4af0b116477d4159489ab80806806d18f570c398fef26d5f8eeaf60718d",
+    "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },

@@ -44,6 +44,79 @@ All normative statements use RFC 2119 language (MUST, SHOULD, MAY). Advisory gui
 
 ## Language / IR Changes (Normative)
 
+### Composite Primary Keys, Composite Foreign Keys, and Referential Actions (v1.0)
+
+This section is normative for all projection and IR consumers as of v1.0.
+
+#### Composite Primary Keys
+
+An entity MAY declare a composite primary key using the `key` block-level declaration:
+
+```manifest
+entity Order {
+  key [tenantId, id]
+  property required tenantId: string
+  property required id: string
+}
+```
+
+**IR**: `IREntity.key?: string[]`. When present and non-empty, the entity's identity is the tuple of those fields. Projection consumers MUST use `@@id([...])` for Prisma and equivalent constructs for other targets.
+
+When `key` is set, a property named `id` MUST NOT receive a `@id` annotation — it is part of the composite PK, not a standalone identity.
+
+#### Alternate Keys (Non-PK Unique Constraints)
+
+An entity MAY declare one or more alternate key groups using `unique`:
+
+```manifest
+entity AdminChatParticipant {
+  key [tenantId, id]
+  unique [tenantId, threadId, userId]
+  ...
+}
+```
+
+**IR**: `IREntity.alternateKeys?: string[][]`. Each entry is a column list for a `@@unique` constraint. Used as FK reference targets for composite relations that don't point at the PK.
+
+#### Composite Foreign Keys
+
+A `belongsTo` or `ref` relationship MAY declare the FK field list and (optionally) the referenced columns:
+
+```manifest
+// Single-column FK (backward-compatible)
+belongsTo author: Author with authorId
+
+// Composite FK with explicit references
+belongsTo thread: AdminChatThread fields [tenantId, threadId] references [tenantId, id] onDelete cascade
+
+// Cross-order composite FK
+belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenantId] onDelete cascade
+```
+
+**IR**: `IRRelationship.foreignKey?: { fields: string[]; references?: string[] }`. Absent `references` defaults to `["id"]` at projection time. The `with <name>` shorthand compiles to `{ fields: ["<name>"] }` (backward-compatible).
+
+#### Referential Actions
+
+`onDelete` and `onUpdate` actions MAY be declared on any `belongsTo` or `ref` relationship:
+
+```manifest
+belongsTo tenant: Account with tenantId onDelete restrict
+belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onDelete cascade
+```
+
+Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
+
+**IR**: `IRRelationship.onDelete?: RefAction`, `IRRelationship.onUpdate?: RefAction`. **Absent means emit nothing** — let the projection target use its own default. This is intentional: entities without an explicit action diff cleanly against schemas that also omit it.
+
+#### Runtime behavior for composite FK
+
+The Manifest runtime engine is a single-key memory store. Composite FKs are a Prisma projection concern only. At runtime:
+
+- Single-column FK (`fields.length === 1`): `belongsTo` resolution uses `fields[0]` as the FK property name.
+- Composite FK (`fields.length > 1`): resolution is **not attempted** — falls back to the `${relationshipName}Id` convention and returns `null` if not present. This is explicit, not silent.
+
+Consumers requiring composite FK resolution MUST supply a `storeProvider` backed by a real database.
+
 ### Constraint Blocks
 
 Constraints are boolean expressions that produce structured outcomes.

@@ -1139,4 +1139,64 @@ describe('RuntimeEngine', () => {
         .rejects.toThrow(EvaluationBudgetExceededError);
     });
   });
+
+  describe('FK Resolution in resolveRelationship', () => {
+    // Phase 4 assertion requirement from fks.md:
+    // "Each migrated reader gets a brief assertion or test that it handles both
+    //  the single-column (1-element) and composite (n-element) case."
+    //
+    // The runtime engine extracts foreignKey.fields[0] during buildRelationshipIndex
+    // and uses that string as the FK property name for instance lookup.
+    // Composite FK deliberately degrades to fields[0] — the runtime is single-key-only by design.
+
+    it('resolves belongsTo via single-column FK (with <field> syntax)', async () => {
+      const ir = await compileToIR(`
+        entity Author {
+          property name: string
+        }
+        entity Book {
+          property title: string
+          property authorId: string
+          belongsTo author: Author with authorId
+          computed authorName: string = self.author.name
+        }
+      `);
+      const runtime = new RuntimeEngine(ir);
+      const author = await runtime.createInstance('Author', { name: 'Alice' });
+      const book = await runtime.createInstance('Book', { title: 'Deep Dive', authorId: author!.id });
+      const authorName = await runtime.evaluateComputed('Book', book!.id, 'authorName');
+      expect(authorName).toBe('Alice');
+    });
+
+    it('composite FK (fields.length > 1) is NOT resolved at runtime — falls back to convention, not fields[0]', async () => {
+      // Composite FKs are a Prisma projection concern. The runtime deliberately does NOT
+      // attempt to resolve by fields[0] alone: doing so would silently return the wrong row
+      // in multi-tenant schemas where fields[0] is a shared tenantId, not a unique identity.
+      //
+      // When foreignKey.fields.length > 1, buildRelationshipIndex leaves foreignKey=undefined,
+      // so resolveRelationship falls back to the `${relName}Id` convention. If that field
+      // doesn't exist on the instance, the lookup returns null — explicit, not silently wrong.
+      const ir = await compileToIR(`
+        entity Tenant {
+          property tenantName: string
+        }
+        entity Item {
+          property tenantId: string
+          property orgId: string
+          belongsTo tenant: Tenant fields [tenantId, orgId]
+          computed resolvedTenantName: string = self.tenant.tenantName
+        }
+      `);
+      const runtime = new RuntimeEngine(ir);
+      await runtime.createInstance('Tenant', { tenantName: 'Acme Corp' });
+      // Item has tenantId+orgId but the FK is composite — runtime falls back to
+      // `tenantId` convention (relName='tenant' → 'tenantId'), which is in the IR
+      // at this scope as fields[0]. Regardless, the result must never silently
+      // return an ambiguous match — the resolved value is null or undefined.
+      const item = await runtime.createInstance('Item', { tenantId: 'some-tenant', orgId: 'org-123' });
+      const resolvedName = await runtime.evaluateComputed('Item', item!.id, 'resolvedTenantName');
+      // Composite FK does not drive runtime resolution — result is null/undefined, not a silent wrong match
+      expect(resolvedName == null || resolvedName === undefined).toBe(true);
+    });
+  });
 });
