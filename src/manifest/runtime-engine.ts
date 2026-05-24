@@ -415,7 +415,7 @@ export class RuntimeEngine {
     relationshipName: string;
     kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
     targetEntity: string;
-    foreignKey?: string;
+    foreignKey?: string; // single-column FK field name for runtime lookup
   }> = new Map();
 
   /** Memoization cache for resolved relationships to avoid repeated store queries */
@@ -507,6 +507,11 @@ export class RuntimeEngine {
               `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
               `For server-side use, import SupabaseStore from stores.node.ts.`
             );
+          case 'durable':
+            throw new Error(
+              `Durable storage for entity '${entity.name}' is not available in browser environments. ` +
+              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option.`
+            );
           default: {
             // Exhaustive check for valid IR store targets
             const _unsupportedTarget: never = storeConfig.target;
@@ -539,7 +544,7 @@ export class RuntimeEngine {
           relationshipName: rel.name,
           kind: rel.kind,
           targetEntity: rel.target,
-          foreignKey: rel.foreignKey,
+          foreignKey: rel.foreignKey?.fields[0],
         });
       }
     }
@@ -619,7 +624,7 @@ export class RuntimeEngine {
 
         if (inverseRel) {
           // Use the inverse relationship's foreign key
-          const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
+          const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstances(rel.targetEntity);
           result = allTargets.find(t => t[fkProperty] === sourceId) ?? null;
         } else {
@@ -646,7 +651,7 @@ export class RuntimeEngine {
         );
 
         if (inverseRel) {
-          const fkProperty = inverseRel.foreignKey || `${inverseRel.name}Id`;
+          const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstances(rel.targetEntity);
           result = allTargets.filter(t => t[fkProperty] === sourceId);
         } else {

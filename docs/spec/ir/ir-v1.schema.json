@@ -226,7 +226,7 @@
       "required": ["entity", "target", "config"],
       "properties": {
         "entity": { "type": "string" },
-        "target": { "enum": ["memory", "localStorage", "postgres", "supabase"] },
+        "target": { "enum": ["memory", "localStorage", "postgres", "supabase", "durable"] },
         "config": {
           "type": "object",
           "additionalProperties": { "$ref": "#/definitions/IRValue" }

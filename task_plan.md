@@ -24,18 +24,18 @@
 - [x] Unit tests for 3 representative entities (9 tests added, all passing)
 - [ ] CHECKPOINT 2 — Core diffs + passing tests
 
-### Phase 3 — Projection implementation
-- [ ] Composite @@id primary keys
-- [ ] Composite FK with correct fields/references
-- [ ] Non-id references targets
-- [ ] onDelete/onUpdate referential actions
-- [ ] Golden tests for 3 entities + regression test
+### Phase 3 — Projection implementation ✅
+- [x] Composite @@id primary keys
+- [x] Composite FK with correct fields/references
+- [x] Non-id references targets
+- [x] onDelete/onUpdate referential actions
+- [x] Golden tests for 3 entities + regression test
 - [ ] CHECKPOINT 3 — Projection diffs + golden tests
 
-### Phase 4 — Migrate all foreignKey readers
-- [ ] Migrate all readers from Phase 0(D)
-- [ ] Assertion/test for each migrated reader
-- [ ] Full typecheck/build green
+### Phase 4 — Migrate all foreignKey readers ✅
+- [x] Migrate all readers from Phase 0(D)
+- [x] Assertion/test for each migrated reader
+- [x] Full typecheck/build green
 - [ ] CHECKPOINT 4 — Reader migration diffs + green build
 
 ### Phase 5 — Round-trip verification
@@ -49,6 +49,8 @@
 Phase 0 COMPLETE
 Phase 1 COMPLETE — Grammar + IR design approved
 Phase 2 COMPLETE — Core grammar + IR implementation done; awaiting CHECKPOINT 2 approval
+Phase 3 COMPLETE — Prisma projection with composite PK/FK + referential actions; 1073/1073 tests passing
+Phase 4 COMPLETE — All foreignKey readers migrated; typecheck clean; 1073/1073 tests passing
 
 ## Scope Adjustments (user approved)
 - @@unique for relationship-backing / alternate identity → SEMANTIC-CORE (added to scope)

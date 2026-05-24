@@ -212,7 +212,8 @@ export interface RelationshipNode extends ASTNode {
   kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
   name: string;
   target: string;
-  foreignKey?: string;
+  fields?: string[];
+  references?: string[];
   through?: string;
 }
 
@@ -747,10 +748,10 @@ export class Parser {
     const name = this.consume('IDENTIFIER').value;
     this.consume('OPERATOR', ':');
     const target = this.consume('IDENTIFIER').value;
-    let foreignKey: string | undefined, through: string | undefined;
+    let fields: string[] | undefined, references: string[] | undefined, through: string | undefined;
     if (this.check('KEYWORD', 'through')) { this.advance(); through = this.consume('IDENTIFIER').value; }
-    if (this.check('KEYWORD', 'with')) { this.advance(); foreignKey = this.consume('IDENTIFIER').value; }
-    return { type: 'Relationship', kind, name, target, foreignKey, through };
+    if (this.check('KEYWORD', 'with')) { this.advance(); fields = [this.consume('IDENTIFIER').value]; }
+    return { type: 'Relationship', kind, name, target, fields, references, through };
   }
 
   private parseCommand(): CommandNode {

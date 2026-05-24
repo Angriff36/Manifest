@@ -26,6 +26,10 @@
       "types": "./dist/manifest/projections/routes/generator.d.ts",
       "import": "./dist/manifest/projections/routes/generator.js"
     },
+    "./projections/prisma": {
+      "types": "./dist/manifest/projections/prisma/generator.d.ts",
+      "import": "./dist/manifest/projections/prisma/generator.js"
+    },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"

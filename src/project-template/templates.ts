@@ -1568,7 +1568,7 @@ export interface IRRelationship {
   name: string;
   kind: 'hasMany' | 'hasOne' | 'belongsTo' | 'ref';
   target: string;
-  foreignKey?: string;
+  foreignKey?: { fields: string[]; references?: string[] };
   through?: string;
 }
 
@@ -1580,7 +1580,7 @@ export interface IRConstraint {
 
 export interface IRStore {
   entity: string;
-  target: 'memory' | 'localStorage' | 'postgres' | 'supabase';
+  target: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable';
   config: Record<string, IRValue>;
 }
 
@@ -1776,7 +1776,8 @@ class IRCompiler {
   }
 
   private transformRelationship(r: RelationshipNode): IRRelationship {
-    return { name: r.name, kind: r.kind, target: r.target, foreignKey: r.foreignKey, through: r.through };
+    const foreignKey = r.fields ? { fields: r.fields, ...(r.references ? { references: r.references } : {}) } : undefined;
+    return { name: r.name, kind: r.kind, target: r.target, foreignKey, through: r.through };
   }
 
   private transformConstraint(c: ConstraintNode): IRConstraint {

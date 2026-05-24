@@ -121,7 +121,7 @@ export interface IRConstraint {
 
 export interface IRStore {
   entity: string;
-  target: 'memory' | 'localStorage' | 'postgres' | 'supabase';
+  target: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable';
   config: Record<string, IRValue>;
 }
 
