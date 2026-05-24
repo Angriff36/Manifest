@@ -156,6 +156,10 @@ manifest generate ir/ --projection prisma --surface prisma.schema --output prism
 
 Projection-specific options (table names, column mappings, decimal precision, indexes, type overrides, foreign-key names for prisma; auth provider, tenant filters, dispatcher mode for nextjs) live in `manifest.config.yaml` under `projections.<name>.options`. See [Configuration](/cli/configuration) and the per-projection guides ([Next.js](/integration/nextjs), [Prisma](/integration/prisma)).
 
+#### Exit codes (v0.9.1+)
+
+`manifest generate` exits **non-zero** when any projection returns a diagnostic with `severity: 'error'`. Example trigger conditions for the Prisma projection: bare `number`-typed properties (`PRISMA_AMBIGUOUS_NUMBER`), unknown `type.name` with no `typeMappings` override (`PRISMA_UNKNOWN_TYPE`), or an unknown surface name (`UNKNOWN_SURFACE`). The failing diagnostic codes are surfaced in stdout/stderr so CI logs are actionable. Info / warning severities log but do not fail the command.
+
 ### Examples
 
 ```bash

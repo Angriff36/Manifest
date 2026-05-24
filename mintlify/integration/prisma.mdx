@@ -235,6 +235,84 @@ projections:
           authorId: author_id    # → authorId String @map("author_id")
 ```
 
+### `belongsTo` alongside an explicit FK property (v0.9.1+)
+
+If your `.manifest` source declares the FK property explicitly **and** declares the relationship, the projection deduplicates — it does NOT emit a second column with the same name:
+
+```manifest
+entity Book {
+  property required id: string
+  property required authorId: string    // ← explicit FK column
+  belongsTo author: Author              // ← relationship using that column
+}
+```
+
+Emits:
+
+```prisma
+model Book {
+  id String @id
+  authorId String                        // ← from the property declaration
+  author Author @relation(fields: [authorId], references: [id])
+}
+```
+
+The relation step sees that `authorId` already exists as a property and reuses it. The FK column line is **not** re-emitted; the `@relation(fields: [authorId], ...)` clause still wires it. Pre-v0.9.1 versions emitted duplicate `authorId String` lines that Prisma rejected.
+
+If you supply both an explicit FK property **and** a `foreignKeys` config override that points the relationship at a different column name, the override wins for the relation field — but the explicit property still emits as its own column, so you'll end up with both columns in the model. Pick one approach per relationship.
+
+### Self-relations
+
+A one-sided self-relation triggers `PRISMA_RELATION_MISSING_BACKSIDE`:
+
+```manifest
+entity Tree {
+  property required id: string
+  belongsTo parent: Tree   // no `children` declared → warning
+}
+```
+
+A two-sided self-relation (`parent` + `children` on the same entity) is the textbook case where Prisma requires `@relation("name")` to disambiguate which `belongsTo` matches which `hasMany`. The projection refuses to invent names and emits `PRISMA_RELATION_AMBIGUOUS` for both sides — hand-add the relation names after generation, or refactor to a single relation:
+
+```prisma
+model Tree {
+  id String @id
+  parentId String?
+  parent Tree? @relation("TreeHierarchy", fields: [parentId], references: [id])
+  children Tree[] @relation("TreeHierarchy")
+}
+```
+
+### MongoDB provider (v0.9.1+)
+
+When `provider: mongodb`, Prisma's Mongo connector requires the `@id` column to map to `_id` with ObjectId semantics. The projection applies the canonical pattern automatically:
+
+```yaml
+projections:
+  prisma:
+    options:
+      provider: mongodb
+```
+
+```manifest
+entity Order {
+  property required id: string
+  property required total: money
+}
+store Order in durable
+```
+
+Emits:
+
+```prisma
+model Order {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  total Decimal @db.Decimal(12, 2)
+}
+```
+
+The Mongo-specific attributes are auto-applied only when you have NOT supplied your own `columnMappings.<Entity>.id` or a literal `defaultValue` on the `id` property. If you want a non-ObjectId pattern (e.g. plain string ULIDs), override via `typeMappings.<Entity>.id` to something other than `String` — the projection will skip the ObjectId attribute but still emit `@map("_id")`.
+
 ## Configuration options
 
 All per-property options use the nested `Record<EntityName, Record<PropertyName, ...>>` shape. There are no flattened `"Entity.property"` dotted-string keys anywhere in the config.
@@ -290,7 +368,7 @@ projections:
 
 ## Diagnostics reference
 
-The projection emits structured diagnostics rather than silently doing the wrong thing. Each carries an entity name (where applicable) and a resolution hint.
+The projection emits structured diagnostics rather than silently doing the wrong thing. Each carries an entity name (where applicable) and a resolution hint. The CLI's `manifest generate` command **exits non-zero** when any error-severity diagnostic is returned (v0.9.1+), so CI pipelines detect generation failures.
 
 | Code | Severity | Trigger | Resolution |
 | --- | --- | --- | --- |
@@ -301,8 +379,9 @@ The projection emits structured diagnostics rather than silently doing the wrong
 | `PRISMA_SKIPPED_NO_STORE` | info | Entity has no `store` declaration | Add `store EntityName in durable` to opt in |
 | `PRISMA_SKIPPED_NON_DURABLE` | info | Store target is `memory` or `localStorage` | Flip to `durable` (or `postgres`/`supabase`) to opt in |
 | `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED` | info | `hasMany ... through X` (explicit M2M) | Declare the join entity (`X`) with its own belongsTo relations |
-| `PRISMA_RELATION_AMBIGUOUS` | info | Multiple relationships between same entity pair | Refactor to a single relation, or hand-edit `@relation("name")` after generation |
-| `PRISMA_RELATION_MISSING_BACKSIDE` | warning | One-sided `hasMany`/`hasOne`/`belongsTo` | Declare the matching relation on the other entity; `ref` is exempt |
+| `PRISMA_RELATION_AMBIGUOUS` | info | Multiple relationships between same entity pair (including two-sided self-relations like `parent` + `children` on the same type) | Refactor to a single relation, or hand-edit `@relation("name")` after generation |
+| `PRISMA_RELATION_MISSING_BACKSIDE` | warning | One-sided `hasMany` / `hasOne` / `belongsTo` / `ref` (v0.9.1+: ref now warns too — it emits a full `@relation` that Prisma rejects without the opposite side) | Declare the matching relation on the other entity |
+| `PRISMA_RELATION_TARGET_NOT_EMITTED` | warning | Relationship targets an entity that is not emitted as a Prisma model (external entity, memory/localStorage store, no store) — v0.9.1+ | Declare the target as a durable entity, or remove the relationship |
 
 ## What the projection deliberately does NOT do
 

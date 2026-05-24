@@ -125,21 +125,39 @@ Any property whose **resolved** Prisma scalar is `Decimal` (either via the defau
 | `hasMany name: T` | `name T[]` | Parent side of 1:N |
 | `hasOne name: T` | `name T?` | Parent side of 1:1 |
 | `belongsTo name: T` | `nameId <fkType>` + `name T @relation(fields: [nameId], references: [id])` | Child side; FK type = target's `id` Prisma type |
-| `ref name: T` | same as `belongsTo` | "Loose" — no missing-backside warning |
+| `ref name: T` | same as `belongsTo` | v0.9.1+: warns on missing back-relation too (was silently exempt pre-v0.9.1) |
 
 **1:1 vs 1:N detection** is done by inspecting the opposite side. The helper `findOppositeRelations(fromEntity, rel, ir)` finds all relationships on the target entity that point back at the source entity. If any opposite is `kind: 'hasOne'`, the FK is marked `@unique` (1:1); otherwise the FK is plain (1:N).
+
+For self-relations (where `rel.target === fromEntity.name`), `findOppositeRelations` excludes the relationship itself by name — without that filter, a single-sided self-relation matches itself as its own opposite and suppresses the missing-backside warning (Codex P2, v0.9.1+).
 
 **FK field name resolution** is layered: `options.foreignKeys[Entity][relationshipName]` → `rel.foreignKey` (IR annotation) → default `${rel.name}Id`. FK fields are virtual properties from the consumer's perspective and respect the existing `columnMappings` knob, so `authorId String @map("author_id")` is a one-line config addition.
 
 **FK type matching** is done by `targetIdPrismaType(targetEntityName, ir, options)` — it looks up the target entity's `id` property and resolves its IR type via the same mapping table as everything else. A `string` PK gets a `String` FK; an `int` PK gets an `Int` FK; etc.
+
+**FK collision with an explicit property (v0.9.1+):** if the entity has both an explicit `property authorId: string` AND `belongsTo author: Author`, the relation step detects that `entity.properties` already contains a property with the FK name and **skips** emitting a second column line. The `@relation(fields: [authorId], ...)` clause still wires the existing column. Pre-v0.9.1 emitted duplicate `authorId String` lines that Prisma rejected.
+
+**MongoDB provider (v0.9.1+):** when `options.provider === 'mongodb'`, the `@id` field auto-applies the canonical Mongo pattern — `@id @default(auto()) @map("_id") @db.ObjectId` — unless the consumer has supplied their own `columnMappings.<Entity>.id` or a literal `defaultValue` on the `id` property. The ObjectId attribute is skipped when `typeMappings.<Entity>.id` resolves to a non-String type.
+
+## Two-pass emission and dangling-reference avoidance (v0.9.1+)
+
+`generate()` runs two passes over `ir.entities`:
+
+1. **Decide pass.** Walk entities in source order; for each, apply the skip rules (`external: true`, no store, non-persistent store). Record skip diagnostics. Build a `Set<string>` of entity names that **will** be emitted.
+2. **Emit pass.** Walk the to-emit list; for each, call `emitModel(entity, ir, options, context)` where `context` carries the emitted-entities set.
+
+`emitRelationship` checks `context.emittedEntities.has(rel.target)` before doing anything else. If the target is not in the set (it was skipped in pass 1), the projection emits `PRISMA_RELATION_TARGET_NOT_EMITTED` warning + a comment marker, and skips the relation field entirely. Pre-v0.9.1 generated relations pointing at non-existent models, producing schemas that Prisma rejected with "unknown related model".
+
+This two-pass shape is also why the FK-collision detection works correctly: by the time `emitRelationship` runs, `entity.properties` has been finalized; the helper just walks the array.
 
 ## Unhandleable shapes (structured diagnostics, not silent miss-emits)
 
 The projection produces structured diagnostics rather than emit Prisma that wouldn't validate:
 
 - **`through` relationships** (`hasMany ... through X`): explicit many-to-many via a join entity. Prisma's M2M model requires the join entity to declare two `belongsTo` relations and the linked sides to declare `hasMany` pointing at the **join entity itself**. Manifest's `through` syntax doesn't carry that information. The projection emits `PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED` info + a comment marker, leaving wire-up to the consumer (who already declared the join entity as a real Manifest entity).
-- **Multi-relation between same pair**: e.g. `Book belongsTo author: Author` AND `Book belongsTo editor: Author`. Prisma requires `@relation("name")` to disambiguate; the projection refuses to invent names. Emits `PRISMA_RELATION_AMBIGUOUS` info.
-- **One-sided relations**: a `hasMany` / `hasOne` / `belongsTo` with no matching opposite. The field IS emitted but Prisma will reject the schema. Emits `PRISMA_RELATION_MISSING_BACKSIDE` warning with the missing-declaration hint. `ref` is exempt (it's the explicit "loose" relation kind).
+- **Multi-relation between same pair**: e.g. `Book belongsTo author: Author` AND `Book belongsTo editor: Author`. Prisma requires `@relation("name")` to disambiguate; the projection refuses to invent names. Emits `PRISMA_RELATION_AMBIGUOUS` info. Two-sided self-relations (e.g. `Tree { belongsTo parent: Tree; hasMany children: Tree }`) hit the same rule for the same reason — Prisma can't auto-match the sides.
+- **One-sided relations**: a `hasMany` / `hasOne` / `belongsTo` / `ref` with no matching opposite. The field IS emitted but Prisma will reject the schema. Emits `PRISMA_RELATION_MISSING_BACKSIDE` warning with the missing-declaration hint. v0.9.1+: `ref` warns too (used to be exempt; Codex review pointed out that ref emits a full `@relation` which Prisma rejects without the opposite side regardless of IR intent).
+- **Dangling target reference** (v0.9.1+): relationship points at an entity that was skipped (external, non-durable store, no store). Emits `PRISMA_RELATION_TARGET_NOT_EMITTED` warning + comment marker; the relation field is NOT emitted.
 - **Missing primary key**: no property named literally `id`. Emits `PRISMA_NO_ID_PROPERTY` info; the model is still emitted, just without `@id`.
 - **Unknown type.name**: `PRISMA_UNKNOWN_TYPE` error; column skipped.
 - **Bare `number`**: `PRISMA_AMBIGUOUS_NUMBER` error; column skipped.
@@ -155,6 +173,7 @@ manifest generate <ir> -p <projection> -s <surface> -o <output>
 Internally (`packages/cli/src/commands/generate.ts`):
 - If `--projection nextjs`: existing CLI-specific multi-surface orchestration (route/command/dispatcher/types/client/all fan-out).
 - Else: calls `dispatch({ ir, projectionName, surface, options })` from `packages/cli/src/projections/dispatch.ts`. The dispatch helper calls `registerCliExtraProjections()` (idempotent), looks up the projection by name via `getProjection(name)` from the core registry, and invokes `projection.generate(...)`. No name special-casing in the dispatch path.
+- **Error-diag propagation (v0.9.1+):** after the dispatch returns, the CLI filters `result.diagnostics` for `severity: 'error'`. If any are present, the CLI throws with the list of diagnostic codes; the outer `try/catch` in `generateCommand` increments `errorCount` and the process exits non-zero. Pre-v0.9.1 the generic dispatch path treated all diagnostics as log-only, so a projection that returned errors (UNKNOWN_SURFACE, PRISMA_UNKNOWN_TYPE, PRISMA_AMBIGUOUS_NUMBER, …) still exited 0 — CI couldn't detect generation failure. A spawn-the-binary regression test lives at `packages/cli/src/commands/generate.dispatch.test.ts`.
 
 `packages/cli/src/projections/register-extras.ts` is the single source of truth for which projections the CLI ships beyond the core builtins. Adding a future projection packaged as its own workspace:
 1. Add the workspace dep to `packages/cli/package.json` (as `link:` or `workspace:` per the project's convention).
