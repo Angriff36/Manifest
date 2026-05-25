@@ -116,9 +116,39 @@ The IR carries `type.name` as an arbitrary string (Manifest's type vocabulary is
 | `date`, `datetime` | `DateTime` |
 | `json` | `Json` |
 | `bytes` | `Bytes` |
+| `array<T>` (or `T[]`) | `T[]` — Prisma scalar list (e.g. `String[]`, `Int[]`) |
 | anything else | **diagnostic** (`PRISMA_UNKNOWN_TYPE`) |
 
 The default mapping does **not** include `number`. That is deliberate.
+
+### Scalar list fields
+
+Array-typed properties project to Prisma scalar lists. The inner element type runs through the same mapping table — so `string[]` becomes `String[]`, `array<int>` becomes `Int[]`, and so on.
+
+```manifest
+entity Article {
+  property required id: string
+  property tags: string[] = []
+  property scores: array<int>
+}
+```
+
+emits:
+
+```prisma
+model Article {
+  id String @id
+  tags String[] @default([])
+  scores Int[]
+}
+```
+
+A few rules to keep in mind:
+
+- **List fields are implicitly optional in Prisma**, so the projection never appends `?` to an array property — even if the IR omits `required`. An empty list represents "no values".
+- **Defaults must be scalar lists.** A literal `[]` (or a list of scalars) emits `@default([...])`. Non-scalar defaults are skipped silently — supply them via [`fieldAttributes`](#configuration-options) if you need them.
+- **Element types must resolve via the mapping table.** `string[]` and `array<int>` work; `array<number>` triggers the same `PRISMA_AMBIGUOUS_NUMBER` diagnostic that bare `number` does. Use `int`, `float`, `decimal`, or `money` explicitly.
+- **Provider support varies.** Scalar lists are first-class on PostgreSQL and CockroachDB. On MySQL and SQLite, Prisma rejects scalar lists at validation time — model those as a join entity with `hasMany` instead.
 
 ## The `number` ambiguity rule
 

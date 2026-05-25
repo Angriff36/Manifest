@@ -40,7 +40,7 @@ The IR carries this as a sparse-optional field: `IREntity.external?: boolean`. W
 
 ## Properties
 
-Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`, plus array types like `string[]` or `array<int>` for list-valued properties. A property without a default is `undefined` unless the caller supplies a value at creation time.
 
 ### Modifiers
 
@@ -61,6 +61,24 @@ entity User {
   property readonly createdAt: number = 0
 }
 ```
+
+### Array types
+
+Declare a list-valued property with either postfix `[]` syntax or the explicit `array<T>` form. The two are equivalent — the parser desugars `T[]` to `array<T>` in the IR.
+
+```manifest
+entity Article {
+  property required id: string
+  property tags: string[] = []           // postfix sugar
+  property scores: array<int> = []       // explicit form
+}
+```
+
+Use array types when a property holds an unordered or ordered list of scalar values (tags, labels, numeric samples, and so on). For lists of related entities, use `hasMany` instead.
+
+<Note>
+Array element types must be scalars (`string`, `int`, `decimal`, `boolean`, and the other types listed above). Nested arrays and arrays of entities are not supported — model those as separate entities with a `hasMany` relationship.
+</Note>
 
 ### Default values
 
