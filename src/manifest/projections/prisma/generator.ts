@@ -31,7 +31,7 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry } from './options.js';
+import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry, type ForeignKeyConfig } from './options.js';
 import {
   resolvePrismaScalar,
   isDecimalScalar,
@@ -181,10 +181,15 @@ function emitPropertyLine(
     attrs.push('@default(auto())');
   }
 
-  if (prop.defaultValue) {
-    const def = literalToPrismaDefault(prop.defaultValue);
-    if (def !== undefined) attrs.push(`@default(${def})`);
-  }
+  // Scan fieldAttributes early to detect @default overrides.
+  // We need to know BEFORE emitting the IR default whether the consumer
+  // supplied their own @default. Actual push is deferred after dbAttributes.
+  const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
+  const fieldAttrHasDefault = fieldAttrs?.some(fa => /^@default\b/.test(fa)) ?? false;
+
+  // NOTE: IR-level @default is NOT emitted here. It's emitted after dbAttributes
+  // so that the attribute ordering matches the existing test expectations
+  // (@id → @map → @db.* → @default → @updatedAt → @unique).
 
   if (colMapOverride) {
     attrs.push(`@map("${colMapOverride}")`);
@@ -214,12 +219,32 @@ function emitPropertyLine(
     attrs.push(`@db.${dbAttr}`);
   }
 
+  // IR-level default: only emit if fieldAttributes didn't supply a @default override.
+  if (prop.defaultValue && !fieldAttrHasDefault) {
+    const def = literalToPrismaDefault(prop.defaultValue);
+    if (def !== undefined) attrs.push(`@default(${def})`);
+  }
+
   // Field-level attributes from config (e.g. @unique, @default(now()), @updatedAt).
-  // Deduplicated against attributes already emitted by the standard pipeline.
-  const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
+  // For @default: replaces any IR-emitted @default in-place (consumer override wins).
+  // For all other kinds: suppressed if already present from IR/modifiers.
   if (fieldAttrs && fieldAttrs.length > 0) {
     for (const fa of fieldAttrs) {
-      if (!attrs.includes(fa)) attrs.push(fa);
+      const faKind = fa.match(/^@\w+/)?.[0];
+      if (faKind === '@default') {
+        // Replace any existing @default (from IR) in-place to preserve attribute order.
+        const idx = attrs.findIndex(a => a.startsWith('@default'));
+        if (idx !== -1) {
+          attrs[idx] = fa;
+        } else {
+          attrs.push(fa);
+        }
+      } else if (faKind) {
+        // Non-default: skip if this kind already exists in attrs.
+        if (!attrs.some(a => a.startsWith(faKind))) attrs.push(fa);
+      } else {
+        attrs.push(fa);
+      }
     }
   }
 
@@ -395,12 +420,31 @@ function emitRelationship(
 
     case 'belongsTo':
     case 'ref': {
-      // Config override is single-column and always wins over IR FK fields.
+      // Config override can be a string (FK column name) or an object
+      // (ForeignKeyConfig with fields, references, and optional referential actions).
       const configFkOverride = options.foreignKeys?.[entity.name]?.[rel.name];
-      const fkFields: string[] = configFkOverride
-        ? [configFkOverride]
-        : (rel.foreignKey?.fields ?? [`${rel.name}Id`]);
-      const refsFields: string[] = rel.foreignKey?.references ?? ['id'];
+      let fkFields: string[];
+      let configRefs: string[] | undefined;
+      let configOnDelete: string | undefined;
+      let configOnUpdate: string | undefined;
+
+      if (configFkOverride !== undefined) {
+        if (typeof configFkOverride === 'string') {
+          // Legacy/simple form: just the FK column name.
+          fkFields = [configFkOverride];
+        } else {
+          // Object form: ForeignKeyConfig with fields, references, actions.
+          const fkObj = configFkOverride as ForeignKeyConfig;
+          fkFields = fkObj.fields;
+          configRefs = fkObj.references;
+          configOnDelete = fkObj.onDelete;
+          configOnUpdate = fkObj.onUpdate;
+        }
+      } else {
+        fkFields = rel.foreignKey?.fields ?? [`${rel.name}Id`];
+      }
+
+      const refsFields: string[] = configRefs ?? rel.foreignKey?.references ?? ['id'];
       const isComposite = fkFields.length > 1;
 
       // 1:1 if target has a `hasOne` pointing back at us.
@@ -428,10 +472,13 @@ function emitRelationship(
       }
 
       // Relation field line with correct fields/references and optional referential actions.
+      // Config-level onDelete/onUpdate (from ForeignKeyConfig) take precedence over IR-level.
       const fieldsAttr = `fields: [${fkFields.join(', ')}]`;
       const refsAttr = `references: [${refsFields.join(', ')}]`;
-      const onDeleteAttr = rel.onDelete ? `, onDelete: ${toPrismaAction(rel.onDelete)}` : '';
-      const onUpdateAttr = rel.onUpdate ? `, onUpdate: ${toPrismaAction(rel.onUpdate)}` : '';
+      const effectiveOnDelete = configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : undefined);
+      const effectiveOnUpdate = configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : undefined);
+      const onDeleteAttr = effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '';
+      const onUpdateAttr = effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '';
       lines.push(
         `  ${rel.name} ${rel.target} @relation(${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
       );

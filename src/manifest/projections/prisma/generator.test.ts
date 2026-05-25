@@ -1614,3 +1614,164 @@ describe('PrismaProjection — procurement entity snapshot (dbAttributes + field
     expect(result.artifacts[0].code).toBe(result2.artifacts[0].code);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression tests for Capsule-Pro proven bugs
+// ---------------------------------------------------------------------------
+
+describe('PrismaProjection — regression: object-shaped foreignKeys config', () => {
+  it('accepts ForeignKeyConfig objects in foreignKeys (not just strings)', () => {
+    // Capsule-Pro passes {fields, references, onDelete} objects instead of plain strings.
+    // The emitter must extract fields/references/actions from the object, not stringify it.
+    const ir = emptyIR();
+    ir.entities.push(
+      {
+        name: 'Order',
+        key: ['tenantId', 'id'],
+        properties: [
+          { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [],
+        relationships: [{ name: 'items', kind: 'hasMany', target: 'OrderItem' }],
+        commands: [], constraints: [], policies: [],
+      },
+      bareEntity('OrderItem', {
+        relationships: [
+          { name: 'order', kind: 'belongsTo' as const, target: 'Order' },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Order'), durableStore('OrderItem'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        foreignKeys: {
+          OrderItem: {
+            order: {
+              fields: ['tenantId', 'orderId'],
+              references: ['tenantId', 'id'],
+              onDelete: 'Cascade',
+            },
+          },
+        },
+      },
+    });
+
+    const code = result.artifacts[0].code;
+
+    // Must NOT contain [object Object]
+    expect(code).not.toContain('[object Object]');
+
+    // Must emit proper FK columns and relation line
+    expect(code).toMatch(/^\s+tenantId String$/m);
+    expect(code).toMatch(/^\s+orderId String$/m);
+    expect(code).toMatch(
+      /^\s+order Order @relation\(fields: \[tenantId, orderId\], references: \[tenantId, id\], onDelete: Cascade\)$/m,
+    );
+
+    // No errors
+    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+  });
+
+  it('object-shaped foreignKeys with single column works like string form', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
+      }),
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
+    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        foreignKeys: {
+          Book: { author: { fields: ['writerId'] } },
+        },
+      },
+    }).artifacts[0].code;
+
+    expect(code).not.toContain('[object Object]');
+    expect(code).toMatch(/^\s+writerId String$/m);
+    expect(code).toMatch(/^\s+author Author @relation\(fields: \[writerId\], references: \[id\]\)$/m);
+  });
+});
+
+describe('PrismaProjection — regression: duplicate @default dedup', () => {
+  it('fieldAttributes @default(now()) overrides IR @default(0) — no duplicate', () => {
+    // When IR has defaultValue: {kind: "number", value: 0} and fieldAttributes
+    // supplies @default(now()), only the fieldAttributes version should appear.
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'createdAt',
+          type: { name: 'datetime', nullable: false },
+          modifiers: ['required'],
+          defaultValue: { kind: 'number', value: 0 },
+        },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        fieldAttributes: {
+          Widget: { createdAt: ['@default(now())'] },
+        },
+      },
+    });
+
+    const code = result.artifacts[0].code;
+
+    // Count @default occurrences on the createdAt line
+    const createdAtIndex = code.indexOf('createdAt');
+    const createdAtLine = code.substring(createdAtIndex, code.indexOf('\n', createdAtIndex));
+
+    // Must have exactly ONE @default
+    const defaultCount = (createdAtLine.match(/@default/g) || []).length;
+    expect(defaultCount).toBe(1);
+
+    // Must be @default(now()), NOT @default(0)
+    expect(createdAtIndex).toBeGreaterThan(-1);
+    expect(code).toMatch(/^\s+createdAt DateTime @default\(now\(\)\)$/m);
+  });
+
+  it('fieldAttributes @unique is suppressed when prop.modifiers already has unique', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'sku', type: { name: 'string', nullable: false }, modifiers: ['required', 'unique'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        fieldAttributes: { Widget: { sku: ['@unique'] } },
+      },
+    }).artifacts[0].code;
+
+    const skuLine = code.split('\n').find(l => /^\s+sku /.test(l));
+    expect(skuLine).toBeDefined();
+    // Exactly one @unique
+    expect((skuLine!.match(/@unique/g) || []).length).toBe(1);
+  });
+});
