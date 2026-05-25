@@ -34,6 +34,20 @@ Use `memory` for:
 - Unit and conformance tests
 - Demos and prototyping
 
+### `durable`
+
+The **backend-neutral semantic target**. Declares that the entity is persisted in *some* durable store; the specific technology (Prisma, raw SQL, supabase-js, a custom adapter, …) is chosen by the consumer at runtime via a `storeProvider`, and at compile time via projection config.
+
+```manifest
+store Order in durable
+```
+
+Use `durable` when you want the entity to participate in storage projections without coupling the `.manifest` source to a specific backend. The [Prisma projection](/integration/prisma) treats `durable`, `postgres`, and `supabase` identically — all three are schema-emission targets. The runtime engine rejects `durable` at command-execution time unless a custom `storeProvider` is bound, with a clear "no store adapter supplied" diagnostic.
+
+<Note>
+`durable` is the recommended target for new code. The legacy `postgres` and `supabase` targets continue to work; nothing was removed. Storage projections emit for all three.
+</Note>
+
 ### `postgres`
 
 Delegates to a `PostgresStore` adapter. The adapter handles SQL reads and writes against a Postgres-compatible database. You must configure the adapter when constructing the `RuntimeEngine`.

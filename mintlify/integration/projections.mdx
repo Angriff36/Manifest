@@ -8,15 +8,16 @@ A **projection** reads your compiled Intermediate Representation (IR) and emits 
 
 ## Available projections
 
-| Projection | Import | Surfaces | What it generates |
+| Projection | CLI identifier | What it generates | Guide |
 | --- | --- | --- | --- |
-| `NextJsProjection` | `@angriff36/manifest/projections/nextjs` | `nextjs.route`, `nextjs.command`, `ts.types`, `ts.client`, `nextjs.detail`, `nextjs.dispatcher` | Next.js App Router route handlers, TypeScript types, and a typed client SDK |
-| `PrismaProjection` | `@angriff36/manifest/projections/prisma` | `prisma.schema` | `schema.prisma` + optional `prisma.config.ts` companion (Prisma 7+) |
-| `RoutesProjection` | `@angriff36/manifest/projections/routes` | `routes.manifest`, `routes.ts` | A JSON route manifest and TypeScript route registry derived from your IR |
+| Next.js | `nextjs` | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
+| Prisma  | `prisma` | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma) |
 
-## What the Next.js projection produces
+Projections share a single contract — `ProjectionTarget.generate(ir, request)` returns one or more `ProjectionArtifact`s plus structured diagnostics. The CLI's `--projection` flag selects which projection runs; dispatch is generic (the registry resolves the name), so adding a new projection means registering it, not editing a hardcoded dispatch branch.
 
-The Next.js projection ships four primary surfaces:
+## What projections produce
+
+The Next.js projection ships four surfaces:
 
 | Surface | CLI identifier | What it generates |
 | --- | --- | --- |
@@ -24,6 +25,12 @@ The Next.js projection ships four primary surfaces:
 | Command routes | `nextjs.command` | POST/PUT/DELETE handlers that call `RuntimeEngine.runCommand` |
 | TypeScript types | `ts.types` | `interface` declarations derived from your IR entity definitions |
 | Client SDK | `ts.client` | Typed fetch wrappers for calling your routes from browser or server-client code |
+
+The Prisma projection ships a single surface:
+
+| Surface | CLI identifier | What it generates |
+| --- | --- | --- |
+| Schema | `prisma.schema` | One `schema.prisma` file with models, `@relation` wiring, `@db.Decimal` precision, and projection-config-driven `@map`/`@@map`/`@@index` |
 
 ## Reads vs. writes
 

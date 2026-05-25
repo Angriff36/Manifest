@@ -16,6 +16,7 @@ export {
   type IndexEntry,
   type EntityName,
   type PropertyName,
+  type ForeignKeyConfig,
 } from './options.js';
 export {
   DEFAULT_TYPE_MAPPING,
