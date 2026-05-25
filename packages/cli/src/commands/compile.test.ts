@@ -226,6 +226,87 @@ describe('Compile Command - Error Handling', () => {
       await cleanupTemp(filePath);
     }
   });
+
+  it('should fail a multi-file compile before writing IR when exact entity command duplicates exist', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-test-'));
+    await fs.writeFile(path.join(tempDir, 'recipe-a.manifest'), `
+entity Recipe {
+  property name: string
+  command create(name: string) {
+    mutate name = input.name
+  }
+}
+`, 'utf-8');
+    await fs.writeFile(path.join(tempDir, 'recipe-b.manifest'), `
+entity Recipe {
+  property name: string
+  command create(name: string) {
+    mutate name = input.name
+  }
+}
+`, 'utf-8');
+
+    const { compileCommand } = await import('./compile.js');
+    const capture = captureOutput();
+    const originalExit = process.exit;
+    const exitMock = vi.fn().mockImplementation(() => { throw new Error('exit'); });
+    process.exit = exitMock as any;
+
+    try {
+      await expect(compileCommand(tempDir, { diagnostics: true })).rejects.toThrow('exit');
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(capture.outputs.join('\n')).toContain('Duplicate command intent for Recipe.create');
+      expect(capture.outputs.join('\n')).toContain('existing command Recipe.create');
+      expect(capture.outputs.join('\n')).toContain('recipe-a.manifest');
+      expect(capture.outputs.join('\n')).toContain('recipe-b.manifest');
+      await expect(fs.stat(path.join(tempDir, 'recipe-a.ir.json'))).rejects.toThrow();
+      await expect(fs.stat(path.join(tempDir, 'recipe-b.ir.json'))).rejects.toThrow();
+    } finally {
+      process.exit = originalExit;
+      capture.restore();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should fail a multi-file compile before writing IR when command intent duplicates exist', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-test-'));
+    await fs.writeFile(path.join(tempDir, 'recipe-create.manifest'), `
+entity Recipe {
+  property name: string
+  command create(name: string) {
+    mutate name = input.name
+  }
+}
+`, 'utf-8');
+    await fs.writeFile(path.join(tempDir, 'recipe-add.manifest'), `
+entity Recipe {
+  property name: string
+  command addRecipe(name: string) {
+    mutate name = input.name
+  }
+}
+`, 'utf-8');
+
+    const { compileCommand } = await import('./compile.js');
+    const capture = captureOutput();
+    const originalExit = process.exit;
+    const exitMock = vi.fn().mockImplementation(() => { throw new Error('exit'); });
+    process.exit = exitMock as any;
+
+    try {
+      await expect(compileCommand(tempDir, { diagnostics: true })).rejects.toThrow('exit');
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(capture.outputs.join('\n')).toContain('Duplicate command intent for Recipe.addRecipe');
+      expect(capture.outputs.join('\n')).toContain('existing command Recipe.create');
+      expect(capture.outputs.join('\n')).toContain('use or extend the existing command');
+      await expect(fs.stat(path.join(tempDir, 'recipe-create.ir.json'))).rejects.toThrow();
+      await expect(fs.stat(path.join(tempDir, 'recipe-add.ir.json'))).rejects.toThrow();
+    } finally {
+      process.exit = originalExit;
+      capture.restore();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('Compile Command - Conformance Fixtures', () => {

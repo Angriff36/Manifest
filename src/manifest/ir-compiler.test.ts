@@ -419,6 +419,71 @@ describe('IRCompiler', () => {
       expect(command?.name).toBe('updateProfile');
       expect(command?.entity).toBe('User');
     });
+
+    it('should fail exact duplicate command names on the same entity', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Recipe {
+          property name: string
+          command create(name: string) {
+            mutate name = input.name
+          }
+          command create(name: string) {
+            mutate name = input.name
+          }
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining("Duplicate command intent for Recipe.create"),
+      }));
+      expect(result.diagnostics[0].message).toContain('use or extend the existing command');
+    });
+
+    it('should fail canonical duplicate command intent on the same entity', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Recipe {
+          property name: string
+          command create(name: string) {
+            mutate name = input.name
+          }
+          command addRecipe(name: string) {
+            mutate name = input.name
+          }
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      const diagnostic = result.diagnostics.find(d => d.message.includes('Recipe.addRecipe'));
+      expect(diagnostic?.severity).toBe('error');
+      expect(diagnostic?.message).toContain('existing command Recipe.create');
+      expect(diagnostic?.message).toContain('use or extend the existing command');
+    });
+
+    it('should allow normal command names on different entities', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Recipe {
+          property name: string
+          command create(name: string) {
+            mutate name = input.name
+          }
+        }
+        entity Ingredient {
+          property name: string
+          command create(name: string) {
+            mutate name = input.name
+          }
+        }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.ir?.commands.map(c => `${c.entity}.${c.name}`)).toEqual(['Recipe.create', 'Ingredient.create']);
+    });
   });
 
   describe('Policy Transformation', () => {

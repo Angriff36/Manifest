@@ -104,6 +104,153 @@ async function computeIRHash(ir: IR): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+export interface CommandIntentRegistryEntry {
+  entity?: string;
+  command: string;
+  sourcePath?: string;
+  line?: number;
+  column?: number;
+}
+
+const COMMAND_INTENT_VERBS: Record<string, string> = {
+  create: 'create',
+  add: 'create',
+  new: 'create',
+  update: 'update',
+  edit: 'update',
+  modify: 'update',
+  delete: 'delete',
+  remove: 'delete',
+  deactivate: 'delete',
+  archive: 'delete',
+};
+
+function normalizeIntentToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function stripEntityAffixes(command: string, entity?: string): string {
+  const entityToken = entity ? normalizeIntentToken(entity) : '';
+  let normalized = normalizeIntentToken(command);
+
+  if (!entityToken) return normalized;
+
+  let changed = true;
+  while (changed && normalized.length > entityToken.length) {
+    changed = false;
+    if (normalized.startsWith(entityToken)) {
+      normalized = normalized.slice(entityToken.length);
+      changed = true;
+    }
+    if (normalized.endsWith(entityToken) && normalized.length > entityToken.length) {
+      normalized = normalized.slice(0, -entityToken.length);
+      changed = true;
+    }
+  }
+
+  return normalized;
+}
+
+function normalizeCommandIntent(command: string, entity?: string): string {
+  const stripped = stripEntityAffixes(command, entity);
+  for (const verb of Object.keys(COMMAND_INTENT_VERBS).sort((a, b) => b.length - a.length)) {
+    if (stripped === verb || stripped.startsWith(verb)) {
+      const rest = stripped.slice(verb.length);
+      return `${COMMAND_INTENT_VERBS[verb]}:${rest}`;
+    }
+  }
+  return `custom:${stripped}`;
+}
+
+function commandDisplay(entry: CommandIntentRegistryEntry): string {
+  return entry.entity ? `${entry.entity}.${entry.command}` : entry.command;
+}
+
+function sourceDisplay(entry: CommandIntentRegistryEntry): string | undefined {
+  if (!entry.sourcePath) return undefined;
+  const position = entry.line !== undefined
+    ? `:${entry.line}${entry.column !== undefined ? `:${entry.column}` : ''}`
+    : '';
+  return `${entry.sourcePath}${position}`;
+}
+
+function duplicateCommandIntentDiagnostic(
+  duplicate: CommandIntentRegistryEntry,
+  existing: CommandIntentRegistryEntry,
+): IRDiagnostic {
+  const duplicateSource = sourceDisplay(duplicate);
+  const existingSource = sourceDisplay(existing);
+  const locations = [
+    duplicateSource ? `duplicate source: ${duplicateSource}` : undefined,
+    existingSource ? `existing source: ${existingSource}` : undefined,
+  ].filter(Boolean).join('; ');
+
+  return {
+    severity: 'error',
+    message: `Duplicate command intent for ${commandDisplay(duplicate)} conflicts with existing command ${commandDisplay(existing)}${locations ? ` (${locations})` : ''}; use or extend the existing command.`,
+    line: duplicate.line,
+    column: duplicate.column,
+  };
+}
+
+export function validateCommandIntentRegistry(entries: CommandIntentRegistryEntry[]): IRDiagnostic[] {
+  const diagnostics: IRDiagnostic[] = [];
+  const exact = new Map<string, CommandIntentRegistryEntry>();
+  const canonical = new Map<string, CommandIntentRegistryEntry>();
+
+  for (const entry of entries) {
+    const entityKey = entry.entity ?? '__global__';
+    const exactKey = `${entityKey}\u0000${entry.command}`;
+    const exactExisting = exact.get(exactKey);
+    if (exactExisting) {
+      diagnostics.push(duplicateCommandIntentDiagnostic(entry, exactExisting));
+      continue;
+    }
+    exact.set(exactKey, entry);
+
+    const canonicalKey = `${entityKey}\u0000${normalizeCommandIntent(entry.command, entry.entity)}`;
+    const canonicalExisting = canonical.get(canonicalKey);
+    if (canonicalExisting) {
+      diagnostics.push(duplicateCommandIntentDiagnostic(entry, canonicalExisting));
+      continue;
+    }
+    canonical.set(canonicalKey, entry);
+  }
+
+  return diagnostics;
+}
+
+function collectCommandIntentEntries(program: ManifestProgram, sourcePath?: string): CommandIntentRegistryEntry[] {
+  return [
+    ...program.commands.map(command => ({
+      command: command.name,
+      sourcePath,
+      line: command.position?.line,
+      column: command.position?.column,
+    })),
+    ...program.modules.flatMap(module => module.commands.map(command => ({
+      command: command.name,
+      sourcePath,
+      line: command.position?.line,
+      column: command.position?.column,
+    }))),
+    ...program.entities.flatMap(entity => entity.commands.map(command => ({
+      entity: entity.name,
+      command: command.name,
+      sourcePath,
+      line: command.position?.line,
+      column: command.position?.column,
+    }))),
+    ...program.modules.flatMap(module => module.entities.flatMap(entity => entity.commands.map(command => ({
+      entity: entity.name,
+      command: command.name,
+      sourcePath,
+      line: command.position?.line,
+      column: command.position?.column,
+    })))),
+  ];
+}
+
 export class IRCompiler {
   private diagnostics: IRDiagnostic[] = [];
   private cache: IRCache;
@@ -126,7 +273,7 @@ export class IRCompiler {
     this.diagnostics.push({ severity, message, line, column });
   }
 
-  async compileToIR(source: string, options?: { useCache?: boolean }): Promise<CompileToIRResult> {
+  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string }): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
     // vNext: Check cache before compilation
@@ -155,7 +302,7 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = await this.transformProgram(program, source);
+    const ir = await this.transformProgram(program, source, options?.sourcePath);
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
     if (this.diagnostics.some(d => d.severity === 'error')) {
@@ -171,7 +318,7 @@ export class IRCompiler {
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private async transformProgram(program: ManifestProgram, source: string): Promise<IR> {
+  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string): Promise<IR> {
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const entities: IREntity[] = [
       ...program.entities.map(e => this.transformEntity(e)),
@@ -217,6 +364,11 @@ export class IRCompiler {
         return e.commands.map(c => this.transformCommand(c, m.name, e.name, defaultPolicies));
       })),
     ];
+
+    this.diagnostics.push(...validateCommandIntentRegistry(
+      collectCommandIntentEntries(program, sourcePath),
+    ));
+
     const policies: IRPolicy[] = [
       ...program.policies.map(p => this.transformPolicy(p)),
       ...program.modules.flatMap(m => m.policies.map(p => this.transformPolicy(p, m.name))),
@@ -597,7 +749,7 @@ export class IRCompiler {
   }
 }
 
-export async function compileToIR(source: string): Promise<CompileToIRResult> {
+export async function compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string }): Promise<CompileToIRResult> {
   const compiler = new IRCompiler();
-  return compiler.compileToIR(source);
+  return compiler.compileToIR(source, options);
 }
