@@ -1774,4 +1774,101 @@ describe('PrismaProjection — regression: duplicate @default dedup', () => {
     // Exactly one @unique
     expect((skuLine!.match(/@unique/g) || []).length).toBe(1);
   });
+
+  // ── Array type emission ──────────────────────────────────────────────
+
+  it('emits String[] for array<string> type', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Taggable',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tags', type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Taggable'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: {} }).artifacts[0].code;
+    expect(code).toMatch(/^\s+tags\s+String\[\]$/m);
+  });
+
+  it('emits Int[] for array<int> type', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Scored',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'scores', type: { name: 'array', generic: { name: 'int', nullable: false }, nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Scored'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: {} }).artifacts[0].code;
+    expect(code).toMatch(/^\s+scores\s+Int\[\]$/m);
+  });
+
+  it('emits Decimal[] for array<decimal> type', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Priced',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'prices', type: { name: 'array', generic: { name: 'decimal', nullable: false }, nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Priced'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: {} }).artifacts[0].code;
+    // Decimal[] may get @db.Decimal attribute appended — just check the type portion.
+    const pricesLine = code.split('\n').find(l => /^\s+prices /.test(l));
+    expect(pricesLine).toBeDefined();
+    expect(pricesLine).toMatch(/^\s+prices\s+Decimal\[\]/);
+  });
+
+  it('array field never gets nullable ? suffix', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Taggable',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        // No 'required' modifier — yet should still NOT get ?
+        { name: 'tags', type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Taggable'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: {} }).artifacts[0].code;
+    const tagsLine = code.split('\n').find(l => /^\s+tags /.test(l));
+    expect(tagsLine).toBeDefined();
+    // Must NOT contain ?
+    expect(tagsLine!.includes('?')).toBe(false);
+    expect(tagsLine).toMatch(/^\s+tags\s+String\[\]$/);
+  });
+
+  it('array field emits scalar-list @default when IR has a default value', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Taggable',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'tags',
+          type: { name: 'array', generic: { name: 'string', nullable: false }, nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'array', elements: [] },
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Taggable'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: {} }).artifacts[0].code;
+    const tagsLine = code.split('\n').find(l => /^\s+tags /.test(l));
+    expect(tagsLine).toBeDefined();
+    expect(tagsLine).toMatch(/^\s+tags\s+String\[\]\s+@default\(\[\]\)$/);
+  });
 });
