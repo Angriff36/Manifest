@@ -6,18 +6,16 @@ sidebarTitle: "Prisma"
 
 The **Prisma projection** reads compiled Manifest IR and emits a `schema.prisma` artifact. It is compile-time only — it does not connect to a database, run migrations, or know anything about any specific application. All relational concepts (table names, column names, decimal precision, composite indexes, foreign-key field names) live in projection config; Manifest core stays backend-neutral.
 
-As of **v0.9.2** the projection ships **inside the main `@angriff36/manifest` package** — installing the main package gives you the projection, the CLI integration, and the registry registration. Running `manifest generate -p prisma` is enough.
+The projection ships **inside the main `@angriff36/manifest` package** — no separate install needed. Running `manifest generate -p prisma` works out of the box.
 
 <Note>
-Earlier v0.9.x releases attempted to ship the projection as a separate `@manifest/projection-prisma` workspace package. That package was never published (wrong scope, blocked downstream installs), and v0.9.2 folds it into core. Internal code separation is preserved — the projection still lives at `src/manifest/projections/prisma/` alongside the Next.js and routes projections — but consumers see a single package, a single publish, and a single install.
+An earlier pre-release explored shipping the projection as `@manifest/projection-prisma`. That package was never published. Since v1.0.0 the projection is bundled in `@angriff36/manifest` with the same internal separation (`src/manifest/projections/prisma/`) as the Next.js and routes projections.
 </Note>
 
 For programmatic use, import from the main package:
 
 ```ts
 import { PrismaProjection } from '@angriff36/manifest/projections/prisma';
-// or, equivalently:
-import { PrismaProjection } from '@angriff36/manifest/projections';
 ```
 
 ## Quickstart
@@ -369,10 +367,68 @@ projections:
 
       # Per-entity, per-relationship FK field name override.
       # Overrides default `${relationshipName}Id` and IR `foreignKey` annotation.
+      # Value is a plain string (field name) or a structured object with referential actions.
       foreignKeys:
         Order:
           customer: customerRef   # → Order.customerRef instead of Order.customerId
+          # Structured form — includes referential actions:
+          # customer:
+          #   fields: [customerId]
+          #   references: [id]
+          #   onDelete: Cascade
+          #   onUpdate: NoAction
+
+      # Per-entity, per-property native @db.* attribute (without the @db. prefix).
+      # Applied after the Prisma scalar but before @default.
+      # Use for types the projection can't infer, or to override the default @db.Decimal(12,2).
+      dbAttributes:
+        Order:
+          amount: Decimal(14, 2)     # → @db.Decimal(14, 2)
+          externalId: VarChar(36)    # → @db.VarChar(36)
+
+      # Per-entity, per-property array of verbatim Prisma field attributes.
+      # Appended after type and dbAttributes. Use for @unique, @updatedAt, @default(...), etc.
+      fieldAttributes:
+        Order:
+          code: ["@unique"]
+          updatedAt: ["@updatedAt", "@default(now())"]
+
+      # Environment variable name for the database URL in the emitted prisma.config.ts.
+      # Default: DATABASE_URL. Only relevant when `provider` is set.
+      urlEnvVar: POSTGRES_CONNECTION_STRING
 ```
+
+## `prisma.config.ts` companion
+
+When `provider` is set, the projection emits **two artifacts** from a single `generate()` call:
+
+| Index | Path hint | Content |
+| --- | --- | --- |
+| `artifacts[0]` | `schema.prisma` | The full Prisma schema |
+| `artifacts[1]` | `prisma.config.ts` | Prisma 7+ config file with `url: process.env.<urlEnvVar>` |
+
+Prisma 7 moved the connection URL out of `schema.prisma` into a `prisma.config.ts` file. The projection handles this automatically so `prisma migrate` works without edits:
+
+```typescript
+// prisma.config.ts — emitted automatically when provider is set
+import { defineConfig } from 'prisma/config';
+
+export default defineConfig({
+  datasources: { db: { url: process.env.DATABASE_URL } },
+});
+```
+
+Customize the env var name via `urlEnvVar`:
+
+```yaml
+projections:
+  prisma:
+    options:
+      provider: postgresql
+      urlEnvVar: POSTGRES_CONNECTION_STRING
+```
+
+Without `provider`, only `schema.prisma` is emitted (no datasource block, no `prisma.config.ts`). Use this when you manage datasource configuration externally.
 
 ## Diagnostics reference
 

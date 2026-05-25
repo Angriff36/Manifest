@@ -73,12 +73,50 @@
       }
     },
     "foreignKeys": {
-      "description": "Per-entity, per-relationship FK field name override. Overrides the default `${relationshipName}Id` (and the IR's `foreignKey` annotation) for belongsTo/ref relations. Nested shape: Record<EntityName, Record<RelationshipName, string>>.",
+      "description": "Per-entity, per-relationship FK field name or structured config. Overrides the default `${relationshipName}Id` (and the IR's `foreignKey` annotation) for belongsTo/ref relations. Value is either a plain string field name, or an object with fields/references/onDelete/onUpdate for full referential-action control.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "required": ["fields"],
+              "additionalProperties": false,
+              "properties": {
+                "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                "references": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                "onDelete": { "type": "string" },
+                "onUpdate": { "type": "string" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "dbAttributes": {
+      "description": "Per-entity, per-property native @db.* attribute string (without the @db. prefix). Applied after the type scalar but before @default. Example: { Order: { amount: 'Decimal(14,2)' } } emits @db.Decimal(14,2).",
       "type": "object",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": { "type": "string" }
       }
+    },
+    "fieldAttributes": {
+      "description": "Per-entity, per-property array of verbatim Prisma field attributes appended after type and dbAttributes. Example: { Order: { code: ['@unique', '@default(cuid())'] } }. Use for @unique, @updatedAt, @default(...), etc.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "urlEnvVar": {
+      "description": "Environment variable name for the database connection URL in the emitted prisma.config.ts companion. Defaults to 'DATABASE_URL'. Only relevant when provider is set.",
+      "type": "string"
     }
   }
 }

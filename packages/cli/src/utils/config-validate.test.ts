@@ -52,6 +52,36 @@ describe('validateConfig', () => {
     expect(result.diagnostics).toHaveLength(0);
   });
 
+  it('accepts a prisma projection config with all documented options', async () => {
+    const config: ManifestConfig = {
+      projections: {
+        prisma: {
+          output: 'generated/schema.prisma',
+          options: {
+            provider: 'postgresql',
+            urlEnvVar: 'POSTGRES_URL',
+            tableMappings: { Order: 'orders' },
+            columnMappings: { Order: { createdAt: 'created_at' } },
+            precision: { Order: { total: { precision: 14, scale: 2 } } },
+            indexes: { Order: [['customerId', 'createdAt'], { fields: ['status'], name: 'order_status_idx' }] },
+            typeMappings: { Order: { legacyAmount: 'Decimal' } },
+            foreignKeys: {
+              Order: {
+                customer: 'customerRef',
+                vendor: { fields: ['vendorId'], references: ['id'], onDelete: 'Cascade', onUpdate: 'NoAction' },
+              },
+            },
+            dbAttributes: { Order: { amount: 'Decimal(14, 2)' } },
+            fieldAttributes: { Order: { code: ['@unique'] } },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it('accepts a dispatcher block with externalExecutor mode', async () => {
     const config: ManifestConfig = {
       projections: {

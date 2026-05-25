@@ -30,7 +30,8 @@
       "additionalProperties": false,
       "properties": {
         "nextjs": { "$ref": "#/definitions/NextJsProjectionConfig" },
-        "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" }
+        "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" },
+        "prisma":  { "$ref": "#/definitions/PrismaProjectionConfig" }
       }
     }
   },
@@ -282,6 +283,126 @@
               "location": { "type": "string", "enum": ["path", "query", "body"] },
               "required": { "type": "boolean" }
             }
+          }
+        }
+      }
+    },
+    "PrismaProjectionConfig": {
+      "type": "object",
+      "description": "Configuration for the Prisma schema projection.",
+      "additionalProperties": false,
+      "properties": {
+        "output": {
+          "type": "string",
+          "description": "Path hint for the emitted schema.prisma artifact.",
+          "default": "schema.prisma"
+        },
+        "options": { "$ref": "#/definitions/PrismaProjectionOptions" }
+      }
+    },
+    "PrismaProjectionOptions": {
+      "type": "object",
+      "description": "Options for the Prisma schema projection. All keys are optional; omitting a key applies the documented default.",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "description": "Optional Prisma datasource provider. When set, the projection emits a datasource block and a prisma.config.ts companion.",
+          "enum": ["postgresql", "mysql", "sqlite", "sqlserver", "mongodb", "cockroachdb"]
+        },
+        "output": {
+          "type": "string",
+          "description": "Path hint for the emitted schema.prisma artifact. Default: 'schema.prisma'."
+        },
+        "urlEnvVar": {
+          "type": "string",
+          "description": "Environment variable name for the database URL in the emitted prisma.config.ts companion. Default: 'DATABASE_URL'. Only relevant when provider is set."
+        },
+        "tableMappings": {
+          "description": "Per-entity table-name override. Emits @@map(\"...\").",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "columnMappings": {
+          "description": "Per-entity, per-property column-name override. Emits @map(\"...\").",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "precision": {
+          "description": "Per-entity, per-property decimal precision and scale.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["precision", "scale"],
+              "additionalProperties": false,
+              "properties": {
+                "precision": { "type": "integer", "minimum": 1 },
+                "scale": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "indexes": {
+          "description": "Per-entity composite/named index definitions. Each entry is an array of column names or an object with fields and optional name.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                {
+                  "type": "object",
+                  "required": ["fields"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "name": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "typeMappings": {
+          "description": "Per-entity, per-property Prisma scalar override. Value is a literal Prisma scalar (e.g. 'Int', 'Decimal').",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "foreignKeys": {
+          "description": "Per-entity, per-relationship FK field name or structured config. Value is a plain string or an object with fields/references/onDelete/onUpdate.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["fields"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "references": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "onDelete": { "type": "string" },
+                    "onUpdate": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "dbAttributes": {
+          "description": "Per-entity, per-property native @db.* attribute string (without the @db. prefix). Applied after the type scalar.",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "fieldAttributes": {
+          "description": "Per-entity, per-property array of verbatim Prisma field attributes (e.g. '@unique', '@updatedAt').",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
           }
         }
       }
