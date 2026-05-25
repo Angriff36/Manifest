@@ -157,6 +157,56 @@ entity Order {
 
 A failing `block` constraint stops execution and surfaces `constraintOutcomes` in the `CommandResult`. A `warn` constraint produces an outcome entry but does not stop execution.
 
+## Duplicate command intent detection
+
+The compiler rejects duplicate command intent within the same entity before it emits any IR. This catches two classes of mistake that would otherwise ship as two commands doing the same thing:
+
+- **Exact duplicates** — two commands with the same `entity.command` name across any of your loaded `.manifest` files.
+- **Canonical duplicates** — two commands on the same entity that mean the same thing after normalization. Names are lowercased, separators stripped, the entity name removed when it appears as a prefix or suffix, and verb synonyms collapsed to a single intent.
+
+The verb groups normalized to one intent are:
+
+| Canonical intent | Synonyms |
+| --- | --- |
+| `create` | `create`, `add`, `new` |
+| `update` | `update`, `edit`, `modify` |
+| `delete` | `delete`, `remove`, `deactivate`, `archive` |
+
+So on an `Order` entity, `createOrder`, `addOrder`, and `new_order` all collapse to the same intent and only one may be declared. `update` on `Order` and `update` on `Customer` are fine — canonical checks are scoped to a single entity.
+
+```manifest
+entity Order {
+  property status: string = "pending"
+
+  // ✅ Allowed: one canonical create on Order.
+  command createOrder(customerId: string) {
+    mutate status = "pending"
+    emit OrderCreated
+  }
+
+  // ❌ Rejected: same intent as createOrder.
+  command addOrder(customerId: string) {
+    mutate status = "pending"
+    emit OrderCreated
+  }
+}
+```
+
+When the compiler finds a duplicate it emits an error diagnostic that names both commands, includes both source paths when available, and instructs you to use or extend the existing command:
+
+```text
+✖ Duplicate command intent for Order.addOrder conflicts with existing
+  command Order.createOrder (duplicate source: modules/orders.manifest;
+  existing source: modules/orders.manifest); use or extend the existing
+  command.
+```
+
+Compilation fails and no `.ir.json` files are written until every duplicate is resolved. To fix the error, delete the duplicate or rename it to express a genuinely different intent (for example, `importOrder` instead of `addOrder`).
+
+<Note>
+Different entities may freely share normal command names like `create`, `update`, or `delete`. The duplicate check only fires within a single entity (or resolved entity alias).
+</Note>
+
 ## CommandResult shape
 
 Every call to `runCommand` returns a `CommandResult`:

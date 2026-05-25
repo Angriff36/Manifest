@@ -54,6 +54,8 @@ manifest init --force
 
 Parses one or more `.manifest` source files and writes the compiled IR as `.ir.json` files. When no source is provided, the CLI uses the glob pattern from your config (or `**/*.manifest` by default).
 
+`compile` is all-or-nothing across the manifest set: every file is parsed and checked in memory, and only then are `.ir.json` files written. If any file errors — including a [duplicate command intent](/language/commands#duplicate-command-intent-detection) on the same entity in a different file — the CLI prints the diagnostics, exits with status `1`, and leaves your `ir/` directory untouched.
+
 ```bash
 manifest compile [source] [options]
 ```
