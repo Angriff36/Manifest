@@ -32,7 +32,7 @@ entity Task {
 
 When a guard fails, the runtime returns a `guardFailure` in the `CommandResult` with:
 
-- `guardIndex` — 1-based position of the failing guard
+- `index` — 1-based position of the failing guard
 - `expression` — the source expression as a string
 - `resolved` — array of `{ expression, value }` pairs showing what each sub-expression evaluated to
 
@@ -41,7 +41,7 @@ This gives you enough information to explain the failure to the caller without a
 ```typescript
 if (result.guardFailure) {
   console.error(
-    `Guard ${result.guardFailure.guardIndex} failed: ${result.guardFailure.expression}`
+    `Guard ${result.guardFailure.index} failed: ${result.guardFailure.expression}`
   );
   for (const r of result.guardFailure.resolved) {
     console.error(`  ${r.expression} => ${r.value}`);

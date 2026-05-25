@@ -86,7 +86,9 @@ command increment() {
 
 ### `compute`
 
-Evaluates an expression and returns the value. Does not write to the store. Useful for deriving values you want in the action result without persisting them.
+Evaluates an expression and returns the value in the action result.
+
+**Store-write behavior:** `compute` writes to the store when **all three** are true: the action has a `target` property name, the command was called with an `instanceId`, and it has an `entityName`. When any of those is absent, `compute` is pure — it returns the value without persisting. Use `effect` if you need a derivation that must never write to the store.
 
 ```manifest
 command setTimestamp() {
@@ -172,7 +174,7 @@ interface CommandResult {
 
   // Present when a guard halted execution
   guardFailure?: {
-    guardIndex: number;       // 1-based
+    index: number;            // 1-based
     expression: string;
     resolved: { expression: string; value: unknown }[];
   };
@@ -211,7 +213,7 @@ if (!result.success) {
     console.error("Denied by policy:", result.policyDenial.policyName);
   } else if (result.guardFailure) {
     console.error(
-      `Guard ${result.guardFailure.guardIndex} failed:`,
+      `Guard ${result.guardFailure.index} failed:`,
       result.guardFailure.expression
     );
   } else if (result.constraintOutcomes) {

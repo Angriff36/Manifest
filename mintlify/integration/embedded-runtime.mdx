@@ -66,9 +66,10 @@ The runtime executes in this fixed order on every call:
 1. Build evaluation context (`self`, `this`, params, runtime context)
 2. Evaluate applicable policies — denies halt execution immediately
 3. Evaluate guards in declared order — the first falsey guard halts execution
-4. Execute actions in declared order (`mutate`, `emit`, `compute`)
-5. Emit declared events
-6. Return `CommandResult`
+4. Evaluate command constraints — `block`-severity violations halt execution
+5. Execute actions in declared order (`mutate`, `emit`, `compute`)
+6. Emit declared events
+7. Return `CommandResult`
 
 ## Handling CommandResult
 
@@ -212,6 +213,6 @@ const result = await runtime.runCommand(
 ## What not to do
 
 - **Do not bypass `runCommand` for mutations.** Calling your database directly from a handler that is supposed to enforce Manifest guards, policies, or events silently removes that enforcement.
-- **Do not reorder or short-circuit the execution pipeline.** Policies run before guards; guards run before actions; actions run before emits. The spec requires this order.
+- **Do not reorder or short-circuit the execution pipeline.** The spec-required order is: policies → guards → command constraints → actions → emits. Skipping any step silently removes the enforcement it provides.
 - **Do not inject permissive context defaults to force success.** If a guard requires `user.role` and you have not provided it, the failure is correct. Surface it.
 - **Do not suppress diagnostics.** Diagnostics are the primary debugging signal. Swallowing them leaves callers without actionable error information.

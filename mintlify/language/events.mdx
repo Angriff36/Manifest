@@ -102,7 +102,7 @@ Given identical IR, identical runtime context, identical input, and identical op
 
 ## Subscribing to events
 
-Use `runtime.on()` to register a handler for a named event. The callback receives the full `EmittedEvent` object:
+Use `runtime.onEvent(listener)` to register a listener. The listener receives **every** emitted event — filter by `event.name` inside the callback. It returns an unsubscribe function.
 
 ```typescript
 import { RuntimeEngine } from "@angriff36/manifest";
@@ -111,19 +111,21 @@ const runtime = new RuntimeEngine(ir, {
   user: { id: "worker-1", role: "system" },
 });
 
-runtime.on("TaskCompleted", (event) => {
-  console.log("Task completed:", event.payload);
-  // Trigger downstream side effects
-  sendNotification(event.payload.completedBy);
+const unsubscribe = runtime.onEvent((event) => {
+  if (event.name === "TaskCompleted") {
+    console.log("Task completed:", event.payload);
+    sendNotification(event.payload.completedBy);
+  }
+  if (event.name === "OrderCreated") {
+    console.log("New order on channel:", event.channel);
+    console.log("Correlation:", event.correlationId);
+  }
 });
 
-runtime.on("OrderCreated", (event) => {
-  console.log("New order on channel:", event.channel);
-  console.log("Correlation:", event.correlationId);
-});
+// Call unsubscribe() when the listener is no longer needed.
 ```
 
-Handlers fire synchronously during `runCommand`, after all actions and before `CommandResult` is returned.
+Listeners fire synchronously during `runCommand`, after all actions and before `CommandResult` is returned.
 
 ## Complete example
 
@@ -161,8 +163,10 @@ event OrderCompleted: "order.completed" {
 ```typescript
 const runtime = new RuntimeEngine(ir);
 
-runtime.on("OrderCompleted", (event) => {
-  console.log(`Order ${event.payload.orderId} completed.`);
+runtime.onEvent((event) => {
+  if (event.name === "OrderCompleted") {
+    console.log(`Order ${event.payload.orderId} completed.`);
+  }
 });
 
 const result = await runtime.runCommand("Order", "complete", {
