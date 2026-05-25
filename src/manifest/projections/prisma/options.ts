@@ -22,6 +22,23 @@ export type EntityName = string;
 export type PropertyName = string;
 
 /**
+ * Structured foreign-key config for the `foreignKeys` option.
+ * When a consumer needs to supply fields, references, and/or referential
+ * actions at projection time rather than in the .manifest source, they
+ * use this object form instead of a plain string.
+ */
+export interface ForeignKeyConfig {
+  /** Local FK column names */
+  fields: string[];
+  /** Remote/referenced column names. Defaults to `["id"]` when absent. */
+  references?: string[];
+  /** Prisma referential action for onDelete. */
+  onDelete?: string;
+  /** Prisma referential action for onUpdate. */
+  onUpdate?: string;
+}
+
+/**
  * Prisma datasource provider. When set, the projection emits a `datasource`
  * block. When omitted, the projection emits only `model` blocks (consumer
  * is expected to merge them into an existing schema.prisma).
@@ -91,20 +108,57 @@ export interface PrismaProjectionOptions {
   typeMappings?: Record<EntityName, Record<PropertyName, string>>;
 
   /**
-   * Per-entity, per-relationship foreign-key field name override.
+   * Per-entity, per-relationship foreign-key override.
    *
    * For `belongsTo` / `ref` relationships, the projection emits an FK
    * scalar field plus a relation field. The FK field name defaults to
    * `${relationshipName}Id` (or the IR's `foreignKey` annotation if set).
-   * This option lets consumers override the FK *field* name without
-   * editing the .manifest source.
    *
+   * Two shapes are accepted:
+   *
+   * **String** — overrides the FK column name only:
    *   foreignKeys: { Book: { author: "writerId" } }
    * → Book emits `writerId String` + `author Author @relation(fields: [writerId], references: [id])`
    *
+   * **Object** — full FK definition with fields, references, and optional onDelete:
+   *   foreignKeys: { Book: { author: { fields: ["writerId"], references: ["id"], onDelete: "Cascade" } } }
+   * → Same output as above, but with explicit references and referential action.
+   *
    * Nested-key shape, same as every other per-property option.
    */
-  foreignKeys?: Record<EntityName, Record<string, string>>;
+  foreignKeys?: Record<EntityName, Record<string, string | ForeignKeyConfig>>;
+
+  /**
+   * Per-entity, per-property native database type annotations.
+   *
+   * Values are the Prisma `@db.*` suffix WITHOUT the `@db.` prefix.
+   * Emitted as `@db.<value>` after `@map` and before any `@db.Decimal`
+   * precision annotation.
+   *
+   *   dbAttributes: { Widget: { id: "Uuid", createdAt: "Timestamptz(6)" } }
+   * → emits `@db.Uuid` / `@db.Timestamptz(6)` on those fields.
+   *
+   * This is the generic `@db.*` emission path. The only other `@db.*`
+   * emissions are `@db.Decimal(p,s)` (via `precision` config) and
+   * `@db.ObjectId` (auto-emitted for MongoDB String ids). When both
+   * a `dbAttributes` entry and a precision-derived `@db.Decimal` would
+   * apply to the same field, `@db.Decimal` wins and `dbAttributes` is
+   * skipped (Prisma allows only one `@db.*` per field).
+   */
+  dbAttributes?: Record<EntityName, Record<PropertyName, string>>;
+
+  /**
+   * Per-entity, per-property Prisma field attributes to emit verbatim.
+   *
+   * Each string is a complete Prisma attribute (e.g. `"@unique"`,
+   * `"@default(now())"`, `"@updatedAt"`, `"@default(dbgenerated(\"...\"))"`).
+   * Attributes already emitted by the standard pipeline (e.g. `@unique`
+   * from `prop.modifiers`, `@default(...)` from `prop.defaultValue`) are
+   * NOT duplicated — only novel attributes are added.
+   *
+   *   fieldAttributes: { Widget: { id: ["@unique", "@default(dbgenerated(\"gen_random_uuid()\"))"] } }
+   */
+  fieldAttributes?: Record<EntityName, Record<PropertyName, string[]>>;
 
   /**
    * Environment variable name for the database connection URL in the emitted
@@ -152,6 +206,8 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     indexes: input.indexes ?? {},
     typeMappings: input.typeMappings ?? {},
     foreignKeys: input.foreignKeys ?? {},
+    dbAttributes: input.dbAttributes ?? {},
+    fieldAttributes: input.fieldAttributes ?? {},
     urlEnvVar: input.urlEnvVar,
     output: input.output ?? PRISMA_PROJECTION_DEFAULTS.output,
   };

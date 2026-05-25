@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -75,7 +75,7 @@
   "bin": {
     "manifest": "./packages/cli/dist/index.js"
   },
-    "files": [
+  "files": [
     "dist/manifest/**",
     "packages/cli/dist/**",
     "src/manifest/audit/sinks/*.sql",
