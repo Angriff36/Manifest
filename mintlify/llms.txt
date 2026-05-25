@@ -1,0 +1,46 @@
+# Manifest
+
+> Manifest is a declarative domain modeling language and runtime. It compiles `.manifest` source files to a deterministic Intermediate Representation (IR) that enforces guards, policies, constraints, and events identically on every platform.
+
+Manifest is designed for AI agents that emit, validate, and reason about business rules as code. The runtime is IR-first: the compiled IR is the executable contract, not generated TypeScript.
+
+## Get Started
+
+- [Introduction](https://manifest-b1e8623f.mintlify.app/introduction): What Manifest is, how the IR-first model works, and the two integration patterns (projections vs embedded runtime).
+- [Quickstart](https://manifest-b1e8623f.mintlify.app/quickstart): Install @angriff36/manifest, write your first .manifest file, compile to IR, and run a command in under five minutes.
+- [Installation](https://manifest-b1e8623f.mintlify.app/installation): Add @angriff36/manifest to any Node.js 18+ project; configure TypeScript paths and verify the CLI.
+
+## Language
+
+- [Entities](https://manifest-b1e8623f.mintlify.app/language/entities): Define typed data structures with properties, computed values, relationships, concurrency controls, constraints, and transitions.
+- [Commands](https://manifest-b1e8623f.mintlify.app/language/commands): Declare named operations that enforce guards and policies, execute ordered actions (mutate, emit, compute), and return structured CommandResult.
+- [Guards and Policies](https://manifest-b1e8623f.mintlify.app/language/guards-policies): Use guards for precondition checks and policies for authorization. Both are boolean expressions evaluated against runtime context.
+- [Events](https://manifest-b1e8623f.mintlify.app/language/events): Declare typed events with channels and payload schemas. Commands emit them via the emit action; subscribe with runtime.onEvent().
+- [Stores](https://manifest-b1e8623f.mintlify.app/language/stores): Declare where each entity's instances are persisted. Targets: memory, localStorage, postgres, supabase, durable, custom.
+- [Computed Properties](https://manifest-b1e8623f.mintlify.app/language/computed-properties): Declare derived values with the computed keyword. Evaluated against current instance state with dependency tracking and cycle detection.
+
+## Integration
+
+- [Integration Overview](https://manifest-b1e8623f.mintlify.app/integration/overview): Choose between projections (generated code) and the embedded runtime (direct engine use). When to use each.
+- [Projections](https://manifest-b1e8623f.mintlify.app/integration/projections): How projections read compiled IR and emit platform-specific artifacts. Available projections: Next.js, Prisma, Routes.
+- [Embedded Runtime](https://manifest-b1e8623f.mintlify.app/integration/embedded-runtime): Instantiate RuntimeEngine in your own handlers. Full execution pipeline, CommandResult shape, and RuntimeOptions reference.
+- [Next.js Projection](https://manifest-b1e8623f.mintlify.app/integration/nextjs): Generate App Router route handlers, TypeScript types, and a typed client SDK from Manifest IR.
+- [Prisma Projection](https://manifest-b1e8623f.mintlify.app/integration/prisma): Generate a schema.prisma file from Manifest IR. Supports composite PKs/FKs, referential actions, decimal precision, indexes, and dbAttributes.
+
+## Adapters
+
+- [Custom Stores](https://manifest-b1e8623f.mintlify.app/adapters/custom-stores): Implement the Store interface and provide it via storeProvider to persist entity instances in any database.
+- [Audit Sink](https://manifest-b1e8623f.mintlify.app/adapters/audit-sink): Wire in an AuditSink to receive one AuditRecord per runCommand call — success or failure — for observability.
+- [Outbox](https://manifest-b1e8623f.mintlify.app/adapters/outbox): Use OutboxStore to persist emitted events for at-least-once delivery with transactional guarantees.
+
+## CLI
+
+- [CLI Overview](https://manifest-b1e8623f.mintlify.app/cli/overview): The Manifest CLI compiles .manifest files to IR, generates code via projections, and validates IR against the schema.
+- [CLI Commands](https://manifest-b1e8623f.mintlify.app/cli/commands): Full syntax and options for every CLI command: compile, generate, build, validate, check, scan, config, and more.
+- [Governance Commands](https://manifest-b1e8623f.mintlify.app/cli/governance): enforce-surface, integration-check, audit-governance, audit-bypasses — enforce write boundaries and audit compliance.
+- [Configuration](https://manifest-b1e8623f.mintlify.app/cli/configuration): Full reference for manifest.config.yaml: src globs, IR output, projection options (nextjs, prisma, routes).
+
+## Help
+
+- [FAQ](https://manifest-b1e8623f.mintlify.app/faq): Common questions about Manifest's design, architecture, integration patterns, and comparison to other tools.
+- [Troubleshooting](https://manifest-b1e8623f.mintlify.app/troubleshooting): Diagnose and fix common errors when compiling, running commands, or integrating with Next.js and Prisma.
