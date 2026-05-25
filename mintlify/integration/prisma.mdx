@@ -230,6 +230,40 @@ projections:
 
 The FK type follows the target entity's `id` property type. A `string` PK gets a `String` FK; an `int` PK gets an `Int` FK. No type mismatches.
 
+#### Structured foreign-key config (v1.0.2+)
+
+For cases where you need referential actions or explicit `references` columns without editing the `.manifest` source, `foreignKeys` also accepts an object form per relationship:
+
+```yaml
+projections:
+  prisma:
+    options:
+      foreignKeys:
+        Book:
+          author:
+            fields: ["writerId"]          # local FK column(s)
+            references: ["id"]            # remote column(s), defaults to ["id"]
+            onDelete: Cascade             # Prisma referential action
+            onUpdate: Restrict            # Prisma referential action
+```
+
+Emits:
+
+```prisma
+model Book {
+  id String @id
+  writerId String
+  author Author @relation(fields: [writerId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+}
+```
+
+Use the object form when you need:
+
+- A referential action (`onDelete` / `onUpdate`) — Prisma defaults to `Restrict` for required relations and `SetNull` for optional ones, but you can override per relationship.
+- A non-`id` reference column (composite keys, or pointing at a `@unique` column other than the primary key).
+
+The string form (`author: writerId`) remains the shortcut for renaming the FK column only. Earlier versions serialized object values as `[object Object]`; v1.0.2+ accepts and emits the structured form correctly.
+
 ### Foreign key columns honor `columnMappings`
 
 FK fields are virtual properties from the consumer's perspective; the existing `columnMappings` knob applies:
@@ -321,6 +355,66 @@ model Order {
 
 The Mongo-specific attributes are auto-applied only when you have NOT supplied your own `columnMappings.<Entity>.id` or a literal `defaultValue` on the `id` property. If you want a non-ObjectId pattern (e.g. plain string ULIDs), override via `typeMappings.<Entity>.id` to something other than `String` — the projection will skip the ObjectId attribute but still emit `@map("_id")`.
 
+## Native DB types and verbatim attributes (v1.0.0+)
+
+Manifest types stay backend-neutral, but real Prisma schemas often need native column types (UUID, TIMESTAMPTZ, SMALLINT) and field attributes (`@default(now())`, `@updatedAt`, `@default(dbgenerated(...))`) that have no IR equivalent. Two projection-config keys cover those cases without forcing them into the `.manifest` source.
+
+### `dbAttributes` — native `@db.*` types
+
+Use `dbAttributes` when a column needs a specific database type beyond the default IR-scalar mapping (for example, Postgres `UUID` instead of plain `String`, or `TIMESTAMPTZ(6)` instead of plain `TIMESTAMP`).
+
+Values are the `@db.` suffix only — the projection adds the `@db.` prefix.
+
+```yaml
+projections:
+  prisma:
+    options:
+      provider: postgresql
+      dbAttributes:
+        Widget:
+          id: Uuid                  # → @db.Uuid
+          createdAt: Timestamptz(6) # → @db.Timestamptz(6)
+          quantity: SmallInt        # → @db.SmallInt
+```
+
+Emits:
+
+```prisma
+model Widget {
+  id String @id @db.Uuid
+  createdAt DateTime @db.Timestamptz(6)
+  quantity Int @db.SmallInt
+}
+```
+
+Prisma allows only one `@db.*` annotation per field. When a `dbAttributes` entry would collide with a `@db.Decimal(p, s)` already emitted by the `precision` config, the precision-driven `@db.Decimal` wins and the `dbAttributes` value is skipped silently.
+
+### `fieldAttributes` — verbatim Prisma attributes
+
+Use `fieldAttributes` when a column needs a Prisma attribute the projection does not generate from IR — typically `@default(now())`, `@updatedAt`, `@default(dbgenerated("..."))`, or a `@unique` on a non-key column.
+
+Each entry is a list of complete attribute strings (including the leading `@`).
+
+```yaml
+projections:
+  prisma:
+    options:
+      fieldAttributes:
+        Widget:
+          id:
+            - "@default(dbgenerated(\"gen_random_uuid()\"))"
+          createdAt:
+            - "@default(now())"
+          updatedAt:
+            - "@updatedAt"
+          slug:
+            - "@unique"
+```
+
+Attributes already emitted by the standard pipeline (for example `@unique` from a `unique` modifier, or `@default(...)` from a literal `defaultValue` in the IR) are not duplicated — only novel attributes are appended. As of **v1.0.2**, a `fieldAttributes` `@default(...)` overrides an IR-derived `@default(...)` in place rather than appending a second one, so you can swap an IR default for a runtime-generated one (`@default(now())`, `@default(autoincrement())`) without producing invalid Prisma.
+
+Together, `dbAttributes` and `fieldAttributes` close the gap between Manifest IR and a real Prisma schema while keeping the `.manifest` source backend-neutral.
+
 ## Configuration options
 
 All per-property options use the nested `Record<EntityName, Record<PropertyName, ...>>` shape. There are no flattened `"Entity.property"` dotted-string keys anywhere in the config.
@@ -367,11 +461,35 @@ projections:
         Order:
           legacyAmount: Decimal   # opt out of PRISMA_AMBIGUOUS_NUMBER for a `number` field
 
-      # Per-entity, per-relationship FK field name override.
+      # Per-entity, per-relationship FK override.
       # Overrides default `${relationshipName}Id` and IR `foreignKey` annotation.
+      # String form renames the FK column; object form (v1.0.2+) adds
+      # references and referential actions.
       foreignKeys:
         Order:
           customer: customerRef   # → Order.customerRef instead of Order.customerId
+          shipment:               # object form with referential actions
+            fields: ["shipmentRef"]
+            references: ["id"]
+            onDelete: SetNull
+
+      # Per-entity, per-property native database type → @db.<value>.
+      # Value is the @db.* suffix WITHOUT the @db. prefix. v1.0.0+
+      dbAttributes:
+        Order:
+          id: Uuid                # → @db.Uuid
+          createdAt: Timestamptz(6)   # → @db.Timestamptz(6)
+          quantity: SmallInt          # → @db.SmallInt
+
+      # Per-entity, per-property verbatim Prisma field attributes.
+      # Each string is a full attribute. Already-emitted attributes
+      # (e.g. @unique from modifiers) are not duplicated. v1.0.0+
+      fieldAttributes:
+        Order:
+          id: ["@default(dbgenerated(\"gen_random_uuid()\"))"]
+          createdAt: ["@default(now())"]
+          updatedAt: ["@updatedAt"]
+          slug: ["@unique"]
 ```
 
 ## Diagnostics reference
