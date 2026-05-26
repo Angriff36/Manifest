@@ -106,7 +106,7 @@ const outboxStore = new PostgresOutboxStore(pool);
 
 `MemoryOutboxStore` is an in-memory analogue of `SELECT FOR UPDATE SKIP LOCKED` — `claim` skips entries that are already claimed or resolved. Use it in tests.
 
-`PostgresOutboxStore` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so concurrent workers receive disjoint batches. Apply the schema before first use:
+`PostgresOutboxStore` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so concurrent workers receive disjoint batches. `claim` returns entries in stable FIFO order (`enqueued_at`, then `entry_id`) so a single worker observes per-entity events in the order they were enqueued. Apply the schema before first use:
 
 <Tip>
 The schema file is included in the published package at `node_modules/@angriff36/manifest/src/manifest/outbox/stores/postgres.sql`. Run it against your database once during deployment.
@@ -215,3 +215,24 @@ Like the audit sink, `OutboxStore.enqueue` errors are caught and logged to `stde
 ```
 
 Alert on this line in production if your application depends on durable event delivery.
+
+## Running live Postgres tests
+
+`@angriff36/manifest` ships live integration tests for both `PostgresOutboxStore` and `PostgresAuditSink`. They are skipped by default and only run when a Postgres connection string is present.
+
+Set `DATABASE_URL` in a `.env` file (or in your shell) and run the dedicated script:
+
+```bash
+# .env
+DATABASE_URL=postgresql://user:pass@host:5432/manifest_test
+```
+
+```bash
+npm run test:postgres
+```
+
+Vitest now auto-loads `.env` without overriding values already set in the shell or CI. The live suites apply the shipped `postgres.sql` schemas, run their assertions, then drop the tables — successive runs against the same database are idempotent.
+
+<Tip>
+Use an empty test database (for example, a dedicated Neon branch with the pooler off). The legacy `MANIFEST_POSTGRES_TEST_URL` variable is still accepted as a fallback. The default `npm test` and CI continue to skip these suites when `DATABASE_URL` is unset.
+</Tip>
