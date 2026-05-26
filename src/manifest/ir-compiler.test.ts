@@ -142,6 +142,24 @@ describe('IRCompiler', () => {
       expect(entity?.properties[3].defaultValue).toEqual({ kind: 'number', value: 0 });
     });
 
+    it('should lower enum member identifiers in property defaults to string IRValues', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        enum Status {
+          draft
+          published
+        }
+
+        entity Article {
+          property status: Status = draft
+        }
+      `);
+
+      const status = result.ir?.entities[0].properties.find(p => p.name === 'status');
+      expect(status?.type.name).toBe('Status');
+      expect(status?.defaultValue).toEqual({ kind: 'string', value: 'draft' });
+    });
+
     it('should transform entity with computed properties', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`

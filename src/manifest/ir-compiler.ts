@@ -742,6 +742,10 @@ export class IRCompiler {
   }
 
   private transformExprToValue(expr: ExpressionNode): IRValue | undefined {
+    if (expr.type === 'Identifier') {
+      // Enum member defaults (e.g. `property status: Status = draft`) lower to string IRValues.
+      return { kind: 'string', value: (expr as { name: string }).name };
+    }
     if (expr.type === 'Literal') {
       const lit = expr as { value: string | number | boolean | null; dataType: string };
       return this.literalToValue(lit.value, lit.dataType);

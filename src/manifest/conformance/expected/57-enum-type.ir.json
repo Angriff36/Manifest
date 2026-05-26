@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "f1ea34a04179e10705b915e1e3ea500a008fad18fdeba915d60a9a4e58288af6",
+    "irHash": "809abec290f4eadbdb25dcf4aab35f9ce9f372cfcd7facd22c4c1ef5520023d3",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -27,6 +27,10 @@
           "type": {
             "name": "Status",
             "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
           },
           "modifiers": []
         },
