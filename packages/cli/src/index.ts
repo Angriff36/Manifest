@@ -44,6 +44,7 @@ import {
 } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
+import { migrateCommand } from './commands/migrate.js';
 import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -578,6 +579,37 @@ diffProgram
   .option('-o, --output <path>', 'Write output to file')
   .action(async (oldIR, newIR, options = {}) => {
     await breakingChangeCommand(oldIR, newIR, options);
+  });
+
+/**
+ * manifest migrate
+ *
+ * IR diff analysis for database migration planning.
+ */
+program
+  .command('migrate')
+  .description('Analyze IR diff for database migration (dry-run, preview, reversibility checks)')
+  .requiredOption('--old-ir <path>', 'Path to old IR JSON file')
+  .requiredOption('--new-ir <path>', 'Path to new IR JSON file')
+  .option('--dry-run', 'Show migration plan without applying', false)
+  .option('--preview', 'Show SQL and Prisma migration steps', false)
+  .option('--force', 'Apply even with warnings or unacknowledged breaking changes', false)
+  .option('--json', 'JSON output', false)
+  .option('--tool <tool>', 'Migration tool (prisma, drizzle)', 'prisma')
+  .option('--no-check-reversibility', 'Skip reversibility validation')
+  .option('-o, --output <path>', 'Write output to file')
+  .action(async (options = {}) => {
+    await migrateCommand({
+      oldIR: options.oldIr,
+      newIR: options.newIr,
+      dryRun: options.dryRun,
+      preview: options.preview,
+      force: options.force,
+      json: options.json,
+      output: options.output,
+      tool: options.tool,
+      checkReversibility: options.checkReversibility,
+    });
   });
 
 /**
