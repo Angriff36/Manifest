@@ -1,7 +1,7 @@
 ---
 title: "Manifest CLI command reference"
 sidebarTitle: "Commands"
-description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults."
+description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init (config and CI workflow), compile, generate, build, and validate."
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -11,6 +11,8 @@ Every command reads `manifest.config.yaml` from your project root when it exists
 ## `manifest init`
 
 Runs an interactive prompt that collects your project settings and writes a `manifest.config.yaml` to the project root. If a config file already exists, the command exits without overwriting it unless you pass `--force`.
+
+When you pass `--ci <provider>`, the command skips the interactive prompts and generates a CI workflow file instead. See [Generating a CI workflow](#generating-a-ci-workflow) below.
 
 ```bash
 manifest init
@@ -30,8 +32,16 @@ If the target is `nextjs` or `remix`, the generated code output defaults to `app
 
 ### Options
 
-<ParamField path="--force" type="boolean" default="false">
-  Overwrite an existing `manifest.config.yaml`. The command is interactive and requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+<ParamField path="-f, --force" type="boolean" default="false">
+  Overwrite an existing `manifest.config.yaml` (or an existing CI workflow file when used with `--ci`). The interactive form requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+</ParamField>
+
+<ParamField path="--ci" type="string">
+  Generate a CI workflow file for the named provider instead of running the interactive prompt. Supported providers: `github`. See [Generating a CI workflow](#generating-a-ci-workflow).
+</ParamField>
+
+<ParamField path="--node-versions" type="string" default="18,20,22">
+  Comma-separated list of Node.js versions for the CI matrix. Only used with `--ci`.
 </ParamField>
 
 ### Examples
@@ -42,11 +52,48 @@ manifest init
 
 # Overwrite an existing config
 manifest init --force
+
+# Generate a GitHub Actions workflow
+manifest init --ci github
 ```
 
 <Warning>
-`manifest init --force` requires an interactive terminal. In headless or non-TTY environments the command writes a minimal default config instead of prompting.
+`manifest init --force` (without `--ci`) requires an interactive terminal. In headless or non-TTY environments the command writes a minimal default config instead of prompting.
 </Warning>
+
+### Generating a CI workflow
+
+`manifest init --ci <provider>` writes a ready-to-commit CI configuration that runs `manifest validate`, `manifest scan`, and `npm test` on every pull request. Use it once when you set up a repository — no editing required afterward.
+
+Supported providers:
+
+| Provider | Output path |
+|---|---|
+| `github` | `.github/workflows/manifest-ci.yml` |
+
+The generated GitHub Actions workflow contains two jobs:
+
+- **`validate-and-test`** — runs on every push and pull request against `main`. Installs dependencies, then runs `npx manifest validate`, `npx manifest scan`, and `npm test`. Uses a matrix across the Node.js versions you pass to `--node-versions` (defaults to `18`, `20`, `22`) with `fail-fast: false` so one version failing does not cancel the others.
+- **`conformance-regen`** — runs only on pushes to `main`, after `validate-and-test` succeeds. Executes `npm run conformance:regen` and, if any fixtures changed, commits them back to `main` with `[skip ci]` in the message. Requires `contents: write` permission on the workflow token.
+
+#### Examples
+
+```bash
+# Generate the default workflow (Node 18, 20, 22)
+manifest init --ci github
+
+# Customize the Node.js matrix
+manifest init --ci github --node-versions 20,22
+
+# Overwrite an existing workflow file
+manifest init --ci github --force
+```
+
+<Note>
+If `.github/workflows/manifest-ci.yml` already exists, the command exits without changes and tells you to re-run with `--force`. This protects hand-edited workflows from being overwritten silently.
+</Note>
+
+After generation, commit the workflow file and push to your default branch — GitHub Actions picks it up automatically on the next pull request.
 
 ---
 
