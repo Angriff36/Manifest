@@ -62,6 +62,7 @@ function ir(): IR {
         policies: [],
       },
     ],
+    enums: [],
     stores: [],
     events: [
       {
