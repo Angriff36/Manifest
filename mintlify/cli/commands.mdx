@@ -303,8 +303,6 @@ The bundled schema path is resolved relative to the installed package, so `manif
 
 ---
 
----
-
 ## `manifest validate-ai [source]`
 
 Validates `.manifest` source or `.ir.json` files with **scored diagnostics designed for AI agent self-correction loops**. Where `manifest validate` checks one IR file against the schema, `validate-ai` adds compile-stage checks, semantic checks (orphan entities, missing policies, duplicate constraints), and a 0–100 score per file — emitted as machine-readable JSON when you need an agent to act on the result programmatically.
