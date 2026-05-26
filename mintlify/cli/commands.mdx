@@ -1,7 +1,7 @@
 ---
 title: "Manifest CLI command reference"
 sidebarTitle: "Commands"
-description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults."
+description: "Full syntax, options, and usage examples for every Manifest CLI command: init, compile, generate, build, validate, config, and docs — flags and defaults."
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -386,4 +386,56 @@ manifest config inspect --json
 
 <Tip>
 Commit the inspect output as a snapshot under VCS (e.g. `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it. Drift in either Manifest defaults or your local config will then surface as a diff before it changes emitted code.
+</Tip>
+
+---
+
+## `manifest docs [source]`
+
+Generates a static API reference site from compiled IR. Each entity produces a dedicated reference page with property tables, command signatures, policy rules, constraint details, relationships, events, and state transitions. Use it to publish always-up-to-date documentation that mirrors the contract enforced by the runtime — no hand-written markdown to drift out of sync.
+
+```bash
+manifest docs [source] [options]
+```
+
+`source` can be a single `.manifest` file, a single `.ir.json` file, a directory containing either, or omitted to scan the current directory. When a directory is passed, the CLI picks up every `.manifest` and `.ir.json` file inside it.
+
+### When to use it
+
+- Publish a public API reference for the entities, commands, and events your service exposes.
+- Generate review-ready artifacts in CI so reviewers can see the effective contract for every PR.
+- Produce markdown output to embed in an existing docs site, wiki, or LLM context window.
+
+### Options
+
+<ParamField path="-o, --output" type="string" default="docs-site">
+  Output directory for the generated site. The directory is created if it does not exist, and existing files are overwritten on each run.
+</ParamField>
+
+<ParamField path="-f, --format" type="string" default="html">
+  Output format. Use `html` for a self-contained static site (one HTML page per entity plus an `index.html`) or `markdown` for one `.md` file per entity (suitable for embedding in another docs system).
+</ParamField>
+
+<ParamField path="-t, --title" type="string" default="Manifest API Reference">
+  Site title shown in the page header and HTML `<title>` tag.
+</ParamField>
+
+### Examples
+
+```bash
+# Generate an HTML site from a directory of IR files
+manifest docs ir/ --output docs-site
+
+# Generate markdown from a single .manifest source file
+manifest docs modules/recipe.manifest --format markdown --output docs/reference
+
+# Override the site title
+manifest docs ir/ --title "Acme Platform API"
+
+# Use defaults: scans the current directory, writes HTML to docs-site/
+manifest docs
+```
+
+<Tip>
+Run `manifest docs` after `manifest compile` (or `manifest build`) in CI and publish the output directory to GitHub Pages, S3, or any static host. Because the site is generated from IR, it always matches the routes and policies your runtime enforces.
 </Tip>
