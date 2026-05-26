@@ -279,18 +279,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[pre-compact bridge — saved before context compaction]
-Files (11):
-  src/manifest/lexer.ts (edit)
-  src/manifest/types.ts (edit)
-  src/manifest/ir.ts (edit)
-  docs/spec/ir/ir-v1.schema.json (edit)
-  src/manifest/parser.ts (edit)
-  src/manifest/ir-compiler.ts (edit)
-  src/manifest/parser.test.ts (edit)
-  src/manifest/ir-compiler.test.ts (edit)
-  task_plan.md (edit)
-  src/manifest/projections/prisma/generator.ts (create)
-  src/manifest/projections/prisma/generator.test.ts (create)
+[Emergency bridge — running bridge was not updated]
+No changes or facts in this session.
 
 # === END COGNILAYER ===

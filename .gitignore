@@ -52,6 +52,7 @@ test-results/
 # Agent / AI tool scratch (kept out of the public repo)
 .automaker/
 .bolt/
+.claude/worktrees/
 .codex-main-push/
 .opencode/
 claude-code-plans/
@@ -66,3 +67,5 @@ pathlens-report-*.json
 # Distribution archives
 *.zip
 angriff36-manifest-*.tgz
+junk/
+scripts/
