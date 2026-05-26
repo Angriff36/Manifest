@@ -52,6 +52,7 @@ describe('manifest emit registries', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [
         {
           name: 'Foo',
@@ -127,6 +128,7 @@ describe('manifest emit registries', () => {
         version: '1.0',
         provenance: { contentHash: 'h', compilerVersion: 'v', schemaVersion: '1.0', compiledAt: '' },
         modules: [],
+        values: [],
         entities: [],
         stores: [],
         events: [],

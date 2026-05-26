@@ -24,6 +24,7 @@ function makeValidIR(overrides: Record<string, unknown> = {}): object {
       compiledAt: '2026-02-21T00:00:00.000Z',
     },
     modules: [],
+    values: [],
     entities: [],
     enums: [],
     stores: [],

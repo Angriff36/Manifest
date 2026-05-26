@@ -51,6 +51,7 @@ function ir(): IR {
       compiledAt: new Date(0).toISOString(),
     },
     modules: [],
+    values: [],
     entities: [
       {
         name: 'Smoke',
