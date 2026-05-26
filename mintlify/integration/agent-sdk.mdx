@@ -1,0 +1,183 @@
+---
+title: 'Expose Manifest commands to LLM agents'
+sidebarTitle: 'Agent SDK'
+description: 'Wrap RuntimeEngine with AgentRuntime to generate Anthropic, OpenAI, or Vercel AI SDK tool definitions, route tool calls to Manifest commands, and surface guard, policy, and constraint failures back to the model.'
+---
+
+The Agent SDK (`@angriff36/manifest/agent-sdk`) lets an LLM call your Manifest commands as tools. It reads your compiled IR, generates tool definitions in Anthropic, OpenAI, or Vercel AI SDK formats, and routes incoming tool calls to `RuntimeEngine` with guard, policy, and constraint outcomes translated into stable error codes the model can reason about.
+
+## When to use this pattern
+
+Reach for the Agent SDK when:
+
+- You want an LLM-driven assistant to invoke domain commands (such as `placeOrder` or `approve`) instead of writing one-off function wrappers.
+- You need the model to introspect entities and commands at runtime to plan its next call.
+- You want guard, policy, and constraint failures returned as structured codes (`GUARD_FAILED`, `POLICY_DENIED`, `CONSTRAINT_BLOCKED`) rather than raw stack traces.
+
+If you only need to expose CRUD endpoints to a non-LLM client, use [Projections](/integration/projections) or the [Embedded Runtime](/integration/embedded-runtime) instead.
+
+## What you get
+
+`AgentRuntime` is a stateful wrapper around `RuntimeEngine` that adds:
+
+| Capability | Description |
+| --- | --- |
+| Tool definitions | Generate Anthropic, OpenAI, or Vercel AI SDK tools from every command in your IR. |
+| Built-in introspection tools | Seven `manifest_*` tools the model can call to discover entities, commands, and instances. |
+| Tool call routing | A single `executeToolCall` entry point that dispatches both built-ins and user commands. |
+| LLM-friendly results | Stable error codes, human-readable messages, and structured `guardFailure`, `policyDenial`, `constraintOutcomes`, and `concurrencyConflict` payloads. |
+| Intent mapping | `findCommands(intent)` ranks commands by keyword match for natural-language routing. |
+
+## Quick start
+
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { RuntimeEngine } from '@angriff36/manifest';
+import { AgentRuntime } from '@angriff36/manifest/agent-sdk';
+
+const { ir } = await compileToIR(source);
+const engine = new RuntimeEngine(ir, {
+  user: { id: 'user-1', role: 'admin' },
+});
+
+const agent = new AgentRuntime(engine);
+
+// 1. Hand the model your tools
+const tools = agent.getToolDefinitions('anthropic');
+
+// 2. Forward each tool call the model produces
+const result = await agent.executeToolCall({
+  name: 'order_placeOrder',
+  arguments: {
+    parameters: { customerId: 'cust-42', items: [{ sku: 'A1', qty: 2 }] },
+  },
+});
+
+if (!result.success) {
+  // result.code is one of: GUARD_FAILED, POLICY_DENIED, CONSTRAINT_BLOCKED,
+  // CONCURRENCY_CONFLICT, UNKNOWN_TOOL, MISSING_ARGUMENT, EXECUTION_ERROR
+  console.error(result.code, result.message);
+}
+```
+
+## Generating tool definitions
+
+`getToolDefinitions(format)` accepts `'anthropic'`, `'openai'`, or `'vercel'` and returns ready-to-use tool definitions for the matching SDK. Every command in your IR becomes one tool; seven built-in introspection tools are appended.
+
+```typescript
+const anthropicTools = agent.getToolDefinitions('anthropic');
+// [{ name: 'order_placeOrder', description: 'Entity: Order | Parameters: ...', input_schema: {...} }, ...]
+
+const openaiTools = agent.getToolDefinitions('openai');
+// [{ type: 'function', function: { name, description, parameters } }, ...]
+
+const vercelTools = agent.getToolDefinitions('vercel');
+// { order_placeOrder: { description, parameters }, ... }
+```
+
+If you need more control, call `toAnthropicTools(ir, options)`, `toOpenAITools(ir, options)`, or `toVercelAITools(ir, options)` directly. Options include:
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `toolNameStrategy` | `'snake'` | `'snake'` produces `order_placeOrder`; `'dot'` preserves `Order.placeOrder`. |
+| `builtinPrefix` | `'manifest'` | Prefix for built-in tool names (for example `manifest_list_entities`). |
+| `includeBuiltins` | `true` | Include the seven introspection tools. |
+| `commandFilter` | — | Predicate to include or exclude individual commands. |
+| `entityFilter` | — | Predicate to restrict commands by entity. |
+| `includeGuardHints` | `true` | Add `Guards: N` to the tool description. |
+| `includePolicyHints` | `true` | Add `Policies: ...` to the tool description. |
+
+## Built-in introspection tools
+
+`AgentRuntime` always exposes these tools so the model can plan without hardcoded knowledge of your domain:
+
+| Tool | Purpose |
+| --- | --- |
+| `manifest_list_entities` | List entities, optionally filtered by module. |
+| `manifest_describe_entity` | Get properties, relationships, constraints, and policies for one entity. |
+| `manifest_list_commands` | List commands, optionally filtered by entity or module. |
+| `manifest_describe_command` | Get parameters, guards, policies, and emitted events for one command. |
+| `manifest_execute_command` | Run a command. Equivalent to calling a user tool, but explicit. |
+| `manifest_get_instances` | Read up to `limit` instances of an entity from the runtime store. |
+| `manifest_check_constraints` | Evaluate constraints against a specific instance. |
+
+Change the `manifest_` prefix with `new AgentRuntime(engine, { builtinPrefix: 'shop' })` if it collides with other tools in your session.
+
+## Executing tool calls
+
+`executeToolCall` accepts the LLM's tool call payload and returns a single `AgentToolResult`. It routes built-ins to in-process introspection and user commands to `engine.runCommand`.
+
+```typescript
+const result = await agent.executeToolCall({
+  name: 'order_placeOrder',
+  arguments: {
+    entityId: 'order-123',                 // optional: instance to act on
+    parameters: { items: [...] },          // command parameters
+    context: { causationId: 'req-abc' },   // optional: forwarded as causation
+  },
+});
+```
+
+The result always includes `success`, `code`, and `message`. On success you also get `data` and `emittedEvents`. On failure, exactly one of the structured fields is populated:
+
+```typescript
+// Guard rejection
+{ success: false, code: 'GUARD_FAILED', message: 'Guard 1 evaluated to false',
+  guardFailure: { index: 0, expression: 'items.length > 0', resolved: [...] } }
+
+// Policy denial
+{ success: false, code: 'POLICY_DENIED', message: 'Only admins can approve',
+  policyDenial: { policy: 'AdminOnly', expression: 'user.role == "admin"' } }
+
+// Constraint violation
+{ success: false, code: 'CONSTRAINT_BLOCKED', message: 'One or more constraints were violated',
+  constraintOutcomes: [{ code: 'STOCK', constraintName: 'InStock', severity: 'block', passed: false }] }
+
+// Concurrency conflict
+{ success: false, code: 'CONCURRENCY_CONFLICT', message: 'Concurrent modification detected',
+  concurrencyConflict: { entityType: 'Order', entityId: 'order-123', expectedVersion: 3, actualVersion: 4 } }
+```
+
+Pass these payloads back to the model verbatim. The stable `code` lets the model decide whether to retry, ask the user for clarification, or surface the error.
+
+## Intent mapping
+
+When the user types free-form text, use `findCommands(intent)` to rank candidate commands by keyword overlap before showing options to the model.
+
+```typescript
+const matches = agent.findCommands('cancel my last order');
+// [{ command: 'cancelOrder', entity: 'Order', score: 0.83, matchedTokens: ['cancel', 'order'], reason: '...' }]
+```
+
+`tokenize` and `findMatchingCommands` are also exported if you want to build a richer router.
+
+## End-to-end example with Anthropic
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk';
+import { AgentRuntime } from '@angriff36/manifest/agent-sdk';
+
+const agent = new AgentRuntime(engine);
+const tools = agent.getToolDefinitions('anthropic');
+const client = new Anthropic();
+
+const response = await client.messages.create({
+  model: 'claude-3-5-sonnet-latest',
+  max_tokens: 1024,
+  tools,
+  messages: [{ role: 'user', content: 'Place an order for two A1 widgets for cust-42.' }],
+});
+
+for (const block of response.content) {
+  if (block.type !== 'tool_use') continue;
+  const result = await agent.executeToolCall({ name: block.name, arguments: block.input });
+  // Feed `result` back to the model as a tool_result block on the next turn.
+}
+```
+
+## What not to do
+
+- **Do not bypass `executeToolCall` to invoke commands manually after generating tools.** The wrapper resolves mangled tool names and maps failures to stable codes. Calling `engine.runCommand` directly skips that translation.
+- **Do not strip the structured failure fields before returning to the model.** `guardFailure`, `policyDenial`, and `constraintOutcomes` are what let the model decide its next action.
+- **Do not expose every command to every session.** Use `commandFilter` or `entityFilter` to scope tools to the agent's role.
+- **Do not rebuild `AgentRuntime` per request unless the IR changed.** Cache the instance alongside your `RuntimeEngine`.

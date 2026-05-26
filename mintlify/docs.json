@@ -48,6 +48,7 @@
               "integration/overview",
               "integration/projections",
               "integration/embedded-runtime",
+              "integration/agent-sdk",
               "integration/nextjs",
               "integration/prisma"
             ]
