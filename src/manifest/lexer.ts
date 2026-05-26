@@ -40,7 +40,9 @@ export const KEYWORDS = new Set([
   'key', 'fields', 'references', 'onDelete', 'onUpdate',
   'cascade', 'restrict', 'setNull', 'setDefault', 'noAction',
   // v1.0 enum type keyword
-  'enum'
+  'enum',
+  // v1.0 exact-decimal type keywords
+  'decimal', 'money',
 ]);
 
 const OPERATORS = new Set([

@@ -142,6 +142,38 @@ describe('IRCompiler', () => {
       expect(entity?.properties[3].defaultValue).toEqual({ kind: 'number', value: 0 });
     });
 
+    it('should preserve decimal and money type params in IR', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Invoice {
+          property amount: decimal(10, 2) = 0
+          property tax: money(12, 4) = 0
+          property total: decimal = 0
+          property optionalFee: money?
+        }
+      `);
+
+      const props = result.ir?.entities[0].properties ?? [];
+      expect(props.find(p => p.name === 'amount')?.type).toEqual({
+        name: 'decimal',
+        nullable: false,
+        params: { precision: 10, scale: 2 },
+      });
+      expect(props.find(p => p.name === 'tax')?.type).toEqual({
+        name: 'money',
+        nullable: false,
+        params: { precision: 12, scale: 4 },
+      });
+      expect(props.find(p => p.name === 'total')?.type).toEqual({
+        name: 'decimal',
+        nullable: false,
+      });
+      expect(props.find(p => p.name === 'optionalFee')?.type).toEqual({
+        name: 'money',
+        nullable: true,
+      });
+    });
+
     it('should lower enum member identifiers in property defaults to string IRValues', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`

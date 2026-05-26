@@ -1,0 +1,9 @@
+entity Invoice {
+  property required description: string
+  property amount: decimal(10, 2) = 0
+  property tax: money(12, 4) = 0
+  property total: decimal = 0
+  property optionalFee: money?
+}
+
+store Invoice in memory

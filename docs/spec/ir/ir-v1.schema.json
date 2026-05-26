@@ -362,7 +362,16 @@
       "properties": {
         "name": { "type": "string" },
         "generic": { "$ref": "#/definitions/IRType" },
-        "nullable": { "type": "boolean" }
+        "nullable": { "type": "boolean" },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Type parameters such as precision/scale for decimal types",
+          "properties": {
+            "precision": { "type": "number", "description": "Total number of significant digits (for decimal/money types)" },
+            "scale": { "type": "number", "description": "Number of digits after decimal point (for decimal/money types)" }
+          }
+        }
       }
     },
     "IRValue": {
