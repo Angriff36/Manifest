@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.12] - 2026-05-26
+
+### Added
+
+- **`@angriff36/manifest/ir-diff`** — compare two IR JSON files; optional SQL/Prisma migration hints.
+- **`@angriff36/manifest/breaking-change`** — classify IR diffs as compatible, deprecated, or breaking.
+- **CLI** `manifest diff ir-vs-ir` and `manifest diff breaking` with `--json`, `--sql`, `--prisma`, `--ci`.
+
 ## [1.0.11] - 2026-05-26
 
 ### Added

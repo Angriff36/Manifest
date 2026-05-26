@@ -19,6 +19,8 @@ export default defineConfig({
       '@angriff36/manifest/ir-compiler': path.resolve(__dirname, './src/manifest/ir-compiler.ts'),
       '@angriff36/manifest/compiler': path.resolve(__dirname, './src/manifest/compiler.ts'),
       '@angriff36/manifest/ir': path.resolve(__dirname, './src/manifest/ir.ts'),
+      '@angriff36/manifest/ir-diff': path.resolve(__dirname, './src/manifest/ir-diff.ts'),
+      '@angriff36/manifest/breaking-change': path.resolve(__dirname, './src/manifest/breaking-change.ts'),
       '@angriff36/manifest/projections/nextjs': path.resolve(__dirname, './src/manifest/projections/nextjs/generator.ts'),
       '@angriff36/manifest/projections/routes': path.resolve(__dirname, './src/manifest/projections/routes/generator.ts'),
       '@angriff36/manifest/registry/emit': path.resolve(__dirname, './src/manifest/registry/emit.ts'),
