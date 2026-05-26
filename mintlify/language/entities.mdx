@@ -40,7 +40,7 @@ The IR carries this as a sparse-optional field: `IREntity.external?: boolean`. W
 
 ## Properties
 
-Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. You can also reference a named [enum](/language/enums) declared elsewhere in the manifest. A property without a default is `undefined` unless the caller supplies a value at creation time.
 
 ### Modifiers
 

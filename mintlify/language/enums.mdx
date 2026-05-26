@@ -1,0 +1,112 @@
+---
+title: "Enums: typed value sets for properties"
+description: "Declare reusable enum types with the enum keyword. Attach optional display labels and ordinals, then reference the type from entity properties."
+sidebarTitle: "Enums"
+---
+
+An enum is a first-class type declaration that names a fixed set of values. Use it whenever a property should accept only a known list of options — `status`, `role`, `priority`, and similar fields. Enum declarations live alongside entities, modules, and stores, and the compiler emits them into the IR under `enums`.
+
+## Declaring an enum
+
+Use the `enum` keyword followed by a name and a block of member identifiers:
+
+```manifest
+enum Status {
+  draft
+  published
+  archived
+}
+```
+
+Each line inside the block is a member. Member names follow the same identifier rules as property names.
+
+### Display labels
+
+Attach an optional human-readable label with `=` and a string literal. Labels do not change the stored value — they are metadata that UIs and projections can read from the IR.
+
+```manifest
+enum Priority {
+  low = "Low Priority"
+  medium = "Medium Priority"
+  high = "High Priority"
+}
+```
+
+### Ordinals
+
+Attach an optional numeric ordinal in parentheses. Ordinals are useful when an adapter needs a stable sort order or a database column expects an integer encoding.
+
+```manifest
+enum Status {
+  draft
+  published = "Published"
+  archived(2)
+}
+```
+
+Labels and ordinals are independent — you can attach either, both, or neither to any member.
+
+## Using an enum as a property type
+
+Reference an enum by name wherever a property type is expected:
+
+```manifest
+enum Status {
+  draft
+  published
+  archived
+}
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+}
+```
+
+When the property has a default that names an enum member (for example `= draft`), the compiler lowers the identifier to a string value in the IR. At runtime the property behaves like a `string` whose values are constrained to the enum's members.
+
+<Note>
+Enum-typed properties pair naturally with [state transitions](/language/entities#state-transitions-vnext). Declare the allowed `from` / `to` values as strings that match the enum members, and the runtime will reject mutations that fall outside the set.
+</Note>
+
+## Module-scoped enums
+
+Enums can be declared at the top level of a `.manifest` file or inside a `module` block, the same as entities and commands:
+
+```manifest
+module Billing {
+  enum InvoiceState {
+    open
+    paid
+    void
+  }
+
+  entity Invoice {
+    property required id: string
+    property state: InvoiceState = open
+  }
+}
+```
+
+The IR records the owning module on each `IREnum` so projections can namespace generated types when needed.
+
+## IR shape
+
+Every enum declaration appears in the IR under the top-level `enums` array, and each module's `enums` field lists the names of enums it owns:
+
+```json
+{
+  "enums": [
+    {
+      "name": "Status",
+      "values": [
+        { "name": "draft" },
+        { "name": "published", "label": "Published" },
+        { "name": "archived", "ordinal": 2 }
+      ]
+    }
+  ]
+}
+```
+
+Downstream tooling — Prisma generation, route generation, UI scaffolding — can consume this structure to emit typed enums, dropdowns, or constants.
