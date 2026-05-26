@@ -543,6 +543,46 @@ entity Task {
 Defaults apply only when the property is **omitted** from the creation payload. An empty string `""` counts as a provided value and overrides the default.
 
 
+## Enums
+
+Declare a fixed set of named values with the `enum` keyword. Enums are first-class types — reference them anywhere a built-in type is allowed, including property declarations and command parameters.
+
+```manifest
+enum Status {
+  draft
+  published = "Published"
+  archived(2)
+}
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+}
+```
+
+Each member can carry an optional display label (a quoted string after `=`) and an optional ordinal (a number in parentheses) for sorting or database mapping. Both are independent — supply either, both, or neither.
+
+Enums can be declared at the top level or inside a `module` block. The compiler emits them to the IR `enums` array and tracks per-module membership under `IRModule.enums`.
+
+### Using enums as property types
+
+Reference an enum by name in any property type position. Use the bare member name as a default value:
+
+```manifest
+enum Priority {
+  low = "Low Priority"
+  medium = "Medium Priority"
+  high = "High Priority"
+}
+
+entity Task {
+  property required title: string
+  property priority: Priority = medium
+  property status: Status = draft
+}
+```
+
+
 ## Relationships
 
 Relationships declare connections between entities. The runtime resolves them synchronously from the current store context.
