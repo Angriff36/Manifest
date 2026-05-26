@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.10] - 2026-05-26
+
+### Added
+
+- **`manifest validate-ai`** CLI command: compile `.manifest` or validate `.ir.json` with schema + semantic checks, 0–100 scoring, and machine-readable JSON output for agent self-correction loops.
+- **CLI tests** for IR validation, semantic diagnostics, scoring, text/JSON output, and manifest-source compilation.
+
 ## [1.0.9] - 2026-05-26
 
 ### Added

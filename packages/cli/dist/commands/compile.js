@@ -34,10 +34,10 @@ async function getManifestFiles(source, options) {
     if (stat.isFile()) {
         return [resolved];
     }
-    // Directory: use glob pattern
-    const pattern = options.glob || path.join(source, '**/*.manifest');
-    const files = await glob(pattern, { cwd: process.cwd() });
-    return files.map(f => path.resolve(process.cwd(), f));
+    // Directory: glob inside the resolved directory (not project cwd)
+    const pattern = options.glob || '**/*.manifest';
+    const files = await glob(pattern, { cwd: resolved });
+    return files.map(f => path.resolve(resolved, f));
 }
 function getOutputPath(filePath, options) {
     if (options.output) {

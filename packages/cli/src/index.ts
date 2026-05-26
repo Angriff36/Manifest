@@ -13,6 +13,7 @@ import { compileCommand } from './commands/compile.js';
 import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
 import { validateCommand } from './commands/validate.js';
+import { validateAICommand } from './commands/validate-ai.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { scanCommand } from './commands/scan.js';
@@ -192,6 +193,28 @@ program
   .option('--schema <path>', 'Schema path (default: docs/spec/ir/ir-v1.schema.json)')
   .option('--strict', 'Fail on warnings', false)
   .action(validateCommand);
+
+/**
+ * manifest validate-ai [source]
+ *
+ * Structured validation for LLM-generated .manifest or IR JSON with scored reports.
+ */
+program
+  .command('validate-ai')
+  .description('Validate manifest/IR with scored diagnostics for AI agents')
+  .argument('[source]', 'Source .manifest, .ir.json, directory, or glob')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--schema <path>', 'Schema path (default: docs/spec/ir/ir-v1.schema.json)')
+  .option('--min-score <n>', 'Minimum score to pass (default: 100)', (v) => parseInt(v, 10), 100)
+  .option('--verbose', 'Include info-level diagnostics', false)
+  .action(async (source, options = {}) => {
+    await validateAICommand(source, {
+      format: options.format,
+      schema: options.schema,
+      minScore: options.minScore,
+      verbose: options.verbose,
+    });
+  });
 
 /**
  * manifest check [source]
