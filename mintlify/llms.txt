@@ -13,6 +13,7 @@ Manifest is designed for AI agents that emit, validate, and reason about busines
 ## Language
 
 - [Entities](https://manifest-b1e8623f.mintlify.app/language/entities): Define typed data structures with properties, computed values, relationships, concurrency controls, constraints, and transitions.
+- [Enums](https://manifest-b1e8623f.mintlify.app/language/enums): Declare reusable enum types with optional display labels and ordinals; reference them from entity properties just like built-in scalars.
 - [Commands](https://manifest-b1e8623f.mintlify.app/language/commands): Declare named operations that enforce guards and policies, execute ordered actions (mutate, emit, compute), and return structured CommandResult.
 - [Guards and Policies](https://manifest-b1e8623f.mintlify.app/language/guards-policies): Use guards for precondition checks and policies for authorization. Both are boolean expressions evaluated against runtime context.
 - [Events](https://manifest-b1e8623f.mintlify.app/language/events): Declare typed events with channels and payload schemas. Commands emit them via the emit action; subscribe with runtime.onEvent().

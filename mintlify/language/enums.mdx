@@ -1,0 +1,140 @@
+---
+title: "Enums: named value sets for typed properties"
+description: "Declare reusable enum types with optional display labels and ordinals, then reference them from entity properties just like built-in scalars."
+sidebarTitle: "Enums"
+---
+
+An enum is a named, closed set of values that you can use as a property type. Declaring an enum once and referencing it from one or more entities keeps your manifest DRY, makes invalid states unrepresentable, and gives downstream projections (UI, database, API) a single source of truth for the allowed values and their display metadata.
+
+## When to use enums
+
+Reach for an enum any time a property has a fixed, well-known set of values — order status, priority levels, role tiers, document state, currency codes, and so on. If you find yourself writing the same string default in several places (`"draft"`, `"pending"`, `"approved"`), an enum is almost always the better choice:
+
+- The compiler can validate references against the declared values.
+- Projections can generate native enum types (Prisma `enum`, TypeScript union types, database `CHECK` constraints).
+- UI layers get human-readable labels for free.
+
+## Basic declaration
+
+Use the `enum` keyword followed by a name and a block of value identifiers, one per line.
+
+```manifest
+enum Status {
+  draft
+  published
+  archived
+}
+```
+
+Enum names follow the same conventions as entity names (capitalized identifier). Value names are lowercase identifiers by convention.
+
+## Using an enum as a property type
+
+Reference the enum by name in any property type position. You can also set a default value using one of the enum members:
+
+```manifest
+enum Status {
+  draft
+  published
+  archived
+}
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+}
+
+store Article in memory
+```
+
+When `status` is omitted at creation time, the runtime applies the default (`draft`). Supplying any other declared member is accepted; supplying an undeclared value is rejected.
+
+## Display labels
+
+Attach a human-readable label to any value with `= "Label string"`. Labels are surfaced to projections and UI generators but do not change the identifier used in code or storage.
+
+```manifest
+enum Priority {
+  low = "Low Priority"
+  medium = "Medium Priority"
+  high = "High Priority"
+}
+```
+
+The identifier (`low`, `medium`, `high`) is what you write in defaults, guards, and runtime payloads. The label (`"Low Priority"`, …) is metadata for presentation.
+
+## Ordinals
+
+Attach a numeric ordinal to any value with parentheses, `value(n)`. Ordinals are useful for sort order, database mapping, or interop with systems that key on integers.
+
+```manifest
+enum Status {
+  draft
+  published = "Published"
+  archived(2)
+}
+```
+
+You can combine labels and ordinals on the same value:
+
+```manifest
+enum Priority {
+  low = "Low Priority"(1)
+  medium = "Medium Priority"(2)
+  high = "High Priority"(3)
+}
+```
+
+Both `label` and `ordinal` are independently optional — supply whichever you need.
+
+## Enums inside modules
+
+Enum declarations can live at the top level of a `.manifest` file or inside a `module` block, alongside entities and commands. Module-scoped enums are namespaced to that module in the IR.
+
+```manifest
+module Catalog {
+  enum Availability {
+    inStock = "In stock"
+    backorder = "On backorder"
+    discontinued = "Discontinued"
+  }
+
+  entity Product {
+    property required name: string
+    property availability: Availability = inStock
+  }
+
+  store Product in memory
+}
+```
+
+## IR shape
+
+The compiler emits enums into a top-level `enums` array on the IR alongside `entities`, `stores`, and `commands`. Each enum carries its `name` and a list of `values`; each value carries a `name` and the optional `label` and `ordinal` fields.
+
+```json
+{
+  "enums": [
+    {
+      "name": "Status",
+      "values": [
+        { "name": "draft" },
+        { "name": "published", "label": "Published" },
+        { "name": "archived", "ordinal": 2 }
+      ]
+    }
+  ]
+}
+```
+
+Module-scoped enums also include a `module` field that names their parent module.
+
+<Note>
+Enums were added in Manifest v1.0.6. Earlier IR fixtures that predate enums still parse — the compiler emits an empty `enums: []` when no enum declarations are present.
+</Note>
+
+## Related
+
+- [Entities](/language/entities) — declare properties and reference enum types.
+- [Stores](/language/stores) — choose where entities that use enum-typed properties are persisted.
+- [Prisma projection](/integration/prisma) — map enum declarations to native Prisma `enum` types.
