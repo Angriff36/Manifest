@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube, Package } from 'lucide-react';
+import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube, Package, Share2 } from 'lucide-react';
 import { ManifestCompiler, ManifestProgram, CompilationError } from './manifest/compiler';
 import { examples } from './manifest/examples';
-import { ArtifactsPanel } from './artifacts';
+import { ArtifactsPanel, IRGraphPanel } from './artifacts';
 
 const compiler = new ManifestCompiler();
 
@@ -125,7 +125,7 @@ function TreeNode({ label, value, depth = 0 }: { label: string; value: unknown; 
   }
   if (typeof value === 'object') {
     const entries = Object.entries(value).filter(([k]) => k !== 'position');
-    return <div><button onClick={() => setOpen(!open)} className="flex items-center gap-1 py-0.5 hover:bg-white/5 w-full text-left" style={{ paddingLeft: depth * 16 }}>{open ? <ChevronDown size={14} className="text-gray-500" /> : <ChevronRight size={14} className="text-gray-500" />}<span className="text-gray-400">{label}</span>{/* eslint-disable @typescript-eslint/no-explicit-any */}
+    return <div><button onClick={() => setOpen(!open)} className="flex items-center gap-1 py-0.5 hover:bg-white/5 w-full text-left" style={{ paddingLeft: depth * 16 }}>{open ? <ChevronDown size={14} className="text-gray-500" /> : <ChevronRight size={14} className="text-gray-500" />}<span className="text-gray-400">{label}</span>{/* eslint-disable @typescript-eslint/no-explicit-any */}
 {(value as any).type && <span className="text-emerald-400 text-xs ml-1">{(value as any).type}</span>}</button>{open && entries.map(([k, v]) => <TreeNode key={k} label={k} value={v} depth={depth + 1} />)}</div>;
   }
   return null;
@@ -233,7 +233,7 @@ store Settings in localStorage { key: "app_settings" }`}</pre>
   );
 }
 
-type Tab = 'output' | 'server' | 'tests' | 'ast' | 'docs';
+type Tab = 'output' | 'server' | 'tests' | 'ast' | 'graph' | 'docs';
 
 export default function App() {
   const [source, setSource] = useState(examples[0].code);
@@ -327,6 +327,7 @@ export default function App() {
               { id: 'server' as Tab, icon: Server, label: 'Server' },
               { id: 'tests' as Tab, icon: TestTube, label: 'Tests' },
               { id: 'ast' as Tab, icon: TreeDeciduous, label: 'AST' },
+              { id: 'graph' as Tab, icon: Share2, label: 'Graph' },
               { id: 'docs' as Tab, icon: Layers, label: 'Docs' }
             ].map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${tab === id ? 'text-sky-400 bg-gray-800/50 border-b-2 border-sky-400' : 'text-gray-400 hover:text-gray-300'}`}><Icon size={14} />{label}</button>
@@ -337,6 +338,7 @@ export default function App() {
             {tab === 'server' && <Editor value={serverCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated server routes (add 'server' keyword to expose)..." />}
             {tab === 'tests' && <Editor value={testCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated tests from constraints..." />}
             {tab === 'ast' && <ASTViewer ast={ast} />}
+            {tab === 'graph' && <IRGraphPanel source={source} disabled={errors.length > 0} />}
             {tab === 'docs' && <Docs />}
           </div>
         </div>
