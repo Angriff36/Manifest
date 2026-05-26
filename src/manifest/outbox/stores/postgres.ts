@@ -126,7 +126,7 @@ export class PostgresOutboxStore implements OutboxStore {
       WHERE o.entry_id IN (
         SELECT entry_id FROM ${quoteIdent(this.tableName)}
         WHERE status = 'pending' AND claimed_at IS NULL
-        ORDER BY enqueued_at
+        ORDER BY enqueued_at, entry_id
         LIMIT $1
         FOR UPDATE SKIP LOCKED
       )
@@ -134,6 +134,12 @@ export class PostgresOutboxStore implements OutboxStore {
     `;
 
     const result = await this.pool.query<OutboxRow>(sql, [batchSize]);
+    // RETURNING row order is not guaranteed to match the claim subquery ORDER BY.
+    result.rows.sort((a, b) => {
+      const ta = typeof a.enqueued_at === 'string' ? Number(a.enqueued_at) : a.enqueued_at;
+      const tb = typeof b.enqueued_at === 'string' ? Number(b.enqueued_at) : b.enqueued_at;
+      return ta - tb || String(a.entry_id).localeCompare(String(b.entry_id));
+    });
     return result.rows.map(rowToEntry);
   }
 

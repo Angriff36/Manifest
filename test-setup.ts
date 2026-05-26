@@ -1,4 +1,14 @@
 // Test setup for vitest
+import { loadEnv } from 'vite';
+
+// Load .env without overriding shell/CI (DATABASE_URL, CAPSULE_TEST_DATABASE_URL, …)
+const fromFile = loadEnv('', process.cwd(), '');
+for (const [key, value] of Object.entries(fromFile)) {
+  if (process.env[key] === undefined) {
+    process.env[key] = value;
+  }
+}
+
 // Mock localStorage for Node.js test environment
 
 class LocalStorageMock {

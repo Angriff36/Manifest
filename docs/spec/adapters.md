@@ -208,7 +208,7 @@ This means:
 ### First-Party Stores
 
 - `MemoryOutboxStore` (`src/manifest/outbox/stores/memory.ts`) — in-memory with `enqueue`/`claim`/`markDelivered`/`markFailed`. Claims skip already-claimed-or-resolved entries (an in-memory analogue of `FOR UPDATE SKIP LOCKED`).
-- `PostgresOutboxStore` (`src/manifest/outbox/stores/postgres.ts`) — durable, backed by `pg`. Schema in `src/manifest/outbox/stores/postgres.sql`. `claim` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so already-claimed rows are not re-acquired even after the lock releases. Mock-based unit-tested in CI; live integration tests live in `src/manifest/audit/sinks/postgres.live.test.ts` and `src/manifest/outbox/stores/postgres.live.test.ts` and skip unless `MANIFEST_POSTGRES_TEST_URL` is set.
+- `PostgresOutboxStore` (`src/manifest/outbox/stores/postgres.ts`) — durable, backed by `pg`. Schema in `src/manifest/outbox/stores/postgres.sql`. `claim` uses `SELECT … FOR UPDATE SKIP LOCKED` combined with a `claimed_at IS NULL` filter so already-claimed rows are not re-acquired even after the lock releases. Mock-based unit-tested in CI; live integration tests live in `src/manifest/audit/sinks/postgres.live.test.ts` and `src/manifest/outbox/stores/postgres.live.test.ts` and skip unless `DATABASE_URL` is set (empty Manifest Neon DB, direct / pooler off). `CAPSULE_TEST_DATABASE_URL` is reserved for future capsule-pro cross-app tests.
 
 ### Delivery Semantics: At-Least-Once, Idempotent Consumers Required
 
@@ -227,12 +227,10 @@ A dispatcher worker that claims an outbox entry but crashes before calling `mark
 ### Running Live Postgres Tests Locally
 
 ```bash
-# Spin up Postgres any way you like (docker run, brew, etc.), then:
-MANIFEST_POSTGRES_TEST_URL=postgres://user:pass@localhost:5432/manifest_test \
-  npx vitest run src/manifest/audit/sinks/postgres.live.test.ts \
-                 src/manifest/outbox/stores/postgres.live.test.ts
+# .env: DATABASE_URL=postgresql://... (Manifest test branch, pooler off)
+npm run test:postgres
 ```
 
-The live suites apply the shipped `postgres.sql` schemas verbatim, run the assertions, then drop the tables — successive runs against the same database are idempotent. CI does not require these tests because the env var is unset there.
+The live suites apply the shipped `postgres.sql` schemas verbatim, run the assertions, then drop the tables — successive runs against the same database are idempotent. Default `npm test` skips them when `DATABASE_URL` is unset (CI).
 
 

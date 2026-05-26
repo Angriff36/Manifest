@@ -1,11 +1,10 @@
 /**
  * Live-database integration tests for PostgresOutboxStore.
  *
- * SKIPPED by default. Set `MANIFEST_POSTGRES_TEST_URL` to a writable
- * PostgreSQL connection string to run:
+ * SKIPPED when `DATABASE_URL` is unset. Use the empty Manifest Neon DB
+ * (direct connection, pooler off). `MANIFEST_POSTGRES_TEST_URL` is still accepted.
  *
- *   MANIFEST_POSTGRES_TEST_URL=postgres://user:pass@localhost:5432/manifest_test \
- *     npx vitest run src/manifest/outbox/stores/postgres.live.test.ts
+ *   npm run test:postgres
  *
  * Covers schema apply, enqueue idempotency, claim concurrency disjointness
  * (the load-bearing concurrency claim documented in adapters.md), and
@@ -20,8 +19,9 @@ import { Pool } from 'pg';
 import { PostgresOutboxStore } from './postgres';
 import type { OutboxEntry } from '../outbox-store';
 import type { EmittedEvent } from '../../runtime-engine';
+import { postgresLiveDatabaseUrl } from '../../test/postgres-live-env';
 
-const url = process.env.MANIFEST_POSTGRES_TEST_URL;
+const url = postgresLiveDatabaseUrl();
 const describeLive = url ? describe : describe.skip;
 
 const TABLE = 'manifest_outbox_entries';

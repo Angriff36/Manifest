@@ -1,11 +1,10 @@
 /**
  * Live-database integration tests for PostgresAuditSink.
  *
- * SKIPPED by default. Set `MANIFEST_POSTGRES_TEST_URL` to a writable
- * PostgreSQL connection string to run:
+ * SKIPPED when `DATABASE_URL` is unset. Use the empty Manifest Neon DB
+ * (direct connection, pooler off). `MANIFEST_POSTGRES_TEST_URL` is still accepted.
  *
- *   MANIFEST_POSTGRES_TEST_URL=postgres://user:pass@localhost:5432/manifest_test \
- *     npx vitest run src/manifest/audit/sinks/postgres.live.test.ts
+ *   npm run test:postgres
  *
  * The suite creates `manifest_audit_records` from the shipped schema, runs
  * its assertions, then drops the table — so successive runs against the
@@ -19,8 +18,9 @@ import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { PostgresAuditSink } from './postgres';
 import type { AuditRecord } from '../audit-sink';
+import { postgresLiveDatabaseUrl } from '../../test/postgres-live-env';
 
-const url = process.env.MANIFEST_POSTGRES_TEST_URL;
+const url = postgresLiveDatabaseUrl();
 const describeLive = url ? describe : describe.skip;
 
 const TABLE = 'manifest_audit_records';

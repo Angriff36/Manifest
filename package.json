@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -100,6 +100,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
+    "test:postgres": "vitest run src/manifest/audit/sinks/postgres.live.test.ts src/manifest/outbox/stores/postgres.live.test.ts --fileParallelism=false",
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",
     "docs:check:metadata": "node scripts/check-doc-metadata.mjs",
