@@ -133,7 +133,7 @@ NODE_AUTH_TOKEN=<token> npm view @angriff36/manifest versions --json
 pnpm run build:lib
 pnpm --filter @manifest/cli run build
 
-# 4. Update CHANGELOG.md (section ## [x.y.z])
+# 4. Update root CHANGELOG.md (section ## [x.y.z])
 
 # 5. Commit, push main, then tag and push (triggers Release workflow):
 git tag v<x.y.z>

@@ -41,7 +41,7 @@ jobs:
 
       - name: Build release notes from CHANGELOG.md
         run: |
-          node scripts/extract-changelog-section.mjs "${{ needs.resolve.outputs.tag_version }}" > release-notes.md
+          node .github/scripts/extract-changelog-section.mjs "${{ needs.resolve.outputs.tag_version }}" > release-notes.md
           echo "" >> release-notes.md
           echo "---" >> release-notes.md
           echo "" >> release-notes.md
