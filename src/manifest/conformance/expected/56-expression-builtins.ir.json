@@ -1,0 +1,1123 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "15cc4a188b131151632ba6c052b8ff59240167078a3f9a48a114207189f758e2",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "StringUtils",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "raw",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "cleaned",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "partCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "hasPrefix",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "hasSuffix",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "swapped",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "upper",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "lower",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "charCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "slice",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "foundAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "testStringOps"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "MathUtils",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "value",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "absolute",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "rounded",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "floored",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "ceiled",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "smallest",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "largest",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "absVal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "abs"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "value"
+              }
+            ]
+          },
+          "dependencies": [
+            "abs"
+          ]
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "testMathOps"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "ArrayUtils",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "itemCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "testArrayOps"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "DateUtils",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "baseTs",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "extractedYear",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "year"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "year"
+          ]
+        },
+        {
+          "name": "extractedMonth",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "month"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "month"
+          ]
+        },
+        {
+          "name": "extractedDay",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "day"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "day"
+          ]
+        },
+        {
+          "name": "extractedHours",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "hours"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "hours"
+          ]
+        },
+        {
+          "name": "extractedMinutes",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "minutes"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "minutes"
+          ]
+        },
+        {
+          "name": "extractedSeconds",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "seconds"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "baseTs"
+              }
+            ]
+          },
+          "dependencies": [
+            "seconds"
+          ]
+        }
+      ],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "StringUtils",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "MathUtils",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "ArrayUtils",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "DateUtils",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "StringOpsCompleted",
+      "channel": "string.ops.completed",
+      "payload": []
+    },
+    {
+      "name": "MathOpsCompleted",
+      "channel": "math.ops.completed",
+      "payload": []
+    },
+    {
+      "name": "ArrayOpsCompleted",
+      "channel": "array.ops.completed",
+      "payload": []
+    }
+  ],
+  "commands": [
+    {
+      "name": "testStringOps",
+      "entity": "StringUtils",
+      "parameters": [
+        {
+          "name": "input",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "identifier",
+            "name": "input"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": ""
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "target": "cleaned",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "trim"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "partCount",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "count"
+            },
+            "args": [
+              {
+                "kind": "call",
+                "callee": {
+                  "kind": "identifier",
+                  "name": "split"
+                },
+                "args": [
+                  {
+                    "kind": "identifier",
+                    "name": "input"
+                  },
+                  {
+                    "kind": "literal",
+                    "value": {
+                      "kind": "string",
+                      "value": ","
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "hasPrefix",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "startsWith"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "hello"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "hasSuffix",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "endsWith"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "world"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "swapped",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "replace"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "old"
+                }
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "new"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "upper",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "toUpperCase"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "lower",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "toLowerCase"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "charCount",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "length"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "slice",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "substring"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 0
+                }
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 5
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "foundAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "indexOf"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "input"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "world"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "emits": [
+        "StringOpsCompleted"
+      ]
+    },
+    {
+      "name": "testMathOps",
+      "entity": "MathUtils",
+      "parameters": [
+        {
+          "name": "value",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "identifier",
+            "name": "value"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "target": "absolute",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "abs"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "rounded",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "round"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "floored",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "floor"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "ceiled",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "ceil"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "smallest",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "min"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 0
+                }
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 100
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "largest",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "max"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "value"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 0
+                }
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 100
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "emits": [
+        "MathOpsCompleted"
+      ]
+    },
+    {
+      "name": "testArrayOps",
+      "entity": "ArrayUtils",
+      "parameters": [
+        {
+          "name": "scores",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "!=",
+          "left": {
+            "kind": "identifier",
+            "name": "scores"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": ""
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "target": "total",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "sum"
+            },
+            "args": [
+              {
+                "kind": "call",
+                "callee": {
+                  "kind": "identifier",
+                  "name": "split"
+                },
+                "args": [
+                  {
+                    "kind": "identifier",
+                    "name": "scores"
+                  },
+                  {
+                    "kind": "literal",
+                    "value": {
+                      "kind": "string",
+                      "value": ","
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "itemCount",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "count"
+            },
+            "args": [
+              {
+                "kind": "call",
+                "callee": {
+                  "kind": "identifier",
+                  "name": "split"
+                },
+                "args": [
+                  {
+                    "kind": "identifier",
+                    "name": "scores"
+                  },
+                  {
+                    "kind": "literal",
+                    "value": {
+                      "kind": "string",
+                      "value": ","
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "emits": [
+        "ArrayOpsCompleted"
+      ]
+    }
+  ],
+  "policies": []
+}

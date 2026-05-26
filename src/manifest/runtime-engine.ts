@@ -704,8 +704,64 @@ export class RuntimeEngine {
 
   private getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
     return {
+      // Core builtins
       now: () => this.getNow(),
       uuid: () => this.options.generateId ? this.options.generateId() : crypto.randomUUID(),
+
+      // String builtins
+      trim: (s: unknown) => typeof s === 'string' ? s.trim() : s,
+      split: (s: unknown, sep: unknown) => typeof s === 'string' ? s.split(sep as string) : s,
+      count: (v: unknown) => Array.isArray(v) ? v.length : v,
+      startsWith: (s: unknown, prefix: unknown) => typeof s === 'string' ? s.startsWith(prefix as string) : false,
+      endsWith: (s: unknown, suffix: unknown) => typeof s === 'string' ? s.endsWith(suffix as string) : false,
+      replace: (s: unknown, search: unknown, replacement: unknown) =>
+        typeof s === 'string' ? s.replace(new RegExp((search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement as string) : s,
+      toUpperCase: (s: unknown) => typeof s === 'string' ? s.toUpperCase() : s,
+      toLowerCase: (s: unknown) => typeof s === 'string' ? s.toLowerCase() : s,
+      length: (v: unknown) => {
+        if (typeof v === 'string') return v.length;
+        if (Array.isArray(v)) return v.length;
+        return v;
+      },
+      substring: (s: unknown, start: unknown, end?: unknown) =>
+        typeof s === 'string'
+          ? (end !== undefined ? s.substring(start as number, end as number) : s.substring(start as number))
+          : s,
+      indexOf: (s: unknown, search: unknown) => typeof s === 'string' ? s.indexOf(search as string) : -1,
+
+      // Math builtins
+      abs: (v: unknown) => typeof v === 'number' ? Math.abs(v) : v,
+      round: (v: unknown) => typeof v === 'number' ? Math.round(v) : v,
+      floor: (v: unknown) => typeof v === 'number' ? Math.floor(v) : v,
+      ceil: (v: unknown) => typeof v === 'number' ? Math.ceil(v) : v,
+      min: (...args: unknown[]) => {
+        const nums = args.filter((a): a is number => typeof a === 'number');
+        return nums.length > 0 ? Math.min(...nums) : undefined;
+      },
+      max: (...args: unknown[]) => {
+        const nums = args.filter((a): a is number => typeof a === 'number');
+        return nums.length > 0 ? Math.max(...nums) : undefined;
+      },
+      between: (value: unknown, low: unknown, high: unknown) =>
+        typeof value === 'number' && typeof low === 'number' && typeof high === 'number'
+          ? value >= low && value <= high
+          : false,
+
+      // Array builtins
+      sum: (arr: unknown) => {
+        if (Array.isArray(arr)) {
+          return (arr as unknown[]).reduce((acc: number, v) => typeof v === 'number' ? acc + v : acc, 0);
+        }
+        return arr;
+      },
+
+      // Date builtins (UTC components; ts is milliseconds since epoch)
+      year: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCFullYear() : ts,
+      month: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMonth() + 1 : ts,
+      day: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCDate() : ts,
+      hours: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCHours() : ts,
+      minutes: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMinutes() : ts,
+      seconds: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCSeconds() : ts,
     };
   }
 

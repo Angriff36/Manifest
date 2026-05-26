@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.9] - 2026-05-26
+
+### Added
+
+- **Expression builtins** in the reference runtime: string (`trim`, `split`, `replace`, …), math (`abs`, `min`, `max`, `between`, …), array (`sum`), and UTC date extractors (`year`, `month`, …).
+- **Conformance fixture `56-expression-builtins`** for executable semantics.
+- **`docs/spec/builtins.md`** Expression Library section documenting required callables.
+
 ## [1.0.8] - 2026-05-26
 
 ### Added

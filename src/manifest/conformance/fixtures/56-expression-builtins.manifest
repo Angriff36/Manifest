@@ -1,0 +1,92 @@
+entity StringUtils {
+  property required id: string
+  property raw: string = ""
+  property cleaned: string = ""
+  property partCount: number = 0
+  property hasPrefix: boolean = false
+  property hasSuffix: boolean = false
+  property swapped: string = ""
+  property upper: string = ""
+  property lower: string = ""
+  property charCount: number = 0
+  property slice: string = ""
+  property foundAt: number = -1
+
+  command testStringOps(input: string) {
+    guard input != ""
+    compute cleaned = trim(input)
+    compute partCount = count(split(input, ","))
+    compute hasPrefix = startsWith(input, "hello")
+    compute hasSuffix = endsWith(input, "world")
+    compute swapped = replace(input, "old", "new")
+    compute upper = toUpperCase(input)
+    compute lower = toLowerCase(input)
+    compute charCount = length(input)
+    compute slice = substring(input, 0, 5)
+    compute foundAt = indexOf(input, "world")
+    emit StringOpsCompleted
+  }
+}
+
+entity MathUtils {
+  property required id: string
+  property value: number = 0
+  property absolute: number = 0
+  property rounded: number = 0
+  property floored: number = 0
+  property ceiled: number = 0
+  property smallest: number = 0
+  property largest: number = 0
+
+  computed absVal: number = abs(self.value)
+
+  command testMathOps(value: number) {
+    guard value != 0
+    compute absolute = abs(value)
+    compute rounded = round(value)
+    compute floored = floor(value)
+    compute ceiled = ceil(value)
+    compute smallest = min(value, 0, 100)
+    compute largest = max(value, 0, 100)
+    emit MathOpsCompleted
+  }
+}
+
+entity ArrayUtils {
+  property required id: string
+  property total: number = 0
+  property itemCount: number = 0
+
+  command testArrayOps(scores: string) {
+    guard scores != ""
+    compute total = sum(split(scores, ","))
+    compute itemCount = count(split(scores, ","))
+    emit ArrayOpsCompleted
+  }
+}
+
+entity DateUtils {
+  property required id: string
+  property baseTs: number = 0
+
+  computed extractedYear: number = year(self.baseTs)
+  computed extractedMonth: number = month(self.baseTs)
+  computed extractedDay: number = day(self.baseTs)
+  computed extractedHours: number = hours(self.baseTs)
+  computed extractedMinutes: number = minutes(self.baseTs)
+  computed extractedSeconds: number = seconds(self.baseTs)
+}
+
+event StringOpsCompleted: "string.ops.completed" {
+}
+
+event MathOpsCompleted: "math.ops.completed" {
+}
+
+event ArrayOpsCompleted: "array.ops.completed" {
+}
+
+store StringUtils in memory
+store MathUtils in memory
+store ArrayUtils in memory
+store DateUtils in memory

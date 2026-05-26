@@ -42,6 +42,36 @@ A conforming runtime MUST provide:
 - `now(): number` - returns the current time (milliseconds since epoch).
 - `uuid(): string` - returns a globally unique identifier.
 
+## Expression Library (Required)
+
+A conforming runtime MUST provide these callables in guard, policy, constraint, and compute expressions.
+Evidence: conformance fixture `56-expression-builtins.manifest`.
+
+### String
+
+- `trim(s)` — string trim; non-strings pass through
+- `split(s, sep)` — `String.split`
+- `count(v)` — array length when `v` is an array; otherwise returns `v`
+- `startsWith(s, prefix)`, `endsWith(s, suffix)`
+- `replace(s, search, replacement)` — global literal replace (search is escaped for regex)
+- `toUpperCase(s)`, `toLowerCase(s)`
+- `length(v)` — string or array length
+- `substring(s, start, end?)`, `indexOf(s, search)`
+
+### Math
+
+- `abs`, `round`, `floor`, `ceil`
+- `min(...)`, `max(...)` — numeric arguments only; empty → `undefined`
+- `between(value, low, high)` — inclusive range test on numbers
+
+### Array
+
+- `sum(arr)` — sum of numeric elements; non-arrays pass through
+
+### Date (UTC, timestamp in ms)
+
+- `year(ts)`, `month(ts)` (1–12), `day(ts)`, `hours(ts)`, `minutes(ts)`, `seconds(ts)`
+
 ### Nonconformance
 - ~~The IR runtime does not provide `now()` or `uuid()` built-ins.~~
 - **RESOLVED (2026-02-05)**: Both functions are implemented in runtime-engine.ts:279-284. `now()` uses `Date.now()` (or custom override), `uuid()` uses `crypto.randomUUID()` (or custom override).
