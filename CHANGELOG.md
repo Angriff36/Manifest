@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.16] - 2026-05-26
+
+### Added
+
+- **`@angriff36/manifest/agent-sdk`** — LLM-friendly SDK wrapping the runtime engine: `AgentRuntime`, tool definitions (Anthropic/OpenAI/Vercel), IR introspection, intent mapping, and JSON Schema helpers.
+- **60 unit tests** for agent-sdk (tool naming, introspection, intent scoring, tool call routing).
+
 ## [1.0.15] - 2026-05-26
 
 ### Added
