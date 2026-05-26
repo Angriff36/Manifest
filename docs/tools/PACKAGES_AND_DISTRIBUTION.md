@@ -133,7 +133,16 @@ NODE_AUTH_TOKEN=<token> npm view @angriff36/manifest versions --json
 pnpm run build:lib
 pnpm --filter @manifest/cli run build
 
-# 4. Publish to GitHub Packages
+# 4. Update CHANGELOG.md (section ## [x.y.z])
+
+# 5. Commit, push main, then tag and push (triggers Release workflow):
+git tag v<x.y.z>
+git push origin v<x.y.z>
+
+# The Release workflow creates a GitHub Release with notes from CHANGELOG.md
+# and publishes to GitHub Packages when the tag matches package.json.
+
+# Manual publish (if not using tags):
 NODE_AUTH_TOKEN=<token> pnpm publish --no-git-checks
 ```
 

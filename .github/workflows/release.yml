@@ -6,12 +6,60 @@ on:
       - 'v*'
 
 jobs:
+  resolve:
+    name: Resolve tag vs package version
+    runs-on: ubuntu-latest
+    outputs:
+      tag_version: ${{ steps.versions.outputs.tag_version }}
+      pkg_version: ${{ steps.versions.outputs.pkg_version }}
+      should_publish: ${{ steps.versions.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: versions
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "tag_version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+          echo "pkg_version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$TAG_VERSION" = "$PKG_VERSION" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "Tag matches package.json ($PKG_VERSION) — will publish to GitHub Packages"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "Tag v$TAG_VERSION does not match package.json ($PKG_VERSION) — release notes only, skip publish"
+          fi
+
+  github-release:
+    name: GitHub Release with changelog
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release notes from CHANGELOG.md
+        run: |
+          node scripts/extract-changelog-section.mjs "${{ needs.resolve.outputs.tag_version }}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "---" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "Install: \`npm install @angriff36/manifest@${{ needs.resolve.outputs.tag_version }}\` (GitHub Packages registry)." >> release-notes.md
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: v${{ needs.resolve.outputs.tag_version }}
+          body_path: release-notes.md
+          generate_release_notes: false
+
   publish:
     name: Publish to GitHub Packages
+    needs: resolve
+    if: needs.resolve.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
-
-    # GITHUB_TOKEN is auto-provided per run. `packages: write` is what
-    # authorizes it to publish to GitHub Packages on this repo's behalf.
     permissions:
       contents: read
       packages: write
@@ -19,13 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # This repo uses pnpm locally (pnpm-lock.yaml + per-package
-      # node_modules under packages/*). Root `npm ci` would not install
-      # workspace deps like ora used by packages/cli, so we use pnpm.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          # pnpm-lock.yaml is lockfileVersion 9 (pnpm 9.x family).
           version: 9
 
       - name: Setup Node.js (with GitHub Packages registry)
@@ -40,28 +84,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install packages/cli dependencies (frozen lockfile)
-        # packages/cli is its own pnpm project (separate pnpm-lock.yaml),
-        # not a workspace member of the root. Tests in root pull from
-        # packages/cli/src/**, so its transitive deps (chalk, ora, ...) must
-        # also be installed.
         working-directory: packages/cli
         run: pnpm install --frozen-lockfile
 
-      - name: Verify tag version matches package.json
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME (=$TAG_VERSION) does not match package.json version $PKG_VERSION"
-            exit 1
-          fi
-          echo "Publishing version $PKG_VERSION"
-
       - name: Build root library
-        # packages/cli depends on @angriff36/manifest via type imports.
-        # Without build:lib first, the CLI build and any test that touches
-        # the published surface (enforce-surface.cli.test.ts spawns the
-        # built CLI) fails to resolve modules.
         run: pnpm run build:lib
 
       - name: Build CLI dist
@@ -75,14 +101,6 @@ jobs:
         run: pnpm test -- --run
 
       - name: Publish to GitHub Packages
-        # prepublishOnly already runs build:lib + cli build, so dist/ is
-        # regenerated from current source before pack. Using `pnpm publish`
-        # rather than `npm publish` because the rest of this workflow runs
-        # on pnpm, and `npm pack` (which `npm publish` calls internally)
-        # has an intermittent @npmcli/arborist bug when walking pnpm-
-        # managed node_modules — see packages/cli/src/checks/package-shape.ts
-        # for the documented reproduction. `--no-git-checks` skips the
-        # uncommitted-changes guard (Actions checkout is always clean).
         run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
