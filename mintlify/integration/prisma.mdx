@@ -522,8 +522,37 @@ for (const artifact of result.artifacts) {
 }
 ```
 
+## Multi-tenancy
+
+When the source manifest declares a [`tenant`](/language/tenancy), the projection automatically tenant-scopes every emitted model:
+
+- Adds the tenant column (using the IR-declared name and type) to any model that does not already declare it.
+- Adds `@@index([<tenant>])` so per-tenant queries hit an index, unless the column is already covered by the primary key or another index.
+- Emits a commented PostgreSQL Row-Level Security policy template for each model — apply it from your migration pipeline.
+
+For a manifest with `tenant tenantId : string from context.tenantId`, the projection emits:
+
+```prisma
+model Invoice {
+  id          String @id
+  amount      Float
+  description String
+  tenantId    String
+
+  @@index([tenantId])
+}
+
+// -- RLS policy (apply manually or via migration):
+// ALTER TABLE "Invoice" ENABLE ROW LEVEL SECURITY;
+// CREATE POLICY tenant_isolation ON "Invoice"
+//   USING ("tenantId" = current_setting('app.tenant_id'));
+```
+
+The RLS hint is commented because the projection does not run SQL. Pair it with `app.tenant_id` set per connection from your session layer for defense in depth alongside the runtime filter.
+
 ## Related
 
 - [Stores](/language/stores) — the `durable` store target the projection emits for
 - [Entities](/language/entities) — the `external entity` marker the projection skips
+- [Tenancy](/language/tenancy) — declaring a `tenant` so the projection emits tenant columns, indexes, and RLS hints
 - [Projections overview](/integration/projections) — projection pattern, contract, and the Next.js projection

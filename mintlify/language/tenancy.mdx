@@ -1,0 +1,149 @@
+---
+title: "Multi-tenancy: tenant declarations and isolation"
+description: "Declare a tenant discriminator once at the top of a manifest. The runtime auto-injects it on writes, filters reads, and fails commands closed when no tenant is supplied."
+sidebarTitle: "Tenancy"
+---
+
+A `tenant` declaration turns a manifest into a multi-tenant program. You name a single property (for example `tenantId`), bind it to a runtime context path (for example `context.tenantId`), and the rest of Manifest enforces isolation automatically: writes inject the active tenant, reads filter to it, and commands run without a tenant value fail closed.
+
+Use a tenant declaration when one deployment serves multiple customers, organizations, or workspaces from the same database and you need rows from one tenant to be invisible to another.
+
+## Declaring a tenant
+
+Place the declaration at the top level of the manifest, before any entity. Only one tenant declaration is allowed per program.
+
+```manifest
+tenant tenantId : string from context.tenantId
+
+entity Invoice {
+  property required id: string
+  property required amount: number
+  property required description: string
+
+  command createInvoice(amount: number, description: string) {
+    mutate amount = amount
+    mutate description = description
+  }
+
+  store in memory
+}
+```
+
+The grammar is:
+
+```
+tenant <property> : <type> from <contextPath>
+```
+
+| Part            | Meaning |
+|-----------------|---------|
+| `<property>`    | Name of the tenant column injected into every persistent entity (for example `tenantId`, `orgId`, `workspaceId`). |
+| `<type>`        | Type of the discriminator. `string` is the common choice; any scalar type the projection understands works. |
+| `<contextPath>` | Dotted path the runtime walks on each invocation to read the active tenant value. Typically `context.tenantId`. |
+
+The compiler emits an `IRTenant` block on the IR root:
+
+```json
+{
+  "tenant": {
+    "property": "tenantId",
+    "type": { "name": "string" },
+    "contextPath": "context.tenantId"
+  }
+}
+```
+
+<Note>
+Declaring a tenant at the top of the manifest is the only supported way to opt in. There is no per-entity tenant flag — when the IR declares a tenant, every persistent entity is tenant-scoped.
+</Note>
+
+## Runtime behavior
+
+When the IR carries a `tenant` block, the embedded runtime changes its behavior in three ways.
+
+### Writes auto-inject the tenant value
+
+On `createInstance` (and any command that creates an entity) the runtime resolves the tenant value from the configured context path and writes it onto the new row. You do not need to declare the tenant property on each entity, and you do not need to pass it in the command payload — the runtime fills it in.
+
+```ts
+await runtime.runCommand('Invoice', 'createInvoice', {
+  amount: 100,
+  description: 'Acme onboarding',
+}, {
+  context: { tenantId: 'tenant-a' },
+});
+// → resulting row carries tenantId: "tenant-a"
+```
+
+### Reads filter to the active tenant
+
+`getAllInstances` and `getInstance` consult the same context path and only return rows whose tenant property matches. A lookup by id for a row owned by a different tenant returns `undefined` — there is no cross-tenant read path.
+
+```ts
+const all = await runtime.getAllInstances('Invoice');
+// only invoices where tenantId === context.tenantId
+```
+
+### Commands fail closed without a tenant
+
+If the IR declares a tenant and the resolved tenant value is missing (undefined, `null`, or empty string), the command short-circuits before any work — including idempotency cache reads — with:
+
+```
+MISSING_TENANT_CONTEXT: tenant-scoped command invoked without context.tenantId
+```
+
+This is the same gate previously available via the explicit `requireTenantContext` runtime option. Declaring a tenant in IR activates it automatically; you can still set `requireTenantContext: true` for manifests that don't yet have an IR tenant declaration.
+
+<Warning>
+Never read the tenant value from the request body. Read it from your auth layer (session, JWT, signed cookie) and place it on `context` server-side before calling `runCommand`. The runtime trusts the context — anything attacker-controlled there breaks isolation. See [Embedded runtime: identity hygiene](/integration/embedded-runtime) for the full pattern.
+</Warning>
+
+## Storage projections
+
+When the IR declares a tenant, the [Prisma projection](/integration/prisma) automatically:
+
+- **Adds the tenant column** to every emitted model that does not already declare it.
+- **Adds `@@index([tenantId])`** so per-tenant queries hit an index.
+- **Emits a commented PostgreSQL Row-Level Security policy** template you can apply by hand or via migration.
+
+For an `Invoice` entity with `tenant tenantId : string from context.tenantId`, the projection emits:
+
+```prisma
+model Invoice {
+  id          String @id
+  amount      Float
+  description String
+  tenantId    String
+
+  @@index([tenantId])
+}
+
+// -- RLS policy (apply manually or via migration):
+// ALTER TABLE "Invoice" ENABLE ROW LEVEL SECURITY;
+// CREATE POLICY tenant_isolation ON "Invoice"
+//   USING ("tenantId" = current_setting('app.tenant_id'));
+```
+
+The RLS hint is intentionally commented — the projection does not run SQL. Apply it from your migration pipeline, and set `app.tenant_id` per connection (or per transaction) from your session layer for defense in depth alongside the runtime filter.
+
+<Note>
+If an entity already declares the tenant property explicitly, the projection respects the existing declaration and does not duplicate the column. The `@@index` is only added when no existing index or key already covers the tenant property.
+</Note>
+
+## Choosing a context path
+
+The `from` clause supports any dotted path the runtime can walk on the `RuntimeContext`. Common patterns:
+
+| Path                      | When to use |
+|---------------------------|-------------|
+| `context.tenantId`        | Default. Maps to `RuntimeContext.tenantId`, which the embedded runtime treats as a first-class field. |
+| `context.user.orgId`      | When the tenant key lives on the authenticated user record. |
+| `context.session.workspaceId` | When you embed a session object on context. |
+
+The runtime resolves the path on every command and read; if any segment is missing the resolved value is `undefined` and writes skip injection, reads return unfiltered (no tenant column to match), and gated commands fail closed.
+
+## Related
+
+- [Entities](/language/entities) — how `key`, `unique`, and `belongsTo` interact with composite tenant keys.
+- [Prisma projection](/integration/prisma) — full reference for the generated schema, including tenant column placement.
+- [Embedded runtime](/integration/embedded-runtime) — identity hygiene, context construction, and the `requireTenantContext` option.

@@ -39,7 +39,8 @@
               "language/guards-policies",
               "language/events",
               "language/stores",
-              "language/computed-properties"
+              "language/computed-properties",
+              "language/tenancy"
             ]
           },
           {

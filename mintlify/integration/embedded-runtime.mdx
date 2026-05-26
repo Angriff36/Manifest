@@ -188,6 +188,32 @@ export async function POST(
   Preserving non-identity business fields (such as `stationId` or `reason`) from the request body is correct and intended. Only strip the identity fields listed above.
 </Warning>
 
+## Tenant-scoped manifests
+
+When the manifest declares a [`tenant`](/language/tenancy), the runtime enforces isolation on every call:
+
+- Writes inject the resolved tenant value onto every new entity instance.
+- `getAllInstances` and `getInstance` filter to rows whose tenant property matches.
+- Commands invoked without a resolvable tenant value fail closed with `MISSING_TENANT_CONTEXT` before any work runs — including idempotency cache reads.
+
+Always place the tenant value on `context` from a trusted server-side source (session, JWT, signed cookie) — never read it from the request body.
+
+```typescript
+const runtime = new RuntimeEngine(ir, {
+  user: { id: userId, role: 'admin' },
+  tenantId, // resolved from your auth layer
+});
+
+const result = await runtime.runCommand(
+  'createInvoice',
+  { amount: 100, description: 'Acme onboarding' },
+  { entityName: 'Invoice' }
+);
+// The runtime auto-injects tenantId on the new Invoice row.
+```
+
+The IR `tenant` declaration activates the same gate previously available via `requireTenantContext: true`. You can still pass `requireTenantContext` for manifests that don't yet declare a tenant in IR — both paths produce identical `MISSING_TENANT_CONTEXT` failures.
+
 ## Deterministic options for testing
 
 In tests, pass `generateId` and `now` to `RuntimeEngine` to make IDs and timestamps deterministic. This is required for stable conformance-style assertions.
