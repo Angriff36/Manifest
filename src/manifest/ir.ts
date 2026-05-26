@@ -95,6 +95,8 @@ export interface IREntity {
   versionProperty?: string;
   /** Name of timestamp field for version tracking */
   versionAtProperty?: string;
+  /** When true, createdAt/updatedAt are auto-injected and populated at runtime */
+  timestamps?: boolean;
   /** Optional allowed state transitions for validation */
   transitions?: IRTransition[];
 }

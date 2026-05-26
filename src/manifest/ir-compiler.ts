@@ -461,10 +461,22 @@ export class IRCompiler {
     const defaultPolicies = e.policies.filter(p => p.isDefault).map(p => p.name);
     const regularPolicies = e.policies.filter(p => !p.isDefault).map(p => p.name);
 
+    const properties = e.properties.map(p => this.transformProperty(p));
+    if (e.timestamps) {
+      const hasCreatedAt = properties.some(p => p.name === 'createdAt');
+      const hasUpdatedAt = properties.some(p => p.name === 'updatedAt');
+      if (!hasCreatedAt) {
+        properties.push({ name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] });
+      }
+      if (!hasUpdatedAt) {
+        properties.push({ name: 'updatedAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] });
+      }
+    }
+
     return {
       name: e.name,
       module: moduleName,
-      properties: e.properties.map(p => this.transformProperty(p)),
+      properties,
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
       commands: e.commands.map(c => c.name),
@@ -475,6 +487,7 @@ export class IRCompiler {
       ...(e.alternateKeys && e.alternateKeys.length > 0 ? { alternateKeys: e.alternateKeys } : {}),
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
+      ...(e.timestamps ? { timestamps: true } : {}),
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
     };
   }

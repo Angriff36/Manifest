@@ -1,0 +1,22 @@
+{
+  "testCases": [
+    {
+      "name": "timestamps auto-populated on createInstance",
+      "createInstance": {
+        "entity": "Article",
+        "data": {
+          "id": "article-1",
+          "title": "Hello World",
+          "body": "Test body"
+        }
+      },
+      "expectedInstance": {
+        "id": "article-1",
+        "title": "Hello World",
+        "body": "Test body",
+        "createdAt": 1000000000000,
+        "updatedAt": 1000000000000
+      }
+    }
+  ]
+}

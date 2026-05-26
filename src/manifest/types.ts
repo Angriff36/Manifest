@@ -67,6 +67,8 @@ export interface EntityNode extends ASTNode {
   versionProperty?: string;
   /** Optimistic concurrency: property name for version timestamp */
   versionAtProperty?: string;
+  /** Auto-inject createdAt/updatedAt properties and runtime population */
+  timestamps?: boolean;
 }
 
 export interface PropertyNode extends ASTNode {

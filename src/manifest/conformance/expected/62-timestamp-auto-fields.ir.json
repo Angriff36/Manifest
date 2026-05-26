@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "c07711ac926fce606ce01f1b14f4a217a034bfe203a29e83d2c53809e9163b71",
+    "irHash": "0f6d8bf3b72a5c6bf6beb59ca6f0e1dcf10e33fe8b1c08e7dbbebcc34c7ad0a0",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -11,10 +11,10 @@
   "values": [],
   "entities": [
     {
-      "name": "Product",
+      "name": "Article",
       "properties": [
         {
-          "name": "name",
+          "name": "id",
           "type": {
             "name": "string",
             "nullable": false
@@ -24,31 +24,17 @@
           ]
         },
         {
-          "name": "price",
+          "name": "title",
           "type": {
-            "name": "number",
+            "name": "string",
             "nullable": false
           },
-          "defaultValue": {
-            "kind": "number",
-            "value": 0
-          },
-          "modifiers": []
+          "modifiers": [
+            "required"
+          ]
         },
         {
-          "name": "inStock",
-          "type": {
-            "name": "boolean",
-            "nullable": false
-          },
-          "defaultValue": {
-            "kind": "boolean",
-            "value": true
-          },
-          "modifiers": []
-        },
-        {
-          "name": "description",
+          "name": "body",
           "type": {
             "name": "string",
             "nullable": false
@@ -58,19 +44,40 @@
             "value": ""
           },
           "modifiers": []
+        },
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "datetime",
+            "nullable": false
+          },
+          "modifiers": [
+            "readonly"
+          ]
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "name": "datetime",
+            "nullable": false
+          },
+          "modifiers": [
+            "readonly"
+          ]
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [],
       "constraints": [],
-      "policies": []
+      "policies": [],
+      "timestamps": true
     }
   ],
   "enums": [],
   "stores": [
     {
-      "entity": "Product",
+      "entity": "Article",
       "target": "memory",
       "config": {}
     }

@@ -532,12 +532,22 @@ function emitModel(
 
   lines.push(`model ${entity.name} {`);
 
+  let effectiveOptions = options;
+  if (entity.timestamps) {
+    const merged = { ...options, fieldAttributes: { ...options.fieldAttributes } };
+    merged.fieldAttributes[entity.name] = { ...merged.fieldAttributes[entity.name] };
+    const fa = merged.fieldAttributes[entity.name];
+    if (!fa['createdAt']) fa['createdAt'] = ['@default(now())'];
+    if (!fa['updatedAt']) fa['updatedAt'] = ['@updatedAt'];
+    effectiveOptions = merged;
+  }
+
   let sawIdProperty = false;
   // STRUCTURAL invariant: iterate `properties` only. `computedProperties`
   // is a separate list and MUST never become columns.
   for (const prop of entity.properties) {
     if (prop.name === 'id') sawIdProperty = true;
-    const { line, diagnostics: propDiags } = emitPropertyLine(entity, prop, ir, options);
+    const { line, diagnostics: propDiags } = emitPropertyLine(entity, prop, ir, effectiveOptions);
     diagnostics.push(...propDiags);
     if (line !== null) lines.push(line);
   }

@@ -45,6 +45,8 @@ export const KEYWORDS = new Set([
   'decimal', 'money',
   // multi-tenancy
   'tenant',
+  // entity modifier keywords
+  'timestamps',
 ]);
 
 const OPERATORS = new Set([

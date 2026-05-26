@@ -94,6 +94,7 @@ export class Parser {
     const alternateKeys: string[][] = [];
     let versionProperty: string | undefined;
     let versionAtProperty: string | undefined;
+    let timestamps: boolean | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -165,6 +166,10 @@ export class Parser {
         alternateKeys.push(this.parseIdentifierArray());
       }
       else if (this.check('KEYWORD', 'transition')) transitions.push(this.parseTransition());
+      else if (this.check('KEYWORD', 'timestamps')) {
+        this.advance();
+        timestamps = true;
+      }
       else if (this.check('KEYWORD', 'event')) {
         // Entity-scoped events are not supported - emit warning to prevent silent data loss
         const pos = this.current()?.position;
@@ -187,6 +192,7 @@ export class Parser {
       ...(key ? { key } : {}),
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
       versionProperty, versionAtProperty,
+      ...(timestamps ? { timestamps } : {}),
     };
   }
 

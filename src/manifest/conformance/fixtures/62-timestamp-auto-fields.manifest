@@ -1,0 +1,8 @@
+entity Article {
+  property required id: string
+  property required title: string
+  property body: string = ""
+  timestamps
+}
+
+store Article in memory

@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.15] - 2026-05-26
+
+### Added
+
+- **Entity `timestamps` modifier** — auto-injects `createdAt`/`updatedAt` on IR compile; runtime populates on create/update.
+- Conformance fixture **`62-timestamp-auto-fields.manifest`**.
+- Prisma projection: `@default(now())` on `createdAt`, `@updatedAt` on `updatedAt` when entity has `timestamps: true`.
+- IR schema: `values`, `tenant`, `timestamps` fields aligned with compiler/runtime.
+
 ## [1.0.14] - 2026-05-26
 
 ### Added

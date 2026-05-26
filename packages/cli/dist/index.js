@@ -26,6 +26,8 @@ import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import { configValidateCommand, configPrintDefaultsCommand, configInspectCommand, } from './commands/config.js';
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
+import { diffIRCommand } from './commands/ir-diff.js';
+import { breakingChangeCommand } from './commands/breaking-change.js';
 import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -445,6 +447,36 @@ diffProgram
     .option('--ir-root <path...>', 'Compiled IR root directory/directories')
     .action(async (entityName, options = {}) => {
     await diffSourceVsIRCommand(entityName, options);
+});
+/**
+ * manifest diff ir-vs-ir <oldIR> <newIR>
+ */
+diffProgram
+    .command('ir-vs-ir')
+    .description('Compare two IR JSON files and produce a diff report')
+    .argument('<oldIR>', 'Path to old IR JSON file')
+    .argument('<newIR>', 'Path to new IR JSON file')
+    .option('--json', 'JSON output', false)
+    .option('--sql', 'Include SQL migration in output', false)
+    .option('--prisma', 'Include Prisma migration in output', false)
+    .option('-o, --output <path>', 'Write output to file')
+    .action(async (oldIR, newIR, options = {}) => {
+    await diffIRCommand(oldIR, newIR, options);
+});
+/**
+ * manifest diff breaking <oldIR> <newIR>
+ */
+diffProgram
+    .command('breaking')
+    .description('Classify IR diff changes as compatible/deprecated/breaking with consumer impact')
+    .argument('<oldIR>', 'Path to old IR JSON file')
+    .argument('<newIR>', 'Path to new IR JSON file')
+    .option('--json', 'JSON output', false)
+    .option('--ack <path>', 'Path to acknowledgments JSON file')
+    .option('--ci', 'Exit non-zero on unacknowledged breaking changes', false)
+    .option('-o, --output <path>', 'Write output to file')
+    .action(async (oldIR, newIR, options = {}) => {
+    await breakingChangeCommand(oldIR, newIR, options);
 });
 /**
  * manifest duplicates

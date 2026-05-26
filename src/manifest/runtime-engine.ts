@@ -1016,6 +1016,12 @@ export class RuntimeEngine {
         mergedData[entity.versionAtProperty] = this.getNow();
       }
 
+      if (entity.timestamps) {
+        const now = this.getNow();
+        mergedData.createdAt = now;
+        mergedData.updatedAt = now;
+      }
+
       // Validate entity constraints
       const constraintOutcomes = await this.validateConstraints(entity, mergedData);
 
@@ -1096,6 +1102,10 @@ export class RuntimeEngine {
       // Update versionAt timestamp if present
       if (entity.versionAtProperty) {
         data[entity.versionAtProperty] = this.getNow();
+      }
+
+      if (entity.timestamps) {
+        data.updatedAt = this.getNow();
       }
 
       const mergedData = { ...existing, ...data };
