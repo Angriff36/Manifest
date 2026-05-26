@@ -5,7 +5,7 @@ import {
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
   ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
-  ValueObjectNode
+  ValueObjectNode, TenantNode
 } from './types';
 
 export class Parser {
@@ -32,6 +32,12 @@ export class Parser {
         else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
         else if (this.check('IDENTIFIER', 'value') || this.check('KEYWORD', 'value')) {
           program.values.push(this.parseValueObject());
+        }
+        else if (this.check('KEYWORD', 'tenant')) {
+          if (program.tenant) {
+            this.errors.push({ message: 'Duplicate tenant declaration; only one tenant declaration is allowed per program', position: this.current()?.position, severity: 'error' });
+          }
+          program.tenant = this.parseTenant();
         }
         else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
@@ -262,6 +268,22 @@ export class Parser {
     return { type: 'ValueObject', name, properties };
   }
 
+  private parseTenant(): TenantNode {
+    const pos = this.current()?.position;
+    this.consume('KEYWORD', 'tenant');
+    const property = this.consumeIdentifierOrKeyword().value;
+    this.consume('OPERATOR', ':');
+    const dataType = this.parseType();
+    this.consume('KEYWORD', 'from');
+    let contextPath = '';
+    contextPath += this.advance().value;
+    while (this.check('OPERATOR', '.')) {
+      contextPath += this.advance().value;
+      contextPath += this.consumeIdentifierOrKeyword().value;
+    }
+    return { type: 'Tenant', property, dataType, contextPath, position: pos };
+  }
+
   private parseProperty(): PropertyNode {
     this.consume('KEYWORD', 'property');
     const modifiers: string[] = [];
@@ -373,9 +395,9 @@ export class Parser {
 
   private parseRelationship(): RelationshipNode {
     const kind = this.advance().value as RelationshipNode['kind'];
-    const name = this.consumeIdentifier().value;
+    const name = this.consumeIdentifierOrKeyword().value;
     this.consume('OPERATOR', ':');
-    const target = this.consumeIdentifier().value;
+    const target = this.consumeIdentifierOrKeyword().value;
 
     let fields: string[] | undefined;
     let references: string[] | undefined;
@@ -1032,5 +1054,5 @@ export class Parser {
   private current() { return this.tokens[this.pos]; }
   private isEnd() { return this.pos >= this.tokens.length || this.tokens[this.pos]?.type === 'EOF'; }
   private skipNL() { while (this.check('NEWLINE', '\n')) this.advance(); }
-  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event'].includes(this.current()?.value || '')) this.advance(); }
+  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event', 'tenant'].includes(this.current()?.value || '')) this.advance(); }
 }

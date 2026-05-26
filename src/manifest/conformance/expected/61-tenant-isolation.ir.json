@@ -2,16 +2,24 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "af2ef5f8a86ab47b857b170cc17cd4500f6e3dc7bef792ec41bfd9cbd1a5c320",
+    "irHash": "f1b2c72599c138a7cb321255e090cc2b30c9d0d37b086e8942ce22f363452ed7",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "tenant": {
+    "property": "tenantId",
+    "type": {
+      "name": "string",
+      "nullable": false
+    },
+    "contextPath": "context.tenantId"
   },
   "modules": [],
   "values": [],
   "entities": [
     {
-      "name": "Inventory",
+      "name": "Invoice",
       "properties": [
         {
           "name": "id",
@@ -24,35 +32,30 @@
           ]
         },
         {
-          "name": "quantity",
+          "name": "amount",
           "type": {
             "name": "number",
             "nullable": false
           },
-          "defaultValue": {
-            "kind": "number",
-            "value": 0
-          },
-          "modifiers": []
+          "modifiers": [
+            "required"
+          ]
         },
         {
-          "name": "lowStock",
+          "name": "description",
           "type": {
-            "name": "boolean",
+            "name": "string",
             "nullable": false
           },
-          "defaultValue": {
-            "kind": "boolean",
-            "value": false
-          },
-          "modifiers": []
+          "modifiers": [
+            "required"
+          ]
         }
       ],
       "computedProperties": [],
       "relationships": [],
       "commands": [
-        "addItem",
-        "checkStock"
+        "createInvoice"
       ],
       "constraints": [],
       "policies": []
@@ -61,7 +64,7 @@
   "enums": [],
   "stores": [
     {
-      "entity": "Inventory",
+      "entity": "Invoice",
       "target": "memory",
       "config": {}
     }
@@ -69,13 +72,21 @@
   "events": [],
   "commands": [
     {
-      "name": "addItem",
-      "entity": "Inventory",
+      "name": "createInvoice",
+      "entity": "Invoice",
       "parameters": [
         {
           "name": "amount",
           "type": {
             "name": "number",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": {
+            "name": "string",
             "nullable": false
           },
           "required": true
@@ -85,48 +96,19 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
-          "target": "newQuantity",
+          "kind": "mutate",
+          "target": "amount",
           "expression": {
-            "kind": "binary",
-            "operator": "+",
-            "left": {
-              "kind": "identifier",
-              "name": "quantity"
-            },
-            "right": {
-              "kind": "identifier",
-              "name": "amount"
-            }
+            "kind": "identifier",
+            "name": "amount"
           }
         },
         {
           "kind": "mutate",
-          "target": "quantity",
+          "target": "description",
           "expression": {
             "kind": "identifier",
-            "name": "newQuantity"
-          }
-        }
-      ],
-      "emits": []
-    },
-    {
-      "name": "checkStock",
-      "entity": "Inventory",
-      "parameters": [],
-      "guards": [],
-      "constraints": [],
-      "actions": [
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "call",
-            "callee": {
-              "kind": "identifier",
-              "name": "updateLowStockFlag"
-            },
-            "args": []
+            "name": "description"
           }
         }
       ],

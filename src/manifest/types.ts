@@ -184,6 +184,16 @@ export interface ValueObjectNode extends ASTNode {
   properties: PropertyNode[];
 }
 
+export interface TenantNode extends ASTNode {
+  type: 'Tenant';
+  /** Property name injected into tenant-scoped entities (e.g. "tenantId") */
+  property: string;
+  /** Type of the tenant discriminator */
+  dataType: TypeNode;
+  /** Context path to extract tenant value from (e.g. "context.tenantId") */
+  contextPath: string;
+}
+
 export interface ConstraintNode extends ASTNode {
   type: 'Constraint';
   name: string;
@@ -340,6 +350,7 @@ export interface ManifestProgram {
   policies: PolicyNode[];
   stores: StoreNode[];
   events: OutboxEventNode[];
+  tenant?: TenantNode;
 }
 
 export interface CompilationResult {

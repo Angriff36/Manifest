@@ -1,3 +1,12 @@
+export interface IRTenant {
+  /** Property name injected into tenant-scoped entities (e.g. "tenantId") */
+  property: string;
+  /** Type of the tenant discriminator */
+  type: IRType;
+  /** Context path to extract tenant value at runtime (e.g. "context.tenantId") */
+  contextPath: string;
+}
+
 export interface IRProvenance {
   /** Content hash of the source manifest (SHA-256) */
   contentHash: string;
@@ -15,6 +24,8 @@ export interface IR {
   version: '1.0';
   /** Provenance metadata for traceability */
   provenance: IRProvenance;
+  /** Multi-tenancy isolation configuration. When present, persistent entities are tenant-scoped. */
+  tenant?: IRTenant;
   modules: IRModule[];
   /** Reusable composite value types (embedded, no separate table). Immutable by design. */
   values: IRValueObject[];

@@ -460,6 +460,33 @@ export class RuntimeEngine {
     this.evalBudget = null;
   }
 
+  /**
+   * Resolve the active tenant value from runtime context using the IR tenant
+   * config's contextPath. Returns undefined when no tenant declaration exists
+   * in the IR or the context lacks the value.
+   */
+  private resolveTenantValue(): string | undefined {
+    const tenantConfig = this.ir.tenant;
+    if (!tenantConfig) return undefined;
+    const parts = tenantConfig.contextPath.split('.');
+    let current: unknown = undefined;
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (i === 0) {
+        if (part === 'context') current = this.context;
+        else if (part === 'user') current = this.context.user;
+        else current = (this.context as Record<string, unknown>)[part];
+      } else {
+        if (current && typeof current === 'object') {
+          current = (current as Record<string, unknown>)[part];
+        } else {
+          return undefined;
+        }
+      }
+    }
+    return typeof current === 'string' ? current : undefined;
+  }
+
   constructor(ir: IR, context: RuntimeContext = {}, options: RuntimeOptions = {}) {
     this.ir = ir;
     this.context = context;
@@ -913,12 +940,29 @@ export class RuntimeEngine {
 
   async getAllInstances(entityName: string): Promise<EntityInstance[]> {
     const store = this.stores.get(entityName);
-    return store ? await store.getAll() : [];
+    if (!store) return [];
+    const all = await store.getAll();
+    if (this.ir.tenant) {
+      const tv = this.resolveTenantValue();
+      if (tv) {
+        const prop = this.ir.tenant.property;
+        return all.filter(inst => inst[prop] === tv);
+      }
+    }
+    return all;
   }
 
   async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> {
     const store = this.stores.get(entityName);
-    return store ? await store.getById(id) : undefined;
+    if (!store) return undefined;
+    const inst = await store.getById(id);
+    if (inst && this.ir.tenant) {
+      const tv = this.resolveTenantValue();
+      if (tv && inst[this.ir.tenant.property] !== tv) {
+        return undefined;
+      }
+    }
+    return inst;
   }
 
   /**
@@ -956,6 +1000,13 @@ export class RuntimeEngine {
       }
 
       const mergedData = { ...defaults, ...data };
+
+      if (this.ir.tenant) {
+        const tv = this.resolveTenantValue();
+        if (tv) {
+          mergedData[this.ir.tenant.property] = tv;
+        }
+      }
 
       // Handle version properties for optimistic concurrency control
       if (entity.versionProperty) {
@@ -1125,7 +1176,10 @@ export class RuntimeEngine {
       // Tenant context gate: fail closed before ANY work, including idempotency
       // cache reads/writes. Falsy values (undefined, '', null) all count as
       // missing — preventing accidental empty-string passes.
-      if (this.options.requireTenantContext && !this.context.tenantId) {
+      // Gate activates when EITHER the explicit option is set OR the IR declares a tenant.
+      const tenantRequired = this.options.requireTenantContext || !!this.ir.tenant;
+      const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
+      if (tenantRequired && !tenantValue) {
         result = {
           success: false,
           error: 'MISSING_TENANT_CONTEXT: tenant-scoped command invoked without context.tenantId',

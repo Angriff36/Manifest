@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.14] - 2026-05-26
+
+### Added
+
+- **`tenant` declaration** — `tenant <prop> : <type> from <context.path>` compiles to IR `tenant`, auto-injects on writes, filters reads, and fails closed on commands without tenant context.
+- Conformance fixture **`61-tenant-isolation.manifest`**.
+- Prisma projection: auto tenant column, `@@index`, and RLS policy hints when IR declares tenant.
+
 ## [1.0.13] - 2026-05-26
 
 ### Added

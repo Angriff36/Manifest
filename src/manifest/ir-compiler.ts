@@ -17,6 +17,7 @@ import {
   TransitionNode,
   EnumNode,
   ValueObjectNode,
+  TenantNode,
 } from './types';
 import {
   IR,
@@ -43,6 +44,7 @@ import {
   IRForeignKey,
   IREnum,
   IRValueObject,
+  IRTenant,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -391,10 +393,15 @@ export class IRCompiler {
     // Provenance is created WITHOUT irHash first so the hash covers the entire IR
     // except the irHash field itself. We reuse the same provenance object (same
     // compiledAt) to ensure the runtime can reproduce the hash exactly.
+    const tenant: IRTenant | undefined = program.tenant
+      ? this.transformTenant(program.tenant)
+      : undefined;
+
     const provenance = await createProvenance(source);
     const irWithoutHash: IR = {
       version: '1.0',
       provenance,
+      ...(tenant ? { tenant } : {}),
       modules,
       values,
       entities,
@@ -435,6 +442,14 @@ export class IRCompiler {
     return {
       name: v.name,
       properties: v.properties.map(p => this.transformProperty(p)),
+    };
+  }
+
+  private transformTenant(t: TenantNode): IRTenant {
+    return {
+      property: t.property,
+      type: this.transformType(t.dataType),
+      contextPath: t.contextPath,
     };
   }
 

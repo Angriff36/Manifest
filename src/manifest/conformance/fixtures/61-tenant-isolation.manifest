@@ -1,0 +1,17 @@
+// Conformance fixture: tenant isolation
+// Tests that a top-level tenant declaration is parsed and compiled into IR.
+
+tenant tenantId : string from context.tenantId
+
+entity Invoice {
+  property required id: string
+  property required amount: number
+  property required description: string
+
+  command createInvoice(amount: number, description: string) {
+    mutate amount = amount
+    mutate description = description
+  }
+
+  store in memory
+}

@@ -43,6 +43,8 @@ export const KEYWORDS = new Set([
   'enum',
   // v1.0 exact-decimal type keywords
   'decimal', 'money',
+  // multi-tenancy
+  'tenant',
 ]);
 
 const OPERATORS = new Set([

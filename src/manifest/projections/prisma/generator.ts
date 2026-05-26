@@ -561,6 +561,15 @@ function emitModel(
     return { lines: [], diagnostics };
   }
 
+  if (ir.tenant) {
+    const tenantProp = ir.tenant.property;
+    const alreadyDeclared = entity.properties.some(p => p.name === tenantProp);
+    if (!alreadyDeclared) {
+      const tenantScalar = resolvePrismaScalar(ir.tenant.type.name, undefined, tenantProp) ?? 'String';
+      lines.push(`  ${tenantProp} ${tenantScalar}`);
+    }
+  }
+
   // Relationships
   if (entity.relationships.length > 0) {
     lines.push('');
@@ -601,7 +610,29 @@ function emitModel(
     for (const entry of idx) lines.push(buildIndexLine(entry));
   }
 
+  if (ir.tenant) {
+    const tenantProp = ir.tenant.property;
+    const alreadyIndexed = (idx ?? []).some(entry =>
+      Array.isArray(entry) ? entry.includes(tenantProp) : entry.fields.includes(tenantProp)
+    ) || (entity.key ?? []).includes(tenantProp);
+    if (!alreadyIndexed) {
+      if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+      lines.push(`  @@index([${tenantProp}])`);
+    }
+  }
+
   lines.push('}');
+
+  if (ir.tenant) {
+    const tableName = options.tableMappings?.[entity.name] ?? entity.name;
+    const tenantCol = ir.tenant.property;
+    lines.push('');
+    lines.push(`// -- RLS policy (apply manually or via migration):`);
+    lines.push(`// ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;`);
+    lines.push(`// CREATE POLICY tenant_isolation ON "${tableName}"`);
+    lines.push(`//   USING ("${tenantCol}" = current_setting('app.tenant_id'));`);
+  }
+
   return { lines, diagnostics };
 }
 
