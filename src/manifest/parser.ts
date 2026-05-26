@@ -461,6 +461,15 @@ export class Parser {
     let generic: TypeNode | undefined;
     if (this.check('OPERATOR', '<')) { this.advance(); generic = this.parseType(); this.consume('OPERATOR', '>'); }
     const nullable = this.check('OPERATOR', '?') ? (this.advance(), true) : false;
+    // Postfix [] array syntax: string[] is sugar for array<string>
+    const isArray = this.check('PUNCTUATION', '[')
+      && this.tokens[this.pos + 1]?.type === 'PUNCTUATION'
+      && this.tokens[this.pos + 1]?.value === ']';
+    if (isArray) {
+      this.advance(); // consume [
+      this.advance(); // consume ]
+      return { type: 'Type', name: 'array', generic: { type: 'Type', name, nullable: false }, nullable };
+    }
     return { type: 'Type', name, generic, nullable };
   }
 

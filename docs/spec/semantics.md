@@ -229,6 +229,11 @@ In this example:
 - A command referenced by an entity MUST have its `entity` field equal to that entity's name.
 - Command name matching is case-sensitive.
 - Command names in the root `commands` array MUST be unique.
+- During compilation, the compiler MUST reject duplicate command intent within the same entity before IR emission. This includes:
+  - exact duplicate `entity.command` names across all loaded manifest source files;
+  - canonical duplicates for the same entity after conservative normalization: lowercase command names, strip separators, strip the entity name as a prefix or suffix, and normalize the verbs `create`/`add`/`new`, `update`/`edit`/`modify`, and `delete`/`remove`/`deactivate`/`archive` to one canonical intent.
+- Duplicate command-intent diagnostics MUST name the duplicate command, the existing command, both source paths when available, and instruct the author to use or extend the existing command.
+- Different entities MAY define the same normal command names, such as `create`, `update`, or `delete`; canonical duplicate checks are scoped to the same entity or resolved entity alias.
 - If an entity references a command name that does not exist in the root command list, compilation MUST fail.
 - Commands take parameters, optional guards, actions, emits, and optional return type.
 - On execution, a runtime MUST:

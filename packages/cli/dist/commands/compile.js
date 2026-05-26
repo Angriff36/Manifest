@@ -11,7 +11,10 @@ import ora from 'ora';
 // Import from the main Manifest package
 async function loadCompiler() {
     const module = await import('@angriff36/manifest/ir-compiler');
-    return module.compileToIR;
+    return {
+        compileToIR: module.compileToIR,
+        validateCommandIntentRegistry: module.validateCommandIntentRegistry,
+    };
 }
 /**
  * Get all manifest files from source pattern
@@ -36,58 +39,67 @@ async function getManifestFiles(source, options) {
     const files = await glob(pattern, { cwd: process.cwd() });
     return files.map(f => path.resolve(process.cwd(), f));
 }
-/**
- * Compile a single manifest file
- */
-async function compileFile(filePath, options, spinner) {
-    const compileToIR = await loadCompiler();
-    spinner.text = `Compiling ${path.relative(process.cwd(), filePath)}`;
-    // Read source
-    const source = await fs.readFile(filePath, 'utf-8');
-    // Compile to IR
-    const result = await compileToIR(source);
-    // Determine output path
-    let outputPath;
+function getOutputPath(filePath, options) {
+    if (options.output) {
+        // Existing behavior: an existing output directory gets one IR file per source;
+        // otherwise the output is treated as a direct file path.
+        return path.resolve(options.output);
+    }
+    return filePath.replace(/\.manifest$/, '.ir.json');
+}
+async function resolveOutputPath(filePath, options) {
     if (options.output) {
         const stat = await fs.stat(options.output).catch(() => null);
         if (stat?.isDirectory()) {
-            // Output to directory with same name
             const basename = path.basename(filePath, '.manifest');
-            outputPath = path.resolve(options.output, `${basename}.ir.json`);
+            return path.resolve(options.output, `${basename}.ir.json`);
+        }
+        return getOutputPath(filePath, options);
+    }
+    return getOutputPath(filePath, options);
+}
+/**
+ * Compile a single manifest file in memory. Writing is intentionally separate so
+ * the whole manifest set can be checked for duplicate command intent first.
+ */
+async function compileFileToIR(filePath, options, spinner) {
+    const { compileToIR } = await loadCompiler();
+    spinner.text = `Compiling ${path.relative(process.cwd(), filePath)}`;
+    const source = await fs.readFile(filePath, 'utf-8');
+    const result = await compileToIR(source, { sourcePath: filePath });
+    const outputPath = await resolveOutputPath(filePath, options);
+    return {
+        filePath,
+        outputPath,
+        ir: result.ir,
+        diagnostics: result.diagnostics || [],
+    };
+}
+async function writeCompiledFile(compiled, options, spinner) {
+    await fs.mkdir(path.dirname(compiled.outputPath), { recursive: true });
+    const jsonContent = options.pretty
+        ? JSON.stringify(compiled.ir, null, 2)
+        : JSON.stringify(compiled.ir);
+    await fs.writeFile(compiled.outputPath, jsonContent, 'utf-8');
+    spinner.succeed(`Compiled ${path.relative(process.cwd(), compiled.filePath)} → ${path.relative(process.cwd(), compiled.outputPath)}`);
+}
+function printDiagnostics(diagnostics) {
+    if (diagnostics.length === 0)
+        return;
+    console.log('');
+    console.log(chalk.bold('Diagnostics:'));
+    diagnostics.forEach((d) => {
+        const location = d.line !== undefined ? ` [${d.line}${d.column !== undefined ? `:${d.column}` : ''}]` : '';
+        if (d.severity === 'error') {
+            console.error(chalk.red(`  ✖${location} ${d.message}`));
+        }
+        else if (d.severity === 'warning') {
+            console.warn(chalk.yellow(`  ⚠${location} ${d.message}`));
         }
         else {
-            // Direct file output
-            outputPath = path.resolve(options.output);
+            console.log(chalk.gray(`  ℹ${location} ${d.message}`));
         }
-    }
-    else {
-        // Default: same name, .ir.json extension
-        outputPath = filePath.replace(/\.manifest$/, '.ir.json');
-    }
-    // Ensure output directory exists
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    // Write IR
-    const jsonContent = options.pretty
-        ? JSON.stringify(result.ir, null, 2)
-        : JSON.stringify(result.ir);
-    await fs.writeFile(outputPath, jsonContent, 'utf-8');
-    // Show diagnostics if requested
-    if (options.diagnostics && result.diagnostics && result.diagnostics.length > 0) {
-        console.log('');
-        console.log(chalk.bold('Diagnostics:'));
-        result.diagnostics.forEach((d) => {
-            if (d.severity === 'error') {
-                console.error(chalk.red(`  ✖ ${d.message}`));
-            }
-            else if (d.severity === 'warning') {
-                console.warn(chalk.yellow(`  ⚠ ${d.message}`));
-            }
-            else {
-                console.log(chalk.gray(`  ℹ ${d.message}`));
-            }
-        });
-    }
-    spinner.succeed(`Compiled ${path.relative(process.cwd(), filePath)} → ${path.relative(process.cwd(), outputPath)}`);
+    });
 }
 /**
  * Compile command handler
@@ -103,14 +115,16 @@ export async function compileCommand(source, options = {}) {
             return;
         }
         spinner.info(`Found ${files.length} file(s)`);
-        // Compile each file
-        let successCount = 0;
+        // Compile every file in memory first. No IR is written until the whole
+        // manifest set passes semantic checks.
+        const compiledFiles = [];
         let errorCount = 0;
         for (const file of files) {
             const fileSpinner = ora().start();
             try {
-                await compileFile(file, options, fileSpinner);
-                successCount++;
+                const compiled = await compileFileToIR(file, options, fileSpinner);
+                compiledFiles.push(compiled);
+                fileSpinner.succeed(`Checked ${path.relative(process.cwd(), file)}`);
             }
             catch (error) {
                 const msg = error instanceof Error ? error.message : String(error);
@@ -118,15 +132,34 @@ export async function compileCommand(source, options = {}) {
                 errorCount++;
             }
         }
-        // Summary
-        console.log('');
-        if (errorCount === 0) {
-            spinner.succeed(`Compiled ${successCount} file(s)`);
+        const allDiagnostics = compiledFiles.flatMap(file => file.diagnostics);
+        const compileErrors = allDiagnostics.filter(d => d.severity === 'error');
+        const { validateCommandIntentRegistry } = await loadCompiler();
+        const registryDiagnostics = validateCommandIntentRegistry(compiledFiles.flatMap(file => {
+            const ir = file.ir;
+            return (ir?.commands || []).map(command => ({
+                entity: command.entity,
+                command: command.name,
+                sourcePath: file.filePath,
+            }));
+        }));
+        const allErrors = [...compileErrors, ...registryDiagnostics.filter(d => d.severity === 'error')];
+        if (options.diagnostics || allErrors.length > 0) {
+            printDiagnostics([...allDiagnostics, ...registryDiagnostics]);
         }
-        else {
-            spinner.warn(`Compiled ${successCount} file(s), ${errorCount} failed`);
+        if (errorCount > 0 || allErrors.length > 0) {
+            spinner.warn(`Compiled 0 file(s), ${errorCount + allErrors.length} failed`);
             process.exit(1);
         }
+        let successCount = 0;
+        for (const compiled of compiledFiles) {
+            const fileSpinner = ora().start();
+            await writeCompiledFile(compiled, options, fileSpinner);
+            successCount++;
+        }
+        // Summary
+        console.log('');
+        spinner.succeed(`Compiled ${successCount} file(s)`);
     }
     catch (error) {
         spinner.fail(`Compilation failed: ${error instanceof Error ? error.message : String(error)}`);
