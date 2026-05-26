@@ -14,6 +14,7 @@ import { NextJsProjection } from './nextjs/generator.js';
 import { RoutesProjection } from './routes/generator.js';
 import { PrismaProjection } from './prisma/generator.js';
 import { OpenApiProjection } from './openapi/generator.js';
+import { ReactQueryProjection } from './react-query/generator.js';
 
 /**
  * Register all built-in projections.
@@ -36,6 +37,9 @@ export function registerBuiltinProjections(): void {
 
   // OpenAPI 3.1.0 spec projection
   registerProjection(new OpenApiProjection());
+
+  // TanStack Query (React Query) hooks projection
+  registerProjection(new ReactQueryProjection());
 
   // Future projections - ADD HERE:
   // import { HonoProjection } from './hono/generator';
@@ -62,5 +66,6 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new RoutesProjection(),
     new PrismaProjection(),
     new OpenApiProjection(),
+    new ReactQueryProjection(),
   ];
 }

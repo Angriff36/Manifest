@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.24] - 2026-05-26
+
+### Added
+
+- **TanStack Query projection** — generates typed `useEntityList`, `useEntityDetail`, and command mutation hooks with query key factories and cache invalidation.
+- **`ManifestQueryProvider`** component surface with configurable staleTime and error boundary integration.
+- **`@angriff36/manifest/projections/react-query`** package export.
+- **21 unit tests** covering hooks, mutations, provider, determinism, and edge cases.
+
 ## [1.0.23] - 2026-05-26
 
 ### Added
