@@ -33,9 +33,65 @@
         "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" },
         "prisma":  { "$ref": "#/definitions/PrismaProjectionConfig" }
       }
+    },
+    "env": {
+      "$ref": "#/definitions/EnvironmentMapping",
+      "description": "Environment variable mapping for stores, auth, adapters, and custom settings."
     }
   },
   "definitions": {
+    "EnvVarDefinition": {
+      "type": "object",
+      "description": "Definition of a single environment variable referenced by the application.",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Environment variable name (e.g. DATABASE_URL)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the variable's purpose."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the variable must be set at startup. Defaults to true.",
+          "default": true
+        },
+        "default": {
+          "type": "string",
+          "description": "Default value if the variable is not set."
+        },
+        "example": {
+          "type": "string",
+          "description": "Example value for .env.example generation."
+        }
+      }
+    },
+    "EnvironmentMapping": {
+      "type": "object",
+      "description": "Grouped environment variable definitions for preflight validation.",
+      "additionalProperties": false,
+      "properties": {
+        "stores": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/EnvVarDefinition" }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/EnvVarDefinition" }
+        },
+        "adapters": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/EnvVarDefinition" }
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/EnvVarDefinition" }
+        }
+      }
+    },
     "NextJsProjectionConfig": {
       "type": "object",
       "description": "Configuration for the Next.js App Router projection.",

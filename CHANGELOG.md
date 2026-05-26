@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.19] - 2026-05-26
+
+### Added
+
+- **`manifest preflight`** CLI command — validates environment variables against `env` mapping in `manifest.config.yaml`; supports `--format json` and `--generate-example`.
+- **`env` mapping schema** in `manifest.config.schema.json` with `stores`, `auth`, `adapters`, and `custom` categories.
+- **TypeScript types** `EnvMapping` and `EnvVarDefinition` in CLI config utilities.
+- **15 unit tests** for preflight validation and `.env.example` generation.
+
 ## [1.0.18] - 2026-05-26
 
 ### Added

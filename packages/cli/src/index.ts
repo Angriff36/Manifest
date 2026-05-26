@@ -15,6 +15,7 @@ import { buildCommand } from './commands/build.js';
 import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
 import { docsCommand } from './commands/docs.js';
+import { preflightCommand } from './commands/preflight.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { initCiCommand } from './commands/init-ci.js';
@@ -248,6 +249,25 @@ program
       output: options.output,
       format: options.format,
       title: options.title,
+    });
+  });
+
+/**
+ * manifest preflight
+ *
+ * Validate environment variables against manifest.config env mapping.
+ */
+program
+  .command('preflight')
+  .description('Validate environment variables and generate .env.example')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--generate-example', 'Generate .env.example instead of checking')
+  .option('-o, --output <path>', 'Output path for .env.example', '.env.example')
+  .action(async (options = {}) => {
+    await preflightCommand({
+      format: options.format,
+      generateExample: options.generateExample,
+      output: options.output,
     });
   });
 

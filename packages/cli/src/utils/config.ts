@@ -37,6 +37,26 @@ export interface ManifestConfig {
     output?: string;
     options?: Record<string, unknown>;
   }>;
+
+  /** Environment variable mapping for store/auth/adapter configuration */
+  env?: EnvMapping;
+}
+
+/** Single environment variable definition in manifest.config.yaml */
+export interface EnvVarDefinition {
+  name: string;
+  description?: string;
+  required?: boolean;
+  default?: string;
+  example?: string;
+}
+
+/** Environment variable mapping grouped by category */
+export interface EnvMapping {
+  stores?: Record<string, EnvVarDefinition>;
+  auth?: Record<string, EnvVarDefinition>;
+  adapters?: Record<string, EnvVarDefinition>;
+  custom?: Record<string, EnvVarDefinition>;
 }
 
 /**
