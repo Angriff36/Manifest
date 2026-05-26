@@ -17,7 +17,10 @@ export * from './registry.js';
 export { NextJsProjection } from './nextjs/generator.js';
 export { RoutesProjection } from './routes/generator.js';
 export { PrismaProjection } from './prisma/generator.js';
+export { OpenApiProjection } from './openapi/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
+
+export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
 
 // Re-export route surface types
 export type {

@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.23] - 2026-05-26
+
+### Added
+
+- **OpenAPI 3.1 projection** — generates complete OpenAPI specs from IR entities, commands, and routes with JSON Schema-typed bodies, security schemes, and constraint error responses.
+- **`@angriff36/manifest/projections/openapi`** package export.
+- **40 unit tests** covering entity read/command operations, type mapping, security, determinism, and edge cases.
+
 ## [1.0.22] - 2026-05-26
 
 ### Added

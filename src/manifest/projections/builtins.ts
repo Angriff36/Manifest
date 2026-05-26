@@ -13,6 +13,7 @@ import { registerProjection } from './registry.js';
 import { NextJsProjection } from './nextjs/generator.js';
 import { RoutesProjection } from './routes/generator.js';
 import { PrismaProjection } from './prisma/generator.js';
+import { OpenApiProjection } from './openapi/generator.js';
 
 /**
  * Register all built-in projections.
@@ -32,6 +33,9 @@ export function registerBuiltinProjections(): void {
 
   // Prisma schema projection (composite PK/FK, referential actions, v1.0)
   registerProjection(new PrismaProjection());
+
+  // OpenAPI 3.1.0 spec projection
+  registerProjection(new OpenApiProjection());
 
   // Future projections - ADD HERE:
   // import { HonoProjection } from './hono/generator';
@@ -57,5 +61,6 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new NextJsProjection(),
     new RoutesProjection(),
     new PrismaProjection(),
+    new OpenApiProjection(),
   ];
 }
