@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.31] - 2026-05-26
+
+### Added
+
+- **Drizzle ORM schema projection** — generates TypeScript-first Drizzle table definitions from IR with column types, PKs, FKs, indexes, unique constraints, relations API, referential actions, array types, and multi-dialect support (PostgreSQL, MySQL, SQLite).
+- **`drizzle.schema` surface** and **`@angriff36/manifest/projections/drizzle`** package export.
+- **51 unit tests** covering type mapping, relationships, indexes, defaults, and diagnostics.
+
+### Fixed
+
+- **v1.0.30 publish gap** — builtins registered `DrizzleProjection` but the drizzle source files were not included in the tarball; this release adds the missing implementation.
+
 ## [1.0.30] - 2026-05-26
 
 ### Added
