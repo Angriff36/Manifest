@@ -16,6 +16,7 @@ import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
+import { initCiCommand } from './commands/init-ci.js';
 import { scanCommand } from './commands/scan.js';
 import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
@@ -93,9 +94,20 @@ program
  */
 program
   .command('init')
-  .description('Initialize Manifest configuration (interactive)')
-  .option('-f, --force', 'Overwrite existing config file')
-  .action(initCommand);
+  .description('Initialize Manifest configuration (interactive) or generate CI workflows')
+  .option('-f, --force', 'Overwrite existing config or workflow file')
+  .option('--ci <provider>', 'Generate CI workflow for provider (github)')
+  .option('--node-versions <versions>', 'Comma-separated Node.js versions for CI matrix (default: 18,20,22)')
+  .action(async (options: { force?: boolean; ci?: string; nodeVersions?: string }) => {
+    if (options.ci) {
+      await initCiCommand(options.ci, {
+        force: options.force,
+        nodeVersions: options.nodeVersions,
+      });
+      return;
+    }
+    await initCommand(options);
+  });
 
 /**
  * manifest compile [source]

@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.17] - 2026-05-26
+
+### Added
+
+- **`manifest init --ci github`** — generates `.github/workflows/manifest-ci.yml` with validate, scan, test matrix (Node 18/20/22), and conformance fixture regen on main.
+- **CLI flags** `--node-versions` and `--force` for CI workflow generation.
+- **12 unit tests** for workflow generation and file creation.
+
 ## [1.0.16] - 2026-05-26
 
 ### Added
