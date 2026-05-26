@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.18] - 2026-05-26
+
+### Added
+
+- **`manifest docs`** CLI command — generates static HTML or Markdown documentation from IR (entity reference pages with properties, commands, policies, constraints, events).
+- **16 unit tests** covering HTML/Markdown output, all IR sections, error handling, and directory input.
+
 ## [1.0.17] - 2026-05-26
 
 ### Added

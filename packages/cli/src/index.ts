@@ -14,6 +14,7 @@ import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
 import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
+import { docsCommand } from './commands/docs.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
 import { initCiCommand } from './commands/init-ci.js';
@@ -227,6 +228,26 @@ program
       schema: options.schema,
       minScore: options.minScore,
       verbose: options.verbose,
+    });
+  });
+
+/**
+ * manifest docs [source]
+ *
+ * Generate static documentation site from IR.
+ */
+program
+  .command('docs')
+  .description('Generate static documentation site from Manifest IR')
+  .argument('[source]', 'Source .manifest, .ir.json, directory, or glob')
+  .option('-o, --output <path>', 'Output directory', 'docs-site')
+  .option('-f, --format <format>', 'Output format (html, markdown)', 'html')
+  .option('-t, --title <title>', 'Site title', 'Manifest API Reference')
+  .action(async (source, options = {}) => {
+    await docsCommand(source, {
+      output: options.output,
+      format: options.format,
+      title: options.title,
     });
   });
 
