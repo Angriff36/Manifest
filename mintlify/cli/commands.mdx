@@ -1,7 +1,7 @@
 ---
 title: "Manifest CLI command reference"
 sidebarTitle: "Commands"
-description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults."
+description: "Full syntax, options, and examples for every Manifest CLI command: init, compile, generate, build, validate, config, and diff — with flags and defaults."
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -386,4 +386,128 @@ manifest config inspect --json
 
 <Tip>
 Commit the inspect output as a snapshot under VCS (e.g. `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it. Drift in either Manifest defaults or your local config will then surface as a diff before it changes emitted code.
+</Tip>
+
+---
+
+## `manifest diff`
+
+Compare two versions of your IR to see what changed, classify those changes by severity, and optionally emit a SQL or Prisma migration. This is the foundation for safe schema evolution and CI gates that block breaking changes.
+
+```bash
+manifest diff <subcommand> [options]
+```
+
+Both subcommands take two IR JSON files — typically the previous release's IR (checked into git or pulled from a release artifact) and the IR your current branch compiles to.
+
+### `manifest diff ir-vs-ir`
+
+Produces a structured diff report comparing two IR files. Reports entities, properties, commands, policies, stores, events, and computed properties that were added, removed, or changed. Optionally emits SQL `ALTER TABLE` statements or Prisma schema deltas so you can scaffold a migration alongside the diff.
+
+```bash
+manifest diff ir-vs-ir <oldIR> <newIR> [options]
+```
+
+Use it when you want to review what changed between two IR versions before generating a migration, or to attach a machine-readable diff to a pull request.
+
+#### Options
+
+<ParamField path="--json" type="boolean" default="false">
+  Emit the diff report as JSON instead of human-readable output. Exits non-zero when any differences are detected.
+</ParamField>
+
+<ParamField path="--sql" type="boolean" default="false">
+  Include SQL `ALTER TABLE` statements for entity and property changes in the output. Implies JSON output structure.
+</ParamField>
+
+<ParamField path="--prisma" type="boolean" default="false">
+  Include a Prisma schema delta alongside the diff. Implies JSON output structure.
+</ParamField>
+
+<ParamField path="-o, --output <path>" type="string">
+  Write the report to a file instead of stdout. Combine with `--sql` or `--prisma` to capture a migration artifact in CI.
+</ParamField>
+
+#### Examples
+
+```bash
+# Human-readable diff between last release and current branch
+manifest diff ir-vs-ir baseline/recipe.ir.json ir/recipe.ir.json
+
+# Generate a SQL migration to apply against your database
+manifest diff ir-vs-ir baseline.ir.json ir/recipe.ir.json --sql -o migration.json
+
+# Prisma migration delta as JSON for CI
+manifest diff ir-vs-ir baseline.ir.json ir/recipe.ir.json --prisma --json
+```
+
+<Note>
+Migration output includes a `warnings` array — for example, when a property type change cannot be expressed safely as a single SQL statement. Review warnings before applying any generated migration.
+</Note>
+
+### `manifest diff breaking`
+
+Classifies every change in an IR diff as **compatible**, **deprecated**, or **breaking**, and aggregates the downstream consumer impact (which commands, routes, and projections are affected). Designed to plug into CI so accidental breaking changes fail the build until an engineer explicitly acknowledges them.
+
+```bash
+manifest diff breaking <oldIR> <newIR> [options]
+```
+
+Use it on every pull request that touches `.manifest` files. Compatible additions (new optional properties, new commands) pass silently; breaking changes (removed entities, type changes, required properties without defaults) fail CI until acknowledged.
+
+#### Options
+
+<ParamField path="--json" type="boolean" default="false">
+  Emit the full classification report as JSON. Includes `classified`, `summary`, `acknowledged`, `unacknowledged`, and `consumerImpact` fields.
+</ParamField>
+
+<ParamField path="--ack <path>" type="string">
+  Path to an acknowledgments JSON file. Breaking changes listed there move from `unacknowledged` to `acknowledged` and no longer fail `--ci` runs.
+</ParamField>
+
+<ParamField path="--ci" type="boolean" default="false">
+  Exit non-zero when any breaking changes are unacknowledged. Compatible and deprecated changes never fail CI on their own.
+</ParamField>
+
+<ParamField path="-o, --output <path>" type="string">
+  Write the report to a file instead of stdout.
+</ParamField>
+
+#### Acknowledgments file format
+
+The acknowledgments file is a JSON document that records intentional breaking changes alongside a human-readable reason. Commit it to your repo so the audit trail lives with the code:
+
+```json
+{
+  "version": 1,
+  "acknowledged": [
+    {
+      "path": "Recipe.legacyId",
+      "category": "property-removed",
+      "acknowledgedAt": "2026-05-26T00:00:00Z",
+      "reason": "Field unused since v1.0.0; confirmed with downstream consumers."
+    }
+  ]
+}
+```
+
+`path` and `category` must match the values reported by `manifest diff breaking` (visible in the `--json` output under `classified[].path` and `classified[].category`).
+
+#### Examples
+
+```bash
+# Human-readable classification report
+manifest diff breaking baseline.ir.json ir/recipe.ir.json
+
+# CI gate — fails on unacknowledged breaking changes
+manifest diff breaking baseline.ir.json ir/recipe.ir.json \
+  --ack .manifest/breaking-acks.json \
+  --ci
+
+# Machine-readable report for a PR comment bot
+manifest diff breaking baseline.ir.json ir/recipe.ir.json --json -o report.json
+```
+
+<Tip>
+Pair `manifest diff breaking --ci` with a job that publishes each release's IR as a build artifact. CI can then fetch the previous release's IR, diff it against the PR branch, and post the classification report as a check.
 </Tip>

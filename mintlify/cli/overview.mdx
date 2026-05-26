@@ -62,6 +62,8 @@ manifest build modules/recipe.manifest --projection nextjs --code-output app/api
 | `manifest generate <ir>` | Generate code from IR using a projection |
 | `manifest build [source]` | Compile and generate in one step |
 | `manifest validate [ir]` | Validate IR JSON against the IR schema |
+| `manifest diff ir-vs-ir <old> <new>` | Diff two IR files; optionally emit SQL or Prisma migrations |
+| `manifest diff breaking <old> <new>` | Classify IR changes as compatible, deprecated, or breaking for CI gates |
 
 ### Governance & audit (v0.6.0+)
 
