@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.25] - 2026-05-26
+
+### Added
+
+- **Manifest MCP server** (`packages/mcp-server`) — Model Context Protocol server with `compile`, `execute`, `validate`, and `explain` tools plus IR schema, cached IR, and semantics resources.
+- **`manifest-mcp` CLI bin** for stdio MCP transport.
+- **`pnpm-workspace.yaml`** for monorepo package discovery (`packages/*`).
+- **17 unit tests** for MCP tool handlers.
+
 ## [1.0.24] - 2026-05-26
 
 ### Added

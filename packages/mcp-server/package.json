@@ -1,0 +1,27 @@
+{
+  "name": "@manifest/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for the Manifest DSL — compile, execute, validate, and introspect Manifest programs",
+  "type": "module",
+  "bin": {
+    "manifest-mcp": "./bin/manifest-mcp.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@angriff36/manifest": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "^5.5.3",
+    "vitest": "latest"
+  }
+}
