@@ -1,0 +1,10 @@
+entity TaggedDocument {
+  property required id: string
+  property tags: string[] = []
+  property scores: array<number> = []
+
+  constraint noEmptyTags: self.tags.length > 0
+  constraint hasTags: self.tags.contains("published")
+}
+
+store TaggedDocument in memory

@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest.dev/plugins/plugin.schema.json",
+  "title": "ManifestPlugin",
+  "description": "Schema for validating a Manifest plugin module export.",
+  "type": "object",
+  "required": ["manifest"],
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "required": ["name", "version", "pluginApiVersion", "manifestVersion"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*$",
+          "description": "Unique plugin identifier (npm-style scoped or unscoped)."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Plugin's own SemVer version."
+        },
+        "pluginApiVersion": {
+          "type": "string",
+          "const": "1",
+          "description": "Must match the current Plugin API version."
+        },
+        "manifestVersion": {
+          "type": "string",
+          "description": "SemVer range for compatible Manifest package versions."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable plugin description."
+        }
+      },
+      "additionalProperties": false
+    },
+    "projections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "surfaces", "generate"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "surfaces": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "generate": {}
+        }
+      }
+    },
+    "storeAdapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scheme", "createStore"],
+        "properties": {
+          "scheme": { "type": "string", "pattern": "^[a-z][a-z0-9+-]*$" },
+          "createStore": {}
+        }
+      }
+    },
+    "auditSinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "createSink"],
+        "properties": {
+          "id": { "type": "string" },
+          "createSink": {}
+        }
+      }
+    },
+    "builtins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "purity", "arity", "fn"],
+        "properties": {
+          "name": { "type": "string" },
+          "purity": { "type": "string", "enum": ["pure", "time-dependent", "random"] },
+          "arity": { "type": "integer", "minimum": -1 },
+          "fn": {}
+        }
+      }
+    },
+    "cliCommands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "register"],
+        "properties": {
+          "name": { "type": "string" },
+          "register": {}
+        }
+      }
+    },
+    "onLoad": {}
+  },
+  "additionalProperties": false
+}

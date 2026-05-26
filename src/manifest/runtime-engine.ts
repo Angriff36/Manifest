@@ -2019,6 +2019,35 @@ export class RuntimeEngine {
           }
         }
 
+        // Array method calls: arr.contains(x), arr.all(pred), arr.any(pred)
+        if (calleeExpr.kind === 'member') {
+          const property = calleeExpr.property;
+          const arr = await this.evaluateExpression(calleeExpr.object, context);
+          if (Array.isArray(arr)) {
+            if (property === 'contains') {
+              const needle = await this.evaluateExpression(expr.args[0], context);
+              return arr.includes(needle);
+            }
+            if (property === 'all' || property === 'any') {
+              const predicate = await this.evaluateExpression(expr.args[0], context);
+              if (typeof predicate === 'function') {
+                if (property === 'all') {
+                  for (const element of arr) {
+                    const result = await Promise.resolve(predicate(element));
+                    if (!result) return false;
+                  }
+                  return true;
+                }
+                for (const element of arr) {
+                  const result = await Promise.resolve(predicate(element));
+                  if (result) return true;
+                }
+                return false;
+              }
+            }
+          }
+        }
+
         // Default: evaluate callee and call as function
         const callee = await this.evaluateExpression(expr.callee, context);
         const args = await Promise.all(expr.args.map(a => this.evaluateExpression(a, context)));
@@ -2134,6 +2163,7 @@ export class RuntimeEngine {
       case 'number': return 0;
       case 'boolean': return false;
       case 'list': return [];
+      case 'array': return [];
       case 'map': return {};
       default: return null;
     }

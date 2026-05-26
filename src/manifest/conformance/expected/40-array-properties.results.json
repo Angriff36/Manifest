@@ -1,0 +1,51 @@
+{
+  "testCases": [
+    {
+      "name": "valid instance with non-empty tags passes all constraints",
+      "entity": "TaggedDocument",
+      "data": { "id": "d1", "tags": ["news", "published"] },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "empty tags fails noEmptyTags constraint",
+      "entity": "TaggedDocument",
+      "data": { "id": "d2", "tags": [] },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "noEmptyTags",
+          "expression": "self.tags.length > 0"
+        },
+        {
+          "constraintName": "hasTags",
+          "expression": "self.tags.contains(\"published\")"
+        }
+      ]
+    },
+    {
+      "name": "tags without published fails hasTags constraint",
+      "entity": "TaggedDocument",
+      "data": { "id": "d3", "tags": ["draft", "review"] },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "hasTags",
+          "expression": "self.tags.contains(\"published\")"
+        }
+      ]
+    },
+    {
+      "name": "empty tags fails both constraints",
+      "entity": "TaggedDocument",
+      "data": { "id": "d4", "tags": [] },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "noEmptyTags",
+          "expression": "self.tags.length > 0"
+        },
+        {
+          "constraintName": "hasTags",
+          "expression": "self.tags.contains(\"published\")"
+        }
+      ]
+    }
+  ]
+}

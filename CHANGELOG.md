@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.30] - 2026-05-26
+
+### Added
+
+- **Array / list property type** — runtime support for `array<T>` and `T[]` properties with `.contains()`, `.all()`, and `.any()` method calls; `getDefaultForType('array')` returns `[]`; conformance fixture `40-array-properties`.
+- **IR version control** — `src/manifest/ir-version-store.ts` with semver tagging, integrity verification, and changelog generation; `manifest versions` CLI with 8 subcommands (list, show, save, diff, changelog, tag, rollback, verify); `@angriff36/manifest/ir-version-store` export; exported `computeIRHash` from ir-compiler.
+- **Plugin API** — `@angriff36/manifest/plugin-api` and `@angriff36/manifest/plugin-loader` with five extension points (projections, stores, audit sinks, builtins, CLI commands); `manifest plugins list` CLI; `plugins` config section; `docs/spec/plugins/plugin.schema.json`.
+- **106 new tests** (conformance + ir-version-store + versions CLI + plugin-api + plugin-loader).
+
 ## [1.0.27] - 2026-05-26
 
 ### Added

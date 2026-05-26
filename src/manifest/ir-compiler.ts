@@ -77,7 +77,7 @@ async function createProvenance(source: string, irHash?: string): Promise<IRProv
  * Compute SHA-256 hash of the IR for runtime integrity verification
  * This creates a canonical representation by sorting keys and excluding the irHash itself
  */
-async function computeIRHash(ir: IR): Promise<string> {
+export async function computeIRHash(ir: IR): Promise<string> {
   // Create a copy of the IR without the irHash for hashing
   const { provenance, ...irWithoutProvenance } = ir as IR & { provenance: IRProvenance };
   const { irHash: _irHash, ...provenanceWithoutIrHash } = provenance;

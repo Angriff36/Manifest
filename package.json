@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.27",
+  "version": "1.0.30",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -90,6 +90,18 @@
       "types": "./dist/manifest/agent-sdk/index.d.ts",
       "import": "./dist/manifest/agent-sdk/index.js"
     },
+    "./ir-version-store": {
+      "types": "./dist/manifest/ir-version-store.d.ts",
+      "import": "./dist/manifest/ir-version-store.js"
+    },
+    "./plugin-api": {
+      "types": "./dist/manifest/plugin-api.d.ts",
+      "import": "./dist/manifest/plugin-api.js"
+    },
+    "./plugin-loader": {
+      "types": "./dist/manifest/plugin-loader.d.ts",
+      "import": "./dist/manifest/plugin-loader.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -107,6 +119,7 @@
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/registry/*.schema.json",
     "docs/spec/config/*.schema.json",
+    "docs/spec/plugins/*.schema.json",
     "README*",
     "LICENSE*",
     "package.json"

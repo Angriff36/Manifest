@@ -48,6 +48,16 @@ export interface ManifestConfig {
     runFmt?: boolean;
     runValidate?: boolean;
   };
+
+  /** Optional: Plugin declarations for third-party extensions */
+  plugins?: Array<{
+    /** npm package name or relative file path. */
+    module: string;
+    /** Plugin-specific options. */
+    options?: Record<string, unknown>;
+    /** Whether the plugin is active (default: true). */
+    enabled?: boolean;
+  }>;
 }
 
 /** Single environment variable definition in manifest.config.yaml */

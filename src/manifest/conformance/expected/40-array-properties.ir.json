@@ -1,0 +1,136 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "d257c7f847d2fb4c80fcdacc5c48f29c0754d37af905ec0deb1a28a1fca2ea37",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "entities": [
+    {
+      "name": "TaggedDocument",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "tags",
+          "type": {
+            "name": "array",
+            "generic": {
+              "name": "string",
+              "nullable": false
+            },
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "array",
+            "elements": []
+          },
+          "modifiers": []
+        },
+        {
+          "name": "scores",
+          "type": {
+            "name": "array",
+            "generic": {
+              "name": "number",
+              "nullable": false
+            },
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "array",
+            "elements": []
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [
+        {
+          "name": "noEmptyTags",
+          "code": "noEmptyTags",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "tags"
+              },
+              "property": "length"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "block",
+          "overrideable": false
+        },
+        {
+          "name": "hasTags",
+          "code": "hasTags",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "tags"
+              },
+              "property": "contains"
+            },
+            "args": [
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "published"
+                }
+              }
+            ]
+          },
+          "severity": "block",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "TaggedDocument",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": []
+}
