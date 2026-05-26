@@ -17,6 +17,7 @@ export interface IR {
   provenance: IRProvenance;
   modules: IRModule[];
   entities: IREntity[];
+  enums: IREnum[];
   stores: IRStore[];
   events: IREvent[];
   commands: IRCommand[];
@@ -26,10 +27,25 @@ export interface IR {
 export interface IRModule {
   name: string;
   entities: string[];
+  enums: string[];
   commands: string[];
   stores: string[];
   events: string[];
   policies: string[];
+}
+
+export interface IREnum {
+  name: string;
+  module?: string;
+  values: IREnumValue[];
+}
+
+export interface IREnumValue {
+  name: string;
+  /** Display label for UI */
+  label?: string;
+  /** Optional ordinal value for sorting/database mapping */
+  ordinal?: number;
 }
 
 export interface IRTransition {
@@ -178,6 +194,7 @@ export interface IRType {
   name: string;
   generic?: IRType;
   nullable: boolean;
+  params?: { precision?: number; scale?: number };
 }
 
 export type IRValue =

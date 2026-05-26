@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "da6fbd4a1b0c9c8caa8473997b08fe53053d96c6f57af8116bb2c4af2adb8839",
+    "irHash": "32f2e4f34cda458a05327b183e60e816b0f2baa6d5c7db5a32a5ef706e42fb67",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -138,6 +138,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "TimestampedEntity",

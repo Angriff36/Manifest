@@ -25,6 +25,7 @@ function makeValidIR(overrides: Record<string, unknown> = {}): object {
     },
     modules: [],
     entities: [],
+    enums: [],
     stores: [],
     events: [],
     commands: [],

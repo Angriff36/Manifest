@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "dc1d6d2732e339d504e611c7612134a67a588bdb66f0f2c44a0726536057c23a",
+    "irHash": "3c3d77c69597b8b45cb85889d8aa1cf48112bd79290f89fc18478782ee85cd83",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -112,6 +112,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Counter",

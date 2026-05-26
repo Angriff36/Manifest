@@ -4,7 +4,7 @@ import {
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
-  ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction
+  ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode
 } from './types';
 
 export class Parser {
@@ -18,7 +18,7 @@ export class Parser {
     this.errors = [];
 
     const program: ManifestProgram = {
-      modules: [], entities: [], commands: [], flows: [], effects: [],
+      modules: [], entities: [], enums: [], commands: [], flows: [], effects: [],
       exposures: [], compositions: [], policies: [], stores: [], events: []
     };
 
@@ -28,6 +28,7 @@ export class Parser {
       try {
         if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
         else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
+        else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
         else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
@@ -51,12 +52,13 @@ export class Parser {
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
-    const entities: EntityNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [];
+    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [];
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
       if (this.check('PUNCTUATION', '}')) break;
       if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
+      else if (this.check('KEYWORD', 'enum')) enums.push(this.parseEnum());
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
@@ -65,7 +67,7 @@ export class Parser {
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Module', name, entities, commands, policies, stores, events };
+    return { type: 'Module', name, entities, enums, commands, policies, stores, events };
   }
 
   private parseEntity(): EntityNode {
@@ -176,6 +178,51 @@ export class Parser {
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
       versionProperty, versionAtProperty,
     };
+  }
+
+  private parseEnum(): EnumNode {
+    this.consume('KEYWORD', 'enum');
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    const values: EnumValueNode[] = [];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      const valueName = this.consumeIdentifier().value;
+      const enumValue: EnumValueNode = { type: 'EnumValue', name: valueName };
+
+      // Check for optional label: "valueName = \"Display Label\""
+      if (this.check('OPERATOR', '=')) {
+        this.advance();
+        if (this.check('STRING')) {
+          enumValue.label = this.advance().value;
+        }
+      }
+
+      // Check for optional ordinal: "valueName(123)" or "valueName = \"Label\" (123)"
+      if (this.check('PUNCTUATION', '(')) {
+        this.advance();
+        if (this.check('NUMBER')) {
+          enumValue.ordinal = parseFloat(this.advance().value);
+        }
+        this.consume('PUNCTUATION', ')');
+      }
+
+      values.push(enumValue);
+
+      // Skip comma if present
+      if (this.check('PUNCTUATION', ',')) {
+        this.advance();
+      }
+      this.skipNL();
+    }
+
+    this.consume('PUNCTUATION', '}');
+    return { type: 'Enum', name, values };
   }
 
   private parseProperty(): PropertyNode {
@@ -459,6 +506,19 @@ export class Parser {
   private parseType(): TypeNode {
     const name = this.advance().value;
     let generic: TypeNode | undefined;
+    // Type parameters for decimal/decimal(money) types: decimal(10, 2)
+    let params: { precision?: number; scale?: number } | undefined;
+    if (this.check('PUNCTUATION', '(') && (name === 'decimal' || name === 'money')) {
+      this.advance(); // consume (
+      const precisionToken = this.advance();
+      const precision = typeof precisionToken.value === 'number' ? precisionToken.value : parseInt(precisionToken.value, 10);
+      this.consume('PUNCTUATION', ',');
+      this.skipNL();
+      const scaleToken = this.advance();
+      const scale = typeof scaleToken.value === 'number' ? scaleToken.value : parseInt(scaleToken.value, 10);
+      this.consume('PUNCTUATION', ')');
+      params = { precision, scale };
+    }
     if (this.check('OPERATOR', '<')) { this.advance(); generic = this.parseType(); this.consume('OPERATOR', '>'); }
     const nullable = this.check('OPERATOR', '?') ? (this.advance(), true) : false;
     // Postfix [] array syntax: string[] is sugar for array<string>
@@ -468,9 +528,9 @@ export class Parser {
     if (isArray) {
       this.advance(); // consume [
       this.advance(); // consume ]
-      return { type: 'Type', name: 'array', generic: { type: 'Type', name, nullable: false }, nullable };
+      return { type: 'Type', name: 'array', generic: { type: 'Type', name, nullable: false, params }, nullable };
     }
-    return { type: 'Type', name, generic, nullable };
+    return { type: 'Type', name, generic, nullable, params };
   }
 
   private parseBehavior(): BehaviorNode {
@@ -935,5 +995,5 @@ export class Parser {
   private current() { return this.tokens[this.pos]; }
   private isEnd() { return this.pos >= this.tokens.length || this.tokens[this.pos]?.type === 'EOF'; }
   private skipNL() { while (this.check('NEWLINE', '\n')) this.advance(); }
-  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event'].includes(this.current()?.value || '')) this.advance(); }
+  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event'].includes(this.current()?.value || '')) this.advance(); }
 }

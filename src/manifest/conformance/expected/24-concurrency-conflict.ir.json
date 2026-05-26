@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "b86d13076b18c1e0c7d46e66754dc76b229801acfe0efe78bd967be809fe6036",
+    "irHash": "f72b74d17fc3ef24062b050d8482c1a2cf21e406c2a6aa42dd73aa69f2930237",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -63,6 +63,7 @@
       "versionAtProperty": "versionAt"
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Document",

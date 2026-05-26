@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "4bd4af27589dbdee1d4ae1b9f0245d599c1c53639413913a03b497ff89f8ceeb",
+    "irHash": "f1ea34a04179e10705b915e1e3ea500a008fad18fdeba915d60a9a4e58288af6",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -10,10 +10,10 @@
   "modules": [],
   "entities": [
     {
-      "name": "Product",
+      "name": "Article",
       "properties": [
         {
-          "name": "name",
+          "name": "title",
           "type": {
             "name": "string",
             "nullable": false
@@ -23,38 +23,18 @@
           ]
         },
         {
-          "name": "price",
+          "name": "status",
           "type": {
-            "name": "number",
+            "name": "Status",
             "nullable": false
-          },
-          "defaultValue": {
-            "kind": "number",
-            "value": 0
           },
           "modifiers": []
         },
         {
-          "name": "inStock",
+          "name": "priority",
           "type": {
-            "name": "boolean",
+            "name": "Priority",
             "nullable": false
-          },
-          "defaultValue": {
-            "kind": "boolean",
-            "value": true
-          },
-          "modifiers": []
-        },
-        {
-          "name": "description",
-          "type": {
-            "name": "string",
-            "nullable": false
-          },
-          "defaultValue": {
-            "kind": "string",
-            "value": ""
           },
           "modifiers": []
         }
@@ -66,10 +46,44 @@
       "policies": []
     }
   ],
-  "enums": [],
+  "enums": [
+    {
+      "name": "Status",
+      "values": [
+        {
+          "name": "draft"
+        },
+        {
+          "name": "published",
+          "label": "Published"
+        },
+        {
+          "name": "archived",
+          "ordinal": 2
+        }
+      ]
+    },
+    {
+      "name": "Priority",
+      "values": [
+        {
+          "name": "low",
+          "label": "Low Priority"
+        },
+        {
+          "name": "medium",
+          "label": "Medium Priority"
+        },
+        {
+          "name": "high",
+          "label": "High Priority"
+        }
+      ]
+    }
+  ],
   "stores": [
     {
-      "entity": "Product",
+      "entity": "Article",
       "target": "memory",
       "config": {}
     }

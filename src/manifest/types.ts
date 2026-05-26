@@ -18,6 +18,7 @@ export interface ModuleNode extends ASTNode {
   type: 'Module';
   name: string;
   entities: EntityNode[];
+  enums: EnumNode[];
   commands: CommandNode[];
   policies: PolicyNode[];
   stores: StoreNode[];
@@ -29,6 +30,21 @@ export interface TransitionNode extends ASTNode {
   property: string;
   from: string;
   to: string[];
+}
+
+export interface EnumValueNode extends ASTNode {
+  type: 'EnumValue';
+  name: string;
+  /** Optional display label for UI */
+  label?: string;
+  /** Optional ordinal value for sorting/database mapping */
+  ordinal?: number;
+}
+
+export interface EnumNode extends ASTNode {
+  type: 'Enum';
+  name: string;
+  values: EnumValueNode[];
 }
 
 export interface EntityNode extends ASTNode {
@@ -133,6 +149,12 @@ export interface TypeNode extends ASTNode {
   name: string;
   generic?: TypeNode;
   nullable: boolean;
+  params?: TypeParams;
+}
+
+export interface TypeParams {
+  precision?: number;
+  scale?: number;
 }
 
 export interface BehaviorNode extends ASTNode {
@@ -302,6 +324,7 @@ export interface LambdaNode extends ASTNode {
 export interface ManifestProgram {
   modules: ModuleNode[];
   entities: EntityNode[];
+  enums: EnumNode[];
   commands: CommandNode[];
   flows: FlowNode[];
   effects: EffectNode[];

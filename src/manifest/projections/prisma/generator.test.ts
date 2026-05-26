@@ -29,6 +29,7 @@ function emptyIR(): IR {
     },
     modules: [],
     entities: [],
+    enums: [],
     stores: [],
     events: [],
     commands: [],

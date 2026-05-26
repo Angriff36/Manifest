@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "041e652140fe5ea997f13ebbf7d4010254ee4ad1c93326e6c1b11bafa1cf1dac",
+    "irHash": "33d2806fc0c600a14c9817f05f33ac73860253dc5b07af4f4e53992edc5b7729",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -88,6 +88,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Transfer",

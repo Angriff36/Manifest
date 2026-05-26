@@ -32,6 +32,7 @@ const mockIR: IR = {
       policies: [],
     },
   ],
+  enums: [],
   stores: [],
   commands: [],
   events: [],

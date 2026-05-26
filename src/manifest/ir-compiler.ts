@@ -15,6 +15,7 @@ import {
   ExpressionNode,
   TypeNode,
   TransitionNode,
+  EnumNode,
 } from './types';
 import {
   IR,
@@ -39,6 +40,7 @@ import {
   IRProvenance,
   IRTransition,
   IRForeignKey,
+  IREnum,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -325,6 +327,11 @@ export class IRCompiler {
       ...program.modules.flatMap(m => m.entities.map(e => this.transformEntity(e, m.name))),
     ];
 
+    const enums: IREnum[] = [
+      ...program.enums.map(e => this.transformEnum(e)),
+      ...program.modules.flatMap(m => m.enums.map(e => this.transformEnum(e, m.name))),
+    ];
+
     // Collect entity-scoped stores (defined as "store in <target>" inside entity)
     const entityScopedStores: IRStore[] = [
       ...program.entities.filter(e => e.store).map(e => ({
@@ -387,6 +394,7 @@ export class IRCompiler {
       provenance,
       modules,
       entities,
+      enums,
       stores,
       events,
       commands,
@@ -401,10 +409,11 @@ export class IRCompiler {
     };
   }
 
-  private transformModule(m: { name: string; entities: EntityNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[] }): IRModule {
+  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[] }): IRModule {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
+      enums: m.enums.map(e => e.name),
       commands: [
         ...m.commands.map(c => c.name),
         ...m.entities.flatMap(e => e.commands.map(c => c.name)),
@@ -449,6 +458,18 @@ export class IRCompiler {
       property: t.property,
       from: t.from,
       to: t.to,
+    };
+  }
+
+  private transformEnum(e: EnumNode, moduleName?: string): IREnum {
+    return {
+      name: e.name,
+      module: moduleName,
+      values: e.values.map(v => ({
+        name: v.name,
+        ...(v.label ? { label: v.label } : {}),
+        ...(v.ordinal !== undefined ? { ordinal: v.ordinal } : {}),
+      })),
     };
   }
 
@@ -632,6 +653,7 @@ export class IRCompiler {
       name: t.name,
       generic: t.generic ? this.transformType(t.generic) : undefined,
       nullable: t.nullable,
+      ...(t.params ? { params: t.params } : {}),
     };
   }
 

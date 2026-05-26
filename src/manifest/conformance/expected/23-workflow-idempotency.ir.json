@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "e9ab9ad6cc01c13b9eee97422fdd4b0381a25cbe1a84fdc105278c2c6bf3f660",
+    "irHash": "3a43afae47ce76847f70ea754f91e95742f1e4bb3fb71eaa72af916fb462d7f7",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -203,6 +203,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "WorkflowStep",

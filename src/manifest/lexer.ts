@@ -38,7 +38,9 @@ export const KEYWORDS = new Set([
   'transition',
   // composite PK / FK keywords (v1.0)
   'key', 'fields', 'references', 'onDelete', 'onUpdate',
-  'cascade', 'restrict', 'setNull', 'setDefault', 'noAction'
+  'cascade', 'restrict', 'setNull', 'setDefault', 'noAction',
+  // v1.0 enum type keyword
+  'enum'
 ]);
 
 const OPERATORS = new Set([

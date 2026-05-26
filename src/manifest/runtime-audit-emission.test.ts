@@ -58,6 +58,7 @@ function emptyIR(commandName: string, entityName = 'Foo'): IR {
         policies: [],
       },
     ],
+    enums: [],
     stores: [],
     events: [],
     commands: [
@@ -146,6 +147,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         constraints: [],
         policies: ['mustBeAdmin'],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{
@@ -201,6 +203,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         constraints: [],
         policies: [],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{
@@ -269,6 +272,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         constraints: [],
         policies: [],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{
@@ -325,6 +329,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         constraints: [],
         policies: [],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{
@@ -545,6 +550,7 @@ describe('Runtime audit emission — classification edge cases', () => {
         constraints: [],
         policies: [],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{
@@ -596,6 +602,7 @@ describe('Runtime audit emission — classification edge cases', () => {
         constraints: [],
         policies: [],
       }],
+      enums: [],
       stores: [],
       events: [],
       commands: [{

@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "7e6abd12681db5d37981b4687ef3b110d5fd7e02b87a8385bb0b8a112a041538",
+    "irHash": "c8c62b899dc64dc0d0e865dc1f1b728389e45ab0a3ee0b38854d966faba689aa",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -80,6 +80,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Task",

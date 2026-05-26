@@ -25,6 +25,7 @@ function buildIR(): IR {
         policies: [],
       },
     ],
+    enums: [],
     stores: [],
     events: [],
     commands: [

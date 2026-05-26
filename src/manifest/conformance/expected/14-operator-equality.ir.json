@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "a613ef17a5ae3f00f4efdc4c7d437bf925c05a4aec9409425e9363c8133aca35",
+    "irHash": "494491ad0f77ee0513b9699140676bd24ef613e80b45d0c9fef620c0ee4ba9ee",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -201,6 +201,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "EqualityTest",

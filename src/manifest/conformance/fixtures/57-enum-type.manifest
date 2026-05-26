@@ -1,0 +1,22 @@
+// Test enum type declarations with various configurations
+// Including simple enums, enums with labels, enums with ordinals, and using enum types in properties
+
+enum Status {
+  draft
+  published = "Published"
+  archived(2)
+}
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+  property priority: Priority
+}
+
+enum Priority {
+  low = "Low Priority"
+  medium = "Medium Priority"
+  high = "High Priority"
+}
+
+store Article in memory

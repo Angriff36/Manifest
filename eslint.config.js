@@ -26,6 +26,7 @@ export default tseslint.config(
       'docs/integrations/**/*.ts',
       // Git worktrees managed by Claude Code tooling — never linted.
       '.claude/worktrees/**',
+      '.worktrees/**',
     ],
   },
   // Default rule set for everything else.

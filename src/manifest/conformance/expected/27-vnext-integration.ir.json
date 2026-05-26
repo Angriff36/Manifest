@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "4a057a2c28b120cd48cff3193391d939c1dfb7e2ed9291f3934c9ef777882ac2",
+    "irHash": "b7852bad5324ded9fb7b19d6b4367cd58b965ed2dbf2a12a734010194bf4a08c",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -233,6 +233,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "WorkflowInstance",

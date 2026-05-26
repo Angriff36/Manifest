@@ -8,6 +8,7 @@
     "provenance",
     "modules",
     "entities",
+    "enums",
     "stores",
     "events",
     "commands",
@@ -43,6 +44,10 @@
     "policies": {
       "type": "array",
       "items": { "$ref": "#/definitions/IRPolicy" }
+    },
+    "enums": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/IREnum" }
     }
   },
   "definitions": {
@@ -69,6 +74,30 @@
         "stores": { "type": "array", "items": { "type": "string" } },
         "events": { "type": "array", "items": { "type": "string" } },
         "policies": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "IREnum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "values"],
+      "properties": {
+        "name": { "type": "string", "description": "Enum type name" },
+        "module": { "type": "string", "description": "Module name if defined in a module" },
+        "values": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/IREnumValue" },
+          "description": "Enum member values"
+        }
+      }
+    },
+    "IREnumValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "description": "Enum member name (identifier)" },
+        "label": { "type": "string", "description": "Display label for UI" },
+        "ordinal": { "type": "number", "description": "Optional ordinal value for sorting/database mapping" }
       }
     },
     "IREntity": {

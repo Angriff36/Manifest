@@ -466,6 +466,7 @@ describe('RoutesProjection', () => {
         },
         modules: [],
         entities: [],
+        enums: [],
         stores: [],
         events: [],
         commands: [{

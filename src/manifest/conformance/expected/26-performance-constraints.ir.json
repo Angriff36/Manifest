@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "2d92037569ae85c9f17873cefefa507db486555df0e2d5ea15ee2d6d006f4750",
+    "irHash": "79b35c2c0511056c6e19a6a4d877759adb2462d2f6fdc3fc10e7a5a2cd53a74c",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -701,6 +701,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Order",
