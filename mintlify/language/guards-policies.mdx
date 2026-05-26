@@ -65,6 +65,7 @@ Guard expressions evaluate in the command's evaluation context. You have access 
 | Command params | Named parameters from the command signature |
 | `now()`       | Current time as milliseconds since epoch |
 | `uuid()`      | A new globally unique identifier |
+| String, math, array, and date helpers | See [Built-in functions](#built-in-functions) |
 
 <Warning>
 If a guard references `user` and no user is provided to the runtime, the guard correctly fails. This is not a bug — it is the expected behavior. The runtime does not inject a permissive default `user` to make demos work.
@@ -83,6 +84,81 @@ Guards support the full expression language:
 | Conditional | `? :` (ternary) |
 
 `==` uses loose equality (`undefined == null` is `true`). Use `is not` or `!=` for strict inequality.
+
+### Built-in functions
+
+The runtime exposes a library of pure, deterministic helpers that you can call from any guard, policy, constraint, or `compute` expression. Use them to normalize inputs, branch on string or numeric values, and read components from timestamps without writing custom adapters.
+
+All built-ins are total: when an argument has an unexpected type, the function returns the input unchanged rather than throwing. This keeps expressions safe to evaluate inside guards.
+
+#### String
+
+| Function | Description |
+|----------|-------------|
+| `trim(s)` | Removes leading and trailing whitespace. Non-strings pass through unchanged. |
+| `split(s, sep)` | Splits `s` on the literal separator `sep` and returns an array. |
+| `length(v)` | Returns the length of a string or array. |
+| `count(v)` | Returns the array length when `v` is an array; otherwise returns `v`. |
+| `startsWith(s, prefix)` | Returns `true` if `s` starts with `prefix`. |
+| `endsWith(s, suffix)` | Returns `true` if `s` ends with `suffix`. |
+| `replace(s, search, replacement)` | Replaces every literal occurrence of `search` in `s`. |
+| `toUpperCase(s)` / `toLowerCase(s)` | Case conversion. |
+| `substring(s, start, end?)` | Returns the substring from `start` to optional `end`. |
+| `indexOf(s, search)` | Returns the index of `search` in `s`, or `-1` if not found. |
+
+#### Math
+
+| Function | Description |
+|----------|-------------|
+| `abs(n)` | Absolute value. |
+| `round(n)` / `floor(n)` / `ceil(n)` | Rounding helpers. |
+| `min(...n)` / `max(...n)` | Smallest or largest numeric argument. Returns `undefined` when called with no arguments. |
+| `between(value, low, high)` | Inclusive range test — `true` when `low <= value <= high`. |
+
+#### Array
+
+| Function | Description |
+|----------|-------------|
+| `sum(arr)` | Sum of numeric elements. Non-arrays pass through unchanged. |
+
+#### Date (UTC)
+
+These take a timestamp in milliseconds since the Unix epoch and return integers in the UTC time zone. Pair them with `now()` to derive components of the current time.
+
+| Function | Description |
+|----------|-------------|
+| `year(ts)` | Four-digit UTC year. |
+| `month(ts)` | UTC month, `1`–`12`. |
+| `day(ts)` | UTC day of month, `1`–`31`. |
+| `hours(ts)` | UTC hour, `0`–`23`. |
+| `minutes(ts)` | UTC minute, `0`–`59`. |
+| `seconds(ts)` | UTC second, `0`–`59`. |
+
+#### Example
+
+```manifest
+entity Order {
+  property required id: string
+  property couponCode: string = ""
+  property total: number = 0
+  property discount: number = 0
+  property placedAt: number = 0
+
+  command applyCoupon(code: string, subtotal: number) {
+    guard length(trim(code)) > 0
+    guard between(subtotal, 1, 10000)
+    compute couponCode = toUpperCase(trim(code))
+    compute discount = startsWith(couponCode, "VIP") ? round(subtotal * 0.2) : 0
+    compute total = max(subtotal - discount, 0)
+    compute placedAt = now()
+    emit CouponApplied
+  }
+}
+
+policy businessHoursOnly execute:
+  between(hours(now()), 9, 17)
+  "Orders can only be placed between 9:00 and 17:00 UTC"
+```
 
 ## Policies
 

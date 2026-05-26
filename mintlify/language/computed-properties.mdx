@@ -12,7 +12,7 @@ A computed property is a read-only value derived from an expression rather than 
 computed <name>: <type> = <expression>
 ```
 
-The expression can reference `self`, `this`, any property on the instance, other computed properties, and the standard built-ins (`now()`, `uuid()`).
+The expression can reference `self`, `this`, any property on the instance, other computed properties, and the runtime [built-in functions](/language/guards-policies#built-in-functions) — including `now()`, `uuid()`, string helpers like `toUpperCase` and `trim`, math helpers like `abs` and `round`, and UTC date accessors like `year` and `month`.
 
 ```manifest
 entity Item {
