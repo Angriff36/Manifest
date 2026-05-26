@@ -1,0 +1,33 @@
+entity Product {
+  property required id: string
+  property name: string = ""
+  property price: number = 0
+  property quantity: number = 0
+  property discount: number = 0
+
+  constraint priceRange: between(self.price, 0.01, 99999.99) "Price must be between 0.01 and 99999.99"
+  constraint quantityMin: min(self.quantity, 0) "Quantity must be at least 0"
+  constraint discountMax: max(self.discount, 100) "Discount cannot exceed 100%"
+  constraint nameMinLength: length(self.name) >= 1 "Name must not be empty"
+  constraint nameMaxLength: length(self.name) <= 255 "Name must be at most 255 characters"
+
+  command setPrice(newPrice: number) {
+    guard newPrice > 0
+    mutate price = newPrice
+    emit PriceChanged
+  }
+
+  command applyDiscount(pct: number) {
+    guard between(pct, 0, 100)
+    mutate discount = pct
+    emit DiscountApplied
+  }
+}
+
+event PriceChanged: "product.price.changed" {
+}
+
+event DiscountApplied: "product.discount.applied" {
+}
+
+store Product in memory

@@ -1,0 +1,381 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "2d424bd39150a5979af223dc353ab48d5b87b9bf12f6f6d6dc972d554ea6e45f",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Product",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "price",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "discount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "setPrice",
+        "applyDiscount"
+      ],
+      "constraints": [
+        {
+          "name": "priceRange",
+          "code": "priceRange",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "between"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "price"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 0.01
+                }
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 99999.99
+                }
+              }
+            ]
+          },
+          "severity": "block",
+          "message": "Price must be between 0.01 and 99999.99",
+          "overrideable": false
+        },
+        {
+          "name": "quantityMin",
+          "code": "quantityMin",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "min"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "quantity"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 0
+                }
+              }
+            ]
+          },
+          "severity": "block",
+          "message": "Quantity must be at least 0",
+          "overrideable": false
+        },
+        {
+          "name": "discountMax",
+          "code": "discountMax",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "max"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "discount"
+              },
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 100
+                }
+              }
+            ]
+          },
+          "severity": "block",
+          "message": "Discount cannot exceed 100%",
+          "overrideable": false
+        },
+        {
+          "name": "nameMinLength",
+          "code": "nameMinLength",
+          "expression": {
+            "kind": "binary",
+            "operator": ">=",
+            "left": {
+              "kind": "call",
+              "callee": {
+                "kind": "identifier",
+                "name": "length"
+              },
+              "args": [
+                {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "self"
+                  },
+                  "property": "name"
+                }
+              ]
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Name must not be empty",
+          "overrideable": false
+        },
+        {
+          "name": "nameMaxLength",
+          "code": "nameMaxLength",
+          "expression": {
+            "kind": "binary",
+            "operator": "<=",
+            "left": {
+              "kind": "call",
+              "callee": {
+                "kind": "identifier",
+                "name": "length"
+              },
+              "args": [
+                {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "self"
+                  },
+                  "property": "name"
+                }
+              ]
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 255
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Name must be at most 255 characters",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "stores": [
+    {
+      "entity": "Product",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "enums": [],
+  "events": [
+    {
+      "name": "PriceChanged",
+      "channel": "product.price.changed",
+      "payload": []
+    },
+    {
+      "name": "DiscountApplied",
+      "channel": "product.discount.applied",
+      "payload": []
+    }
+  ],
+  "commands": [
+    {
+      "name": "setPrice",
+      "entity": "Product",
+      "parameters": [
+        {
+          "name": "newPrice",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "identifier",
+            "name": "newPrice"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "price",
+          "expression": {
+            "kind": "identifier",
+            "name": "newPrice"
+          }
+        }
+      ],
+      "emits": [
+        "PriceChanged"
+      ]
+    },
+    {
+      "name": "applyDiscount",
+      "entity": "Product",
+      "parameters": [
+        {
+          "name": "pct",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "call",
+          "callee": {
+            "kind": "identifier",
+            "name": "between"
+          },
+          "args": [
+            {
+              "kind": "identifier",
+              "name": "pct"
+            },
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            },
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 100
+              }
+            }
+          ]
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "discount",
+          "expression": {
+            "kind": "identifier",
+            "name": "pct"
+          }
+        }
+      ],
+      "emits": [
+        "DiscountApplied"
+      ]
+    }
+  ],
+  "policies": []
+}

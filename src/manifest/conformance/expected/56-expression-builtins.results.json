@@ -1,0 +1,177 @@
+{
+  "testCases": [
+    {
+      "name": "trim() removes leading and trailing whitespace",
+      "setup": {
+        "createInstance": {
+          "entity": "StringUtils",
+          "data": { "id": "s1" }
+        }
+      },
+      "command": {
+        "name": "testStringOps",
+        "entityName": "StringUtils",
+        "instanceId": "s1",
+        "input": { "input": "  hello  " }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "StringOpsCompleted",
+            "channel": "string.ops.completed",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "s1",
+        "raw": "",
+        "cleaned": "hello",
+        "partCount": 1,
+        "hasPrefix": false,
+        "hasSuffix": false,
+        "swapped": "  hello  ",
+        "upper": "  HELLO  ",
+        "lower": "  hello  ",
+        "charCount": 9,
+        "slice": "  hel",
+        "foundAt": -1
+      }
+    },
+    {
+      "name": "string functions with 'hello old world' input",
+      "setup": {
+        "createInstance": {
+          "entity": "StringUtils",
+          "data": { "id": "s2" }
+        }
+      },
+      "command": {
+        "name": "testStringOps",
+        "entityName": "StringUtils",
+        "instanceId": "s2",
+        "input": { "input": "hello old world" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "StringOpsCompleted",
+            "channel": "string.ops.completed",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "s2",
+        "raw": "",
+        "cleaned": "hello old world",
+        "partCount": 1,
+        "hasPrefix": true,
+        "hasSuffix": true,
+        "swapped": "hello new world",
+        "upper": "HELLO OLD WORLD",
+        "lower": "hello old world",
+        "charCount": 15,
+        "slice": "hello",
+        "foundAt": 10
+      }
+    },
+    {
+      "name": "math functions with negative decimal value",
+      "setup": {
+        "createInstance": {
+          "entity": "MathUtils",
+          "data": { "id": "m1" }
+        }
+      },
+      "command": {
+        "name": "testMathOps",
+        "entityName": "MathUtils",
+        "instanceId": "m1",
+        "input": { "value": -3.7 }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "MathOpsCompleted",
+            "channel": "math.ops.completed",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "m1",
+        "value": 0,
+        "absolute": 3.7,
+        "rounded": -4,
+        "floored": -4,
+        "ceiled": -3,
+        "smallest": -3.7,
+        "largest": 100
+      }
+    },
+    {
+      "name": "date extraction functions on known timestamp",
+      "setup": {
+        "createInstance": {
+          "entity": "DateUtils",
+          "data": { "id": "d1", "baseTs": 1768473045000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "DateUtils",
+        "instanceId": "d1",
+        "property": "extractedYear"
+      },
+      "expectedValue": 2026
+    },
+    {
+      "name": "month extraction from timestamp",
+      "setup": {
+        "createInstance": {
+          "entity": "DateUtils",
+          "data": { "id": "d2", "baseTs": 1768473045000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "DateUtils",
+        "instanceId": "d2",
+        "property": "extractedMonth"
+      },
+      "expectedValue": 1
+    },
+    {
+      "name": "day extraction from timestamp",
+      "setup": {
+        "createInstance": {
+          "entity": "DateUtils",
+          "data": { "id": "d3", "baseTs": 1768473045000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "DateUtils",
+        "instanceId": "d3",
+        "property": "extractedDay"
+      },
+      "expectedValue": 15
+    },
+    {
+      "name": "hours extraction from timestamp",
+      "setup": {
+        "createInstance": {
+          "entity": "DateUtils",
+          "data": { "id": "d4", "baseTs": 1768473045000 }
+        }
+      },
+      "computedProperty": {
+        "entity": "DateUtils",
+        "instanceId": "d4",
+        "property": "extractedHours"
+      },
+      "expectedValue": 10
+    }
+  ]
+}
