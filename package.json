@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -37,6 +37,10 @@
     "./projections/react-query": {
       "types": "./dist/manifest/projections/react-query/generator.d.ts",
       "import": "./dist/manifest/projections/react-query/generator.js"
+    },
+    "./projections/zod": {
+      "types": "./dist/manifest/projections/zod/generator.d.ts",
+      "import": "./dist/manifest/projections/zod/generator.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",

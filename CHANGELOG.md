@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.27] - 2026-05-26
+
+### Added
+
+- **Zod schema projection** — generates `z.object()` validation schemas from IR entities and command parameters with constraint refinements, computed property extensions, and nullable/optional/default handling.
+- **Three surfaces:** `zod.entity`, `zod.command`, `zod.schemas`.
+- **`@angriff36/manifest/projections/zod`** package export.
+- **41 unit tests** covering type mapping, constraints, determinism, and edge cases.
+
 ## [1.0.26] - 2026-05-26
 
 ### Added

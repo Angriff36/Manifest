@@ -15,6 +15,8 @@ import { RoutesProjection } from './routes/generator.js';
 import { PrismaProjection } from './prisma/generator.js';
 import { OpenApiProjection } from './openapi/generator.js';
 import { ReactQueryProjection } from './react-query/generator.js';
+import { ZodProjection } from './zod/generator.js';
+import { DrizzleProjection } from './drizzle/generator.js';
 
 /**
  * Register all built-in projections.
@@ -40,6 +42,12 @@ export function registerBuiltinProjections(): void {
 
   // TanStack Query (React Query) hooks projection
   registerProjection(new ReactQueryProjection());
+
+  // Zod schema validation projection
+  registerProjection(new ZodProjection());
+
+  // Drizzle ORM schema projection (TypeScript-first, Drizzle Kit compatible)
+  registerProjection(new DrizzleProjection());
 
   // Future projections - ADD HERE:
   // import { HonoProjection } from './hono/generator';
@@ -67,5 +75,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new PrismaProjection(),
     new OpenApiProjection(),
     new ReactQueryProjection(),
+    new ZodProjection(),
+    new DrizzleProjection(),
   ];
 }

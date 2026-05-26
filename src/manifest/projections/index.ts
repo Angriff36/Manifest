@@ -19,10 +19,14 @@ export { RoutesProjection } from './routes/generator.js';
 export { PrismaProjection } from './prisma/generator.js';
 export { OpenApiProjection } from './openapi/generator.js';
 export { ReactQueryProjection } from './react-query/generator.js';
+export { ZodProjection } from './zod/generator.js';
+export { DrizzleProjection } from './drizzle/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
 export type { ReactQueryProjectionOptions } from './react-query/generator.js';
+export type { ZodProjectionOptions } from './zod/types.js';
+export type { DrizzleProjectionOptions } from './drizzle/options.js';
 
 // Re-export route surface types
 export type {
