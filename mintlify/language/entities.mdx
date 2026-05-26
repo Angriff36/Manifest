@@ -40,7 +40,33 @@ The IR carries this as a sparse-optional field: `IREntity.external?: boolean`. W
 
 ## Properties
 
-Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+Every property has a type. Supported types are `string`, `number`, `boolean`, `timestamp`, and the exact-decimal types `decimal` and `money`. A property without a default is `undefined` unless the caller supplies a value at creation time.
+
+### Exact-decimal types
+
+Use `decimal` or `money` when you need exact arithmetic — invoice totals, tax amounts, currency conversions, or any value where the rounding behavior of `number` (a 64-bit float) is unacceptable. Both types accept optional `precision` and `scale` parameters:
+
+| Parameter | Meaning |
+|-----------|---------|
+| `precision` | Total number of significant digits. |
+| `scale`     | Number of digits to the right of the decimal point. |
+
+```manifest
+entity Invoice {
+  property required description: string
+  property amount: decimal(10, 2) = 0
+  property tax: money(12, 4) = 0
+  property total: decimal = 0
+  property optionalFee: money?
+}
+```
+
+When you omit the parameters (`decimal`, `money`), the projection chooses its own defaults. When you supply them, the IR records them under `IRType.params` so downstream tooling — Prisma generation, OpenAPI schemas, validation — can emit a column of matching precision.
+
+<Note>
+`decimal` and `money` are distinct keywords in the IR even though both carry the same `precision`/`scale` shape. Use `money` to signal currency semantics to projections that treat it specially (for example, a Prisma adapter that maps `money` to `Decimal` with currency metadata). Use `decimal` for general exact-numeric values.
+</Note>
+
 
 ### Modifiers
 
