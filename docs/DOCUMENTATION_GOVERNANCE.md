@@ -145,7 +145,7 @@ confirmed in this file.
 
 | Directory | Tier | Contents |
 |---|---|---|
-| `docs/spec/` | A — Binding | Language law: IR schema, semantics, builtins, adapters, conformance, vNext |
+| `docs/spec/` | A — Binding | Language law: IR schema, semantics, builtins, adapters, conformance, vNext, consumer project layout |
 | `src/manifest/conformance/` | A — Binding | Fixture-based executable semantics evidence |
 | `docs/proposals/` | B — Non-binding | Design proposals, deferred work, drafts |
 | `docs/plans/`, `docs/notes/`, `docs/context/` | B — Non-binding | Work-in-progress, session snapshots |

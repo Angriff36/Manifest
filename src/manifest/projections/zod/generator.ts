@@ -19,6 +19,9 @@ import type {
   IRProperty,
   IRValue,
   IRCommand,
+  IRType,
+  IRComputedProperty,
+  IRParameter,
 } from '../../ir';
 import type {
   ProjectionTarget,

@@ -2,6 +2,8 @@
 
 A minimal generic governed application that uses Manifest's public surfaces with **zero Capsule-Pro vocabulary**. The purpose is to prove the governance system is application-agnostic.
 
+Normative layout for consumer apps: [`docs/spec/project-layout.md`](../../docs/spec/project-layout.md) (Profile **G**). Capsule-Pro uses renamed paths — see [`docs/integrations/capsule-pro/layout-conformance.md`](../../docs/integrations/capsule-pro/layout-conformance.md).
+
 Domain: a simple library that lends books to members. Two governed entities (`Book`, `Loan`) with one tenant per library branch.
 
 ## What this fixture exercises

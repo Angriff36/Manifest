@@ -82,6 +82,8 @@ specification are to be interpreted as described in RFC 2119.
   overrides, workflows, concurrency, canonical routes
 - `docs/spec/registry/` — Registry schemas (commands, governed entities,
   approved bypasses) and emission rules
+- `docs/spec/project-layout.md` — **Normative** consumer repo layout: where
+  `.manifest`, IR, generated code, registries, and glue belong
 
 ### Migration Documentation
 

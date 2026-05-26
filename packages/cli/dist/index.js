@@ -12,8 +12,11 @@ import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
 import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
+import { docsCommand } from './commands/docs.js';
+import { preflightCommand } from './commands/preflight.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
+import { initCiCommand } from './commands/init-ci.js';
 import { scanCommand } from './commands/scan.js';
 import { harnessCommand } from './commands/harness.js';
 import { lintRoutesCommand } from './commands/lint-routes.js';
@@ -28,6 +31,9 @@ import { configValidateCommand, configPrintDefaultsCommand, configInspectCommand
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
+import { migrateCommand } from './commands/migrate.js';
+import { fmtCommand } from './commands/fmt.js';
+import { installHooksCommand } from './commands/install-hooks.js';
 import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -77,9 +83,20 @@ program
  */
 program
     .command('init')
-    .description('Initialize Manifest configuration (interactive)')
-    .option('-f, --force', 'Overwrite existing config file')
-    .action(initCommand);
+    .description('Initialize Manifest configuration (interactive) or generate CI workflows')
+    .option('-f, --force', 'Overwrite existing config or workflow file')
+    .option('--ci <provider>', 'Generate CI workflow for provider (github)')
+    .option('--node-versions <versions>', 'Comma-separated Node.js versions for CI matrix (default: 18,20,22)')
+    .action(async (options) => {
+    if (options.ci) {
+        await initCiCommand(options.ci, {
+            force: options.force,
+            nodeVersions: options.nodeVersions,
+        });
+        return;
+    }
+    await initCommand(options);
+});
 /**
  * manifest compile [source]
  *
@@ -171,6 +188,42 @@ program
     .option('--strict', 'Fail on warnings', false)
     .action(validateCommand);
 /**
+ * manifest fmt [source]
+ *
+ * Format .manifest source files deterministically.
+ */
+program
+    .command('fmt')
+    .description('Format .manifest source files (deterministic whitespace normalization)')
+    .argument('[source]', 'Source .manifest file, directory, or glob pattern')
+    .option('--check', 'Fail if any file would change', false)
+    .option('--write', 'Write formatted output to files', false)
+    .option('-g, --glob <pattern>', 'Glob pattern when source is a directory')
+    .action(async (source, options = {}) => {
+    await fmtCommand(source, {
+        check: options.check,
+        write: !options.check,
+        glob: options.glob,
+    });
+});
+/**
+ * manifest install-hooks
+ *
+ * Install pre-commit hooks for fmt --check and validate.
+ */
+program
+    .command('install-hooks')
+    .description('Install pre-commit hooks (Husky or simple-git-hooks)')
+    .option('-f, --force', 'Overwrite existing hook configuration')
+    .option('--provider <provider>', 'Hook provider: husky | simple-git-hooks', 'husky')
+    .action(async (options) => {
+    const provider = options.provider === 'simple-git-hooks' ? 'simple-git-hooks' : 'husky';
+    await installHooksCommand({
+        force: options.force,
+        provider,
+    });
+});
+/**
  * manifest validate-ai [source]
  *
  * Structured validation for LLM-generated .manifest or IR JSON with scored reports.
@@ -189,6 +242,43 @@ program
         schema: options.schema,
         minScore: options.minScore,
         verbose: options.verbose,
+    });
+});
+/**
+ * manifest docs [source]
+ *
+ * Generate static documentation site from IR.
+ */
+program
+    .command('docs')
+    .description('Generate static documentation site from Manifest IR')
+    .argument('[source]', 'Source .manifest, .ir.json, directory, or glob')
+    .option('-o, --output <path>', 'Output directory', 'docs-site')
+    .option('-f, --format <format>', 'Output format (html, markdown)', 'html')
+    .option('-t, --title <title>', 'Site title', 'Manifest API Reference')
+    .action(async (source, options = {}) => {
+    await docsCommand(source, {
+        output: options.output,
+        format: options.format,
+        title: options.title,
+    });
+});
+/**
+ * manifest preflight
+ *
+ * Validate environment variables against manifest.config env mapping.
+ */
+program
+    .command('preflight')
+    .description('Validate environment variables and generate .env.example')
+    .option('-f, --format <format>', 'Output format (text, json)', 'text')
+    .option('--generate-example', 'Generate .env.example instead of checking')
+    .option('-o, --output <path>', 'Output path for .env.example', '.env.example')
+    .action(async (options = {}) => {
+    await preflightCommand({
+        format: options.format,
+        generateExample: options.generateExample,
+        output: options.output,
     });
 });
 /**
@@ -477,6 +567,36 @@ diffProgram
     .option('-o, --output <path>', 'Write output to file')
     .action(async (oldIR, newIR, options = {}) => {
     await breakingChangeCommand(oldIR, newIR, options);
+});
+/**
+ * manifest migrate
+ *
+ * IR diff analysis for database migration planning.
+ */
+program
+    .command('migrate')
+    .description('Analyze IR diff for database migration (dry-run, preview, reversibility checks)')
+    .requiredOption('--old-ir <path>', 'Path to old IR JSON file')
+    .requiredOption('--new-ir <path>', 'Path to new IR JSON file')
+    .option('--dry-run', 'Show migration plan without applying', false)
+    .option('--preview', 'Show SQL and Prisma migration steps', false)
+    .option('--force', 'Apply even with warnings or unacknowledged breaking changes', false)
+    .option('--json', 'JSON output', false)
+    .option('--tool <tool>', 'Migration tool (prisma, drizzle)', 'prisma')
+    .option('--no-check-reversibility', 'Skip reversibility validation')
+    .option('-o, --output <path>', 'Write output to file')
+    .action(async (options = {}) => {
+    await migrateCommand({
+        oldIR: options.oldIr,
+        newIR: options.newIr,
+        dryRun: options.dryRun,
+        preview: options.preview,
+        force: options.force,
+        json: options.json,
+        output: options.output,
+        tool: options.tool,
+        checkReversibility: options.checkReversibility,
+    });
 });
 /**
  * manifest duplicates

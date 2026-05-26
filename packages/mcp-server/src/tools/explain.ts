@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { sessionStore } from '../state/session-store.js';
-import type { IR, IREntity, IRCommand, IRPolicy, IRType } from '@angriff36/manifest/ir';
+import type { IR, IREntity, IRCommand, IRPolicy, IRType, IRExpression, IRValue } from '@angriff36/manifest/ir';
 
 export const explainInputSchema = {
   contentHash: z
@@ -23,6 +23,47 @@ export const explainInputSchema = {
     .optional()
     .describe('Entity context (required when target is command)'),
 };
+
+function formatValue(v: IRValue): string {
+  switch (v.kind) {
+    case 'string':
+      return `"${v.value}"`;
+    case 'number':
+    case 'boolean':
+      return String(v.value);
+    case 'null':
+      return 'null';
+    case 'array':
+      return `[${v.elements.map(formatValue).join(', ')}]`;
+    case 'object':
+      return `{${Object.entries(v.properties).map(([k, val]) => `"${k}": ${formatValue(val)}`).join(', ')}}`;
+  }
+}
+
+function formatExpression(expr: IRExpression): string {
+  switch (expr.kind) {
+    case 'literal':
+      return formatValue(expr.value);
+    case 'identifier':
+      return expr.name;
+    case 'member':
+      return `${formatExpression(expr.object)}.${expr.property}`;
+    case 'binary':
+      return `${formatExpression(expr.left)} ${expr.operator} ${formatExpression(expr.right)}`;
+    case 'unary':
+      return `${expr.operator}${formatExpression(expr.operand)}`;
+    case 'call':
+      return `${formatExpression(expr.callee)}(${expr.args.map(formatExpression).join(', ')})`;
+    case 'conditional':
+      return `${formatExpression(expr.condition)} ? ${formatExpression(expr.consequent)} : ${formatExpression(expr.alternate)}`;
+    case 'array':
+      return `[${expr.elements.map(formatExpression).join(', ')}]`;
+    case 'object':
+      return `{${expr.properties.map((p) => `${p.key}: ${formatExpression(p.value)}`).join(', ')}}`;
+    case 'lambda':
+      return `(${expr.params.join(',')}) => ${formatExpression(expr.body)}`;
+  }
+}
 
 function formatType(type: IRType): string {
   let result = type.name;
@@ -113,7 +154,7 @@ function formatCommandExplanation(command: IRCommand): string {
     lines.push('');
     lines.push('Guards (evaluated in order, first falsey halts execution):');
     command.guards.forEach((g, i) => {
-      lines.push(`  ${i + 1}. ${g.formatted ?? '(expression)'}`);
+      lines.push(`  ${i + 1}. ${formatExpression(g)}`);
     });
   }
 
@@ -160,20 +201,15 @@ function formatPolicyExplanation(policy: IRPolicy): string {
 
   lines.push(`Policy: ${policy.name}`);
   if (policy.module) lines.push(`Module: ${policy.module}`);
-  lines.push(`Effect: ${policy.effect}`);
+  lines.push(`Action: ${policy.action}`);
 
-  if (policy.targets.length > 0) {
-    lines.push('');
-    lines.push('Targets:');
-    for (const t of policy.targets) {
-      lines.push(`  - ${t}`);
-    }
-  }
+  lines.push('');
+  lines.push('Expression:');
+  lines.push(`  ${formatExpression(policy.expression)}`);
 
-  if (policy.condition) {
+  if (policy.message) {
     lines.push('');
-    lines.push('Condition:');
-    lines.push(`  ${policy.condition.formatted ?? '(expression)'}`);
+    lines.push(`Message: ${policy.message}`);
   }
 
   return lines.join('\n');

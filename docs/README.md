@@ -49,6 +49,7 @@ Read in this order; each builds on the last:
 6. [`docs/spec/conformance.md`](./spec/conformance.md) — conformance test rules
 7. [`docs/spec/manifest-vnext.md`](./spec/manifest-vnext.md) — vNext features (constraint outcomes, overrides, workflows)
 8. [`docs/spec/registry/README.md`](./spec/registry/README.md) — registry schemas (commands, governed entities, bypasses)
+9. [`docs/spec/project-layout.md`](./spec/project-layout.md) — **where files go** in consumer apps (`.manifest`, IR, codegen, registries)
 
 ### 3. Integration patterns (Advisory)
 

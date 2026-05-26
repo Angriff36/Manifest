@@ -22,6 +22,30 @@ export interface ManifestConfig {
         output?: string;
         options?: Record<string, unknown>;
     }>;
+    /** Environment variable mapping for store/auth/adapter configuration */
+    env?: EnvMapping;
+    /** Pre-commit hook settings for manifest install-hooks */
+    hooks?: {
+        skipInCi?: boolean;
+        provider?: 'husky' | 'simple-git-hooks';
+        runFmt?: boolean;
+        runValidate?: boolean;
+    };
+}
+/** Single environment variable definition in manifest.config.yaml */
+export interface EnvVarDefinition {
+    name: string;
+    description?: string;
+    required?: boolean;
+    default?: string;
+    example?: string;
+}
+/** Environment variable mapping grouped by category */
+export interface EnvMapping {
+    stores?: Record<string, EnvVarDefinition>;
+    auth?: Record<string, EnvVarDefinition>;
+    adapters?: Record<string, EnvVarDefinition>;
+    custom?: Record<string, EnvVarDefinition>;
 }
 /**
  * Store binding configuration for an entity
