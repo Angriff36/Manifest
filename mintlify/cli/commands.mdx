@@ -303,6 +303,121 @@ The bundled schema path is resolved relative to the installed package, so `manif
 
 ---
 
+---
+
+## `manifest validate-ai [source]`
+
+Validates `.manifest` source or `.ir.json` files with **scored diagnostics designed for AI agent self-correction loops**. Where `manifest validate` checks one IR file against the schema, `validate-ai` adds compile-stage checks, semantic checks (orphan entities, missing policies, duplicate constraints), and a 0–100 score per file — emitted as machine-readable JSON when you need an agent to act on the result programmatically.
+
+```bash
+manifest validate-ai [source] [options]
+```
+
+`source` can be a single `.manifest` or `.ir.json` file, a directory, a glob pattern, or omitted to scan the current directory for both file types.
+
+### When to use it
+
+- **AI/codegen pipelines** — feed `--format json` output back into the model so it can fix its own output. Each diagnostic carries a stable `code`, a `path`, and a `suggestion` field aimed at the model.
+- **Pre-merge gates on hand-authored `.manifest` files** — compile + schema + semantic checks in one pass, gated on `--min-score`.
+- **Auditing existing IR** — get a one-line score per file across a directory.
+
+For a strict, schema-only check on already-compiled IR, keep using `manifest validate`.
+
+### Options
+
+<ParamField path="-f, --format" type="string" default="text">
+  Output format. `text` prints a colorized human-readable report grouped by category. `json` prints a single machine-readable object containing every report, an `overallScore`, and a `passed` flag — intended for AI agents or CI pipelines that need structured input.
+</ParamField>
+
+<ParamField path="--schema" type="string">
+  Path to a custom JSON schema file. When omitted, the CLI uses the IR v1 schema bundled with the installed package.
+</ParamField>
+
+<ParamField path="--min-score" type="number" default="100">
+  Minimum per-file score required to pass. The command exits non-zero when any file scores below this threshold. Each error deducts 25 points and each warning deducts 5 points from a starting score of 100.
+</ParamField>
+
+<ParamField path="--verbose" type="boolean" default="false">
+  Include `info`-level diagnostics (such as the structural summary of entities, commands, policies, stores, and events) in text output. JSON output always includes info diagnostics regardless of this flag.
+</ParamField>
+
+### Diagnostic categories
+
+Every diagnostic carries a `category`, a stable `code`, a `severity`, and an actionable `suggestion`:
+
+| Category | What it catches | Example codes |
+|---|---|---|
+| `schema` | IR JSON does not match the IR v1 schema | `SCHEMA_REQUIRED`, `SCHEMA_TYPE`, `SCHEMA_ENUM`, `SCHEMA_ADDITIONAL_PROPERTY` |
+| `compile` | Parse or compile errors in `.manifest` source | `COMPILE_ERROR`, `COMPILE_WARNING` |
+| `semantic` | Cross-reference issues in an otherwise valid IR | `SEMANTIC_NO_POLICY`, `SEMANTIC_ORPHAN_EVENT`, `SEMANTIC_COMMAND_ORPHAN_ENTITY`, `SEMANTIC_STORE_ORPHAN_ENTITY`, `SEMANTIC_DUPLICATE_CONSTRAINT`, `SEMANTIC_RELATIONSHIP_ORPHAN_TARGET` |
+| `structural` | File-level issues and informational summaries | `FILE_NOT_FOUND`, `IO_ERROR`, `STRUCTURAL_SUMMARY` |
+
+### JSON output shape
+
+```json
+{
+  "version": "1.0",
+  "overallScore": 80,
+  "passed": false,
+  "minScore": 100,
+  "reportCount": 1,
+  "reports": [
+    {
+      "file": "/work/app/modules/recipe.ir.json",
+      "inputType": "ir-json",
+      "valid": false,
+      "score": 75,
+      "diagnostics": [
+        {
+          "code": "SEMANTIC_NO_POLICY",
+          "message": "Command 'Recipe.publish' has no policy covering it.",
+          "severity": "warning",
+          "category": "semantic",
+          "path": "commands[?(@.name==\"publish\")]",
+          "suggestion": "Add a policy for entity 'Recipe' with action 'execute' or 'all'."
+        }
+      ],
+      "summary": { "errors": 0, "warnings": 1, "info": 1, "totalChecks": 2 }
+    }
+  ]
+}
+```
+
+### Examples
+
+```bash
+# Validate every .manifest and .ir.json under the cwd, human-readable output
+manifest validate-ai
+
+# Validate a single LLM-generated manifest source
+manifest validate-ai generated/recipe.manifest
+
+# JSON output for an agent self-correction loop
+manifest validate-ai generated/recipe.manifest --format json
+
+# Allow some warnings — pass as long as every file scores 80 or higher
+manifest validate-ai ir/ --min-score 80
+
+# Show info-level diagnostics (structural summary) in text output
+manifest validate-ai ir/recipe.ir.json --verbose
+```
+
+### Agent self-correction loop
+
+A typical AI codegen loop wraps `validate-ai --format json` and feeds the `diagnostics` array back into the model until `passed: true`:
+
+```bash
+manifest validate-ai generated/recipe.manifest --format json --min-score 100
+```
+
+The model reads each diagnostic's `code`, `path`, and `suggestion`, rewrites the offending region, and re-runs the command. Because diagnostic codes are stable, you can map specific codes to deterministic fixes (e.g. `SEMANTIC_NO_POLICY` → append a generated policy block) without re-prompting the model.
+
+<Tip>
+Use `--min-score 100` for hard gates (any error or warning fails) and `--min-score 80` to allow semantic warnings such as missing policies on draft modules. Errors always deduct more than warnings, so an error-free file with a few warnings still passes at `80`.
+</Tip>
+
+---
+
 ## `manifest config`
 
 Inspection surface for `manifest.config.{yaml,yml,ts,js}`. Three subcommands let you prove what Manifest will actually do before regenerating code — the cornerstone of the CI drift workflow described in [Configuration](/cli/configuration).
