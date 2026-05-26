@@ -40,6 +40,14 @@ export interface ManifestConfig {
 
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;
+
+  /** Pre-commit hook settings for manifest install-hooks */
+  hooks?: {
+    skipInCi?: boolean;
+    provider?: 'husky' | 'simple-git-hooks';
+    runFmt?: boolean;
+    runValidate?: boolean;
+  };
 }
 
 /** Single environment variable definition in manifest.config.yaml */

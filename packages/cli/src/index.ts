@@ -45,6 +45,8 @@ import {
 import { diffIRCommand } from './commands/ir-diff.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
+import { fmtCommand } from './commands/fmt.js';
+import { installHooksCommand } from './commands/install-hooks.js';
 import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -210,6 +212,44 @@ program
   .option('--schema <path>', 'Schema path (default: docs/spec/ir/ir-v1.schema.json)')
   .option('--strict', 'Fail on warnings', false)
   .action(validateCommand);
+
+/**
+ * manifest fmt [source]
+ *
+ * Format .manifest source files deterministically.
+ */
+program
+  .command('fmt')
+  .description('Format .manifest source files (deterministic whitespace normalization)')
+  .argument('[source]', 'Source .manifest file, directory, or glob pattern')
+  .option('--check', 'Fail if any file would change', false)
+  .option('--write', 'Write formatted output to files', false)
+  .option('-g, --glob <pattern>', 'Glob pattern when source is a directory')
+  .action(async (source, options = {}) => {
+    await fmtCommand(source, {
+      check: options.check,
+      write: !options.check,
+      glob: options.glob,
+    });
+  });
+
+/**
+ * manifest install-hooks
+ *
+ * Install pre-commit hooks for fmt --check and validate.
+ */
+program
+  .command('install-hooks')
+  .description('Install pre-commit hooks (Husky or simple-git-hooks)')
+  .option('-f, --force', 'Overwrite existing hook configuration')
+  .option('--provider <provider>', 'Hook provider: husky | simple-git-hooks', 'husky')
+  .action(async (options: { force?: boolean; provider?: string }) => {
+    const provider = options.provider === 'simple-git-hooks' ? 'simple-git-hooks' : 'husky';
+    await installHooksCommand({
+      force: options.force,
+      provider,
+    });
+  });
 
 /**
  * manifest validate-ai [source]

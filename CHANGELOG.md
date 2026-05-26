@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.26] - 2026-05-26
+
+### Added
+
+- **`manifest fmt`** — deterministic whitespace formatter for `.manifest` source with `--check` and `--write` modes; verifies parse success before accepting output.
+- **`manifest install-hooks`** — installs Husky or simple-git-hooks pre-commit hooks running `manifest fmt --check` and `manifest validate` on staged `.manifest` files.
+- **`hooks` config section** in `manifest.config.yaml` — `skipInCi`, `provider`, `runFmt`, and `runValidate` options.
+- **12 unit tests** for fmt and install-hooks commands.
+
 ## [1.0.25] - 2026-05-26
 
 ### Added
