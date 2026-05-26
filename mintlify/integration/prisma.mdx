@@ -116,6 +116,7 @@ The IR carries `type.name` as an arbitrary string (Manifest's type vocabulary is
 | `date`, `datetime` | `DateTime` |
 | `json` | `Json` |
 | `bytes` | `Bytes` |
+| [value object](/language/value-objects) name | `Json` (embedded inline, no separate table) |
 | anything else | **diagnostic** (`PRISMA_UNKNOWN_TYPE`) |
 
 The default mapping does **not** include `number`. That is deliberate.

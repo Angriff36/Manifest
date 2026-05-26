@@ -1,0 +1,125 @@
+---
+title: "Value objects: reusable composite types"
+description: "Declare reusable composite types with the value keyword. Embed structured fields like Money or Address inline on entity properties as immutable JSON columns."
+sidebarTitle: "Value objects"
+---
+
+A **value object** is a named, reusable group of properties that has no identity of its own. Unlike an entity, a value object is not persisted as a separate row — it is embedded inline on the entity property that uses it. Use value objects when the same shape (a money amount, a postal address, a coordinate pair) recurs across multiple entities and you want one place to define it.
+
+## Basic declaration
+
+Use the `value` keyword followed by a name and a block of property declarations. Value objects may contain only properties — no commands, constraints, relationships, or computed fields.
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+value Address {
+  property street: string
+  property city: string
+  property country: string
+}
+```
+
+Reference a value object by name as the type of any entity property:
+
+```manifest
+entity Product {
+  property required id: string
+  property name: string
+  property price: Money
+  property billingAddress: Address
+}
+
+entity Order {
+  property required id: string
+  property total: Money
+  property shippingAddress: Address
+}
+```
+
+Both `Product.price` and `Order.total` carry the full `{ amount, currency }` shape without duplicating the declaration.
+
+## When to use a value object
+
+Reach for a value object when the data has these properties:
+
+- It is a **group of fields that travels together** — changing one without the others rarely makes sense.
+- It has **no independent identity** — no caller will ever say "fetch address #42".
+- It is **immutable in practice** — to change the value, you replace the whole object rather than mutating one field.
+- It **appears on more than one entity**, or you expect it to.
+
+Common examples: `Money` (amount + currency), `Address` (street + city + country), `DateRange` (from + to), `GeoPoint` (lat + lng), `PersonName` (first + last).
+
+If the data needs its own primary key, lifecycle, or commands, use an [entity](/language/entities) instead.
+
+## Properties
+
+Properties inside a `value` block follow the same syntax as entity properties — modifiers, types, and literal defaults all work.
+
+```manifest
+value LineItem {
+  property required sku: string
+  property quantity: number = 1
+  property unitPrice: Money
+}
+```
+
+A value object property can itself be typed as another value object, which lets you compose small types into larger ones.
+
+<Note>
+Value objects are immutable by design. The runtime treats them as opaque structured values — there is no command, guard, or transition machinery for value objects themselves. To "change" one, mutate the entity property that holds it and assign a new value.
+</Note>
+
+## Storage and projections
+
+Value objects do **not** get their own table. The [Prisma projection](/integration/prisma) emits each value-object-typed entity property as a single `Json` column on the parent entity's table:
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+entity Order {
+  property required id: string
+  property total: Money
+}
+```
+
+The Prisma projection emits:
+
+```prisma
+model Order {
+  id    String @id
+  total Json
+}
+```
+
+The full `{ amount, currency }` object is stored in the `total` column. The `typeMappings` override is ignored for value-object-typed properties — the `Json` column shape is always used.
+
+<Tip>
+If you need to query or index individual fields of a value object at the database level, model it as a separate entity with a `belongsTo` relationship instead. The trade-off is one extra table and one extra join in exchange for column-level indexing.
+</Tip>
+
+## IR representation
+
+Value objects compile to a top-level `values[]` array on the IR document, parallel to `entities[]` and `enums[]`:
+
+```json
+{
+  "values": [
+    {
+      "name": "Money",
+      "properties": [
+        { "name": "amount",   "type": { "name": "decimal" } },
+        { "name": "currency", "type": { "name": "string"  } }
+      ]
+    }
+  ]
+}
+```
+
+Each entry conforms to the `IRValueObject` schema in `ir-v1.schema.json`. The shape is intentionally narrow — a name plus a list of `IRProperty` entries — so downstream tools can reuse the same property machinery they already apply to entities.
