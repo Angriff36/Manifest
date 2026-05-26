@@ -115,6 +115,7 @@ The IR carries `type.name` as an arbitrary string (Manifest's type vocabulary is
 | `decimal`, `money` | `Decimal` (with default `@db.Decimal(12, 2)`) |
 | `date`, `datetime` | `DateTime` |
 | `json` | `Json` |
+| [Value object](/language/value-objects) name | `Json` (embedded inline; no separate model) |
 | `bytes` | `Bytes` |
 | anything else | **diagnostic** (`PRISMA_UNKNOWN_TYPE`) |
 

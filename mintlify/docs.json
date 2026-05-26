@@ -35,6 +35,7 @@
             "group": "Language",
             "pages": [
               "language/entities",
+              "language/value-objects",
               "language/commands",
               "language/guards-policies",
               "language/events",

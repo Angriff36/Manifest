@@ -1,0 +1,159 @@
+---
+title: "Value objects: reusable composite types"
+description: "Declare reusable composite types with the value keyword. Embed structured data inline on entity properties without creating a separate table."
+sidebarTitle: "Value objects"
+---
+
+A value object is a reusable, immutable composite type. Use it to group a small set of related fields — like a money amount with a currency, or a street address — and reuse the shape across multiple entities without defining a separate persisted entity for it.
+
+Value objects embed **inline** on the entity property they type. They do not get their own table, their own primary key, or their own command surface.
+
+## When to use a value object
+
+Reach for `value` when:
+
+- The same cluster of fields appears on more than one entity (`Money`, `Address`, `GeoPoint`, `DateRange`).
+- The fields only make sense **together** — a `currency` without an `amount` is meaningless.
+- You do not need to query, update, or reference the cluster independently.
+
+Reach for an `entity` instead when:
+
+- The thing has its own identity (an `id`) and lifecycle.
+- You need commands, constraints, events, or relationships on it.
+- Other entities need to reference it by ID.
+
+<Note>
+Value objects are immutable by design. Treat the embedded value as a whole — replace it, do not mutate its fields in place.
+</Note>
+
+## Declaration
+
+Use the `value` keyword followed by a name and a block of `property` declarations.
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+value Address {
+  property street: string
+  property city: string
+  property country: string
+}
+```
+
+A `value` block accepts **only** `property` declarations. Commands, constraints, computed properties, relationships, and transitions are not allowed inside a value object — the compiler reports an error on any non-property content.
+
+## Using a value object on an entity
+
+Reference the value object by name in any entity property type. The same value object can appear on as many entities as you need.
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+value Address {
+  property street: string
+  property city: string
+  property country: string
+}
+
+entity Product {
+  property required id: string
+  property name: string
+  property price: Money
+  property billingAddress: Address
+}
+
+entity Order {
+  property required id: string
+  property total: Money
+  property shippingAddress: Address
+}
+
+store Product in memory
+store Order in memory
+```
+
+## Nesting
+
+Value objects can reference other value objects, so you can build small composable shapes:
+
+```manifest
+value Point {
+  property x: float
+  property y: float
+}
+
+value Circle {
+  property center: Point
+  property radius: float
+}
+```
+
+## How it compiles
+
+### IR
+
+The compiler emits a top-level `values[]` array on the IR alongside `entities[]` and `enums[]`. Each entry carries the value object's `name` and `properties`:
+
+```json
+{
+  "values": [
+    {
+      "name": "Money",
+      "properties": [
+        { "name": "amount", "type": { "name": "decimal" } },
+        { "name": "currency", "type": { "name": "string" } }
+      ]
+    }
+  ]
+}
+```
+
+Properties on entities that reference a value object keep the value object's name as their `type.name` — the IR does not inline the structure into the entity.
+
+### Prisma projection
+
+The [Prisma projection](/integration/prisma) emits any property typed by a value object as a `Json` column. No separate Prisma model is generated for the value object itself.
+
+```prisma
+model Product {
+  id              String @id
+  name            String
+  price           Json
+  billingAddress  Json
+}
+```
+
+Because the column is `Json`, the value object is **not** subject to the `PRISMA_AMBIGUOUS_NUMBER` rule or to per-property `typeMappings` overrides — the projection skips type-mapping for value-object properties entirely and writes `Json`.
+
+<Note>
+Storing value objects as `Json` means you cannot query or index their inner fields with Prisma's typed query builder. If you need to filter on `price.amount` at the database level, model the field as a first-class entity property or split the value object's fields out onto the entity.
+</Note>
+
+## Constraints and validation
+
+Constraints, transitions, and other behavioral declarations live on the **entity**, not on the value object. To validate a value object's contents, write the constraint against the entity property that holds it:
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+entity Product {
+  property required id: string
+  property price: Money
+
+  constraint pricePositive: self.price.amount > 0 "Price must be positive"
+}
+```
+
+## See also
+
+- [Entities](/language/entities) — first-class data structures with identity, commands, and lifecycle.
+- [Prisma projection](/integration/prisma) — how value objects map to `Json` columns.
