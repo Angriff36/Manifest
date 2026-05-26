@@ -31,6 +31,7 @@ function makeIR(overrides: Partial<IR> = {}): IR {
       compiledAt: '2024-01-01T00:00:00.000Z',
     },
     modules: [],
+    values: [],
     enums: [],
     entities: [],
     stores: [],

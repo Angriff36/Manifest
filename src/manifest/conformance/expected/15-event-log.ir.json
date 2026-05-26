@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "92c1f827960871e361a32e227afcec98ea33b637ba39de66c8ff230bd52c4cb7",
+    "irHash": "5e8a4789a61e8ec36782cd232382f37c3b8d67826379517e984e84d114a74361",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Order",

@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "51f4753276ddb5c712d21a4058fd412167425fdb402327641101c2fc7f2b384f",
+    "irHash": "ba697bd236d1636ffb994b2e3b4d28ca546da1f1fe1b36ef4bb1dbfc4b556a7b",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Author",

@@ -128,6 +128,7 @@ interface PropertyEmission {
 function emitPropertyLine(
   entity: IREntity,
   prop: IRProperty,
+  ir: IR,
   options: PrismaProjectionOptions,
 ): PropertyEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
@@ -137,11 +138,11 @@ function emitPropertyLine(
   const isArray = prop.type.name === 'array' && prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
-  // Resolve the Prisma scalar type via overrides → defaults.
-  const typeOverrides = options.typeMappings?.[entity.name];
+  const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
   const hasOverride = typeOverrides !== undefined
     && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
-  const scalar = resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
+  const scalar = isValueObject ? 'Json' : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
 
   if (!scalar) {
     if (effectiveTypeName === 'number' && !hasOverride) {
@@ -536,7 +537,7 @@ function emitModel(
   // is a separate list and MUST never become columns.
   for (const prop of entity.properties) {
     if (prop.name === 'id') sawIdProperty = true;
-    const { line, diagnostics: propDiags } = emitPropertyLine(entity, prop, options);
+    const { line, diagnostics: propDiags } = emitPropertyLine(entity, prop, ir, options);
     diagnostics.push(...propDiags);
     if (line !== null) lines.push(line);
   }

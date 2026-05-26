@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "b768b0234ed0cf0762a4e1a30378143ff6d51a6e12e647af72f36c452495b2e0",
+    "irHash": "567b885a82ffe842a88ae0f7ab45ebd32564cdb3dcea935d73ee2ee2978238ee",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "WorkflowInstance",

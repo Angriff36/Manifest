@@ -19,8 +19,9 @@ function buildIR(): IR {
       schemaVersion: '1.0',
       compiledAt: new Date().toISOString(),
     },
-    modules: [],
-    entities: [
+  modules: [],
+  values: [],
+  entities: [
       {
         name: 'Foo',
         properties: [],

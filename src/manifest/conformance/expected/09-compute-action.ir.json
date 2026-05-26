@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "6373c1854448de3837f81971e7e0ae1790801cb67c0c3716b072c73992f4df7d",
+    "irHash": "5cac4f1aa6b29dfdf2c4e100168ebf04b75001b44805489417db541b4893024d",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Inventory",

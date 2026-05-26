@@ -4,7 +4,8 @@ import {
   ConstraintNode, FlowNode, FlowStepNode, EffectNode, ExposeNode, CompositionNode,
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
-  ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode
+  ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
+  ValueObjectNode
 } from './types';
 
 export class Parser {
@@ -18,7 +19,7 @@ export class Parser {
     this.errors = [];
 
     const program: ManifestProgram = {
-      modules: [], entities: [], enums: [], commands: [], flows: [], effects: [],
+      modules: [], entities: [], enums: [], values: [], commands: [], flows: [], effects: [],
       exposures: [], compositions: [], policies: [], stores: [], events: []
     };
 
@@ -29,6 +30,9 @@ export class Parser {
         if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
         else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
         else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
+        else if (this.check('IDENTIFIER', 'value') || this.check('KEYWORD', 'value')) {
+          program.values.push(this.parseValueObject());
+        }
         else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
@@ -223,6 +227,39 @@ export class Parser {
 
     this.consume('PUNCTUATION', '}');
     return { type: 'Enum', name, values };
+  }
+
+  private parseValueObject(): ValueObjectNode {
+    const token = this.current();
+    if (token && ((token.type === 'IDENTIFIER' || token.type === 'KEYWORD') && token.value === 'value')) {
+      this.advance();
+    } else {
+      throw new Error(`Expected 'value' keyword, got ${token?.value || 'EOF'}`);
+    }
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    const properties: PropertyNode[] = [];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      if (this.check('KEYWORD', 'property')) {
+        properties.push(this.parseProperty());
+      } else {
+        this.errors.push({
+          message: `Unexpected token '${this.current()?.value}' in value object '${name}'. Value objects may only contain property declarations.`,
+          position: this.current()?.position,
+          severity: 'error'
+        });
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+    return { type: 'ValueObject', name, properties };
   }
 
   private parseProperty(): PropertyNode {

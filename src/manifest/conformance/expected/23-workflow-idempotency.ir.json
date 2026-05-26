@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "62972f8213ebed85b4281c445e6c49340828bc3606b403a3c26ea018678e2953",
+    "irHash": "404e0fd2de6f5f5184b993e789cadc4a2454918a9a0b2a51d57b4e4bb2472cc1",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "WorkflowStep",

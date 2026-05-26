@@ -1,0 +1,31 @@
+// Fixture 60: Value Object Declarations
+//
+// Tests the `value` declaration for reusable composite types.
+// Value objects embed inline in entity properties as JSONB columns.
+
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+value Address {
+  property street: string
+  property city: string
+  property country: string
+}
+
+entity Product {
+  property required id: string
+  property name: string
+  property price: Money
+  property billingAddress: Address
+}
+
+entity Order {
+  property required id: string
+  property total: Money
+  property shippingAddress: Address
+}
+
+store Product in memory
+store Order in memory

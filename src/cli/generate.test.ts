@@ -18,6 +18,7 @@ const mockIR: IR = {
     compiledAt: new Date().toISOString(),
   },
   modules: [],
+  values: [],
   entities: [
     {
       name: 'TestEntity',

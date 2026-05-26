@@ -1,0 +1,161 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "c4479371ba01fc9de2d010de29c2bfb9975bdf09401d7d69511020342715d2ae",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [
+    {
+      "name": "Money",
+      "properties": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "decimal",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "currency",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    {
+      "name": "Address",
+      "properties": [
+        {
+          "name": "street",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "city",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "country",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "name": "Product",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "price",
+          "type": {
+            "name": "Money",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "billingAddress",
+          "type": {
+            "name": "Address",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "Money",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "shippingAddress",
+          "type": {
+            "name": "Address",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Product",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": []
+}

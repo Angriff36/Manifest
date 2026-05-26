@@ -16,6 +16,7 @@ import {
   TypeNode,
   TransitionNode,
   EnumNode,
+  ValueObjectNode,
 } from './types';
 import {
   IR,
@@ -41,6 +42,7 @@ import {
   IRTransition,
   IRForeignKey,
   IREnum,
+  IRValueObject,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -322,6 +324,7 @@ export class IRCompiler {
 
   private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string): Promise<IR> {
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
+    const values: IRValueObject[] = program.values.map(v => this.transformValueObject(v));
     const entities: IREntity[] = [
       ...program.entities.map(e => this.transformEntity(e)),
       ...program.modules.flatMap(m => m.entities.map(e => this.transformEntity(e, m.name))),
@@ -393,6 +396,7 @@ export class IRCompiler {
       version: '1.0',
       provenance,
       modules,
+      values,
       entities,
       enums,
       stores,
@@ -424,6 +428,13 @@ export class IRCompiler {
         ...m.policies.map(p => p.name),
         ...m.entities.flatMap(e => e.policies.map(p => p.name)),
       ],
+    };
+  }
+
+  private transformValueObject(v: ValueObjectNode): IRValueObject {
+    return {
+      name: v.name,
+      properties: v.properties.map(p => this.transformProperty(p)),
     };
   }
 

@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.13] - 2026-05-26
+
+### Added
+
+- **`value` declarations** — reusable composite types embedded on entity properties (IR `values[]`, Prisma `Json` columns).
+- Conformance fixture **`60-value-objects.manifest`**.
+
 ## [1.0.12] - 2026-05-26
 
 ### Added

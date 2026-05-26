@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "5d6e5b2b6ab14529b48b90aabf55fd911f614c79b0b337fd6df01f48db9b009d",
+    "irHash": "e768bf2523283554727a6e3444febd458c522f7ee8922f7e40deb28b5b7d4100",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "EqualityTest",

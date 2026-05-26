@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "dbbd42e9c160d80ea6e4e464ab35abe553323538a1cbc2a37209f1041e4dd43a",
+    "irHash": "dc02363e74e7f9f45db4fdd0f252e46ed7124fead4d941417276755d586ab608",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "User",

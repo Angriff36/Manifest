@@ -38,6 +38,7 @@ const simpleIR: IR = {
     compiledAt: new Date().toISOString(),
   },
   modules: [],
+  values: [],
   entities: [
     {
       name: 'User',
@@ -943,6 +944,7 @@ describe('RuntimeEngine', () => {
           compiledAt: new Date().toISOString(),
         },
         modules: [],
+        values: [],
         entities: [{
           name: 'Item',
           properties: [
@@ -1069,6 +1071,7 @@ describe('RuntimeEngine', () => {
           compiledAt: new Date().toISOString(),
         },
         modules: [],
+        values: [],
         entities: [{
           name: 'Item',
           properties: [
@@ -1110,6 +1113,7 @@ describe('RuntimeEngine', () => {
           compiledAt: new Date().toISOString(),
         },
         modules: [],
+        values: [],
         entities: [{
           name: 'Item',
           properties: [

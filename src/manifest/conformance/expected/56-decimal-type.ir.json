@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "302ebc835c79e35aa25ecc924f30eccf7c659d93b77be3bc653583354a8db80e",
+    "irHash": "01cb2e157215a6c618a977c59a9b44183f71198e130e3c5266c53d585aa03923",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Invoice",

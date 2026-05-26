@@ -178,6 +178,12 @@ export interface ActionNode extends ASTNode {
   expression: ExpressionNode;
 }
 
+export interface ValueObjectNode extends ASTNode {
+  type: 'ValueObject';
+  name: string;
+  properties: PropertyNode[];
+}
+
 export interface ConstraintNode extends ASTNode {
   type: 'Constraint';
   name: string;
@@ -325,6 +331,7 @@ export interface ManifestProgram {
   modules: ModuleNode[];
   entities: EntityNode[];
   enums: EnumNode[];
+  values: ValueObjectNode[];
   commands: CommandNode[];
   flows: FlowNode[];
   effects: EffectNode[];

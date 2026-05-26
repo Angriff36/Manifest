@@ -16,12 +16,20 @@ export interface IR {
   /** Provenance metadata for traceability */
   provenance: IRProvenance;
   modules: IRModule[];
+  /** Reusable composite value types (embedded, no separate table). Immutable by design. */
+  values: IRValueObject[];
   entities: IREntity[];
   enums: IREnum[];
   stores: IRStore[];
   events: IREvent[];
   commands: IRCommand[];
   policies: IRPolicy[];
+}
+
+export interface IRValueObject {
+  name: string;
+  /** Value object properties (immutable, embedded inline in entity properties) */
+  properties: IRProperty[];
 }
 
 export interface IRModule {

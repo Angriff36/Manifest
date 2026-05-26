@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "02bc45a335665e312544025300a1409ddb7f69dcfb6254a7ce4f8856a5842214",
+    "irHash": "05158463b9ca562d6b44f4389544dc621ccccc3d2a2cafbc2d9f765cf533ae4e",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Counter",

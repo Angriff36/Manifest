@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "84fda4f9966b8621263d54fa97ba7a1ea60145cbcf11e7afc91756022ff57ba7",
+    "irHash": "b56050c4f7da561380b303e2b17788181962aeb5fc7823ec0e07a0306b44e561",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Document",

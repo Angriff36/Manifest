@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "7e5b4b2429c85713de62bf5159004b97cbdf8f2a45c1a223ee69326b59a9415e",
+    "irHash": "e4646a36ea65c3209fa693f7be2a1ebf3ef60603b1825ba5f5eaee95e0fa66ec",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "TimestampedEntity",

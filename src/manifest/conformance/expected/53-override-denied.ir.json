@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "62e6d92016bfb396b9581902de6ad1acba6166ccf5e8740b3429e14d3c6f675d",
+    "irHash": "34e2b43b450474d959f054c414d6ccebd3db88d5e5458cd3683fef4384461fc5",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Transfer",

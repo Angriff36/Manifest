@@ -2,12 +2,13 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "124f8aa77a3b13c55ea6ed94411c815bfa44d742b4f16ecc3800282f5585467c",
+    "irHash": "2e674510fb5c53e63302c94b1b925eb6296d02ed3a8e4815ea51a1de7324ff6d",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
   "modules": [],
+  "values": [],
   "entities": [
     {
       "name": "Expense",

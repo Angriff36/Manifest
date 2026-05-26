@@ -47,6 +47,7 @@ function emptyIR(commandName: string, entityName = 'Foo'): IR {
       compiledAt: new Date().toISOString(),
     },
     modules: [],
+    values: [],
     entities: [
       {
         name: entityName,
@@ -138,6 +139,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Doc',
         properties: [],
@@ -192,6 +194,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Order',
         properties: [
@@ -263,6 +266,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Item',
         properties: [],
@@ -320,6 +324,7 @@ describe('Runtime audit emission — outcome coverage', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Item',
         properties: [],
@@ -541,6 +546,7 @@ describe('Runtime audit emission — classification edge cases', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Task',
         properties: [],
@@ -593,6 +599,7 @@ describe('Runtime audit emission — classification edge cases', () => {
         compiledAt: new Date().toISOString(),
       },
       modules: [],
+      values: [],
       entities: [{
         name: 'Task',
         properties: [],

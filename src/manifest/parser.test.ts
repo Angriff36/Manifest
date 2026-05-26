@@ -1012,4 +1012,81 @@ entity User {
       expect(result.errors.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Value Object Parsing', () => {
+    it('should parse empty value object', () => {
+      const source = 'value Empty {}';
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.values).toHaveLength(1);
+      const vo = result.program.values[0];
+      expect(vo.type).toBe('ValueObject');
+      expect(vo.name).toBe('Empty');
+      expect(vo.properties).toHaveLength(0);
+    });
+
+    it('should parse value object with properties', () => {
+      const source = `
+value Money {
+  property amount: decimal
+  property currency: string
+}
+`;
+      const result = new Parser().parse(source);
+      const vo = result.program.values[0];
+      expect(vo.name).toBe('Money');
+      expect(vo.properties).toHaveLength(2);
+      expect(vo.properties[0].name).toBe('amount');
+      expect(vo.properties[0].dataType.name).toBe('decimal');
+      expect(vo.properties[1].name).toBe('currency');
+      expect(vo.properties[1].dataType.name).toBe('string');
+    });
+
+    it('should parse value object used as entity property type', () => {
+      const source = `
+value Price {
+  property amount: decimal
+}
+
+entity Product {
+  property required id: string
+  property price: Price
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.values).toHaveLength(1);
+      expect(result.program.entities).toHaveLength(1);
+      expect(result.program.entities[0].properties[1].dataType.name).toBe('Price');
+    });
+
+    it('should parse multiple value objects', () => {
+      const source = `
+value Point {
+  property x: float
+  property y: float
+}
+
+value Circle {
+  property center: Point
+  property radius: float
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.program.values).toHaveLength(2);
+      expect(result.program.values[0].name).toBe('Point');
+      expect(result.program.values[1].name).toBe('Circle');
+    });
+
+    it('should report error for non-property content in value object', () => {
+      const source = `
+value Bad {
+  property name: string
+  command test() {}
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors.some(e => e.message.includes('Unexpected token'))).toBe(true);
+    });
+  });
 });
