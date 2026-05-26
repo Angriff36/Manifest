@@ -180,6 +180,17 @@ projections:
 
 The rule is keyed on the **resolved Prisma scalar**, not the IR type name. A property routed to `Decimal` via `typeMappings` picks up the same default precision.
 
+## Auto timestamps
+
+When an entity declares the `timestamps` keyword (see [Entities](/language/entities#auto-timestamps)), the projection emits the two injected fields with Prisma's native attributes so the database manages the values:
+
+```prisma
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+```
+
+The runtime also populates these values on create and update, so the auto-fields behave consistently whether you run against the embedded in-memory store or against a Prisma-backed Postgres database. You do not need to add a `fieldAttributes` override for `createdAt`/`updatedAt` when `timestamps` is on — the projection emits the attributes automatically.
+
 ## Relationships
 
 All four IR relationship kinds emit real Prisma `@relation`:

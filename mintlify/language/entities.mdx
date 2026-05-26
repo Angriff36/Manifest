@@ -329,6 +329,44 @@ entity Document {
 Transition validation runs **before** entity constraint validation. If the current value has no matching `from` rule, the transition is unconstrained from that state. Properties not mentioned in any transition rule are always unconstrained.
 </Note>
 
+## Auto timestamps
+
+Add the bare `timestamps` keyword inside an entity block to have the compiler inject two managed datetime properties:
+
+- `createdAt` — set once when the runtime creates the instance.
+- `updatedAt` — refreshed on every successful mutation.
+
+Both fields are emitted as `readonly` so callers cannot supply or overwrite them. You do not need to declare them yourself.
+
+```manifest
+entity Article {
+  property required id: string
+  property required title: string
+  property body: string = ""
+  timestamps
+}
+
+store Article in memory
+```
+
+After compilation the IR carries `timestamps: true` on the entity plus the two injected properties:
+
+```json
+{
+  "name": "createdAt",
+  "type": { "name": "datetime", "nullable": false },
+  "modifiers": ["readonly"]
+}
+```
+
+Use `timestamps` when you want consistent audit fields without writing the boilerplate yourself — typical cases are content models, audit logs, and any entity whose lifecycle you want to inspect later. Skip it if you already declare custom timestamp properties or need different field names; in that case, manage them manually with a `compute now()` block (see [Commands](/language/commands)).
+
+<Note>
+The runtime populates both timestamps using the engine's injected `now` function. In tests, pass a deterministic `now` to `RuntimeEngine` so fixture assertions stay stable — see [Embedded runtime](/integration/embedded-runtime).
+</Note>
+
+When the [Prisma projection](/integration/prisma) sees `timestamps: true`, it emits `@default(now())` on `createdAt` and `@updatedAt` on `updatedAt` so the database manages the values directly.
+
 ## Default policies (vNext)
 
 Attach a `default policy` to an entity to apply it to every command that does not declare its own policy list:
