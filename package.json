@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.31",
+  "version": "1.0.32",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -113,14 +113,18 @@
     "access": "restricted"
   },
   "bin": {
-    "manifest": "./packages/cli/dist/index.js"
+    "manifest": "./packages/cli/dist/index.js",
+    "manifest-mcp": "./packages/mcp-server/bin/manifest-mcp.js"
   },
   "files": [
     "dist/manifest/**",
     "packages/cli/dist/**",
+    "packages/mcp-server/dist/**",
+    "packages/mcp-server/bin/**",
     "src/manifest/audit/sinks/*.sql",
     "src/manifest/outbox/stores/*.sql",
     "docs/spec/ir/ir-v1.schema.json",
+    "docs/spec/semantics.md",
     "docs/spec/registry/*.schema.json",
     "docs/spec/config/*.schema.json",
     "docs/spec/plugins/*.schema.json",
@@ -159,15 +163,17 @@
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
-    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build"
+    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build && pnpm --filter @manifest/mcp-server run build"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
     "@types/pg": "^8.16.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
     "pg": "^8.18.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^3.25.0"
   },
   "peerDependencies": {
     "@supabase/supabase-js": "^2"
@@ -179,7 +185,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
-    "@modelcontextprotocol/sdk": "^1.12.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
@@ -193,7 +198,6 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2",
-    "vitest": "^4.0.18",
-    "zod": "^3.25.0"
+    "vitest": "^4.0.18"
   }
 }

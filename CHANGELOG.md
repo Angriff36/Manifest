@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.32] - 2026-05-26
+
+### Added
+
+- **`manifest-mcp` bin** on `@angriff36/manifest` — official MCP server (`compile`, `execute`, `validate`, `explain` tools + IR schema/semantics resources) is now included in the published tarball.
+- Runtime dependencies **`@modelcontextprotocol/sdk`** and **`zod`** required by the MCP server.
+
+### Fixed
+
+- **MCP packaging gap (since v1.0.25)** — `packages/mcp-server` existed in the repo but was excluded from `files` and never built during publish; consumers installing from GitHub Packages could not run `manifest-mcp`.
+- **`manifest://semantics` resource** — ships `docs/spec/semantics.md` in the tarball.
+
 ## [1.0.31] - 2026-05-26
 
 ### Added

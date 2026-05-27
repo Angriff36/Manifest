@@ -4,7 +4,8 @@
  * Manifest MCP Server — stdio transport entry point.
  *
  * Usage:
- *   npx @manifest/mcp-server
+ *   npx --package @angriff36/manifest manifest-mcp
+ *   manifest-mcp   (after npm install @angriff36/manifest)
  *   node ./bin/manifest-mcp.js
  *
  * Configure in Claude Desktop settings:
@@ -12,7 +13,7 @@
  *     "mcpServers": {
  *       "manifest": {
  *         "command": "npx",
- *         "args": ["@manifest/mcp-server"]
+ *         "args": ["--package", "@angriff36/manifest", "manifest-mcp"]
  *       }
  *     }
  *   }
