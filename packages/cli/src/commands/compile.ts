@@ -63,26 +63,26 @@ interface CompiledFile {
   diagnostics: CompileDiagnostic[];
 }
 
-function getOutputPath(filePath: string, options: CompileOptions): string {
-  if (options.output) {
-    // Existing behavior: an existing output directory gets one IR file per source;
-    // otherwise the output is treated as a direct file path.
-    return path.resolve(options.output);
-  }
-
-  return filePath.replace(/\.manifest$/, '.ir.json');
-}
-
 async function resolveOutputPath(filePath: string, options: CompileOptions): Promise<string> {
   if (options.output) {
+    // First check if output looks like a filename (ends with .json)
+    if (options.output.endsWith('.json')) {
+      // Explicitly a file - use as-is
+      return path.resolve(options.output);
+    }
+
+    // Otherwise, treat as directory path. Create parent dirs if needed.
     const stat = await fs.stat(options.output).catch(() => null);
-    if (stat?.isDirectory()) {
+    if (stat?.isDirectory() || !stat) {
+      // Either exists and is a directory, or doesn't exist (will be created as dir)
+      // In both cases, create one IR file per source file
       const basename = path.basename(filePath, '.manifest');
       return path.resolve(options.output, `${basename}.ir.json`);
     }
-    return getOutputPath(filePath, options);
+    // If stat exists but is NOT a directory (is a file), treat output as file path
+    return path.resolve(options.output);
   }
-  return getOutputPath(filePath, options);
+  return filePath.replace(/\.manifest$/, '.ir.json');
 }
 
 /**
