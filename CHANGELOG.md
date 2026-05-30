@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-05-29
+
+### Added
+
+- **JSON Schema projection** — JSON Schema output from IR entity definitions (`pattern`, `minimum`/`maximum`, `required`, `enum`).
+- **Mermaid projection** — ER/diagram export from IR, available via the `manifest diagram` CLI command.
+- **LLM context projection** — structured IR/domain-model export for AI agent context injection.
+
 ## [1.1.0] - 2026-05-29
 
 ### Added
