@@ -82,8 +82,8 @@ describe('plugin-api', () => {
   });
 
   describe('BUILTIN_STORE_TARGETS', () => {
-    it('contains all 5 built-in store targets', () => {
-      expect(BUILTIN_STORE_TARGETS.size).toBe(5);
+    it('contains all 6 built-in store targets', () => {
+      expect(BUILTIN_STORE_TARGETS.size).toBe(6);
     });
 
     it('includes expected built-in targets', () => {
@@ -92,6 +92,7 @@ describe('plugin-api', () => {
       expect(BUILTIN_STORE_TARGETS.has('postgres')).toBe(true);
       expect(BUILTIN_STORE_TARGETS.has('supabase')).toBe(true);
       expect(BUILTIN_STORE_TARGETS.has('durable')).toBe(true);
+      expect(BUILTIN_STORE_TARGETS.has('mongodb')).toBe(true);
     });
 
     it('does not include custom scheme names', () => {
