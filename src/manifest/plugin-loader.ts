@@ -19,6 +19,7 @@ import { createRequire } from 'node:module';
 import {
   PLUGIN_API_VERSION,
   RESERVED_BUILTIN_NAMES,
+  BUILTIN_STORE_TARGETS,
   type ManifestPlugin,
   type Store,
   type PluginContext,
@@ -342,9 +343,17 @@ export async function loadPlugins(
         }
       }
 
-      // 6. Collect store adapters
+      // 6. Collect store adapters — reject schemes that collide with built-ins
       if (plugin.storeAdapters) {
         for (const adapter of plugin.storeAdapters) {
+          if (BUILTIN_STORE_TARGETS.has(adapter.scheme)) {
+            diagnostics.push({
+              severity: 'error',
+              pluginName: manifestMeta.name,
+              message: `Store adapter scheme "${adapter.scheme}" from plugin "${manifestMeta.name}" collides with a built-in store target`,
+            });
+            continue;
+          }
           storeAdapters.push({ plugin: adapter, options: decl.options });
         }
       }

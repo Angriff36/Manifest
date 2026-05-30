@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.5.0] - 2026-05-29
+
+### Added
+
+- **plugin-api** — registration hooks for custom store adapters and custom expression functions.
+- **Computed property memoization** — `cache request` / `session` / `ttl` modifiers on computed properties.
+- **Conformance fixture** `65-computed-property-caching`.
+
 ## [1.4.0] - 2026-05-29
 
 ### Added

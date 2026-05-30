@@ -1,0 +1,64 @@
+{
+  "testCases": [
+    {
+      "name": "subtotal computed property with request cache",
+      "setup": {
+        "createInstance": {
+          "entity": "Product",
+          "data": { "id": "prod-1", "price": 25, "quantity": 4 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Product",
+        "instanceId": "prod-1",
+        "property": "subtotal"
+      },
+      "expectedValue": 100
+    },
+    {
+      "name": "total computed property with session cache",
+      "setup": {
+        "createInstance": {
+          "entity": "Product",
+          "data": { "id": "prod-2", "price": 200, "quantity": 1, "taxRate": 50 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Product",
+        "instanceId": "prod-2",
+        "property": "total"
+      },
+      "expectedValue": 300
+    },
+    {
+      "name": "margin computed property with ttl cache",
+      "setup": {
+        "createInstance": {
+          "entity": "Product",
+          "data": { "id": "prod-3", "price": 200, "quantity": 2 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Product",
+        "instanceId": "prod-3",
+        "property": "margin"
+      },
+      "expectedValue": 120
+    },
+    {
+      "name": "uncached computed property evaluates normally",
+      "setup": {
+        "createInstance": {
+          "entity": "Product",
+          "data": { "id": "prod-4", "price": 50 }
+        }
+      },
+      "computedProperty": {
+        "entity": "Product",
+        "instanceId": "prod-4",
+        "property": "label"
+      },
+      "expectedValue": "Product"
+    }
+  ]
+}

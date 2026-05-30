@@ -83,8 +83,30 @@ export interface PluginManifest {
 // ---------------------------------------------------------------------------
 
 /**
+ * Built-in store target names reserved by the Manifest runtime.
+ * Plugin-registered store adapters MUST NOT use these as scheme names.
+ */
+export const BUILTIN_STORE_TARGETS: ReadonlySet<string> = new Set([
+  'memory', 'localStorage', 'postgres', 'supabase', 'durable', 'mongodb',
+]);
+
+/**
  * Store adapter plugin. Registered by URI scheme and used by the runtime
  * engine's storeProvider to create Store instances for entities.
+ *
+ * The scheme MUST NOT collide with built-in targets (see BUILTIN_STORE_TARGETS).
+ * Custom adapters are resolved by the CompositeStoreProvider built by the
+ * plugin loader during runtime initialization.
+ *
+ * @example
+ * ```ts
+ * const redisAdapter: StoreAdapterPlugin = {
+ *   scheme: 'redis',
+ *   createStore(entityName, options) {
+ *     return new RedisStore(entityName, options?.connectionUrl);
+ *   },
+ * };
+ * ```
  */
 export interface StoreAdapterPlugin {
   /** URI scheme this adapter handles (e.g. 'redis', 'dynamodb'). */
@@ -127,8 +149,9 @@ export type BuiltinPurity = 'pure' | 'time-dependent' | 'random';
  *
  * RESERVED NAMES (cannot be overridden):
  *   now, uuid, trim, split, count, startsWith, endsWith, replace,
- *   toUpperCase, toLowerCase, length, substring, indexOf,
- *   abs, round, floor, ceil, min, max, between, sum,
+ *   toUpperCase, toLowerCase, length, substring, indexOf, matches,
+ *   abs, round, floor, ceil, min, max, between,
+ *   sum, avg, min_of, max_of, count_of, filter, map,
  *   year, month, day, hours, minutes, seconds
  */
 export interface BuiltinFunctionPlugin {
@@ -240,6 +263,17 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
       `but current API version is "${PLUGIN_API_VERSION}"`
     );
   }
+  // Validate store adapter schemes don't collide with built-in targets
+  if (plugin.storeAdapters) {
+    for (const adapter of plugin.storeAdapters) {
+      if (BUILTIN_STORE_TARGETS.has(adapter.scheme)) {
+        throw new Error(
+          `Plugin "${plugin.manifest.name}" registers store adapter with scheme "${adapter.scheme}" ` +
+          `which is a built-in store target. Custom adapters must use unique scheme names.`
+        );
+      }
+    }
+  }
   return plugin;
 }
 
@@ -254,7 +288,9 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
 export const RESERVED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
   'now', 'uuid',
   'trim', 'split', 'count', 'startsWith', 'endsWith', 'replace',
-  'toUpperCase', 'toLowerCase', 'length', 'substring', 'indexOf',
-  'abs', 'round', 'floor', 'ceil', 'min', 'max', 'between', 'sum',
+  'toUpperCase', 'toLowerCase', 'length', 'substring', 'indexOf', 'matches',
+  'abs', 'round', 'floor', 'ceil', 'min', 'max', 'between',
+  'sum', 'avg', 'min_of', 'max_of', 'count_of', 'filter', 'map',
   'year', 'month', 'day', 'hours', 'minutes', 'seconds',
+  'flag',
 ]);

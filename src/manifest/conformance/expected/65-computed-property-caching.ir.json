@@ -1,0 +1,188 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "79cdf25e8193ec114061acc3d3175e3bcc7fb1c9d89a5bfec44282b3e1cc9e79",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Product",
+      "properties": [
+        {
+          "name": "price",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 1
+          },
+          "modifiers": []
+        },
+        {
+          "name": "taxRate",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "subtotal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "*",
+            "left": {
+              "kind": "identifier",
+              "name": "price"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "quantity"
+            }
+          },
+          "dependencies": [
+            "price",
+            "quantity"
+          ],
+          "cache": {
+            "strategy": "request"
+          }
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "*",
+            "left": {
+              "kind": "identifier",
+              "name": "subtotal"
+            },
+            "right": {
+              "kind": "binary",
+              "operator": "+",
+              "left": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 1
+                }
+              },
+              "right": {
+                "kind": "binary",
+                "operator": "/",
+                "left": {
+                  "kind": "identifier",
+                  "name": "taxRate"
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 100
+                  }
+                }
+              }
+            }
+          },
+          "dependencies": [
+            "subtotal",
+            "taxRate"
+          ],
+          "cache": {
+            "strategy": "session"
+          }
+        },
+        {
+          "name": "margin",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "*",
+            "left": {
+              "kind": "identifier",
+              "name": "subtotal"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0.3
+              }
+            }
+          },
+          "dependencies": [
+            "subtotal"
+          ],
+          "cache": {
+            "strategy": "ttl",
+            "ttlSeconds": 300
+          }
+        },
+        {
+          "name": "label",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "Product"
+            }
+          },
+          "dependencies": []
+        }
+      ],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Product",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": []
+}

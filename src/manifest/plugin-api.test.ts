@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PLUGIN_API_VERSION,
   RESERVED_BUILTIN_NAMES,
+  BUILTIN_STORE_TARGETS,
   definePlugin,
   type ManifestPlugin,
   type PluginManifest,
@@ -21,8 +22,8 @@ describe('plugin-api', () => {
   });
 
   describe('RESERVED_BUILTIN_NAMES', () => {
-    it('contains all 27 builtins', () => {
-      expect(RESERVED_BUILTIN_NAMES.size).toBe(27);
+    it('contains all 35 builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.size).toBe(35);
     });
 
     it('includes core builtins', () => {
@@ -38,6 +39,7 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('length')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('substring')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('indexOf')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('matches')).toBe(true);
     });
 
     it('includes math builtins', () => {
@@ -48,7 +50,16 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('min')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('max')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('between')).toBe(true);
+    });
+
+    it('includes aggregate builtins', () => {
       expect(RESERVED_BUILTIN_NAMES.has('sum')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('avg')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('min_of')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('max_of')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('count_of')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('filter')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('map')).toBe(true);
     });
 
     it('includes date builtins', () => {
@@ -60,9 +71,32 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('seconds')).toBe(true);
     });
 
+    it('includes feature flag builtin', () => {
+      expect(RESERVED_BUILTIN_NAMES.has('flag')).toBe(true);
+    });
+
     it('is a frozen set (immutable)', () => {
       // ReadonlySet doesn't have add/delete, so just verify type safety
       expect(RESERVED_BUILTIN_NAMES).toBeInstanceOf(Set);
+    });
+  });
+
+  describe('BUILTIN_STORE_TARGETS', () => {
+    it('contains all 5 built-in store targets', () => {
+      expect(BUILTIN_STORE_TARGETS.size).toBe(5);
+    });
+
+    it('includes expected built-in targets', () => {
+      expect(BUILTIN_STORE_TARGETS.has('memory')).toBe(true);
+      expect(BUILTIN_STORE_TARGETS.has('localStorage')).toBe(true);
+      expect(BUILTIN_STORE_TARGETS.has('postgres')).toBe(true);
+      expect(BUILTIN_STORE_TARGETS.has('supabase')).toBe(true);
+      expect(BUILTIN_STORE_TARGETS.has('durable')).toBe(true);
+    });
+
+    it('does not include custom scheme names', () => {
+      expect(BUILTIN_STORE_TARGETS.has('redis')).toBe(false);
+      expect(BUILTIN_STORE_TARGETS.has('dynamodb')).toBe(false);
     });
   });
 
@@ -169,6 +203,44 @@ describe('plugin-api', () => {
       expect(typeof plugin.onLoad).toBe('function');
       plugin.onLoad!({ options: {}, manifestVersion: '1.0.5' });
       expect(called).toBe(true);
+    });
+
+    it('accepts store adapter with custom scheme', () => {
+      const result = definePlugin({
+        manifest: validManifest,
+        storeAdapters: [{
+          scheme: 'redis',
+          createStore: async () => ({
+            getAll: async () => [],
+            getById: async () => undefined,
+            create: async (d) => ({ id: '1', ...d }) as any,
+            update: async () => undefined,
+            delete: async () => false,
+            clear: async () => {},
+          }),
+        }],
+      });
+      expect(result.storeAdapters).toHaveLength(1);
+      expect(result.storeAdapters![0].scheme).toBe('redis');
+    });
+
+    it('throws if store adapter scheme collides with built-in target', () => {
+      expect(() =>
+        definePlugin({
+          manifest: validManifest,
+          storeAdapters: [{
+            scheme: 'memory',
+            createStore: async () => ({
+              getAll: async () => [],
+              getById: async () => undefined,
+              create: async (d) => ({ id: '1', ...d }) as any,
+              update: async () => undefined,
+              delete: async () => false,
+              clear: async () => {},
+            }),
+          }],
+        })
+      ).toThrow(/scheme "memory".*built-in store target/);
     });
   });
 

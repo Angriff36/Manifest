@@ -20,7 +20,7 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 - **Full Language Parser & Compiler**: Parses Manifest source code and compiles to IR v1
 - **Reference Runtime Engine**: Executes commands with policy checks, guard evaluation, and event emission
 - **Conformance Test Suite**: 919+ tests covering compilation, runtime semantics, governance audits, adapter contracts, and edge cases
-- **Projections System**: Generate platform-specific code from IR. Next.js projection ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path
+- **Projections System**: Generate platform-specific code from IR. Next.js projection ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path. Additional projections: **Prisma**, **Drizzle**, **OpenAPI 3.1**, **GraphQL** (SDL + resolver stubs), **Zod**, **TanStack Query** hooks, **JSON Schema**, **Express** and **Hono** route handlers, **Mermaid** ER/diagram export, and **LLM context** export
 - **Audit Sink + Outbox Store adapters**: First-party `MemoryAuditSink` / `MemoryOutboxStore` for tests and local development; `PostgresAuditSink` / `PostgresOutboxStore` for durable production use (SQL schemas ship with the package). Runtime emits exactly one audit record per `runCommand` attempt and enqueues outbox entries on emit. See `docs/spec/adapters.md`.
 - **Governance audit CLI**: `manifest audit-governance` runs five detectors (direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations); `manifest integration-check` is the umbrella validator for downstream consumers
 - **Runtime UI**: Interactive development environment for testing Manifest programs
@@ -40,8 +40,9 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 - **Events**: Typed event definitions with channels and payload schemas
 - **Stores**: Persistence targets (`memory`, `localStorage`, with adapters for `postgres`, `supabase`)
 - **Modules**: Logical grouping of related entities, commands, and policies
-- **Computed Properties**: Derived values with explicit dependency tracking
+- **Computed Properties**: Derived values with explicit dependency tracking, with optional memoization (`cache request` / `session` / `ttl`)
 - **Relationships**: Declarative relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`)
+- **Constraint & Expression Builtins**: `matches(value, pattern)` regex constraints (compile-time pattern validation + runtime enforcement), aggregate builtins over collections (`sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map` with optional mapper lambdas), and `flag(name)` feature-flag resolution in guards/policies
 
 ## Getting Started
 
@@ -92,7 +93,9 @@ From `docs/patterns/external-projections.md`:
 - **Writes MUST use runtime**: Command routes enforce guards, policies, constraints, and event emission
 - **Configurable auth**: Support multiple auth providers without hardcoding
 - **Tenant isolation**: Optional tenant filtering for multi-tenant applications
-- **Platform-specific**: Projections adapt to platform conventions (Next.js App Router, future: Hono, Express)
+- **Platform-specific**: Projections adapt to platform conventions (Next.js App Router, Express, Hono edge runtimes)
+
+In addition to Next.js, the following projections are available via the registry (`src/manifest/projections/`): `prisma`, `drizzle`, `openapi`, `graphql`, `zod`, `react-query`, `jsonschema`, `express`, `hono`, `mermaid`, and `llm-context`. Generate diagrams from the CLI with `manifest diagram`.
 
 See `src/manifest/projections/nextjs/README.md` for detailed usage examples.
 
@@ -244,6 +247,20 @@ npm install
 - `npm run build` - Build for production
 - `npm run typecheck` - TypeScript type checking
 - `npm run lint` - ESLint validation
+
+### Manifest CLI
+
+The `manifest` CLI (see `packages/cli`) exposes the toolchain. Notable commands:
+
+- `manifest compile` / `manifest generate` / `manifest build` - compile source to IR and emit projections
+- `manifest validate` / `manifest validate-ai` - validate programs (the latter scores IR for LLM consumers)
+- `manifest watch` - incremental re-compile/re-project on `.manifest` file changes
+- `manifest diagram` - emit Mermaid ER/diagram output from IR
+- `manifest coverage` - report command/guard/policy/constraint coverage from test runs
+- `manifest changelog` - generate a changelog from IR diffs between tags
+- `manifest diff` / `manifest breaking` - IR diff and breaking-change detection
+- `manifest fmt` - deterministic source formatter
+- `manifest migrate`, `manifest doctor`, `manifest audit-governance`, `manifest integration-check`
 
 ### Projection CLI
 

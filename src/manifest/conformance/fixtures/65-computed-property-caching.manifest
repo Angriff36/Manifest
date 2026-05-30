@@ -1,0 +1,12 @@
+entity Product {
+  property required price: number
+  property quantity: number = 1
+  property taxRate: number = 0
+
+  computed subtotal: number = price * quantity cache request
+  computed total: number = subtotal * (1 + taxRate / 100) cache session
+  computed margin: number = subtotal * 0.3 cache ttl 300
+  computed label: string = "Product"
+}
+
+store Product in memory
