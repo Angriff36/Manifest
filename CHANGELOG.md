@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0] - 2026-05-29
+
+### Added
+
+- **New CLI commands** — `manifest watch` (incremental recompile/reproject), `manifest diagram` (Mermaid export), `manifest coverage` (command/guard/policy/constraint coverage), `manifest changelog` (changelog from IR diffs).
+
 ## [1.3.0] - 2026-05-29
 
 ### Added
