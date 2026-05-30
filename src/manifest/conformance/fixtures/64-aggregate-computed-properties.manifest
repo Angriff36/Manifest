@@ -1,0 +1,25 @@
+entity Order {
+  property required customerName: string
+  property status: string = "pending"
+
+  hasMany lineItems: LineItem
+
+  computed totalAmount: number = sum(self.lineItems, (item) => item.price * item.quantity)
+  computed itemCount: number = count_of(self.lineItems)
+  computed averagePrice: number = avg(self.lineItems, (item) => item.price)
+  computed cheapestItem: number = min_of(self.lineItems, (item) => item.price)
+  computed mostExpensiveItem: number = max_of(self.lineItems, (item) => item.price)
+  computed highValueCount: number = count_of(self.lineItems, (item) => item.price * item.quantity > 50)
+}
+
+entity LineItem {
+  property required price: number
+  property quantity: number = 1
+
+  belongsTo order: Order
+
+  computed lineTotal: number = price * quantity
+}
+
+store Order in memory
+store LineItem in memory

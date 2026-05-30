@@ -1,0 +1,62 @@
+{
+  "testCases": [
+    {
+      "name": "valid contact info passes all constraints",
+      "entity": "ContactInfo",
+      "data": { "id": "c1", "email": "user@example.com", "phone": "555-123-4567", "zipCode": "90210" },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "invalid email fails validEmail constraint",
+      "entity": "ContactInfo",
+      "data": { "id": "c2", "email": "not-an-email", "phone": "555-123-4567", "zipCode": "90210" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validEmail",
+          "expression": "matches(self.email"
+        }
+      ]
+    },
+    {
+      "name": "invalid phone fails validPhone constraint",
+      "entity": "ContactInfo",
+      "data": { "id": "c3", "email": "user@example.com", "phone": "1234567890", "zipCode": "90210" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validPhone",
+          "expression": "matches(self.phone"
+        }
+      ]
+    },
+    {
+      "name": "invalid zip code fails validZip constraint",
+      "entity": "ContactInfo",
+      "data": { "id": "c4", "email": "user@example.com", "phone": "555-123-4567", "zipCode": "9021" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validZip",
+          "expression": "matches(self.zipCode"
+        }
+      ]
+    },
+    {
+      "name": "empty strings fail all pattern constraints",
+      "entity": "ContactInfo",
+      "data": { "id": "c5", "email": "", "phone": "", "zipCode": "" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "validEmail",
+          "expression": "matches(self.email"
+        },
+        {
+          "constraintName": "validPhone",
+          "expression": "matches(self.phone"
+        },
+        {
+          "constraintName": "validZip",
+          "expression": "matches(self.zipCode"
+        }
+      ]
+    }
+  ]
+}

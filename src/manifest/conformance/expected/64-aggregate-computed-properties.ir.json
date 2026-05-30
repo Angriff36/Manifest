@@ -1,0 +1,403 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "03588a50c9d8b82d9a513536df98ec893d8f2e81c3b88ef90aa48ee9b0d43be5",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "customerName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "pending"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "totalAmount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "sum"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              },
+              {
+                "kind": "lambda",
+                "params": [
+                  "item"
+                ],
+                "body": {
+                  "kind": "binary",
+                  "operator": "*",
+                  "left": {
+                    "kind": "member",
+                    "object": {
+                      "kind": "identifier",
+                      "name": "item"
+                    },
+                    "property": "price"
+                  },
+                  "right": {
+                    "kind": "member",
+                    "object": {
+                      "kind": "identifier",
+                      "name": "item"
+                    },
+                    "property": "quantity"
+                  }
+                }
+              }
+            ]
+          },
+          "dependencies": [
+            "sum",
+            "item"
+          ]
+        },
+        {
+          "name": "itemCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "count_of"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              }
+            ]
+          },
+          "dependencies": [
+            "count_of"
+          ]
+        },
+        {
+          "name": "averagePrice",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "avg"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              },
+              {
+                "kind": "lambda",
+                "params": [
+                  "item"
+                ],
+                "body": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "item"
+                  },
+                  "property": "price"
+                }
+              }
+            ]
+          },
+          "dependencies": [
+            "avg",
+            "item"
+          ]
+        },
+        {
+          "name": "cheapestItem",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "min_of"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              },
+              {
+                "kind": "lambda",
+                "params": [
+                  "item"
+                ],
+                "body": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "item"
+                  },
+                  "property": "price"
+                }
+              }
+            ]
+          },
+          "dependencies": [
+            "min_of",
+            "item"
+          ]
+        },
+        {
+          "name": "mostExpensiveItem",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "max_of"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              },
+              {
+                "kind": "lambda",
+                "params": [
+                  "item"
+                ],
+                "body": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "item"
+                  },
+                  "property": "price"
+                }
+              }
+            ]
+          },
+          "dependencies": [
+            "max_of",
+            "item"
+          ]
+        },
+        {
+          "name": "highValueCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "count_of"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "lineItems"
+              },
+              {
+                "kind": "lambda",
+                "params": [
+                  "item"
+                ],
+                "body": {
+                  "kind": "binary",
+                  "operator": ">",
+                  "left": {
+                    "kind": "binary",
+                    "operator": "*",
+                    "left": {
+                      "kind": "member",
+                      "object": {
+                        "kind": "identifier",
+                        "name": "item"
+                      },
+                      "property": "price"
+                    },
+                    "right": {
+                      "kind": "member",
+                      "object": {
+                        "kind": "identifier",
+                        "name": "item"
+                      },
+                      "property": "quantity"
+                    }
+                  },
+                  "right": {
+                    "kind": "literal",
+                    "value": {
+                      "kind": "number",
+                      "value": 50
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "dependencies": [
+            "count_of",
+            "item"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "lineItems",
+          "kind": "hasMany",
+          "target": "LineItem"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "LineItem",
+      "properties": [
+        {
+          "name": "price",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 1
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "lineTotal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "binary",
+            "operator": "*",
+            "left": {
+              "kind": "identifier",
+              "name": "price"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "quantity"
+            }
+          },
+          "dependencies": [
+            "price",
+            "quantity"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "order",
+          "kind": "belongsTo",
+          "target": "Order"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "LineItem",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": []
+}

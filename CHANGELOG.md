@@ -4,6 +4,19 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] - 2026-05-29
+
+### Added
+
+- **`matches(value, pattern)` regex constraint** — compile-time regex syntax validation plus runtime enforcement.
+- **Aggregate expression builtins** — `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map` over collections, each accepting an optional mapper/predicate lambda; usable in computed properties.
+- **`flag(name)` feature-flag builtin** — resolves feature flags via a runtime-provided provider in guards and policies (returns `false` when no provider is configured).
+- **Conformance fixtures** `63-regex-constraints`, `64-aggregate-computed-properties`, `66-feature-flags`.
+
+### Notes
+
+- `66-feature-flags` ships an expected IR fixture but not yet a `results.json`; feature-flag runtime behavior is not yet locked by a conformance results fixture.
+
 ## [1.2.0] - 2026-05-29
 
 ### Added

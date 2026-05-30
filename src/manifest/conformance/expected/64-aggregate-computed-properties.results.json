@@ -1,0 +1,164 @@
+{
+  "testCases": [
+    {
+      "name": "sum with mapper: totalAmount over lineItems",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-1", "customerName": "Alice" } },
+          { "entity": "LineItem", "data": { "id": "li-1", "price": 10, "quantity": 3, "orderId": "order-1" } },
+          { "entity": "LineItem", "data": { "id": "li-2", "price": 25, "quantity": 2, "orderId": "order-1" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-1",
+        "property": "totalAmount"
+      },
+      "expectedValue": 80
+    },
+    {
+      "name": "count_of: itemCount counts lineItems",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-2", "customerName": "Bob" } },
+          { "entity": "LineItem", "data": { "id": "li-3", "price": 5, "quantity": 1, "orderId": "order-2" } },
+          { "entity": "LineItem", "data": { "id": "li-4", "price": 15, "quantity": 1, "orderId": "order-2" } },
+          { "entity": "LineItem", "data": { "id": "li-5", "price": 20, "quantity": 1, "orderId": "order-2" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-2",
+        "property": "itemCount"
+      },
+      "expectedValue": 3
+    },
+    {
+      "name": "avg with mapper: averagePrice of lineItems",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-3", "customerName": "Carol" } },
+          { "entity": "LineItem", "data": { "id": "li-6", "price": 10, "quantity": 1, "orderId": "order-3" } },
+          { "entity": "LineItem", "data": { "id": "li-7", "price": 30, "quantity": 1, "orderId": "order-3" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-3",
+        "property": "averagePrice"
+      },
+      "expectedValue": 20
+    },
+    {
+      "name": "min_of with mapper: cheapestItem price",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-4", "customerName": "Dave" } },
+          { "entity": "LineItem", "data": { "id": "li-8", "price": 50, "quantity": 1, "orderId": "order-4" } },
+          { "entity": "LineItem", "data": { "id": "li-9", "price": 8, "quantity": 2, "orderId": "order-4" } },
+          { "entity": "LineItem", "data": { "id": "li-10", "price": 25, "quantity": 1, "orderId": "order-4" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-4",
+        "property": "cheapestItem"
+      },
+      "expectedValue": 8
+    },
+    {
+      "name": "max_of with mapper: mostExpensiveItem price",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-5", "customerName": "Eve" } },
+          { "entity": "LineItem", "data": { "id": "li-11", "price": 12, "quantity": 1, "orderId": "order-5" } },
+          { "entity": "LineItem", "data": { "id": "li-12", "price": 99, "quantity": 1, "orderId": "order-5" } },
+          { "entity": "LineItem", "data": { "id": "li-13", "price": 45, "quantity": 1, "orderId": "order-5" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-5",
+        "property": "mostExpensiveItem"
+      },
+      "expectedValue": 99
+    },
+    {
+      "name": "count_of with predicate: highValueCount filters line totals > 50",
+      "setup": {
+        "createInstances": [
+          { "entity": "Order", "data": { "id": "order-6", "customerName": "Frank" } },
+          { "entity": "LineItem", "data": { "id": "li-14", "price": 10, "quantity": 2, "orderId": "order-6" } },
+          { "entity": "LineItem", "data": { "id": "li-15", "price": 30, "quantity": 3, "orderId": "order-6" } },
+          { "entity": "LineItem", "data": { "id": "li-16", "price": 100, "quantity": 1, "orderId": "order-6" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-6",
+        "property": "highValueCount"
+      },
+      "expectedValue": 2
+    },
+    {
+      "name": "sum with mapper returns 0 for empty collection",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-empty", "customerName": "Ghost" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-empty",
+        "property": "totalAmount"
+      },
+      "expectedValue": 0
+    },
+    {
+      "name": "count_of returns 0 for empty collection",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-empty2", "customerName": "Nobody" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-empty2",
+        "property": "itemCount"
+      },
+      "expectedValue": 0
+    },
+    {
+      "name": "avg returns 0 for empty collection",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-empty3", "customerName": "Empty" }
+        }
+      },
+      "computedProperty": {
+        "entity": "Order",
+        "instanceId": "order-empty3",
+        "property": "averagePrice"
+      },
+      "expectedValue": 0
+    },
+    {
+      "name": "lineTotal computed property on LineItem (non-aggregate)",
+      "setup": {
+        "createInstance": {
+          "entity": "LineItem",
+          "data": { "id": "li-solo", "price": 15, "quantity": 4 }
+        }
+      },
+      "computedProperty": {
+        "entity": "LineItem",
+        "instanceId": "li-solo",
+        "property": "lineTotal"
+      },
+      "expectedValue": 60
+    }
+  ]
+}

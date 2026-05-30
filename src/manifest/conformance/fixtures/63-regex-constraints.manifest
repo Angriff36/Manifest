@@ -1,0 +1,12 @@
+entity ContactInfo {
+  property required id: string
+  property email: string = ""
+  property phone: string = ""
+  property zipCode: string = ""
+
+  constraint validEmail: matches(self.email, "^[^@]+@[^@]+\\.[^@]+$") "Must be a valid email format"
+  constraint validPhone: matches(self.phone, "^\\d{3}-\\d{3}-\\d{4}$") "Phone must be in XXX-XXX-XXXX format"
+  constraint validZip: matches(self.zipCode, "^\\d{5}$") "Zip code must be 5 digits"
+}
+
+store ContactInfo in memory
