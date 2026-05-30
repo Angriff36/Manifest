@@ -1,0 +1,237 @@
+Last updated: 2026-05-26
+Status: Active
+Authority: Binding
+Enforced by: `manifest config validate`, `manifest validate`, `manifest integration-check`, consumer CI (recommended)
+Applies to: `@angriff36/manifest@0.5.0+`
+
+# Consumer Project Layout (Normative)
+
+This document defines where Manifest-owned artifacts belong in **downstream
+applications** that use `@angriff36/manifest`. It does **not** describe the
+Manifest language repository (`Angriff36/Manifest`), which is a compiler/runtime
+implementation, not a consumer app.
+
+Path keys in [`manifest.config.md`](./config/manifest.config.md) and
+[`manifest.config.schema.json`](./config/manifest.config.schema.json) are the
+executable contract for codegen paths. This document is the human-readable map
+those keys implement.
+
+## Normative language
+
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**,
+**SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** in this
+document are to be interpreted as described in RFC 2119.
+
+## What this repo is not
+
+The Manifest language repository layout:
+
+| Path | Role |
+|------|------|
+| `src/manifest/` | Compiler, runtime, projections (product source) |
+| `docs/spec/` | Language law |
+| `src/manifest/conformance/fixtures/` | Executable semantics evidence |
+| `fixtures/sample-app/` | Minimal **reference consumer** (not production Capsule-Pro) |
+
+Do not copy the language-repo tree into consumer apps.
+
+## The three layers
+
+Every consumer app MUST organize work in three layers. Nothing in layer 2 or 3
+defines language semantics; layer 1 + compiled layer 2 do.
+
+```text
+Layer 1 — SOURCE (edit)
+  *.manifest
+       │
+       │  manifest compile  (or manifest build)
+       ▼
+Layer 2 — IR (compiler output; do not hand-edit)
+  <output>/program.ir.json  (path from manifest.config `output`)
+       │
+       │  manifest generate -p <projection>
+       ▼
+Layer 3 — DERIVATIVE (regenerated; do not treat as source of truth)
+  routes, schema.prisma, TS types, client helpers, …
+```
+
+Hand-written **glue** (runtime factory, HTTP envelopes, auth, DB client) sits
+beside layer 3 and is wired via `manifest.config` import paths.
+
+## Integration profiles
+
+Choose one profile and document it in the repo README. Mixing profiles without
+renaming paths breaks CI and agent reasoning.
+
+### Profile M — Minimal
+
+For compile + validate only (libraries, early adoption).
+
+| Artifact | Required path | Notes |
+|----------|---------------|-------|
+| Manifest sources | `**/*.manifest` or `manifest/**/*.manifest` | Matched by config `src` |
+| Config | `manifest.config.yaml` **or** documented script equivalent | MUST record `src` and `output` |
+| Compiled IR | `ir/` (default) | One or more `*.json` files |
+| Package dep | `@angriff36/manifest` | Dev or runtime dependency |
+
+MAY omit projections, registries, and app routes.
+
+### Profile N — Next.js application (RECOMMENDED default)
+
+For apps that execute governed commands over HTTP.
+
+Everything in **M**, plus:
+
+| Artifact | Default path | Config / CLI |
+|----------|--------------|--------------|
+| Config | `manifest.config.yaml` (+ optional `manifest.config.ts`) | `manifest init`; see [config reference](./config/manifest.config.md) |
+| Generated routes | `projections.nextjs.output` (default `generated/`) | Often set to `apps/api/app/api` in monorepos |
+| App Router base | `projections.nextjs.options.appDir` (default `apps/api/app/api`) | All route `pathHint`s are relative to this |
+| Canonical dispatcher | `{appDir}/manifest/[entity]/commands/[command]/route.ts` | Surface `nextjs.dispatcher` |
+| Runtime factory | Hand-written; default import `@/lib/manifest-runtime` | `runtimeImportPath` |
+| HTTP envelope | Hand-written; default `@/lib/manifest-response` | `responseImportPath` |
+| Prisma schema | `prisma/schema.prisma` or team convention | `manifest generate -p prisma` |
+
+**Writes** that enforce Manifest semantics MUST reach `RuntimeEngine.runCommand`
+(typically via the dispatcher or an approved executor wrapper). **Reads** MAY
+use direct DB access; see [`adapters.md`](./adapters.md) and
+[`../guides/writing-projections.md`](../guides/writing-projections.md).
+
+### Profile G — Governed production
+
+For products with constitution-style CI (Capsule-Pro class).
+
+Everything in **N**, plus committed machine-readable governance:
+
+| Artifact | RECOMMENDED path | Emission |
+|----------|------------------|----------|
+| Command registry | `manifest-registry/commands.json` | `manifest emit registries` |
+| Entity registry | `manifest-registry/entities.json` | same |
+| Bypass registry | `bypasses.json` (repo root) **or** `manifest-registry/bypasses.json` | hand-curated; validated by `manifest audit-bypasses` |
+| CI umbrella | — | `manifest integration-check` and/or `manifest audit-governance` |
+
+Downstream repos MAY relocate registry directories (e.g. `manifest/governance/`)
+if **one** canonical path is documented and all CI flags use it. Renaming without
+updating CI is a layout violation.
+
+Reference fixture (Profile G, minimal domain):
+[`fixtures/sample-app/`](../../fixtures/sample-app/).
+
+## `manifest.config.yaml` — path contract
+
+After `manifest init`, the config file at the repository root (or app package
+root) is the authoritative map for tooling.
+
+| Key | Default | Controls |
+|-----|---------|----------|
+| `src` | `**/*.manifest` | Source glob |
+| `output` | `ir/` | IR output directory |
+| `prismaSchema` | auto-discover | Prisma alignment scans |
+| `projections.nextjs.output` | `generated/` | Root for Next.js projection writes |
+| `projections.nextjs.options.appDir` | `apps/api/app/api` | Route prefix inside the app |
+| `projections.nextjs.options.*ImportPath` | see [defaults.ts](../../src/manifest/projections/nextjs/defaults.ts) | Glue module imports |
+
+Inspect effective paths:
+
+```bash
+manifest config inspect --json
+manifest config validate
+```
+
+If a monorepo uses **scripts instead of YAML** (no `manifest.config.*`), the
+repo MUST document equivalent values in a binding doc (constitution or README)
+and keep script constants aligned with that doc.
+
+## Projection outputs (normative paths)
+
+Paths below are **defaults**; overrides MUST go through `manifest.config`.
+
+### Next.js projection
+
+| Surface | Default `pathHint` | HTTP / purpose |
+|---------|-------------------|----------------|
+| `nextjs.dispatcher` | `{appDir}/manifest/[entity]/commands/[command]/route.ts` | `POST /api/manifest/{entity}/commands/{command}` |
+| `nextjs.command` | `{appDir}/{entity}/{command}/route.ts` | Deprecated per-command alias |
+| `nextjs` (list) | `{appDir}/{entity}/list/route.ts` | Direct read |
+| `nextjs.detail` | `{appDir}/{entity}/[id]/route.ts` | Direct read |
+| `nextjs.types` | `src/types/manifest-generated.ts` | Shared TS types |
+| `nextjs.client` | `src/lib/manifest-client.ts` | Client helper |
+
+Generated route files MUST be marked generated and MUST NOT be edited as source.
+
+### Prisma projection
+
+| Output | Typical location | Notes |
+|--------|------------------|-------|
+| `schema.prisma` | CLI `-o` or `prisma/schema.prisma` | Only entities with durable stores |
+| `prisma.config.ts` | Same directory | When provider set (Prisma 7+) |
+
+### Routes projection
+
+| Output | Typical location | Notes |
+|--------|------------------|-------|
+| Route manifest JSON | `manifest.routes.json` or script-defined | Used by `manifest lint-routes` / audits |
+
+### Registry emission
+
+| Output | Schema | CLI |
+|--------|--------|-----|
+| `commands.json` | [`registry/commands.schema.json`](./registry/commands.schema.json) | `manifest emit registries --out <dir>` |
+| `entities.json` | [`registry/entities.schema.json`](./registry/entities.schema.json) | same |
+
+## Hand-written glue (required for Profile N+)
+
+These files are **not** generated from IR. They MUST exist or be provided by
+shared workspace packages.
+
+| Responsibility | Typical file | Config key |
+|----------------|--------------|------------|
+| Build `RuntimeEngine`, wire stores | `lib/manifest-runtime.ts` | `runtimeImportPath` |
+| Map `CommandResult` → HTTP | `lib/manifest-response.ts` | `responseImportPath` |
+| Auth → `RuntimeContext` | App auth module | `authImportPath`, `authProvider` |
+| DB client for read routes | App database module | `databaseImportPath` |
+| External executor (optional) | `lib/manifest-executor.ts` | `dispatcher.executorImportPath` when `executionMode: externalExecutor` |
+
+Capsule-Pro uses `execute-command.ts` instead of `manifest-executor.ts`; that
+is a naming variant, not a second canonical write path. See
+[`../internal/integrations/capsule-pro/layout-conformance.md`](../internal/integrations/capsule-pro/layout-conformance.md).
+
+## CI checks (RECOMMENDED)
+
+| Check | Command | Proves |
+|-------|---------|--------|
+| IR valid | `manifest validate ir/` | Schema compliance |
+| Config valid | `manifest config validate` | Config schema |
+| No codegen drift | `manifest build` + git diff | Regen matches commit |
+| Governance | `manifest audit-governance` | Direct writes, route drift, tests, bypasses |
+| Umbrella | `manifest integration-check` | Composed gate for adopters |
+
+## Anti-patterns (MUST NOT)
+
+1. Hand-edit IR JSON to “fix” runtime behavior.
+2. Edit generated routes or `schema.prisma` as source of truth.
+3. Put domain semantics only in UI or Prisma, bypassing IR.
+4. Scatter `.manifest` files without a documented `src` glob.
+5. Commit registries under one path and point CI at another.
+6. Place Capsule-style generated Manifest artifacts under `packages/` when the
+   product constitution forbids it (see downstream binding docs).
+
+## Language repository vs consumer (summary)
+
+```text
+Manifest repo (implementation)     Consumer app (your product)
+─────────────────────────────     ───────────────────────────
+src/manifest/compiler.ts            manifest/**/*.manifest
+docs/spec/ir/ir-v1.schema.json      ir/*.json
+conformance/fixtures/               manifest-registry/ (Profile G)
+npm run dev (Kitchen UI)            apps/.../api/manifest/.../route.ts
+```
+
+## Related documents
+
+- [`./config/manifest.config.md`](./config/manifest.config.md) — every config key
+- [`./adapters.md`](./adapters.md) — dispatcher, audit, outbox
+- [`./registry/README.md`](./registry/README.md) — registry schemas
+- [`../guides/external-integration-checklist.md`](../guides/external-integration-checklist.md) — adoption checklist
+- [`../../fixtures/sample-app/README.md`](../../fixtures/sample-app/README.md) — minimal Profile G example
+- [`../internal/integrations/capsule-pro/layout-conformance.md`](../internal/integrations/capsule-pro/layout-conformance.md) — Capsule-Pro tree diff (2026-05-26)

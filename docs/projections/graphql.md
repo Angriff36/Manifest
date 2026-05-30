@@ -1,0 +1,51 @@
+# GraphQL Projection
+
+The GraphQL projection generates a GraphQL SDL schema and matching resolver stubs from compiled Manifest IR. Entity reads become queries, commands become mutations, and events become subscriptions. Use it to expose a Manifest domain through a GraphQL server while keeping write semantics routed through the runtime.
+
+## What it generates
+
+The projection registers under the name `graphql` and declares two surfaces, `graphql.schema` and `graphql.resolvers`. The `graphql.schema` surface emits an SDL document (`id: 'graphql.schema'`, content type `graphql`, written at `schema.graphql`); the `graphql.resolvers` surface emits TypeScript resolver stubs (`id: 'graphql.resolvers'`, content type `typescript`, written at `resolvers.ts`).
+
+The SDL contains entity object types, a `type Query` with per-entity read fields, a `type Mutation` with one field per command, a `type Subscription` derived from IR events, `input` types for command parameters, `enum` definitions from IR enums, and `scalar` declarations for any custom scalars detected (such as `DateTime`, `UUID`, `JSON`). The resolver stubs wire queries to direct database reads and mutations to the Manifest runtime.
+
+## Usage
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { getProjection } from '@angriff36/manifest/projections';
+
+const { ir } = await compileToIR(source);
+
+const projection = getProjection('graphql');
+
+const schema = projection?.generate(ir, { surface: 'graphql.schema' });
+const resolvers = projection?.generate(ir, {
+  surface: 'graphql.resolvers',
+  options: {
+    runtimeImportPath: '@repo/manifest/runtime',
+    databaseImportPath: '@repo/database',
+  },
+});
+```
+
+`GraphQLProjection` can also be imported directly from `@angriff36/manifest/projections/graphql`, or dispatched through the CLI by name:
+
+```bash
+manifest generate ir/recipe.ir.json --projection graphql --surface graphql.schema --output schema.graphql
+```
+
+## Type mapping & behavior
+
+IR types map to GraphQL types in `irTypeToGraphQL`. `string` maps to `String`, `number` to `Float`, `integer`/`int` to `Int`, `boolean`/`bool` to `Boolean`, `date` to `Date`, `datetime` to `DateTime`, `uuid` to `UUID`, and `email` / `url` / `uri` to `String`. `array` (with a generic) becomes a GraphQL list with non-null inner elements unless the inner type is nullable, and `map` / `record` / `object` become `JSON`. Unknown types fall back to `String`. Types such as `DateTime`, `UUID`, `JSON`, `Date`, `Email`, and `URL` are declared as custom scalars when used.
+
+Mutations are mapped from commands, with non-null markers placed on required parameters in the generated input types. Resolver stubs for queries call the database client directly (for example `database.<table>.findUnique`), while mutation resolvers are expected to delegate to the runtime at `runtimeImportPath`.
+
+## Options
+
+The options object is `GraphQLProjectionOptions` in `graphql/types.ts`. All boolean toggles default to true: `includeAuthDirectives` (emit `@auth(requires: ...)` on fields/types that carry policies), `includeSubscriptions` (subscription types from events), `includeGuardDescriptions` and `includeConstraintDescriptions` (fold guard/constraint info into descriptions), `includeResolverStubs` (emit resolver stubs alongside the SDL), `includeComputedProperties`, `includeInputTypes` (input types for command parameters), and `includeEnums`.
+
+`runtimeImportPath` (default `@/lib/manifest-runtime`) and `databaseImportPath` (default `@/lib/database`) set the imports used in resolver stubs. `customScalars` supplies extra scalar definitions beyond the auto-detected set.
+
+## Notes & limitations
+
+This projection has no entry in `completed-feature-summaries.md`; its behavior here is taken directly from `src/manifest/projections/graphql/generator.ts` and `types.ts`. The resolver stubs are stubs — the query resolvers inline a direct database lookup and the mutation resolvers are scaffolding that you complete against your runtime; they are not a finished server.

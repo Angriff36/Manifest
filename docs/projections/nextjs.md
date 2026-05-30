@@ -1,0 +1,81 @@
+# Next.js Projection
+
+The Next.js projection turns compiled Manifest IR into App Router API artifacts: route handlers for reads, a canonical command dispatcher for writes, generated TypeScript types, and a client SDK. Use it when you want transport code that stays anchored to your domain contract without hand-maintaining route handlers as the IR evolves.
+
+## What it generates
+
+The projection registers under the name `nextjs` and exposes six surfaces, declared on the generator as `['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'ts.types', 'ts.client']`.
+
+`nextjs.route` and `nextjs.detail` emit GET handlers for an entity — a list route and a single-record detail route. By design these reads issue direct Prisma queries against the client at `databaseImportPath` and bypass the runtime engine, because Manifest does not enforce `read` policies during command execution and direct queries avoid runtime overhead for simple fetches.
+
+`nextjs.dispatcher` is the canonical write surface. It emits a single handler mounted at `POST /api/manifest/[entity]/commands/[command]` that routes every command through the Manifest runtime. Writes must go through the runtime so that guards, constraints, execute/all policies, and event emission all run. The dispatcher defaults to constructing a `createManifestRuntime` instance per request and calling `runtime.runCommand`; it can instead delegate to an app-supplied executor (see Options).
+
+`nextjs.command` emits a concrete per-command route. It is a deprecated surface — disabled by default and, when enabled, marked as a legacy alias of the dispatcher. `ts.types` emits shared TypeScript interfaces for the entities, and `ts.client` emits fetch helpers for a frontend client.
+
+## Usage
+
+Compile to IR, then call `generate` per surface, writing each artifact at its `pathHint`.
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { NextJsProjection } from '@angriff36/manifest/projections/nextjs';
+
+const { ir, diagnostics } = await compileToIR(source);
+if (!ir || diagnostics.some((d) => d.severity === 'error')) {
+  throw new Error(JSON.stringify(diagnostics, null, 2));
+}
+
+const projection = new NextJsProjection();
+
+const dispatcher = projection.generate(ir, {
+  surface: 'nextjs.dispatcher',
+  options: {
+    authProvider: 'clerk',
+    databaseImportPath: '@repo/database',
+    runtimeImportPath: '@repo/manifest/runtime',
+    responseImportPath: '@/lib/manifest-response',
+  },
+});
+
+const listRoute = projection.generate(ir, {
+  surface: 'nextjs.route',
+  entity: 'Recipe',
+  options: { authProvider: 'clerk', databaseImportPath: '@repo/database' },
+});
+
+const types = projection.generate(ir, { surface: 'ts.types' });
+```
+
+You can also resolve the projection through the registry, which auto-registers all builtins on first access:
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('nextjs');
+const result = projection?.generate(ir, { surface: 'nextjs.dispatcher' });
+```
+
+From the CLI the same projection backs `manifest generate`. The `nextjs` projection has dedicated multi-surface orchestration so `--surface all` fans out across route, dispatcher, types, and client:
+
+```bash
+manifest compile modules/recipe.manifest --output ir/
+manifest generate ir/recipe.ir.json --projection nextjs --surface all --output apps/api/app/api/
+```
+
+## Type mapping & behavior
+
+The read routes generate Prisma `findMany` / `findUnique` calls. When tenant filtering is enabled (the default), the handler resolves a tenant from the configured auth identity and adds it to the `where` clause; soft-delete filtering adds `deletedAt: null`. Both the tenant ID property and the soft-delete property names are configurable, and either filter can be turned off entirely. The default tenant resolution looks up a `userTenantMapping.findUnique` record, but a pluggable `tenantProvider` can replace that with an app function keyed on `orgId` or `userId`.
+
+Authentication is driven by `authProvider`. `clerk` emits a `@clerk/nextjs` auth call, `nextauth` emits `getServerSession`, `custom` imports from `authImportPath`, and `none` uses a fixed anonymous identity. Auth rejections return the configurable `unauthorizedStatus` (default 401) and never surface as a 500.
+
+## Options
+
+The full options object is `NextJsProjectionOptions` in `src/manifest/projections/interface.ts`. The commonly used fields are the import paths (`authImportPath`, `databaseImportPath`, `responseImportPath`, `runtimeImportPath`, default `@/lib/auth`, `@/lib/database`, `@/lib/manifest-response`, `@/lib/manifest-runtime`), the auth selector `authProvider`, the filter toggles `includeTenantFilter` and `includeSoftDeleteFilter` with their `tenantIdProperty` / `deletedAtProperty` names, the `appDir` (default `app/api`), and formatting flags `strictMode`, `includeComments`, and `indentSize`.
+
+Three nested option groups control the write and read surfaces. `dispatcher` controls the canonical write route: `enabled` (default true), `executionMode` (`inline` default, or `externalExecutor` with `executorImportPath` / `executorImportName`), `deriveInstanceId` (default true, pulls `instanceId`/`id` from the body for non-create commands), and a `path` override. `concreteCommandRoutes` controls the deprecated per-command surface with `enabled` (default false) and `legacyAliasesOnly` (default true). `readRoutes` controls reads with `enabled` (default true) and `directDbReads` (default true; set false to emit read stubs without inlining a Prisma call).
+
+## Notes & limitations
+
+Reads deliberately bypass the runtime engine and assume a Prisma-compatible client. If your project routes reads through a separate query layer, set `readRoutes.directDbReads` to false rather than expecting the projection to enforce read policies — it does not.
+
+The bundled `src/manifest/projections/nextjs/README.md` documents an older API (`projection.generateRoute(ir, 'Recipe')`, `generateTypes`, `generateClient`) and an `outputPath` option. The current generator implements the `ProjectionTarget` contract through the single `generate(ir, request)` entry point and does not accept `outputPath` — file writing is the caller's responsibility, with the suggested location returned as each artifact's `pathHint`. Prefer the surface-based API above; the README examples are stale.

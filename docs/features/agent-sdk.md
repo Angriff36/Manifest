@@ -1,0 +1,58 @@
+# AI Agent SDK
+
+The agent SDK (`@angriff36/manifest/agent-sdk`) wraps the runtime engine with LLM-friendly interfaces: IR introspection, tool-definition generation for Anthropic, OpenAI, and the Vercel AI SDK, keyword-based intent mapping, and a stateful `AgentRuntime` that routes tool calls to built-in introspection or IR commands. It adds no IR-shape or runtime-semantic changes. Verified against `src/manifest/agent-sdk/`.
+
+## Usage / Syntax
+
+```ts
+import { AgentRuntime } from '@angriff36/manifest/agent-sdk';
+import { RuntimeEngine } from '@angriff36/manifest';
+
+const engine = new RuntimeEngine(ir);
+const agent = new AgentRuntime(engine, { builtinPrefix: 'manifest', toolNameStrategy: 'snake' });
+
+// Hand tool definitions to the model
+const tools = agent.getToolDefinitions('anthropic');
+
+// Route a tool call the model emitted
+const result = await agent.executeToolCall({
+  name: 'order_placeOrder',
+  arguments: { total: 100 },
+});
+```
+
+Stateless helpers are also exported and can be used without an `AgentRuntime`:
+
+```ts
+import { toOpenAITools, listEntities, describeCommand, findMatchingCommands } from '@angriff36/manifest/agent-sdk';
+```
+
+## Behavior / What it does
+
+`AgentRuntime` wraps a `RuntimeEngine`, reads its IR via `engine.getIR()`, and precomputes the built-in tool names from the configured prefix (default `manifest`). `getToolDefinitions(format)` returns command tools plus built-in tools in the requested format (`anthropic`, `openai`, or `vercel`).
+
+`executeToolCall(call)` routes by name: if the name matches a built-in tool it runs introspection; otherwise it checks the IR command registry (by raw name or mangled `entity_command` name) and, if found, executes through the engine. Unknown names return `{ success: false, code: 'UNKNOWN_TOOL' }`. Results are returned as `AgentToolResult` with a `success` flag, a `code` (such as `SUCCESS`, `UNKNOWN_TOOL`, `MISSING_ARGUMENT`, `ENTITY_NOT_FOUND`, `COMMAND_NOT_FOUND`), a `message`, and optional `data`.
+
+Tool-name mangling (`mangleToolName`): the `snake` strategy lowercases the entity and joins with the command, preserving the command's original case — `Order.placeOrder` becomes `order_placeOrder`. The `dot` strategy leaves the name as `Entity.command`. `parseToolName` reverses the snake form reliably.
+
+Tool descriptions are derived from each command: entity, module, parameters (with `?` marking optional), optional guard/policy hints, and emitted events.
+
+The introspection module exposes `listEntities`, `describeEntity`, `listCommands`, `describeCommand`, `getEntityRelationships`, `getActionableEntities`, plus a standalone `formatExpression` (a reimplementation of the engine's expression formatter so callers can render guard/policy expressions) and `formatIRType`.
+
+The intent mapper (`tokenize`, `findMatchingCommands`) tokenizes natural-language input by splitting on whitespace and camelCase before lowercasing, and scores candidate commands by token overlap.
+
+JSON Schema helpers (`irTypeToJsonSchema`, `irParametersToJsonSchema`, `irValueToJson`) convert IR types and values to a Draft-07 JSON Schema subset for tool parameter schemas.
+
+## Reference
+
+Built-in introspection tool names (prefix is configurable, default `manifest`): `<prefix>_list_entities`, `<prefix>_describe_entity`, `<prefix>_list_commands`, `<prefix>_describe_command`, `<prefix>_execute_command`, `<prefix>_get_instances`, `<prefix>_check_constraints`.
+
+`AgentRuntimeOptions`: `builtinPrefix?: string` (default `manifest`), `toolNameStrategy?: 'snake' | 'dot'` (default `snake`).
+
+Key exports (from `agent-sdk/index.ts`): `AgentRuntime`; `toAnthropicTools`, `toOpenAITools`, `toVercelAITools`, `commandToAnthropicTool`, `commandToOpenAITool`, `commandToVercelTool`, `mangleToolName`, `parseToolName`, `getBuiltinToolNames`; `listEntities`, `describeEntity`, `listCommands`, `describeCommand`, `getEntityRelationships`, `getActionableEntities`, `formatExpression`, `formatIRType`; `findMatchingCommands`, `tokenize`; `irTypeToJsonSchema`, `irParametersToJsonSchema`, `irValueToJson`.
+
+Tool formats: `AnthropicTool` (`{ name, description, input_schema }`), `OpenAITool` (`{ type: 'function', function: { name, description, parameters } }`), `VercelAITools` (record keyed by tool name of `{ description, parameters }`).
+
+## Notes & limitations
+
+The SDK is a wrapper; all execution still flows through `RuntimeEngine.runCommand`, so guards, policies, constraints, and tenant gating apply unchanged. `parseToolName` only round-trips reliably under the `snake` strategy. The intent mapper is keyword/token-based scoring, not a semantic matcher. The package re-exports `AgentToolResult` rather than the engine's `CommandResult`, so the agent surface intentionally differs from the raw runtime result type. The SDK is distributed via the `./agent-sdk` package export rather than as a separately published npm package.

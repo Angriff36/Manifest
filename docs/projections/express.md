@@ -1,0 +1,48 @@
+# Express Projection
+
+The Express projection generates standalone router modules — for either Express or Fastify — from compiled Manifest IR. Use it when you are building a Node.js HTTP service and want typed route handlers that read entities directly and dispatch writes through the Manifest runtime, with auth middleware and optional Zod validation already wired in.
+
+The projection is registered under the name `express` and lives at `src/manifest/projections/express/generator.ts`. Despite the name it covers both frameworks via the `framework` option.
+
+## What it generates
+
+The projection exposes four surfaces.
+
+`express.router` emits a complete router module (path hint `routes/manifest-router.ts`, or `routes/<entity>.ts` when an `entity` is supplied). For Express this is an exported `createManifestRouter(): Router`; for Fastify it is an exported `async manifestRoutes(fastify)` plugin. Each entity gets a `GET /{entity}/list` route, a `GET /{entity}/:id` route, and one `POST /{entity}/{command-kebab}` route per entity-scoped command. Read routes call `runtime.list(...)` / `runtime.get(...)` directly; command routes extract an `instanceId` from `body.instanceId ?? body.id` and call `runtime.runCommand(entity, command, { params, instanceId }, context)`.
+
+`express.entity` emits a single-entity router; with no `entity` set it emits one artifact per entity. `express.types` emits TypeScript request/response interfaces (one `interface` per entity, with computed properties as `readonly`, plus a `<Entity><Command>Params` interface for each command that has parameters). `express.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields an `EXPRESS_ENTITY_NOT_FOUND` warning.
+
+Command handlers map runtime error codes to HTTP status: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, and anything else to 500. When `includeComments` is on, each command handler is preceded by a JSDoc block listing its guards (with index and rendered expression), constraint and policy counts, and emitted events.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('express');
+
+// Complete Express router
+const router = projection.generate(ir, { surface: 'express.router' });
+
+// Fastify plugin plus types
+const fastify = projection.generate(ir, {
+  surface: 'express.all',
+  options: { framework: 'fastify', validationImportPath: './schemas' },
+});
+```
+
+## Type mapping & behavior
+
+`irTypeToTs` maps IR types to TypeScript: `string` to `string`; `number`/`integer`/`int` to `number`; `boolean`/`bool` to `boolean`; `date`/`datetime`/`uuid`/`email`/`url`/`uri`/`decimal` to `string`; `any` to `unknown`; `object` to `Record<string, unknown>`. Generic `array<T>` becomes `T[]`, `map<V>` becomes `Record<string, V>`, and `record` becomes `Record<string, unknown>`. Unknown type names fall back to `unknown`, and nullable types append ` | null`.
+
+Entity interface fields are optional unless the property has the `required` modifier. Command params interface fields are optional unless the parameter is `required`. Entity route segments are the lower-cased entity name; command route segments are kebab-cased. When `validationImportPath` is set, command handlers import `<Entity><Command>ParamsSchema` and run `safeParse` on the body, returning a 400 `VALIDATION_ERROR` on failure before dispatch.
+
+## Options
+
+`ExpressProjectionOptions` accepts `framework` (`'express' | 'fastify'`, default `express`), `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (an ISO timestamp override for deterministic output in tests).
+
+## Notes & limitations
+
+The generated module imports the auth middleware and runtime factory from the configured paths; it does not define them. Read routes (`list`/`get`) bypass the runtime engine and call the runtime's read methods directly, while all writes go through `runtime.runCommand`. The `basePath` option is normalized but the entity route paths in the generated handlers are not prefixed with it, so the prefix is applied where you mount the router, not inside the generated route strings.
+
+There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only — emit Express/Fastify output by invoking `getProjection('express')` programmatically. (Per-feature notes referencing `manifest generate <ir> -p express` describe an intended CLI path that is not present in the current `generate` command.)

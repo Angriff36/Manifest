@@ -280,6 +280,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-Files: vitest.config.ts (edit), src/manifest/ir-compiler.ts (edit), src/manifest/projections/builtins.ts (edit)
+No changes or facts in this session.
 
 # === END COGNILAYER ===

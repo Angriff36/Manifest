@@ -1,0 +1,56 @@
+# OpenAPI Projection
+
+The OpenAPI projection generates a complete OpenAPI 3.1.0 specification from compiled Manifest IR — entity read operations, command write operations, JSON Schema-typed bodies, security schemes, and constraint error responses. Use it to feed OpenAPI toolchains for SDK generation, mock servers, or API documentation.
+
+## What it generates
+
+The projection registers under the name `openapi` and declares a single surface, `openapi.spec`. A `generate` call returns one artifact (`id: 'openapi.spec'`, content type `json`, written at `openapi.json`).
+
+The spec includes GET list and GET detail operations per entity (with path parameters on the detail route), POST operations for commands with typed request and response bodies, entity schemas in `components.schemas` (carrying required, optional, readonly, and computed properties), write schemas that exclude read-only properties, command-specific request schemas, and constraint error response schemas (`ConstraintErrorResponse`, `GuardFailureResponse`, `ConcurrencyConflictResponse`). Operation IDs are derived from entity and command names (for example `listRecipes`, `getRecipe`, `recipeCreate`), operations are tagged by entity, and guard/constraint information is folded into operation descriptions. Output is deterministic — entities and commands are sorted.
+
+## Usage
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { getProjection } from '@angriff36/manifest/projections';
+
+const { ir } = await compileToIR(source);
+
+const projection = getProjection('openapi');
+const result = projection?.generate(ir, {
+  surface: 'openapi.spec',
+  options: {
+    basePath: '/api',
+    info: { title: 'Recipe API', version: '1.0.0' },
+    servers: [{ url: 'https://api.example.com' }],
+  },
+});
+
+const spec = result?.artifacts[0]?.code; // JSON string
+```
+
+`OpenApiProjection` can also be imported directly from `@angriff36/manifest/projections/openapi`, or dispatched through the CLI by name:
+
+```bash
+manifest generate ir/recipe.ir.json --projection openapi --surface openapi.spec --output openapi.json
+```
+
+## Type mapping & behavior
+
+IR types map to JSON Schema in `irTypeToJsonSchema`. `string`, `number`, `integer`/`int`, and `boolean`/`bool` map to their JSON Schema equivalents; `date` and `datetime` become `string` with `date` / `date-time` formats; `uuid`, `email`, and `url`/`uri` become `string` with `uuid`, `email`, and `uri` formats. `array` (with a generic) becomes a typed array, `map` becomes an object with typed `additionalProperties`, and `record` / `object` become open objects. Unknown types fall back to `string`.
+
+Note that unlike the Prisma and Drizzle projections, OpenAPI maps bare `number` directly to a JSON Schema `number` — there is no ambiguity diagnostic here, because JSON Schema's numeric type is itself unconstrained between integer and real.
+
+Security is derived from entity policies when `includePolicySecurity` is enabled, and global security plus the scheme catalog come from the options. Constraint and guard metadata is surfaced in descriptions and as the error response schemas described above.
+
+## Options
+
+The options object is `OpenApiProjectionOptions` in `openapi/types.ts`. `basePath` (default `/api`) prefixes all routes. `info` overrides the title, version, description, contact, and license; the title defaults to a value derived from IR modules or `Manifest API`, and the version defaults to the IR provenance `schemaVersion` or `1.0.0`. `servers` lists server URLs (with optional variables), `securitySchemes` defines the named schemes in `components` (`apiKey`, `http`, `oauth2`, `openIdConnect`), and `security` sets global requirements.
+
+Boolean toggles default to true: `includeAuth` (auth on routes), `includeTenant` (tenant context), `includeConstraintErrors` (the error response schemas), and `includePolicySecurity` (per-operation security derived from policies). `generatedAt` accepts an ISO timestamp override for deterministic output in tests.
+
+## Notes & limitations
+
+The feature summary lists `includeAuth`, `includeConstraintErrors`, and the `info`/`servers`/`securitySchemes`/`security` options; the source additionally exposes `includeTenant`, `includePolicySecurity`, and `generatedAt`, all documented above. The summary's note that `email` is among the mapped types is accurate (it maps to `string` with `format: email`); `url`/`uri` are also handled though the summary does not mention them.
+
+The summary describes the work against a test-suite total of 1218 with 10 pre-existing unrelated failures at the time of implementation; that figure is historical and not a current count.
