@@ -26,7 +26,7 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, type DrizzleProjectionOptions, type IndexEntry, type ForeignKeyConfig } from './options.js';
+import { normalizeOptions, type DrizzleProjectionOptions, type ForeignKeyConfig } from './options.js';
 import {
   resolveDrizzleColumnType,
   isNumericType,
@@ -115,7 +115,7 @@ function emitPropertyColumn(
   prop: IRProperty,
   ir: IR,
   options: DrizzleProjectionOptions,
-  dialect: DrizzleDialect,
+  _dialect: DrizzleDialect,
 ): PropertyEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
 
@@ -367,8 +367,6 @@ function emitRelationship(
       const configFkOverride = options.foreignKeys?.[entity.name]?.[rel.name];
       let fkFields: string[];
       let configRefs: string[] | undefined;
-      let configOnDelete: string | undefined;
-      let configOnUpdate: string | undefined;
 
       if (configFkOverride !== undefined) {
         if (typeof configFkOverride === 'string') {
@@ -377,8 +375,6 @@ function emitRelationship(
           const fkObj = configFkOverride as ForeignKeyConfig;
           fkFields = fkObj.fields;
           configRefs = fkObj.references;
-          configOnDelete = fkObj.onDelete;
-          configOnUpdate = fkObj.onUpdate;
         }
       } else {
         fkFields = rel.foreignKey?.fields ?? [`${rel.name}Id`];
@@ -583,8 +579,6 @@ function emitTable(
           if (onDelete) relConfig.push(`onDelete: ${toDrizzleAction(onDelete)}`);
           if (onUpdate) relConfig.push(`onUpdate: ${toDrizzleAction(onUpdate)}`);
 
-          // For 1:1 relations, we need the relation name
-          const relName = isOneToOne ? `{ name: "${entity.name}_${rel.name}", relationName: "${entity.name}_${rel.target}" }` : '';
           // In Drizzle, belongsTo uses one() with references
           if (isOneToOne) {
             relLines.push(`  ${rel.name}: one(${targetVarName}, { ${relConfig.join(', ')} }),`);
@@ -609,7 +603,6 @@ function emitTable(
 // ============================================================================
 
 function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): string[] {
-  const dialect = (options.dialect ?? 'postgresql') as DrizzleDialect;
   const idx = options.indexes?.[entity.name];
   const lines: string[] = [];
 

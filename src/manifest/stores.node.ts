@@ -333,6 +333,7 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
   private async init(config: MongoDBConfig): Promise<void> {
     let MongoClient: unknown;
     try {
+      // @ts-ignore -- 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
       const mod = await import('mongodb');
       MongoClient = mod.MongoClient;
     } catch {

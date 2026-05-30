@@ -10,8 +10,7 @@ import type {
   ToolDefinitionOptions,
   BuiltinToolNames,
 } from './types';
-import { irTypeToJsonSchema, irParametersToJsonSchema } from './json-schema';
-import { describeCommand } from './introspect';
+import { irParametersToJsonSchema } from './json-schema';
 
 // ------------------------------------------------------------------------------------------------
 // Tool name mangling
@@ -46,7 +45,7 @@ export function parseToolName(name: string): { entity?: string; command: string 
 // Per-command tool converters
 // ------------------------------------------------------------------------------------------------
 
-function commandDescription(cmd: IRCommand, opts: ToolDefinitionOptions, ir: IR): string {
+function commandDescription(cmd: IRCommand, opts: ToolDefinitionOptions, _ir: IR): string {
   const parts: string[] = [];
   if (cmd.entity) parts.push(`Entity: ${cmd.entity}`);
   if (cmd.module) parts.push(`Module: ${cmd.module}`);
@@ -107,7 +106,7 @@ export function getBuiltinToolNames(prefix: string): BuiltinToolNames {
   };
 }
 
-function builtinListEntitiesSchema(prefix: string): AnthropicTool['input_schema'] {
+function builtinListEntitiesSchema(_prefix: string): AnthropicTool['input_schema'] {
   return {
     type: 'object',
     properties: {
@@ -129,7 +128,7 @@ function builtinDescribeEntitySchema(): AnthropicTool['input_schema'] {
   };
 }
 
-function builtinListCommandsSchema(prefix: string): AnthropicTool['input_schema'] {
+function builtinListCommandsSchema(_prefix: string): AnthropicTool['input_schema'] {
   return {
     type: 'object',
     properties: {
@@ -204,7 +203,7 @@ function builtinCheckConstraintsVercelSchema(): AnthropicTool['input_schema'] {
   };
 }
 
-function builtinListCommandsVercelSchema(prefix: string): AnthropicTool['input_schema'] {
+function builtinListCommandsVercelSchema(_prefix: string): AnthropicTool['input_schema'] {
   return {
     type: 'object',
     properties: {
@@ -227,7 +226,7 @@ function builtinGetInstancesVercelSchema(): AnthropicTool['input_schema'] {
   };
 }
 
-function getBuiltinsAnthropic(prefix: string, strategy: 'snake' | 'dot'): AnthropicTool[] {
+function getBuiltinsAnthropic(prefix: string, _strategy: 'snake' | 'dot'): AnthropicTool[] {
   return [
     { name: `${prefix}_list_entities`, description: 'List all entities defined in the Manifest program', input_schema: builtinListEntitiesSchema(prefix) },
     { name: `${prefix}_describe_entity`, description: 'Get detailed information about a specific entity', input_schema: builtinDescribeEntitySchema() },

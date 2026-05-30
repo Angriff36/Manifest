@@ -20,7 +20,6 @@ import type {
   IREntity,
   IRCommand,
   IRType,
-  IRParameter,
   IRPolicy,
   IRExpression,
   IRValue,
@@ -132,11 +131,6 @@ function toPascalCase(value: string): string {
   return value[0].toUpperCase() + value.slice(1);
 }
 
-function toCamelCase(value: string): string {
-  if (!value) return value;
-  return value[0].toLowerCase() + value.slice(1);
-}
-
 function toKebabCase(value: string): string {
   return value
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
@@ -146,16 +140,6 @@ function toKebabCase(value: string): string {
 
 function toEntitySegment(name: string): string {
   return name.toLowerCase();
-}
-
-function pluralize(name: string): string {
-  if (name.endsWith('s') || name.endsWith('sh') || name.endsWith('ch') || name.endsWith('x') || name.endsWith('z')) {
-    return name + 'es';
-  }
-  if (name.endsWith('y') && !['a', 'e', 'i', 'o', 'u'].includes(name[name.length - 2])) {
-    return name.slice(0, -1) + 'ies';
-  }
-  return name + 's';
 }
 
 // ============================================================================

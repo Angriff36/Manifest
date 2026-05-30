@@ -43,6 +43,7 @@ describe('OpenApiProjection', () => {
       modules: [],
       values: [],
       entities: [],
+      enums: [],
       stores: [],
       events: [],
       commands: [],

@@ -34,6 +34,7 @@ function makeIR(overrides?: Partial<IR>): IR {
     modules: [],
     values: [],
     entities: [],
+    enums: [],
     stores: [],
     events: [],
     commands: [],

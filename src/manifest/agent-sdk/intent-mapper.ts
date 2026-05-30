@@ -3,9 +3,8 @@
  * No LLM dependency — pure keyword and token scoring.
  */
 
-import type { IR, IREntity } from '../ir';
+import type { IR } from '../ir';
 import type { IntentMatch, IntentMapperOptions } from './types';
-import { listEntities, listCommands } from './introspect';
 
 // English stopwords to filter from tokenization
 const STOPWORDS = new Set([
@@ -46,9 +45,6 @@ export function findMatchingCommands(
   const { minScore = 0.1, entityFilter } = opts;
   const tokens = tokenize(userIntent);
   if (tokens.length === 0) return [];
-
-  // Build searchable corpus from entities and commands
-  const entities = entityFilter ? listEntities(ir).filter((e) => entityFilter(ir.entities.find((x) => x.name === e.name)!)) : listEntities(ir);
 
   const scored: IntentMatch[] = [];
 

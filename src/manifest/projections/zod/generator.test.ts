@@ -38,6 +38,7 @@ describe('ZodProjection', () => {
       modules: [],
       values: [],
       entities: [],
+      enums: [],
       stores: [],
       events: [],
       commands: [],

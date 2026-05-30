@@ -27,6 +27,8 @@ import {
   findMatchingCommands,
   tokenize,
   AgentRuntime,
+  type AnthropicTool,
+  type OpenAITool,
 } from './index';
 import { RuntimeEngine, type RuntimeContext } from '../runtime-engine';
 
@@ -78,6 +80,7 @@ function makeMinimalIR(overrides?: Partial<IR>): IR {
     version: '1.0',
     provenance: { contentHash: 'test-hash', compilerVersion: '1.0.0', schemaVersion: '1.0', compiledAt: '2024-01-01T00:00:00.000Z' },
     modules: [],
+    values: [],
     entities: [],
     enums: [],
     stores: [],
@@ -501,7 +504,7 @@ describe('AgentRuntime', () => {
 
   it('listEntities with module filter works', async () => {
     const ir = makeMinimalIR({
-      modules: [{ name: 'core', entities: ['User'] }],
+      modules: [{ name: 'core', entities: ['User'], enums: [], commands: [], stores: [], events: [], policies: [] }],
       entities: [{ name: 'User', module: 'core', properties: [], computedProperties: [], relationships: [], commands: [], constraints: [], policies: [] }],
     });
     const engine = new RuntimeEngine(ir, EMPTY_CONTEXT);
@@ -532,7 +535,7 @@ describe('AgentRuntime', () => {
     const ir = await getCommandsIR();
     const engine = new RuntimeEngine(ir, EMPTY_CONTEXT);
     const agent = new AgentRuntime(engine);
-    const tools = agent.getToolDefinitions('anthropic');
+    const tools = agent.getToolDefinitions('anthropic') as AnthropicTool[];
     expect(tools.length).toBeGreaterThan(0);
     expect(tools[0]).toHaveProperty('name');
     expect(tools[0]).toHaveProperty('input_schema');
@@ -542,7 +545,7 @@ describe('AgentRuntime', () => {
     const ir = await getCommandsIR();
     const engine = new RuntimeEngine(ir, EMPTY_CONTEXT);
     const agent = new AgentRuntime(engine);
-    const tools = agent.getToolDefinitions('openai');
+    const tools = agent.getToolDefinitions('openai') as OpenAITool[];
     expect(tools.length).toBeGreaterThan(0);
     expect(tools[0]).toHaveProperty('type', 'function');
   });

@@ -7,13 +7,11 @@ import type {
   IR,
   IREntity,
   IRCommand,
-  IRParameter,
   IRExpression,
   IRType,
   IRValue,
   IRConstraint,
   IRPolicy,
-  IRAction,
 } from '../ir';
 import type {
   EntitySummary,
@@ -23,13 +21,9 @@ import type {
   ParameterDescriptor,
   GuardDescriptor,
   RelationshipGraph,
-  PropertyDescriptor,
-  ComputedPropertyDescriptor,
-  RelationshipDescriptor,
   ConstraintDescriptor,
   PolicyDescriptor,
 } from './types';
-import { irTypeToJsonSchema } from './json-schema';
 
 // ------------------------------------------------------------------------------------------------
 // Expression formatter (reimplements RuntimeEngine private formatter)
@@ -64,7 +58,7 @@ export function formatExpression(expr: IRExpression): string {
   }
 }
 
-function wrapBinary(expr: IRExpression, operator: string): string {
+function wrapBinary(expr: IRExpression, _operator: string): string {
   const s = formatExpression(expr);
   if (isCompound(expr)) return s;
   // No parens needed for identifiers and literals

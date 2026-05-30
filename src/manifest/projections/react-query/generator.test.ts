@@ -38,6 +38,7 @@ describe('ReactQueryProjection', () => {
       modules: [],
       values: [],
       entities: [],
+      enums: [],
       stores: [],
       events: [],
       commands: [],
