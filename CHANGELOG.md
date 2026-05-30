@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] - 2026-05-29
+
+### Added
+
+- **Projection framework foundation** — shared projection registration plus the IR, parser, and runtime updates underpinning the new projection targets.
+- **GraphQL projection** — SDL type definitions plus resolver stubs from IR entities, commands, policies, and events.
+- **Hono projection** — route handlers for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy).
+- **Express projection** — route handlers and middleware with typed request/response shapes.
+
 ## [1.0.32] - 2026-05-26
 
 ### Added

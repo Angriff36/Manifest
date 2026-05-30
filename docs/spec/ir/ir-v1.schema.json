@@ -361,6 +361,20 @@
         }
       }
     },
+    "IRComputedPropertyCache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["request", "session", "ttl"]
+        },
+        "ttlSeconds": {
+          "type": "number"
+        }
+      }
+    },
     "IRComputedProperty": {
       "type": "object",
       "additionalProperties": false,
@@ -385,6 +399,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "cache": {
+          "$ref": "#/definitions/IRComputedPropertyCache"
         }
       }
     },
@@ -529,13 +546,8 @@
           "type": "string"
         },
         "target": {
-          "enum": [
-            "memory",
-            "localStorage",
-            "postgres",
-            "supabase",
-            "durable"
-          ]
+          "type": "string",
+          "description": "Built-in targets: memory, localStorage, postgres, supabase, durable. Custom adapter schemes (e.g. redis, dynamodb) are valid when a matching StoreAdapterPlugin is registered."
         },
         "config": {
           "type": "object",

@@ -12,9 +12,11 @@ import chalk from 'chalk';
 import { compileCommand } from './commands/compile.js';
 import { generateCommand } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
+import { watchCommand } from './commands/watch.js';
 import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
 import { docsCommand } from './commands/docs.js';
+import { diagramCommand } from './commands/diagram.js';
 import { preflightCommand } from './commands/preflight.js';
 import { checkCommand } from './commands/check.js';
 import { initCommand } from './commands/init.js';
@@ -28,6 +30,7 @@ import { emitRegistriesCommand } from './commands/emit-registries.js';
 import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
+import { coverageCommand } from './commands/coverage.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   configValidateCommand,
@@ -46,6 +49,7 @@ import { diffIRCommand } from './commands/ir-diff.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
 import { fmtCommand } from './commands/fmt.js';
+import { changelogCommand } from './commands/changelog.js';
 import { installHooksCommand } from './commands/install-hooks.js';
 import {
   versionsListCommand,
@@ -211,6 +215,47 @@ program
   });
 
 /**
+ * manifest watch [source]
+ *
+ * Watch .manifest files for changes and rebuild incrementally.
+ */
+program
+  .command('watch')
+  .description('Watch .manifest files and rebuild on change')
+  .argument('[source]', 'Source .manifest file, directory, or glob pattern')
+  .option('-p, --projection <name>', 'Projection name (nextjs, ts.types, ts.client)', 'nextjs')
+  .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
+  .option('--ir-output <path>', 'IR output directory')
+  .option('--code-output <path>', 'Generated code output directory')
+  .option('-g, --glob <pattern>', 'Glob pattern for multiple files')
+  .option('--auth <provider>', 'Auth provider or import path')
+  .option('--database <path>', 'Database import path')
+  .option('--runtime <path>', 'Runtime import path')
+  .option('--response <path>', 'Response helpers import path')
+  .option('--debounce <ms>', 'Debounce delay in milliseconds', '300')
+  .option('--events', 'Emit structured JSON change events to stdout', false)
+  .option('--clear', 'Clear terminal on each rebuild', false)
+  .action(async (source, options = {}) => {
+    const config = (await getConfig()) ?? {};
+    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+
+    const finalOptions = {
+      ...options,
+      irOutput:
+        options.irOutput || config?.output || 'ir/',
+      codeOutput:
+        options.codeOutput ||
+        config?.projections?.nextjs?.output ||
+        config?.projections?.['nextjs']?.output ||
+        'generated/',
+      debounce: parseInt(options.debounce, 10) || 300,
+      projectionOptionsFromConfig,
+    };
+
+    await watchCommand(source, finalOptions);
+  });
+
+/**
  * manifest validate [ir]
  *
  * Validate IR against schema.
@@ -300,6 +345,28 @@ program
       output: options.output,
       format: options.format,
       title: options.title,
+    });
+  });
+
+/**
+ * manifest diagram [source]
+ *
+ * Generate Mermaid diagrams from IR (ER, state machine, sequence).
+ */
+program
+  .command('diagram')
+  .description('Generate Mermaid diagrams from Manifest IR (ER, state, sequence)')
+  .argument('[source]', 'Source .manifest, .ir.json, directory, or glob')
+  .option('-o, --output <path>', 'Output directory', 'diagrams')
+  .option('-t, --type <type>', 'Diagram type (er, state, sequence, all)', 'all')
+  .option('-e, --entity <name>', 'Filter to a specific entity')
+  .option('--markdown', 'Wrap output in markdown fenced code blocks', false)
+  .action(async (source, options = {}) => {
+    await diagramCommand(source, {
+      output: options.output,
+      type: options.type,
+      entity: options.entity,
+      markdown: options.markdown,
     });
   });
 
@@ -549,6 +616,36 @@ program
     }
   });
 
+/**
+ * manifest coverage
+ *
+ * Analyze conformance and unit test results to report which commands, guards,
+ * policies, and constraint branches have been exercised. Produces a coverage
+ * summary with uncovered paths highlighted.
+ */
+program
+  .command('coverage')
+  .description('Report command/guard/policy/constraint coverage from conformance and unit tests')
+  .option('--ir <path>', 'Path to compiled IR JSON file')
+  .option('-s, --source <path>', 'Path to .manifest source file (compiles on the fly)')
+  .option('-r, --root <path>', 'Root directory to scan for test evidence', '.')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--min-coverage <n>', 'Minimum overall coverage percentage to pass', (v) => parseFloat(v))
+  .option('--strict', 'Exit non-zero when below --min-coverage', false)
+  .action(async (options = {}) => {
+    const result = await coverageCommand(options);
+    if (options.strict && typeof options.minCoverage === 'number') {
+      if (result.overall.percentage < options.minCoverage) {
+        console.error(
+          chalk.red(
+            `Coverage ${result.overall.percentage}% is below threshold ${options.minCoverage}%`
+          )
+        );
+        process.exitCode = 1;
+      }
+    }
+  });
+
 emitProgram
   .command('registries')
   .description('Emit commands.json and entities.json registries from IR')
@@ -659,6 +756,32 @@ program
       output: options.output,
       tool: options.tool,
       checkReversibility: options.checkReversibility,
+    });
+  });
+
+/**
+ * manifest changelog <from-ref> [to-ref]
+ *
+ * Generate a human-readable Markdown changelog from IR diffs between Git refs.
+ * Compiles .manifest sources at each ref, classifies changes as new entities,
+ * modified constraints, added policies, or breaking schema changes. Outputs
+ * Markdown formatted for GitHub Releases and Keep a Changelog conventions.
+ */
+program
+  .command('changelog')
+  .description('Generate Markdown changelog from IR diffs between Git refs')
+  .argument('<from-ref>', 'Base Git ref (tag, branch, or SHA)')
+  .argument('[to-ref]', 'Target Git ref (default: HEAD)', 'HEAD')
+  .option('-s, --source <pattern>', 'Glob pattern for .manifest files', '**/*.manifest')
+  .option('-o, --output <path>', 'Write changelog to file')
+  .option('-t, --title <title>', 'Custom heading for the changelog')
+  .option('--json', 'Emit structured JSON instead of Markdown', false)
+  .action(async (fromRef, toRef, options = {}) => {
+    await changelogCommand(fromRef, toRef, {
+      source: options.source,
+      output: options.output,
+      title: options.title,
+      json: options.json,
     });
   });
 

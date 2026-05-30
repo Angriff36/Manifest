@@ -110,11 +110,17 @@ export interface IRProperty {
 
 export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional';
 
+export interface IRComputedPropertyCache {
+  strategy: 'request' | 'session' | 'ttl';
+  ttlSeconds?: number;
+}
+
 export interface IRComputedProperty {
   name: string;
   type: IRType;
   expression: IRExpression;
   dependencies: string[];
+  cache?: IRComputedPropertyCache;
 }
 
 export type RefAction = 'cascade' | 'restrict' | 'setNull' | 'setDefault' | 'noAction';
@@ -156,9 +162,13 @@ export interface IRConstraint {
   overridePolicyRef?: string;
 }
 
+/** Built-in store target names. */
+export type BuiltinStoreTarget = 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable' | 'mongodb';
+
 export interface IRStore {
   entity: string;
-  target: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable';
+  /** Built-in targets or custom adapter scheme registered via plugin API. */
+  target: BuiltinStoreTarget | (string & {});
   config: Record<string, IRValue>;
 }
 

@@ -79,12 +79,18 @@ export interface PropertyNode extends ASTNode {
   modifiers: string[];
 }
 
+export interface ComputedPropertyCache {
+  strategy: 'request' | 'session' | 'ttl';
+  ttlSeconds?: number;
+}
+
 export interface ComputedPropertyNode extends ASTNode {
   type: 'ComputedProperty';
   name: string;
   dataType: TypeNode;
   expression: ExpressionNode;
   dependencies: string[];
+  cache?: ComputedPropertyCache;
 }
 
 export type RefAction = 'cascade' | 'restrict' | 'setNull' | 'setDefault' | 'noAction';
@@ -135,7 +141,10 @@ export interface PolicyNode extends ASTNode {
 export interface StoreNode extends ASTNode {
   type: 'Store';
   entity: string;
-  target: 'memory' | 'postgres' | 'supabase' | 'localStorage';
+  /** Built-in targets: 'memory' | 'localStorage' | 'postgres' | 'supabase' | 'durable'.
+   *  Custom adapter schemes (e.g. 'redis', 'dynamodb') are also valid when a
+   *  matching StoreAdapterPlugin is registered via the plugin API. */
+  target: string;
   config?: Record<string, ExpressionNode>;
 }
 

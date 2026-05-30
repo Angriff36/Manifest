@@ -57,6 +57,7 @@ Evidence: conformance fixture `56-expression-builtins.manifest`.
 - `toUpperCase(s)`, `toLowerCase(s)`
 - `length(v)` — string or array length
 - `substring(s, start, end?)`, `indexOf(s, search)`
+- `matches(s, pattern)` — regex test; returns `true` if `s` matches the regex `pattern`, `false` if `s` is non-string, `pattern` is non-string, or `pattern` is an invalid regex. Compile-time validation emits an error diagnostic when `pattern` is a literal with invalid regex syntax.
 
 ### Math
 
@@ -64,13 +65,131 @@ Evidence: conformance fixture `56-expression-builtins.manifest`.
 - `min(...)`, `max(...)` — numeric arguments only; empty → `undefined`
 - `between(value, low, high)` — inclusive range test on numbers
 
-### Array
+### Array / Aggregate
 
 - `sum(arr)` — sum of numeric elements; non-arrays pass through
+- `sum(arr, mapper)` — apply `mapper` to each element, sum the numeric results. `mapper` is a lambda: `(item) => item.price * item.quantity`
+- `avg(arr)` — arithmetic mean of numeric elements; returns `0` for empty arrays
+- `avg(arr, mapper)` — apply `mapper` to each element, compute mean of numeric results
+- `min_of(arr)` — minimum numeric value; returns `undefined` for empty arrays
+- `min_of(arr, mapper)` — apply `mapper` to each element, return minimum numeric result
+- `max_of(arr)` — maximum numeric value; returns `undefined` for empty arrays
+- `max_of(arr, mapper)` — apply `mapper` to each element, return maximum numeric result
+- `count_of(arr)` — array length (equivalent to `length(arr)` for arrays)
+- `count_of(arr, predicate)` — count elements where `predicate` returns truthy
+- `filter(arr, predicate)` — return elements where `predicate` returns truthy
+- `map(arr, mapper)` — apply `mapper` to each element, return new array
+
+Aggregate functions are designed for computed properties over `hasMany` relationships:
+```manifest
+entity Order {
+  hasMany lineItems: LineItem
+  computed totalAmount: number = sum(self.lineItems, (item) => item.price * item.quantity)
+  computed itemCount: number = count_of(self.lineItems)
+  computed avgPrice: number = avg(self.lineItems, (item) => item.price)
+}
+```
+
+Evidence: conformance fixture `64-aggregate-computed-properties.manifest`.
 
 ### Date (UTC, timestamp in ms)
 
 - `year(ts)`, `month(ts)` (1–12), `day(ts)`, `hours(ts)`, `minutes(ts)`, `seconds(ts)`
+
+### Feature Flags
+
+- `flag(name)` — resolves a feature flag value from the configured provider. Returns the provider's value (boolean, string, number, or object) when a `flagProvider` is configured via `RuntimeOptions.flagProvider`. Returns `false` when no provider is configured (safe default — features off). Returns `false` when `name` is not a string. Purity: `time-dependent` (flag values may change based on external state).
+
+Feature flags enable commands and policies to reference feature flags declaratively:
+```manifest
+entity Feature {
+  property status: string = "off"
+
+  command activate() {
+    guard flag("new-activation-flow")
+    mutate status = "active"
+  }
+}
+```
+
+Provider configuration:
+```typescript
+const runtime = new RuntimeEngine(ir, context, {
+  flagProvider: (name) => launchDarklyClient.variation(name, false),
+});
+```
+
+Evidence: conformance fixture `66-feature-flags.manifest`.
+
+## Custom Expression Functions (Plugin API)
+
+Plugin authors and project configurations can register custom deterministic expression
+functions via `RuntimeOptions.customBuiltins`. Functions are available in guard,
+constraint, policy, and computed property expressions.
+
+### Registration
+
+Custom builtins are declared via the `BuiltinFunctionPlugin` interface in `plugin-api.ts`:
+
+```typescript
+interface BuiltinFunctionPlugin {
+  name: string;                          // Function identifier
+  purity: 'pure' | 'time-dependent' | 'random';  // Determinism guarantee
+  arity: number;                         // Required arguments (-1 for variadic)
+  fn: (...args: unknown[]) => unknown;   // Evaluation implementation
+}
+```
+
+The plugin loader collects registered builtins into a `Map<string, Function>` which is
+passed to `RuntimeEngine` via `RuntimeOptions.customBuiltins`. Core builtins always take
+precedence on name collision — reserved names cannot be overridden.
+
+### Reserved Names
+
+The following 35 names are reserved and cannot be used by plugins:
+`now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
+`toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`,
+`abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,
+`sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`,
+`year`, `month`, `day`, `hours`, `minutes`, `seconds`,
+`flag`.
+
+### Example
+
+```typescript
+import { definePlugin } from '@angriff36/manifest/plugin-api';
+
+export default definePlugin({
+  manifest: {
+    name: '@acme/custom-functions',
+    version: '1.0.0',
+    pluginApiVersion: '1',
+    manifestVersion: '>=1.0.0',
+  },
+  builtins: [
+    {
+      name: 'isEven',
+      purity: 'pure',
+      arity: 1,
+      fn: (x) => typeof x === 'number' && x % 2 === 0,
+    },
+  ],
+});
+```
+
+Once registered, `isEven` is callable in manifest expressions:
+
+```manifest
+entity Counter {
+  property value: number = 0
+  command increment(amount: number) {
+    guard isEven(amount)
+    mutate value = self.value + amount
+  }
+}
+```
+
+Evidence: runtime-engine.test.ts § "Custom Builtins (plugin injection)".
 
 ### Nonconformance
 - ~~The IR runtime does not provide `now()` or `uuid()` built-ins.~~

@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "2d424bd39150a5979af223dc353ab48d5b87b9bf12f6f6d6dc972d554ea6e45f",
+    "irHash": "ff60bdbcd70fdc91b9845f444ac083753c51cdc3dde74ad12cd88c4e7ee9a308",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -253,6 +253,7 @@
       "policies": []
     }
   ],
+  "enums": [],
   "stores": [
     {
       "entity": "Product",
@@ -260,7 +261,6 @@
       "config": {}
     }
   ],
-  "enums": [],
   "events": [
     {
       "name": "PriceChanged",

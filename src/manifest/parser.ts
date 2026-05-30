@@ -337,7 +337,33 @@ export class Parser {
     this.consume('OPERATOR', '=');
     const expression = this.parseExpr();
     const dependencies = this.extractDependencies(expression);
-    return { type: 'ComputedProperty', name, dataType, expression, dependencies };
+    const cache = this.parseComputedCache();
+    const node: ComputedPropertyNode = { type: 'ComputedProperty', name, dataType, expression, dependencies };
+    if (cache) node.cache = cache;
+    return node;
+  }
+
+  private parseComputedCache(): ComputedPropertyNode['cache'] | undefined {
+    if (!this.check('KEYWORD', 'cache')) return undefined;
+    this.advance(); // consume 'cache'
+
+    if (this.check('KEYWORD', 'request')) {
+      this.advance();
+      return { strategy: 'request' };
+    }
+    if (this.check('KEYWORD', 'session')) {
+      this.advance();
+      return { strategy: 'session' };
+    }
+    if (this.check('KEYWORD', 'ttl')) {
+      this.advance();
+      const ttlToken = this.advance();
+      if (ttlToken.type !== 'NUMBER') {
+        throw new Error(`Expected TTL value in seconds after 'ttl', got '${ttlToken.value}'`);
+      }
+      return { strategy: 'ttl', ttlSeconds: Number(ttlToken.value) };
+    }
+    throw new Error(`Expected cache strategy: 'request', 'session', or 'ttl', got '${this.current()?.value}'`);
   }
 
   private extractDependencies(expr: ExpressionNode): string[] {

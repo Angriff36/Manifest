@@ -47,6 +47,8 @@ export const KEYWORDS = new Set([
   'tenant',
   // entity modifier keywords
   'timestamps',
+  // computed property caching keywords
+  'cache', 'request', 'session', 'ttl',
 ]);
 
 const OPERATORS = new Set([

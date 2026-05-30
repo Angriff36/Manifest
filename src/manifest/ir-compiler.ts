@@ -338,16 +338,17 @@ export class IRCompiler {
     ];
 
     // Collect entity-scoped stores (defined as "store in <target>" inside entity)
+    // Target can be a built-in name or a custom adapter scheme registered via plugin API.
     const entityScopedStores: IRStore[] = [
       ...program.entities.filter(e => e.store).map(e => ({
         entity: e.name,
-        target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+        target: e.store === 'filesystem' ? 'localStorage' as const : e.store!,
         config: {},
       })),
       ...program.modules.flatMap(m =>
         m.entities.filter(e => e.store).map(e => ({
           entity: e.name,
-          target: e.store === 'filesystem' ? 'localStorage' : e.store as 'memory' | 'localStorage' | 'postgres' | 'supabase',
+          target: e.store === 'filesystem' ? 'localStorage' as const : e.store!,
           config: {},
         }))
       ),
@@ -522,12 +523,19 @@ export class IRCompiler {
   }
 
   private transformComputedProperty(cp: ComputedPropertyNode): IRComputedProperty {
-    return {
+    const result: IRComputedProperty = {
       name: cp.name,
       type: this.transformType(cp.dataType),
       expression: this.transformExpression(cp.expression),
       dependencies: cp.dependencies,
     };
+    if (cp.cache) {
+      result.cache = { strategy: cp.cache.strategy };
+      if (cp.cache.ttlSeconds !== undefined) {
+        result.cache.ttlSeconds = cp.cache.ttlSeconds;
+      }
+    }
+    return result;
   }
 
   private transformRelationship(r: RelationshipNode): IRRelationship {
@@ -734,12 +742,32 @@ export class IRCompiler {
         };
       }
       case 'Call': {
-        const call = expr as { callee: ExpressionNode; arguments: ExpressionNode[] };
-        return {
+        const call = expr as { callee: ExpressionNode; arguments: ExpressionNode[]; position?: { line?: number; column?: number } };
+        const irCall: IRExpression = {
           kind: 'call',
           callee: this.transformExpression(call.callee),
           args: call.arguments.map(a => this.transformExpression(a)),
         };
+        // Compile-time regex validation for matches(value, pattern)
+        if (irCall.kind === 'call' &&
+            irCall.callee.kind === 'identifier' &&
+            irCall.callee.name === 'matches' &&
+            irCall.args.length >= 2) {
+          const patternArg = irCall.args[1];
+          if (patternArg.kind === 'literal' && patternArg.value?.kind === 'string') {
+            try {
+              new RegExp(patternArg.value.value);
+            } catch {
+              this.emitDiagnostic(
+                'error',
+                `Invalid regex pattern in matches(): "${patternArg.value.value}"`,
+                call.position?.line,
+                call.position?.column,
+              );
+            }
+          }
+        }
+        return irCall;
       }
       case 'Conditional': {
         const cond = expr as { condition: ExpressionNode; consequent: ExpressionNode; alternate: ExpressionNode };

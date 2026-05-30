@@ -289,3 +289,149 @@ export class SupabaseStore<T extends EntityInstance> implements Store<T> {
     if (error) throw new Error(`Supabase clear failed: ${error.message}`);
   }
 }
+
+// MongoDB configuration interface
+export interface MongoDBConfig {
+  connectionString: string;
+  databaseName?: string;
+  collectionName?: string;
+}
+
+/**
+ * MongoDB-backed store adapter.
+ *
+ * 'mongodb' is an optional peer dependency. It is loaded via dynamic import
+ * at construction time. If the package is not installed, a clear error is
+ * thrown instructing the user to install it.
+ *
+ * Entities are stored as native BSON documents with `_id` mapped from the
+ * entity's `id` field. Properties map directly to document fields (not
+ * wrapped in a JSONB `data` column like the PostgreSQL adapter).
+ *
+ * Optimistic locking: when a document has a `version` field, update
+ * operations use it as a filter condition. If the stored version doesn't
+ * match, the update returns null and the method returns `undefined`,
+ * consistent with the runtime engine's concurrency control.
+ */
+export class MongoDBStore<T extends EntityInstance> implements Store<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client!: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private collection!: any;
+  private collectionName: string;
+  private databaseName: string;
+  private generateId: () => string;
+  private ready: Promise<void>;
+
+  constructor(config: MongoDBConfig, generateId?: () => string) {
+    this.generateId = generateId || (() => crypto.randomUUID());
+    this.collectionName = config.collectionName || 'entities';
+    this.databaseName = config.databaseName || 'manifest';
+    this.ready = this.init(config);
+  }
+
+  private async init(config: MongoDBConfig): Promise<void> {
+    let MongoClient: unknown;
+    try {
+      const mod = await import('mongodb');
+      MongoClient = mod.MongoClient;
+    } catch {
+      throw new Error(
+        `MongoDBStore requires 'mongodb' to be installed.\n` +
+        `Run: npm install mongodb`
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.client = new (MongoClient as any)(config.connectionString);
+    await this.client.connect();
+    const db = this.client.db(this.databaseName);
+    this.collection = db.collection(this.collectionName);
+
+    // Ensure index on id field for fast lookups
+    await this.collection.createIndex({ id: 1 }, { unique: true });
+  }
+
+  private async ensureReady(): Promise<void> {
+    await this.ready;
+  }
+
+  async getAll(): Promise<T[]> {
+    await this.ensureReady();
+    const docs = await this.collection.find({}).toArray();
+    return docs.map((doc: Record<string, unknown>) => this.docToEntity(doc));
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    await this.ensureReady();
+    const doc = await this.collection.findOne({ id });
+    return doc ? this.docToEntity(doc) : undefined;
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    await this.ensureReady();
+    const id = data.id || this.generateId();
+    const item = { ...data, id } as T;
+
+    // Store as document, using entity id as both `id` field and for lookups
+    const doc = { ...item };
+    await this.collection.updateOne(
+      { id },
+      { $set: doc },
+      { upsert: true }
+    );
+    return item;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    await this.ensureReady();
+    const existing = await this.collection.findOne({ id });
+    if (!existing) return undefined;
+
+    const merged = { ...this.docToEntity(existing), ...data, id };
+
+    // Optimistic locking: if a version field is present in the update data,
+    // include it as a filter condition to detect concurrent modifications.
+    const filter: Record<string, unknown> = { id };
+    if (typeof data.version === 'number' && typeof existing.version === 'number') {
+      // The runtime engine handles version checking, but we add a guard here
+      // for direct store usage. The version in `data` is the new version;
+      // we check the existing version matches what was read.
+      filter.version = existing.version;
+    }
+
+    const result = await this.collection.findOneAndUpdate(
+      filter,
+      { $set: merged },
+      { returnDocument: 'after' }
+    );
+
+    if (!result) return undefined;
+    return this.docToEntity(result);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await this.ensureReady();
+    const result = await this.collection.deleteOne({ id });
+    return (result.deletedCount ?? 0) > 0;
+  }
+
+  async clear(): Promise<void> {
+    await this.ensureReady();
+    await this.collection.deleteMany({});
+  }
+
+  async close(): Promise<void> {
+    if (this.client) {
+      await this.client.close();
+    }
+  }
+
+  /**
+   * Convert a MongoDB document to an entity instance.
+   * Strips the MongoDB `_id` field and preserves the entity `id`.
+   */
+  private docToEntity(doc: Record<string, unknown>): T {
+    const { _id, ...rest } = doc;
+    return rest as T;
+  }
+}

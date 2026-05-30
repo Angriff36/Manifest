@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.0.32",
+  "version": "1.1.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -45,6 +45,10 @@
     "./projections/drizzle": {
       "types": "./dist/manifest/projections/drizzle/generator.d.ts",
       "import": "./dist/manifest/projections/drizzle/generator.js"
+    },
+    "./projections/mermaid": {
+      "types": "./dist/manifest/projections/mermaid/generator.d.ts",
+      "import": "./dist/manifest/projections/mermaid/generator.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",

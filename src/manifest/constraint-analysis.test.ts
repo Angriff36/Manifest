@@ -6,6 +6,8 @@ import {
   lengthConstraintToCheckConstraint,
   numericRangeToZodChain,
   lengthConstraintToZodChain,
+  patternConstraintToCheckConstraint,
+  patternConstraintToZodChain,
 } from './constraint-analysis';
 import type { IRExpression, IRConstraint } from './ir';
 
@@ -131,6 +133,20 @@ describe('constraint-analysis', () => {
       });
     });
 
+    it('extracts pattern from matches(self.email, "^[^@]+@[^@]+$")', () => {
+      const result = analyzeConstraintExpression(call('matches', self('email'), lit('^[^@]+@[^@]+$')));
+      expect(result.patternConstraints).toHaveLength(1);
+      expect(result.patternConstraints[0]).toEqual({
+        pattern: '^[^@]+@[^@]+$',
+        propertyPath: 'self.email',
+      });
+    });
+
+    it('returns empty pattern for matches with non-literal pattern', () => {
+      const result = analyzeConstraintExpression(call('matches', self('email'), self('pattern')));
+      expect(result.patternConstraints).toHaveLength(0);
+    });
+
     it('returns empty for unrecognized expressions', () => {
       const result = analyzeConstraintExpression(binary('==', self('status'), lit('active')));
       expect(result.numericRanges).toHaveLength(0);
@@ -181,6 +197,26 @@ describe('constraint-analysis', () => {
       expect(result.numericRanges).toHaveLength(1);
       expect(result.lengthConstraints).toHaveLength(1);
     });
+
+    it('collects pattern constraints from matches() calls', () => {
+      const constraints = [
+        constraint('emailFormat', call('matches', self('email'), lit('^[^@]+@[^@]+$'))),
+        constraint('phoneFormat', call('matches', self('phone'), lit('^\\d{3}-\\d{4}$'))),
+      ];
+      const result = analyzeConstraints(constraints);
+      expect(result.patternConstraints).toHaveLength(2);
+      expect(result.patternConstraints[0].pattern).toBe('^[^@]+@[^@]+$');
+      expect(result.patternConstraints[1].pattern).toBe('^\\d{3}-\\d{4}$');
+    });
+
+    it('keeps multiple pattern constraints on same property', () => {
+      const constraints = [
+        constraint('hasAt', call('matches', self('email'), lit('@'))),
+        constraint('hasDot', call('matches', self('email'), lit('\\.'))),
+      ];
+      const result = analyzeConstraints(constraints);
+      expect(result.patternConstraints).toHaveLength(2);
+    });
   });
 
   describe('numericRangeToCheckConstraint', () => {
@@ -228,6 +264,35 @@ describe('constraint-analysis', () => {
     it('generates Zod chain for min + max length', () => {
       expect(lengthConstraintToZodChain({ minLength: 1, maxLength: 255, propertyPath: 'self.name' }))
         .toBe('.min(1).max(255)');
+    });
+  });
+
+  describe('patternConstraintToCheckConstraint', () => {
+    it('generates PostgreSQL regex CHECK for simple pattern', () => {
+      const sql = patternConstraintToCheckConstraint({ pattern: '^\\d{5}$', propertyPath: 'self.zipCode' });
+      expect(sql).toBe("zipCode ~ '^\\d{5}$'");
+    });
+
+    it('uses custom column name', () => {
+      const sql = patternConstraintToCheckConstraint({ pattern: '^[a-z]+$', propertyPath: 'self.code' }, 'product_code');
+      expect(sql).toBe("product_code ~ '^[a-z]+$'");
+    });
+
+    it('escapes single quotes in pattern', () => {
+      const sql = patternConstraintToCheckConstraint({ pattern: "^it's$", propertyPath: 'self.name' });
+      expect(sql).toBe("name ~ '^it''s$'");
+    });
+  });
+
+  describe('patternConstraintToZodChain', () => {
+    it('generates Zod regex chain for simple pattern', () => {
+      expect(patternConstraintToZodChain({ pattern: '^\\d{5}$', propertyPath: 'self.zipCode' }))
+        .toBe('.regex(/^\\d{5}$/)');
+    });
+
+    it('escapes forward slashes in pattern', () => {
+      expect(patternConstraintToZodChain({ pattern: '^https://.*$', propertyPath: 'self.url' }))
+        .toBe('.regex(/^https:\\/\\/.*$/)');
     });
   });
 });

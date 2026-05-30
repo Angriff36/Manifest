@@ -187,6 +187,50 @@ describe('RuntimeEngine', () => {
       };
       expect(() => new RuntimeEngine(irWithSupabase)).toThrow('not available in browser environments');
     });
+
+    it('should resolve custom store target via storeProvider', async () => {
+      const mockRedisStore = {
+        getAll: async () => [],
+        getById: async () => undefined,
+        create: async (data: Partial<EntityInstance>) => ({ id: 'redis-1', ...data }),
+        update: async () => undefined,
+        delete: async () => false,
+        clear: async () => {},
+      };
+      const irWithCustomTarget: IR = {
+        ...simpleIR,
+        stores: [
+          {
+            entity: 'User',
+            target: 'redis',
+            config: {},
+          },
+        ],
+      };
+      const runtime = new RuntimeEngine(irWithCustomTarget, {}, {
+        storeProvider: (entityName) => entityName === 'User' ? mockRedisStore : undefined,
+      });
+      const store = runtime.getStore('User');
+      expect(store).toBe(mockRedisStore);
+      const instance = await store?.create({ name: 'Test' });
+      expect(instance?.id).toBe('redis-1');
+    });
+
+    it('should throw descriptive error for custom store target without storeProvider', () => {
+      const irWithCustomTarget: IR = {
+        ...simpleIR,
+        stores: [
+          {
+            entity: 'User',
+            target: 'redis',
+            config: {},
+          },
+        ],
+      };
+      expect(() => new RuntimeEngine(irWithCustomTarget)).toThrow(
+        /store target 'redis'.*StoreAdapterPlugin/
+      );
+    });
   });
 
   describe('Context Management', () => {
@@ -415,6 +459,198 @@ describe('RuntimeEngine', () => {
       };
       const result = await runtime.evaluateExpression(expr, {});
       expect(result).toBe(10);
+    });
+  });
+
+  describe('Custom Builtins (plugin injection)', () => {
+    it('should evaluate a custom builtin function', async () => {
+      const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
+      customBuiltins.set('double', (x: unknown) => typeof x === 'number' ? x * 2 : x);
+
+      const runtime = new RuntimeEngine(simpleIR, {}, { customBuiltins });
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'double' },
+        args: [{ kind: 'literal', value: { kind: 'number', value: 21 } }],
+      };
+      const result = await runtime.evaluateExpression(expr, {});
+      expect(result).toBe(42);
+    });
+
+    it('should not override core builtins with custom ones', async () => {
+      const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
+      // Attempt to override the core 'abs' builtin
+      customBuiltins.set('abs', () => 'OVERRIDDEN');
+
+      const runtime = new RuntimeEngine(simpleIR, {}, { customBuiltins });
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'abs' },
+        args: [{ kind: 'literal', value: { kind: 'number', value: -5 } }],
+      };
+      const result = await runtime.evaluateExpression(expr, {});
+      // Core builtin must win — returns 5, not 'OVERRIDDEN'
+      expect(result).toBe(5);
+    });
+
+    it('should support multiple custom builtins', async () => {
+      const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
+      customBuiltins.set('greet', (name: unknown) => `Hello, ${name}!`);
+      customBuiltins.set('square', (x: unknown) => typeof x === 'number' ? x * x : x);
+
+      const runtime = new RuntimeEngine(simpleIR, {}, { customBuiltins });
+
+      const greetExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'greet' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'World' } }],
+      };
+      expect(await runtime.evaluateExpression(greetExpr, {})).toBe('Hello, World!');
+
+      const squareExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'square' },
+        args: [{ kind: 'literal', value: { kind: 'number', value: 7 } }],
+      };
+      expect(await runtime.evaluateExpression(squareExpr, {})).toBe(49);
+    });
+
+    it('should work when no custom builtins are provided', async () => {
+      const runtime = new RuntimeEngine(simpleIR);
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'abs' },
+        args: [{ kind: 'literal', value: { kind: 'number', value: -3 } }],
+      };
+      const result = await runtime.evaluateExpression(expr, {});
+      expect(result).toBe(3);
+    });
+
+    it('should use custom builtins in guard expressions', async () => {
+      const customBuiltins = new Map<string, (...args: unknown[]) => unknown>();
+      customBuiltins.set('isEven', (x: unknown) => typeof x === 'number' && x % 2 === 0);
+
+      const ir = await compileToIR(`
+        entity Counter {
+          property value: number = 0
+
+          command increment(amount: number) {
+            guard isEven(amount)
+            mutate value = self.value + amount
+          }
+        }
+      `);
+
+      const runtime = new RuntimeEngine(ir, {}, { customBuiltins, generateId: () => 'c1' });
+
+      // Create a counter instance
+      await runtime.createInstance('Counter', { id: 'c1', value: 0 });
+
+      // Even amount should succeed
+      const result1 = await runtime.runCommand('increment', { amount: 4 }, { entityName: 'Counter', instanceId: 'c1' });
+      expect(result1.success).toBe(true);
+
+      // Odd amount should fail guard
+      const result2 = await runtime.runCommand('increment', { amount: 3 }, { entityName: 'Counter', instanceId: 'c1' });
+      expect(result2.success).toBe(false);
+    });
+  });
+
+  describe('Feature Flag Builtin', () => {
+    it('should return false when no flagProvider is configured', async () => {
+      const runtime = new RuntimeEngine(simpleIR, {});
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'new-feature' } }],
+      };
+      const result = await runtime.evaluateExpression(expr, {});
+      expect(result).toBe(false);
+    });
+
+    it('should return the value from flagProvider when configured', async () => {
+      const flagProvider = (name: string) => name === 'enabled-feature';
+      const runtime = new RuntimeEngine(simpleIR, {}, { flagProvider });
+
+      const enabledExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'enabled-feature' } }],
+      };
+      expect(await runtime.evaluateExpression(enabledExpr, {})).toBe(true);
+
+      const disabledExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'disabled-feature' } }],
+      };
+      expect(await runtime.evaluateExpression(disabledExpr, {})).toBe(false);
+    });
+
+    it('should return false for non-string arguments', async () => {
+      const flagProvider = () => true;
+      const runtime = new RuntimeEngine(simpleIR, {}, { flagProvider });
+      const expr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'number', value: 42 } }],
+      };
+      const result = await runtime.evaluateExpression(expr, {});
+      expect(result).toBe(false);
+    });
+
+    it('should support non-boolean flag values (multivariate)', async () => {
+      const flagProvider = (name: string) => {
+        if (name === 'theme') return 'dark';
+        if (name === 'max-items') return 100;
+        return false;
+      };
+      const runtime = new RuntimeEngine(simpleIR, {}, { flagProvider });
+
+      const themeExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'theme' } }],
+      };
+      expect(await runtime.evaluateExpression(themeExpr, {})).toBe('dark');
+
+      const maxItemsExpr: IRExpression = {
+        kind: 'call',
+        callee: { kind: 'identifier', name: 'flag' },
+        args: [{ kind: 'literal', value: { kind: 'string', value: 'max-items' } }],
+      };
+      expect(await runtime.evaluateExpression(maxItemsExpr, {})).toBe(100);
+    });
+
+    it('should use flag() in guard expressions', async () => {
+      const ir = await compileToIR(`
+        entity Feature {
+          property status: string = "off"
+
+          command enable() {
+            guard flag("feature-toggle")
+            mutate status = "on"
+          }
+        }
+      `);
+
+      // With flag disabled
+      const runtime1 = new RuntimeEngine(ir, {}, {
+        flagProvider: () => false,
+        generateId: () => 'f1',
+      });
+      await runtime1.createInstance('Feature', { id: 'f1', status: 'off' });
+      const result1 = await runtime1.runCommand('enable', {}, { entityName: 'Feature', instanceId: 'f1' });
+      expect(result1.success).toBe(false);
+
+      // With flag enabled
+      const runtime2 = new RuntimeEngine(ir, {}, {
+        flagProvider: () => true,
+        generateId: () => 'f2',
+      });
+      await runtime2.createInstance('Feature', { id: 'f2', status: 'off' });
+      const result2 = await runtime2.runCommand('enable', {}, { entityName: 'Feature', instanceId: 'f2' });
+      expect(result2.success).toBe(true);
     });
   });
 

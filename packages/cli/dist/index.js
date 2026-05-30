@@ -34,6 +34,7 @@ import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
 import { fmtCommand } from './commands/fmt.js';
 import { installHooksCommand } from './commands/install-hooks.js';
+import { versionsListCommand, versionsShowCommand, versionsSaveCommand, versionsDiffCommand, versionsChangelogCommand, versionsTagCommand, versionsRollbackCommand, versionsVerifyCommand, } from './commands/versions.js';
 import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
@@ -718,6 +719,144 @@ configProgram
     .option('--json', 'JSON output (default: yes)', true)
     .action(async (options = {}) => {
     await configInspectCommand({ json: options.json !== false });
+});
+/**
+ * manifest versions
+ *
+ * IR snapshot versioning with semantic tags, changelog, and integrity verification.
+ */
+const versionsProgram = program
+    .command('versions')
+    .description('Manage IR version snapshots (.manifest-versions/)');
+versionsProgram
+    .command('list')
+    .description('List saved IR versions')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--json', 'JSON output', false)
+    .action(async (options = {}) => {
+    await versionsListCommand({ store: options.store, json: options.json });
+});
+versionsProgram
+    .command('show')
+    .description('Show version metadata (by number, tag, or "latest")')
+    .argument('<version>', 'Version number, tag, or "latest"')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--json', 'JSON output', false)
+    .action(async (version, options = {}) => {
+    await versionsShowCommand(version, { store: options.store, json: options.json });
+});
+versionsProgram
+    .command('save')
+    .description('Compile and save a new IR snapshot')
+    .argument('[source]', 'Path to .manifest source file')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--tag <tag>', 'Semantic version tag (e.g. 1.0.0)')
+    .option('--auto-tag', 'Auto-increment semver from previous version', false)
+    .option('--label <text>', 'Human-readable label for this version')
+    .action(async (source, options = {}) => {
+    await versionsSaveCommand(source, {
+        store: options.store,
+        tag: options.tag,
+        autoTag: options.autoTag,
+        label: options.label,
+    });
+});
+versionsProgram
+    .command('diff')
+    .description('Compare two saved IR versions')
+    .argument('<from>', 'Source version (number, tag, or "latest")')
+    .argument('<to>', 'Target version (number, tag, or "latest")')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--json', 'JSON output', false)
+    .option('--breaking', 'Include breaking change analysis', false)
+    .option('--sql', 'Include migration SQL preview', false)
+    .action(async (from, to, options = {}) => {
+    await versionsDiffCommand(from, to, {
+        store: options.store,
+        json: options.json,
+        breaking: options.breaking,
+        sql: options.sql,
+    });
+});
+versionsProgram
+    .command('changelog')
+    .description('Generate changelog between two versions')
+    .argument('[from]', 'Source version (default: previous)')
+    .argument('[to]', 'Target version (default: latest)')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--json', 'JSON output', false)
+    .action(async (from, to, options = {}) => {
+    await versionsChangelogCommand(from, to, { store: options.store, json: options.json });
+});
+versionsProgram
+    .command('tag')
+    .description('Apply a semantic version tag to a saved version')
+    .argument('<version>', 'Version number or "latest"')
+    .argument('<tag>', 'Semantic version tag (e.g. 1.0.0)')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .action(async (version, tag, options = {}) => {
+    await versionsTagCommand(version, tag, { store: options.store });
+});
+versionsProgram
+    .command('rollback')
+    .description('Output a previous IR snapshot')
+    .argument('<version>', 'Version number, tag, or "latest"')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('-o, --output <path>', 'Write IR to file instead of stdout')
+    .action(async (version, options = {}) => {
+    await versionsRollbackCommand(version, { store: options.store, output: options.output });
+});
+versionsProgram
+    .command('verify')
+    .description('Verify IR integrity via SHA-256 hash comparison')
+    .argument('[version]', 'Version to verify (default: latest)')
+    .option('--store <path>', 'Version store directory', '.manifest-versions')
+    .option('--json', 'JSON output', false)
+    .option('--all', 'Verify all saved versions', false)
+    .action(async (version, options = {}) => {
+    await versionsVerifyCommand(version, { store: options.store, json: options.json, all: options.all });
+});
+/**
+ * manifest plugins
+ *
+ * List and inspect loaded plugins from manifest.config.yaml.
+ */
+const pluginsProgram = program
+    .command('plugins')
+    .description('List and inspect Manifest plugins');
+pluginsProgram
+    .command('list')
+    .description('List plugins declared in manifest.config')
+    .option('--json', 'JSON output', false)
+    .action(async (options = {}) => {
+    const config = (await getConfig()) ?? {};
+    const pluginDecls = config.plugins ?? [];
+    if (pluginDecls.length === 0) {
+        if (options.json) {
+            console.log(JSON.stringify({ plugins: [], message: 'No plugins declared in manifest.config' }, null, 2));
+        }
+        else {
+            console.log(chalk.gray('No plugins declared in manifest.config'));
+        }
+        return;
+    }
+    const summary = pluginDecls.map((p) => ({
+        module: p.module,
+        enabled: p.enabled !== false,
+        hasOptions: !!p.options && Object.keys(p.options).length > 0,
+    }));
+    if (options.json) {
+        console.log(JSON.stringify({ plugins: summary }, null, 2));
+    }
+    else {
+        console.log(chalk.bold('Declared plugins:\n'));
+        for (const p of summary) {
+            const status = p.enabled ? chalk.green('enabled') : chalk.red('disabled');
+            const opts = p.hasOptions ? chalk.gray(' (with options)') : '';
+            console.log(`  ${chalk.cyan(p.module)} ${status}${opts}`);
+        }
+        console.log(`\n  Total: ${summary.length} plugin(s)`);
+    }
 });
 /**
  * Run the CLI

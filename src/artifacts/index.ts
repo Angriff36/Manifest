@@ -2,6 +2,7 @@ export { ArtifactsPanel } from './ArtifactsPanel';
 export { FileTree } from './FileTree';
 export { FileViewer } from './FileViewer';
 export { SmokeTestPanel } from './SmokeTestPanel';
+export { ConstraintTestPanel } from './ConstraintTestPanel';
 export { IRGraphPanel } from './IRGraphPanel';
 export { exportZip, exportRunnableZip, copyToClipboard, copyAllFiles, buildFileMap, buildRunnableProjectFiles } from './zipExporter';
 export { runSmokeTests } from './smokeTestRunner';

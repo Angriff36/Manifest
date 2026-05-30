@@ -21,12 +21,24 @@ export { OpenApiProjection } from './openapi/generator.js';
 export { ReactQueryProjection } from './react-query/generator.js';
 export { ZodProjection } from './zod/generator.js';
 export { DrizzleProjection } from './drizzle/generator.js';
+export { GraphQLProjection } from './graphql/generator.js';
+export { LlmContextProjection } from './llm-context/generator.js';
+export { ExpressProjection } from './express/generator.js';
+export { HonoProjection } from './hono/generator.js';
+export { MermaidProjection } from './mermaid/generator.js';
+export { JsonSchemaProjection } from './jsonschema/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
 export type { ReactQueryProjectionOptions } from './react-query/generator.js';
 export type { ZodProjectionOptions } from './zod/types.js';
 export type { DrizzleProjectionOptions } from './drizzle/options.js';
+export type { GraphQLProjectionOptions } from './graphql/types.js';
+export type { LlmContextProjectionOptions } from './llm-context/types.js';
+export type { ExpressProjectionOptions } from './express/types.js';
+export type { HonoProjectionOptions } from './hono/types.js';
+export type { MermaidProjectionOptions } from './mermaid/generator.js';
+export type { JsonSchemaProjectionOptions } from './jsonschema/types.js';
 
 // Re-export route surface types
 export type {

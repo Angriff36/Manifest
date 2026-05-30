@@ -17,6 +17,12 @@ import { OpenApiProjection } from './openapi/generator.js';
 import { ReactQueryProjection } from './react-query/generator.js';
 import { ZodProjection } from './zod/generator.js';
 import { DrizzleProjection } from './drizzle/generator.js';
+import { GraphQLProjection } from './graphql/generator.js';
+import { LlmContextProjection } from './llm-context/generator.js';
+import { ExpressProjection } from './express/generator.js';
+import { HonoProjection } from './hono/generator.js';
+import { MermaidProjection } from './mermaid/generator.js';
+import { JsonSchemaProjection } from './jsonschema/generator.js';
 
 /**
  * Register all built-in projections.
@@ -49,12 +55,23 @@ export function registerBuiltinProjections(): void {
   // Drizzle ORM schema projection (TypeScript-first, Drizzle Kit compatible)
   registerProjection(new DrizzleProjection());
 
-  // Future projections - ADD HERE:
-  // import { HonoProjection } from './hono/generator';
-  // registerProjection(new HonoProjection());
-  //
-  // import { ExpressProjection } from './express/generator';
-  // registerProjection(new ExpressProjection());
+  // GraphQL SDL + resolver stubs projection
+  registerProjection(new GraphQLProjection());
+
+  // LLM Context projection (manifest-context.json for AI agent consumption)
+  registerProjection(new LlmContextProjection());
+
+  // Express/Fastify route handler projection
+  registerProjection(new ExpressProjection());
+
+  // Hono edge-runtime route handler projection
+  registerProjection(new HonoProjection());
+
+  // Mermaid diagram projection (ER, state machine, sequence diagrams)
+  registerProjection(new MermaidProjection());
+
+  // JSON Schema projection (draft-07/2019-09/2020-12)
+  registerProjection(new JsonSchemaProjection());
 
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
@@ -77,5 +94,11 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new ReactQueryProjection(),
     new ZodProjection(),
     new DrizzleProjection(),
+    new GraphQLProjection(),
+    new LlmContextProjection(),
+    new ExpressProjection(),
+    new HonoProjection(),
+    new MermaidProjection(),
+    new JsonSchemaProjection(),
   ];
 }

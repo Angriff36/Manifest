@@ -35,6 +35,7 @@ import {
   analyzeConstraints,
   numericRangeToZodChain,
   lengthConstraintToZodChain,
+  patternConstraintToZodChain,
 } from '../../constraint-analysis';
 
 // ============================================================================
@@ -156,12 +157,20 @@ function generateEntitySchema(
     lengthChains.set(prop, lengthConstraintToZodChain(lc));
   }
 
+  // Build lookup: property name → pattern chain
+  const patternChains = new Map<string, string>();
+  for (const pc of analysis.patternConstraints) {
+    const prop = pc.propertyPath.replace(/^self\./, '');
+    const existing = patternChains.get(prop) ?? '';
+    patternChains.set(prop, existing + patternConstraintToZodChain(pc));
+  }
+
   // Schema declaration
   lines.push(`// Entity: ${entity.name}`);
   lines.push(`export const ${name}Schema = z.object({`);
 
   for (const prop of entity.properties) {
-    const propLine = generatePropertyLine(prop, numericChains, lengthChains, diagnostics);
+    const propLine = generatePropertyLine(prop, numericChains, lengthChains, patternChains, diagnostics);
     lines.push(`  ${prop.name}: ${propLine},`);
   }
 
@@ -199,6 +208,7 @@ function generatePropertyLine(
   prop: IRProperty,
   numericChains: Map<string, string>,
   lengthChains: Map<string, string>,
+  patternChains: Map<string, string>,
   diagnostics: ProjectionDiagnostic[],
 ): string {
   let expr = irTypeToZod(prop.type, diagnostics);
@@ -213,6 +223,12 @@ function generatePropertyLine(
   const lenChain = lengthChains.get(prop.name);
   if (lenChain) {
     expr += lenChain;
+  }
+
+  // Apply pattern chain for string types
+  const patChain = patternChains.get(prop.name);
+  if (patChain) {
+    expr += patChain;
   }
 
   // Nullable

@@ -126,6 +126,15 @@ export interface RuntimeOptions {
    */
   requireTenantContext?: boolean;
   /**
+   * Optional custom builtin functions from plugins or project configuration.
+   * These are merged with core builtins; core builtins always take precedence
+   * on name collision. Populated by the plugin loader from BuiltinFunctionPlugin
+   * registrations.
+   *
+   * @see plugin-api.ts BuiltinFunctionPlugin
+   */
+  customBuiltins?: Map<string, (...args: unknown[]) => unknown>;
+  /**
    * Optional AuditSink for durable audit records.
    * When supplied, the runtime is contracted to call sink.emit() exactly
    * once per command invocation. Contract: src/manifest/audit/audit-sink.ts.
@@ -139,6 +148,22 @@ export interface RuntimeOptions {
    * in this release; transactional integration lands in the follow-on.
    */
   outboxStore?: import('./outbox/outbox-store').OutboxStore;
+  /**
+   * Optional feature flag provider function.
+   * Called with a flag name and returns the flag value (boolean, string, number, or object).
+   * Enables the `flag(name)` built-in to resolve feature flags declaratively
+   * from any provider (LaunchDarkly, Unleash, JSON file, etc.).
+   *
+   * When not provided, `flag(name)` returns `false` (safe default — features off).
+   *
+   * @example
+   * ```typescript
+   * const runtime = new RuntimeEngine(ir, context, {
+   *   flagProvider: (name) => launchDarklyClient.variation(name, false),
+   * });
+   * ```
+   */
+  flagProvider?: (name: string) => unknown;
 }
 
 // Re-export adapter contract types at the package root so consumers can do
@@ -439,6 +464,20 @@ export class RuntimeEngine {
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
   private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
 
+  /** Cache for computed property values, keyed by "entityName:instanceId:propertyName" */
+  private computedPropertyCache: Map<string, {
+    value: unknown;
+    computedAt: number;
+    stale: boolean;
+  }> = new Map();
+
+  /** Request-scoped cache for computed properties (cleared per command) */
+  private computedPropertyRequestCache: Map<string, {
+    value: unknown;
+    computedAt: number;
+    stale: boolean;
+  }> = new Map();
+
   /**
    * Initialize evaluation budget if not already active (re-entrant safe).
    * Returns true if this call initialized the budget (caller must clear it in finally).
@@ -534,6 +573,12 @@ export class RuntimeEngine {
               `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
               `For server-side use, import SupabaseStore from stores.node.ts.`
             );
+          case 'mongodb':
+            throw new Error(
+              `MongoDB storage for entity '${entity.name}' is not available in browser environments. ` +
+              `Use 'memory' or 'localStorage' for browser, or provide a custom store via the storeProvider option. ` +
+              `For server-side use, import MongoDBStore from stores.node.ts.`
+            );
           case 'durable':
             // `'durable'` is a backend-neutral semantic signal — it intentionally does NOT
             // map to any built-in store. Consumers MUST supply a custom store adapter via
@@ -543,16 +588,15 @@ export class RuntimeEngine {
               `Entity '${entity.name}' declares 'store ... in durable' but no storeProvider is bound. ` +
               `'durable' is backend-neutral and requires a runtime store adapter supplied via the storeProvider option.`
             );
-          default: {
-            // Exhaustive check for valid IR store targets
-            const _unsupportedTarget: never = storeConfig.target;
-            const isPrisma = _unsupportedTarget === 'prisma';
+          default:
+            // Custom store adapter scheme — requires a storeProvider that handles this target.
+            // Plugin-registered adapters (e.g. 'redis', 'dynamodb') are resolved through the
+            // CompositeStoreProvider built by the plugin loader.
             throw new Error(
-              `Unsupported storage target '${_unsupportedTarget}' for entity '${entity.name}'. ` +
-              `Valid targets are: 'memory', 'localStorage', 'postgres', 'supabase'.` +
-              (isPrisma ? ` For Prisma, use storeProvider in manifest.config.ts - see docs/proposals/prisma-store-adapter.md` : '')
+              `Entity '${entity.name}' declares store target '${storeConfig.target}' but no storeProvider ` +
+              `returned a store for it. Custom store targets require a matching StoreAdapterPlugin registered ` +
+              `via the plugin API, or a storeProvider that handles the '${storeConfig.target}' scheme.`
             );
-          }
         }
       } else {
         store = new MemoryStore(this.options.generateId);
@@ -594,6 +638,7 @@ export class RuntimeEngine {
    */
   private clearMemoCache(): void {
     this.relationshipMemoCache.clear();
+    this.computedPropertyRequestCache.clear();
   }
 
   /**
@@ -730,7 +775,11 @@ export class RuntimeEngine {
   }
 
   private getBuiltins(): Record<string, (...args: unknown[]) => unknown> {
+    // Custom builtins from plugins are spread first; core builtins override
+    // any name collision so reserved names cannot be replaced.
+    const custom = this.options.customBuiltins;
     return {
+      ...(custom ? Object.fromEntries(custom) : undefined),
       // Core builtins
       now: () => this.getNow(),
       uuid: () => this.options.generateId ? this.options.generateId() : crypto.randomUUID(),
@@ -755,6 +804,14 @@ export class RuntimeEngine {
           ? (end !== undefined ? s.substring(start as number, end as number) : s.substring(start as number))
           : s,
       indexOf: (s: unknown, search: unknown) => typeof s === 'string' ? s.indexOf(search as string) : -1,
+      matches: (s: unknown, pattern: unknown) => {
+        if (typeof s !== 'string' || typeof pattern !== 'string') return false;
+        try {
+          return new RegExp(pattern).test(s);
+        } catch {
+          return false;
+        }
+      },
 
       // Math builtins
       abs: (v: unknown) => typeof v === 'number' ? Math.abs(v) : v,
@@ -774,12 +831,115 @@ export class RuntimeEngine {
           ? value >= low && value <= high
           : false,
 
-      // Array builtins
-      sum: (arr: unknown) => {
+      // Array / aggregate builtins
+      sum: (arr: unknown, mapper?: unknown) => {
         if (Array.isArray(arr)) {
+          if (typeof mapper === 'function') {
+            return (async () => {
+              let total = 0;
+              for (const element of arr as unknown[]) {
+                const v = await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element));
+                if (typeof v === 'number') total += v;
+              }
+              return total;
+            })();
+          }
           return (arr as unknown[]).reduce((acc: number, v) => typeof v === 'number' ? acc + v : acc, 0);
         }
         return arr;
+      },
+      avg: (arr: unknown, mapper?: unknown) => {
+        if (Array.isArray(arr) && arr.length > 0) {
+          if (typeof mapper === 'function') {
+            return (async () => {
+              let total = 0;
+              let count = 0;
+              for (const element of arr as unknown[]) {
+                const v = await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element));
+                if (typeof v === 'number') { total += v; count++; }
+              }
+              return count > 0 ? total / count : 0;
+            })();
+          }
+          const nums = (arr as unknown[]).filter((v): v is number => typeof v === 'number');
+          return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+        }
+        return 0;
+      },
+      min_of: (arr: unknown, mapper?: unknown) => {
+        if (Array.isArray(arr) && arr.length > 0) {
+          if (typeof mapper === 'function') {
+            return (async () => {
+              let result: number | undefined;
+              for (const element of arr as unknown[]) {
+                const v = await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element));
+                if (typeof v === 'number' && (result === undefined || v < result)) result = v;
+              }
+              return result;
+            })();
+          }
+          const nums = (arr as unknown[]).filter((v): v is number => typeof v === 'number');
+          return nums.length > 0 ? Math.min(...nums) : undefined;
+        }
+        return undefined;
+      },
+      max_of: (arr: unknown, mapper?: unknown) => {
+        if (Array.isArray(arr) && arr.length > 0) {
+          if (typeof mapper === 'function') {
+            return (async () => {
+              let result: number | undefined;
+              for (const element of arr as unknown[]) {
+                const v = await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element));
+                if (typeof v === 'number' && (result === undefined || v > result)) result = v;
+              }
+              return result;
+            })();
+          }
+          const nums = (arr as unknown[]).filter((v): v is number => typeof v === 'number');
+          return nums.length > 0 ? Math.max(...nums) : undefined;
+        }
+        return undefined;
+      },
+      count_of: (arr: unknown, predicate?: unknown) => {
+        if (Array.isArray(arr)) {
+          if (typeof predicate === 'function') {
+            return (async () => {
+              let count = 0;
+              for (const element of arr as unknown[]) {
+                const v = await Promise.resolve((predicate as (...a: unknown[]) => unknown)(element));
+                if (v) count++;
+              }
+              return count;
+            })();
+          }
+          return arr.length;
+        }
+        return 0;
+      },
+      filter: (arr: unknown, predicate?: unknown) => {
+        if (Array.isArray(arr) && typeof predicate === 'function') {
+          return (async () => {
+            const result: unknown[] = [];
+            for (const element of arr as unknown[]) {
+              const v = await Promise.resolve((predicate as (...a: unknown[]) => unknown)(element));
+              if (v) result.push(element);
+            }
+            return result;
+          })();
+        }
+        return Array.isArray(arr) ? arr : [];
+      },
+      map: (arr: unknown, mapper?: unknown) => {
+        if (Array.isArray(arr) && typeof mapper === 'function') {
+          return (async () => {
+            const result: unknown[] = [];
+            for (const element of arr as unknown[]) {
+              result.push(await Promise.resolve((mapper as (...a: unknown[]) => unknown)(element)));
+            }
+            return result;
+          })();
+        }
+        return Array.isArray(arr) ? arr : [];
       },
 
       // Date builtins (UTC components; ts is milliseconds since epoch)
@@ -789,6 +949,15 @@ export class RuntimeEngine {
       hours: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCHours() : ts,
       minutes: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMinutes() : ts,
       seconds: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCSeconds() : ts,
+
+      // Feature flag builtin
+      flag: (name: unknown) => {
+        if (typeof name !== 'string') return false;
+        if (this.options.flagProvider) {
+          return this.options.flagProvider(name);
+        }
+        return false;
+      },
     };
   }
 
@@ -984,6 +1153,21 @@ export class RuntimeEngine {
     }
   }
 
+  /**
+   * Evaluate all entity constraints against instance data, returning every outcome
+   * (both passed and failed). Useful for diagnostic UIs that show full constraint status.
+   */
+  async evaluateAllConstraints(entityName: string, data: Record<string, unknown>): Promise<ConstraintOutcome[]> {
+    const entity = this.getEntity(entityName);
+    if (!entity) return [];
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      return await this.validateConstraints(entity, data);
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
+  }
+
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
@@ -1146,9 +1330,42 @@ export class RuntimeEngine {
         console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
       }
 
+      // Mark cached computed properties as stale when their dependencies change
+      this.markComputedPropertiesStale(entityName, id, Object.keys(data));
+
       return await store.update(id, data);
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
+    }
+  }
+
+  /**
+   * Mark cached computed properties as stale when their dependencies are mutated.
+   * Scans the entity's computed properties for any that depend on the changed properties,
+   * and sets their cache entries' stale flag to true. Handles transitive staleness.
+   */
+  private markComputedPropertiesStale(entityName: string, instanceId: string, changedProperties: string[], visited: Set<string> = new Set()): void {
+    const entity = this.getEntity(entityName);
+    if (!entity) return;
+
+    for (const cp of entity.computedProperties) {
+      if (visited.has(cp.name)) continue;
+      const dependsOnChanged = cp.dependencies.some(dep => changedProperties.includes(dep));
+      if (!dependsOnChanged) continue;
+
+      visited.add(cp.name);
+      const cacheKey = `${entityName}:${instanceId}:${cp.name}`;
+
+      // Mark in session/TTL cache
+      const cached = this.computedPropertyCache.get(cacheKey);
+      if (cached) cached.stale = true;
+
+      // Mark in request cache
+      const reqCached = this.computedPropertyRequestCache.get(cacheKey);
+      if (reqCached) reqCached.stale = true;
+
+      // Also mark any computed properties that depend on this computed property (transitive staleness)
+      this.markComputedPropertiesStale(entityName, instanceId, [cp.name], visited);
     }
   }
 
@@ -2170,6 +2387,19 @@ export class RuntimeEngine {
   }
 
   async evaluateComputed(entityName: string, instanceId: string, propertyName: string): Promise<unknown> {
+    const meta = await this.evaluateComputedWithMeta(entityName, instanceId, propertyName);
+    return meta?.value;
+  }
+
+  /**
+   * Evaluate a computed property and return metadata including cache status and staleness.
+   * Returns { value, stale, cached } or undefined if the entity/property/instance doesn't exist.
+   */
+  async evaluateComputedWithMeta(
+    entityName: string,
+    instanceId: string,
+    propertyName: string
+  ): Promise<{ value: unknown; stale: boolean; cached: boolean } | undefined> {
     const entity = this.getEntity(entityName);
     if (!entity) return undefined;
 
@@ -2179,11 +2409,85 @@ export class RuntimeEngine {
     const instance = await this.getInstance(entityName, instanceId);
     if (!instance) return undefined;
 
+    const cacheKey = `${entityName}:${instanceId}:${propertyName}`;
+
+    // Check cache based on strategy
+    if (computed.cache) {
+      const cached = this.getCachedComputedValue(computed.cache, cacheKey);
+      if (cached !== undefined) {
+        return { value: cached.value, stale: cached.stale, cached: true };
+      }
+    }
+
     const ownsEvalBudget = this.initEvalBudget();
     try {
-      return await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+      const value = await this.evaluateComputedInternal(entity, instance, propertyName, new Set());
+
+      // Store in cache if strategy is configured
+      if (computed.cache) {
+        this.setCachedComputedValue(computed.cache, cacheKey, value);
+      }
+
+      return { value, stale: false, cached: false };
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
+    }
+  }
+
+  /**
+   * Look up a cached computed property value based on the configured cache strategy.
+   * Returns the cache entry if valid, or undefined if cache miss or expired.
+   */
+  private getCachedComputedValue(
+    cacheConfig: { strategy: string; ttlSeconds?: number },
+    cacheKey: string
+  ): { value: unknown; stale: boolean } | undefined {
+    switch (cacheConfig.strategy) {
+      case 'request': {
+        const entry = this.computedPropertyRequestCache.get(cacheKey);
+        if (entry) return { value: entry.value, stale: entry.stale };
+        return undefined;
+      }
+      case 'session': {
+        const entry = this.computedPropertyCache.get(cacheKey);
+        if (entry) return { value: entry.value, stale: entry.stale };
+        return undefined;
+      }
+      case 'ttl': {
+        const entry = this.computedPropertyCache.get(cacheKey);
+        if (entry) {
+          const now = this.getNow();
+          const ttlMs = (cacheConfig.ttlSeconds ?? 0) * 1000;
+          if (now - entry.computedAt < ttlMs) {
+            return { value: entry.value, stale: entry.stale };
+          }
+          // TTL expired — remove stale entry
+          this.computedPropertyCache.delete(cacheKey);
+        }
+        return undefined;
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Store a computed property value in the appropriate cache based on strategy.
+   */
+  private setCachedComputedValue(
+    cacheConfig: { strategy: string; ttlSeconds?: number },
+    cacheKey: string,
+    value: unknown
+  ): void {
+    const entry = { value, computedAt: this.getNow(), stale: false };
+    switch (cacheConfig.strategy) {
+      case 'request':
+        this.computedPropertyRequestCache.set(cacheKey, entry);
+        break;
+      case 'session':
+      case 'ttl':
+        this.computedPropertyCache.set(cacheKey, entry);
+        break;
     }
   }
 

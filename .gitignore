@@ -69,3 +69,22 @@ pathlens-report-*.json
 angriff36-manifest-*.tgz
 junk/
 scripts/
+
+# Nested git worktrees (registered inside the repo). The superproject's
+# `git add -A` does NOT auto-exclude these, so they must be ignored here.
+# This has no effect on the agents working inside them — each worktree
+# commits to its own branch via .git/worktrees/<id> metadata.
+.worktrees/
+
+# Local debug / verification scratch (root-level only)
+/debug-*.mjs
+/debug-*.mts
+/debug-*.ts
+/verify-aggregates.mts
+/constraint-test-verify.spec.ts
+
+# Compiled JS emitted next to TS sources under src/ (build output, not source).
+# Only ir.js and projections/interface.js are intentionally tracked.
+/src/**/*.js
+!/src/manifest/ir.js
+!/src/manifest/projections/interface.js

@@ -40,12 +40,22 @@ export interface LengthConstraint {
   propertyPath: string;
 }
 
+/** Extracted regex pattern constraint for a property */
+export interface PatternConstraint {
+  /** The regex pattern string */
+  pattern: string;
+  /** The property path this pattern applies to */
+  propertyPath: string;
+}
+
 /** Result of analyzing all constraints on an entity */
 export interface ConstraintAnalysis {
   /** Numeric ranges extracted from min/max/between calls */
   numericRanges: NumericRange[];
   /** Length constraints extracted from length() comparisons */
   lengthConstraints: LengthConstraint[];
+  /** Regex pattern constraints extracted from matches() calls */
+  patternConstraints: PatternConstraint[];
 }
 
 // ============================================================================
@@ -55,6 +65,14 @@ export interface ConstraintAnalysis {
 /** Extract a literal number value from an IRExpression, or undefined */
 function extractLiteralNumber(expr: IRExpression): number | undefined {
   if (expr.kind === 'literal' && expr.value?.kind === 'number') {
+    return expr.value.value;
+  }
+  return undefined;
+}
+
+/** Extract a literal string value from an IRExpression, or undefined */
+function extractLiteralString(expr: IRExpression): string | undefined {
+  if (expr.kind === 'literal' && expr.value?.kind === 'string') {
     return expr.value.value;
   }
   return undefined;
@@ -121,13 +139,16 @@ function extractBinaryRange(expr: IRExpression): NumericRange | undefined {
  *   - `length(self.prop) <= N` → LengthConstraint
  *   - `self.prop >= N` / `self.prop > N` → NumericRange
  *   - `self.prop <= N` / `self.prop < N` → NumericRange
+ *   - `matches(self.prop, "pattern")` → PatternConstraint
  */
 export function analyzeConstraintExpression(expression: IRExpression): {
   numericRanges: NumericRange[];
   lengthConstraints: LengthConstraint[];
+  patternConstraints: PatternConstraint[];
 } {
   const numericRanges: NumericRange[] = [];
   const lengthConstraints: LengthConstraint[] = [];
+  const patternConstraints: PatternConstraint[] = [];
 
   // Handle `between(self.prop, min, max)` calls
   if (expression.kind === 'call' &&
@@ -140,7 +161,20 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     if (propPath && low !== undefined && high !== undefined) {
       numericRanges.push({ min: low, max: high, propertyPath: propPath });
     }
-    return { numericRanges, lengthConstraints };
+    return { numericRanges, lengthConstraints, patternConstraints };
+  }
+
+  // Handle `matches(self.prop, "pattern")` calls
+  if (expression.kind === 'call' &&
+      expression.callee.kind === 'identifier' &&
+      expression.callee.name === 'matches' &&
+      expression.args.length === 2) {
+    const propPath = formatPropertyPath(expression.args[0]);
+    const pattern = extractLiteralString(expression.args[1]);
+    if (propPath && pattern !== undefined) {
+      patternConstraints.push({ pattern, propertyPath: propPath });
+    }
+    return { numericRanges, lengthConstraints, patternConstraints };
   }
 
   // Handle `min(self.prop, minVal)` as lower bound
@@ -153,7 +187,7 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     if (propPath && minVal !== undefined) {
       numericRanges.push({ min: minVal, propertyPath: propPath });
     }
-    return { numericRanges, lengthConstraints };
+    return { numericRanges, lengthConstraints, patternConstraints };
   }
 
   // Handle `max(self.prop, maxVal)` as upper bound
@@ -166,7 +200,7 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     if (propPath && maxVal !== undefined) {
       numericRanges.push({ max: maxVal, propertyPath: propPath });
     }
-    return { numericRanges, lengthConstraints };
+    return { numericRanges, lengthConstraints, patternConstraints };
   }
 
   // Handle binary comparisons involving `length()` calls
@@ -187,7 +221,7 @@ export function analyzeConstraintExpression(expression: IRExpression): {
         } else if (operator === '<') {
           lengthConstraints.push({ maxLength: rightNum - 1, propertyPath: propPath });
         }
-        return { numericRanges, lengthConstraints };
+        return { numericRanges, lengthConstraints, patternConstraints };
       }
     }
 
@@ -205,7 +239,7 @@ export function analyzeConstraintExpression(expression: IRExpression): {
         } else if (operator === '<') {
           lengthConstraints.push({ minLength: leftNum + 1, propertyPath: propPath });
         }
-        return { numericRanges, lengthConstraints };
+        return { numericRanges, lengthConstraints, patternConstraints };
       }
     }
 
@@ -216,7 +250,7 @@ export function analyzeConstraintExpression(expression: IRExpression): {
     }
   }
 
-  return { numericRanges, lengthConstraints };
+  return { numericRanges, lengthConstraints, patternConstraints };
 }
 
 /**
@@ -227,9 +261,10 @@ export function analyzeConstraintExpression(expression: IRExpression): {
 export function analyzeConstraints(constraints: IRConstraint[]): ConstraintAnalysis {
   const allRanges: Map<string, NumericRange> = new Map();
   const allLengths: Map<string, LengthConstraint> = new Map();
+  const allPatterns: PatternConstraint[] = [];
 
   for (const constraint of constraints) {
-    const { numericRanges, lengthConstraints } = analyzeConstraintExpression(constraint.expression);
+    const { numericRanges, lengthConstraints, patternConstraints } = analyzeConstraintExpression(constraint.expression);
 
     for (const range of numericRanges) {
       const key = range.propertyPath;
@@ -262,11 +297,17 @@ export function analyzeConstraints(constraints: IRConstraint[]): ConstraintAnaly
         allLengths.set(key, { ...lc });
       }
     }
+
+    // Pattern constraints: collect all (multiple patterns on same property are all kept)
+    for (const pc of patternConstraints) {
+      allPatterns.push({ ...pc });
+    }
   }
 
   return {
     numericRanges: Array.from(allRanges.values()),
     lengthConstraints: Array.from(allLengths.values()),
+    patternConstraints: allPatterns,
   };
 }
 
@@ -336,4 +377,32 @@ export function lengthConstraintToZodChain(lc: LengthConstraint): string {
   if (lc.minLength !== undefined) parts.push(`.min(${lc.minLength})`);
   if (lc.maxLength !== undefined) parts.push(`.max(${lc.maxLength})`);
   return parts.join('');
+}
+
+/**
+ * Convert a PatternConstraint to a SQL CHECK constraint expression.
+ *
+ * Uses the ~ operator (PostgreSQL regex match). Other DBs may need adaptation.
+ *
+ * @param pc - The pattern constraint
+ * @param column - The SQL column name
+ * @returns SQL CHECK expression
+ */
+export function patternConstraintToCheckConstraint(pc: PatternConstraint, column?: string): string {
+  const col = column ?? pc.propertyPath.replace(/^self\./, '');
+  // Escape single quotes in pattern for SQL
+  const escapedPattern = pc.pattern.replace(/'/g, "''");
+  return `${col} ~ '${escapedPattern}'`;
+}
+
+/**
+ * Convert a PatternConstraint to a Zod method chain (e.g., ".regex(/pattern/)").
+ *
+ * @param pc - The pattern constraint
+ * @returns Zod method chain string
+ */
+export function patternConstraintToZodChain(pc: PatternConstraint): string {
+  // Escape forward slashes in pattern for regex literal
+  const escapedPattern = pc.pattern.replace(/\//g, '\\/');
+  return `.regex(/${escapedPattern}/)`;
 }

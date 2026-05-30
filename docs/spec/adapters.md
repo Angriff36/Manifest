@@ -70,7 +70,7 @@ const runtime = new RuntimeEngine(ir, {
 
 ### Implementation Examples
 
-See [guides/implementing-custom-stores.md](../patterns/implementing-custom-stores.md) for complete examples:
+See [guides/implementing-custom-stores.md](../guides/implementing-custom-stores.md) for complete examples:
 - PrismaStore with transactional outbox
 - TypeORM integration
 - Drizzle integration
@@ -78,7 +78,7 @@ See [guides/implementing-custom-stores.md](../patterns/implementing-custom-store
 
 ### Event Collection
 
-For transactional outbox patterns, stores MAY support event collection via the `eventCollector` option. See [guides/transactional-outbox-pattern.md](../patterns/transactional-outbox-pattern.md) for details.
+For transactional outbox patterns, stores MAY support event collection via the `eventCollector` option. See [guides/transactional-outbox-pattern.md](../guides/transactional-outbox.md) for details.
 
 ## Projection Adapters (e.g., Next.js)
 - Projection adapters generate framework-specific outputs from IR (for example routes and templates).
