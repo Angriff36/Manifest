@@ -1,0 +1,52 @@
+---
+title: "Hono edge router projection"
+sidebarTitle: "Hono"
+description: "Generate edge-runtime-optimized Hono route handlers from Manifest IR — a single router file with zero Node.js dependencies for Cloudflare Workers, Vercel Edge, or Deno Deploy."
+---
+
+The Hono projection generates edge-runtime-optimized route handlers from compiled Manifest IR using the [Hono](https://hono.dev) framework. Use it when you are deploying to Cloudflare Workers, Vercel Edge, or Deno Deploy and need a single router file with zero Node.js dependencies. It mirrors the [Express projection's](/projections/express) structure but emits Hono idioms — `c.get('user')` for auth context, `c.req.json()` for bodies, and `c.json(data, status)` for responses.
+
+The projection is registered under the name `hono` and lives at `src/manifest/projections/hono/generator.ts`.
+
+## What it generates
+
+The projection exposes four surfaces.
+
+`hono.router` emits a complete app module (path hint `src/routes.ts`, or `routes/<entity>.ts` when an `entity` is supplied). It imports `Hono`, the configured auth middleware, and the runtime factory, declares a typed `Env` (binding `Variables.user`), constructs `const app = new Hono<Env>()`, registers routes per entity, and ends with `export default app` for direct edge deployment. Each entity gets `GET /{entity}/list`, `GET /{entity}/:id`, and one `POST /{entity}/{command-kebab}` per entity-scoped command.
+
+`hono.entity` emits a single-entity router (one artifact per entity when no `entity` is set). `hono.types` emits TypeScript types — an `Env` type, an `AuthUser` interface, one `interface` per entity (computed properties as `readonly`), and a `<Entity><Command>Params` interface per parameterized command. `hono.all` emits the router and the types together. An unknown surface returns an `UNKNOWN_SURFACE` error; a missing named entity yields a `HONO_ENTITY_NOT_FOUND` warning.
+
+Read handlers call `runtime.list(...)` / `runtime.get(...)` directly, reading the tenant id from `c.get('user')` when tenant context is enabled. Command handlers parse the body with `c.req.json()`, derive an `instanceId` from `body.instanceId ?? body.id`, and call `runtime.runCommand(entity, command, { params, instanceId }, context)`. Runtime error codes map to HTTP status the same way as the Express projection: `GUARD_FAILED` to 403, `CONSTRAINT_VIOLATION` to 422, `CONCURRENCY_CONFLICT` to 409, `NOT_FOUND` to 404, otherwise 500.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('hono');
+
+const router = projection.generate(ir, { surface: 'hono.router' });
+
+const all = projection.generate(ir, {
+  surface: 'hono.all',
+  options: { validationImportPath: './schemas', publicReads: true },
+});
+```
+
+## Type mapping & behavior
+
+`irTypeToTs` is identical to the Express projection: `string` to `string`; `number`/`integer`/`int` to `number`; `boolean`/`bool` to `boolean`; `date`/`datetime`/`uuid`/`email`/`url`/`uri`/`decimal` to `string`; `any` to `unknown`; `object` to `Record<string, unknown>`; `array<T>` to `T[]`; `map<V>` to `Record<string, V>`; `record` to `Record<string, unknown>`; unknown names to `unknown`; nullable appends ` | null`.
+
+Entity interface fields are optional unless the property has the `required` modifier; command params fields are optional unless the parameter is `required`. Route segments use the lower-cased entity name and the kebab-cased command name. When `validationImportPath` is set, command handlers import `<Entity><Command>ParamsSchema` and `safeParse` the parsed body, returning a 400 `VALIDATION_ERROR` before dispatch. When `includeComments` is on, each command handler is preceded by a JSDoc block describing guards, constraint/policy counts, and emitted events.
+
+## Options
+
+`HonoProjectionOptions` accepts `authImportPath` (default `./middleware/auth`), `authMiddlewareName` (default `requireAuth`), `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `validationImportPath` (default unset — no validation emitted), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `emitTypes` (default `true`), `emitHeader` (default `true`), `publicReads` (default `false`), `includeComments` (default `true`), and `generatedAt` (ISO timestamp override for deterministic output). Note that, unlike the Express projection, there is no `framework` option — the target is always Hono.
+
+## Notes & limitations
+
+<Note>
+The generated app imports its auth middleware and runtime factory from the configured paths rather than defining them, and uses Hono's `c.get('user')` convention (set by that middleware) rather than an Express-style `req.user`. As with the Express projection, the `basePath` option is normalized but not applied to the generated route strings; apply the prefix where you mount or `route()` the app. Read routes bypass the runtime engine; all writes go through `runtime.runCommand`.
+</Note>
+
+There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only, so emit Hono output by invoking `getProjection('hono')` programmatically. Extending the CLI's `generate` to accept `hono` would be separate work.

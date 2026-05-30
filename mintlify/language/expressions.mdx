@@ -1,0 +1,80 @@
+---
+title: "Expression built-ins: strings, numbers, dates, and aggregates"
+sidebarTitle: "Expression built-ins"
+description: "Manifest's deterministic, side-effect-free expression library — string and numeric helpers, UTC date components, and collection aggregates with mapper and predicate lambdas."
+---
+
+Manifest's expression language ships a library of deterministic, side-effect-free built-in functions: string and numeric helpers, UTC date components, and aggregate operations over collections. The aggregates accept optional mapper or predicate lambdas, letting computed properties summarize related entities declaratively. All functions are side-effect-free and produce identical results given identical input and runtime context.
+
+## Scalar and string built-ins
+
+String and numeric helpers can be used anywhere expressions are evaluated — `compute` bindings, guards, computed properties, and constraints:
+
+```manifest
+command testStringOps(input: string) {
+  guard input != ""
+  compute cleaned = trim(input)
+  compute partCount = count(split(input, ","))
+  compute hasPrefix = startsWith(input, "hello")
+  compute hasSuffix = endsWith(input, "world")
+  compute swapped = replace(input, "old", "new")
+  compute upper = toUpperCase(input)
+  compute lower = toLowerCase(input)
+  compute charCount = length(input)
+  compute slice = substring(input, 0, 5)
+  compute foundAt = indexOf(input, "world")
+}
+```
+
+Numeric helpers `abs`, `round`, `floor`, `ceil`, `min`, and `max` and the array helper `sum` appear in the same fixture, and the date components `year`/`month`/`day`/`hours`/`minutes`/`seconds` operate on a millisecond timestamp.
+
+String helpers wrap the corresponding `String.prototype` methods (returning the input unchanged for non-strings), numeric helpers delegate to `Math`, and `min`/`max` are variadic over numeric arguments. The date components use UTC methods so results are timezone-independent — see [Types](/language/types) for the full list.
+
+## Aggregate built-ins with lambdas
+
+The aggregates reduce a collection — typically a `hasMany` relationship reached via `self.` — to a single value, optionally transforming or filtering each element with a lambda:
+
+```manifest
+entity Order {
+  property required customerName: string
+  property status: string = "pending"
+
+  hasMany lineItems: LineItem
+
+  computed totalAmount: number = sum(self.lineItems, (item) => item.price * item.quantity)
+  computed itemCount: number = count_of(self.lineItems)
+  computed averagePrice: number = avg(self.lineItems, (item) => item.price)
+  computed cheapestItem: number = min_of(self.lineItems, (item) => item.price)
+  computed mostExpensiveItem: number = max_of(self.lineItems, (item) => item.price)
+  computed highValueCount: number = count_of(self.lineItems, (item) => item.price * item.quantity > 50)
+}
+
+entity LineItem {
+  property required price: number
+  property quantity: number = 1
+
+  belongsTo order: Order
+
+  computed lineTotal: number = price * quantity
+}
+
+store Order in memory
+store LineItem in memory
+```
+
+For `sum`, `avg`, `min_of`, and `max_of` the lambda maps each element to a number; for `count_of` the lambda is a predicate selecting which elements to count.
+
+The behavior with a lambda is:
+
+- `sum` adds each mapped number.
+- `avg` averages the mapped numbers (`0` for an empty collection).
+- `min_of` / `max_of` return the smallest / largest mapped number (`undefined` for an empty collection).
+- `count_of` returns the total length without a predicate, or the count of elements for which the predicate is truthy.
+
+Without a lambda, `sum` and `avg` operate on the raw numeric elements and `count_of` returns the collection length. Each aggregate guards against a non-array first argument: `sum` returns its argument unchanged, `avg` returns `0`, `count_of` returns `0`, `min_of`/`max_of` return `undefined`, and `filter`/`map` return an empty array (or the array unchanged when no callback is supplied).
+
+Because aggregating over a `hasMany` relationship requires resolving related instances asynchronously, the lambda-bearing branches return promises that the evaluator awaits. The element mapper is invoked once per element and its result awaited, keeping evaluation deterministic for a fixed runtime context.
+
+<Note>
+Two distinct count helpers exist: `count(array)` (a plain length used above in `count(split(input, ","))`) and `count_of(collection, predicate?)` (the aggregate). Likewise `min`/`max` are variadic over scalar arguments, which is different from `min_of`/`max_of`, which reduce a collection. Using an aggregate on a non-array yields the safe fallbacks listed above rather than an error.
+</Note>

@@ -1,0 +1,56 @@
+---
+title: "Zod validation schema projection"
+sidebarTitle: "Zod"
+description: "Generate Zod validation schemas from Manifest IR — one z.object() per entity and command, with constraint-derived refinements and type coercions."
+---
+
+The Zod projection generates Zod validation schemas from compiled Manifest IR — one `z.object()` per entity and per command parameter set, with constraint-derived refinements and type coercions. Use it for runtime validation in any TypeScript environment without coupling to a specific framework.
+
+## What it generates
+
+The projection registers under the name `zod` and declares three surfaces, `['zod.entity', 'zod.command', 'zod.schemas']`.
+
+`zod.entity` emits a schema file per entity (`id: zod.entity.<Entity>`, content type `typescript`, written at `schemas/<Entity>.schema.ts`). `zod.command` emits a schema file per command (`id: zod.command.<command>`, written at `schemas/<command>.schema.ts`). `zod.schemas` emits a single combined module containing all schemas (`id: 'zod.schemas'`, written at `schemas/manifest-schemas.ts`).
+
+Each entity schema is a `z.object()` with constraint refinements applied. When enabled, the projection also emits an `<Entity>ComputedSchema` that extends the base schema with the entity's computed properties, and `export type X = z.infer<typeof XSchema>` type aliases.
+
+## Usage
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { getProjection } from '@angriff36/manifest/projections';
+
+const { ir } = await compileToIR(source);
+
+const projection = getProjection('zod');
+const result = projection?.generate(ir, {
+  surface: 'zod.schemas',
+  options: { emitTypes: true, zodImportPath: 'zod' },
+});
+
+const code = result?.artifacts[0]?.code;
+```
+
+`ZodProjection` can also be imported directly from `@angriff36/manifest/projections/zod`, or dispatched through the CLI by name:
+
+```bash
+manifest generate ir/recipe.ir.json --projection zod --surface zod.schemas --output src/schemas/manifest-schemas.ts
+```
+
+## Type mapping & behavior
+
+IR types map to Zod expressions through `TYPE_MAP`. `string` and `text` become `z.string()`; `boolean`/`bool` become `z.boolean()`; `number`, `float`, `decimal`, and `money` become `z.number()`; `int`/`integer` become `z.number().int()`; `bigint` becomes `z.bigint()`; `date`/`datetime` become `z.coerce.date()`; `uuid` becomes `z.string().uuid()`; `email` becomes `z.string().email()`; `url`/`uri` become `z.string().url()`; `json` and `any` become `z.unknown()`; `bytes` becomes `z.instanceof(Uint8Array)`; and `object` becomes `z.record(z.unknown())`. Arrays and maps with a generic recurse into `z.array(...)` and `z.record(...)`. An unknown type emits a `ZOD_UNKNOWN_TYPE` warning and falls back to `z.unknown()`.
+
+Note that, unlike [Prisma](/integration/prisma) and [Drizzle](/projections/drizzle), the Zod projection maps bare `number` to `z.number()` without an ambiguity diagnostic — Zod has no distinct integer-versus-decimal concern at this layer. Constraints on an entity are analyzed (via `src/manifest/constraint-analysis.ts`) and emitted as `.min()` / `.max()` refinement chains.
+
+## Options
+
+The options object is `ZodProjectionOptions` in `zod/types.ts`. All four options default to enabled or a sensible string: `emitTypes` (default true) emits `z.infer` type aliases, `emitComputedSchemas` (default true) emits the `<Entity>ComputedSchema` variants for entities that have computed properties, `zodImportPath` (default `zod`) sets the import source, and `emitHeader` (default true) prepends a generation-metadata comment.
+
+## Notes & limitations
+
+<Note>
+Computed-property schemas are emitted only when both `emitComputedSchemas` is enabled and the entity actually declares computed properties.
+</Note>
+
+The behavior documented here comes directly from `src/manifest/projections/zod/generator.ts` and `types.ts`.

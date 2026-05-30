@@ -1,0 +1,55 @@
+---
+title: "React Query hooks projection"
+sidebarTitle: "React Query"
+description: "Generate typed TanStack Query hooks and a QueryClient provider from Manifest IR, with automatic cache invalidation against your generated API surfaces."
+---
+
+The React Query projection generates typed [TanStack Query](https://tanstack.com/query) hooks and a `QueryClient` provider from compiled Manifest IR. Reach for it when you are building a React front end against the [Next.js](/integration/nextjs), [Express](/projections/express), or [Hono](/projections/hono) API surfaces and want deterministic, typed data-fetching hooks with automatic cache invalidation rather than hand-written `useQuery`/`useMutation` calls.
+
+The projection is registered under the name `react-query` and lives at `src/manifest/projections/react-query/generator.ts`.
+
+## What it generates
+
+The projection exposes two surfaces.
+
+`react-query.hooks` emits a single self-contained TypeScript module (path hint `src/hooks/manifest-hooks.ts`). It inlines an `interface` for every entity in the IR, an input interface for each command that has parameters, a `queryKeys` factory object, an internal `apiFetch<T>` helper, one list hook and one detail hook per entity, and one mutation hook per entity-scoped command. List hooks (`use<Entity>List`) wrap `GET {apiBasePath}/{entity}/list`; detail hooks (`use<Entity>Detail`) wrap `GET {apiBasePath}/{entity}/{id}` and are gated on a truthy `id`. Mutation hooks (`use<Entity><Command>`) issue `POST {dispatcherBasePath}/{entity}/commands/{command-kebab}` and, on success, call `queryClient.invalidateQueries` for the parent entity before delegating to any caller-supplied `onSuccess`.
+
+`react-query.provider` emits a `'use client'` component module (path hint `src/providers/manifest-query-provider.tsx`) exporting `ManifestQueryProvider`. It constructs a `QueryClient` with `staleTime` set from options, `refetchOnWindowFocus: false`, and — when `errorBoundaryIntegration` is enabled — `throwOnError: true` on both queries and mutations.
+
+A command with no associated entity is skipped and reported with an `ORPHAN_COMMAND` warning diagnostic. An unrecognized surface returns an `UNKNOWN_SURFACE` error diagnostic.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('react-query');
+const result = projection.generate(ir, {
+  surface: 'react-query.hooks',
+  options: { apiBasePath: '/api', defaultStaleTime: 60_000 },
+});
+
+for (const artifact of result.artifacts) {
+  console.log(artifact.pathHint, artifact.code);
+}
+```
+
+Swap the surface to `react-query.provider` for the `QueryClient` setup module.
+
+## Type mapping & behavior
+
+IR property and parameter types are mapped to TypeScript by `irTypeToTsType`: `string` to `string`, `number` to `number`, `boolean` to `boolean`, `date`/`datetime` to `Date`, `any` to `unknown`, and `void` to `void`. Any other IR type name passes through unchanged. A nullable IR type yields `T | null`.
+
+Entity properties are marked optional (`?`) when the property carries the `optional` modifier, has a default value, or is nullable. Command input fields are optional when the parameter is not required, in which case the TypeScript type also gains ` | undefined`. Query keys use the lower-camel-cased entity name (for example `queryKeys.userProfile.all`). The mutation return type is taken from the command's `returns` type, defaulting to `unknown`.
+
+## Options
+
+`ReactQueryProjectionOptions` accepts `apiBasePath` (default `/api`), `dispatcherBasePath` (default `/api/manifest`), `optimisticUpdates` (default `true`), `errorBoundaryIntegration` (default `true`), `typesImportPath` (default `@/types/manifest-generated`), and `defaultStaleTime` in milliseconds (default `30000`). All are optional.
+
+## Notes & limitations
+
+<Warning>
+Two declared options are currently inert. `optimisticUpdates` is accepted and normalized but is never read during generation — the generated mutation hooks use a cache-invalidation strategy (`invalidateQueries`) only, with no optimistic update helpers emitted, despite the module's header comment mentioning them. `typesImportPath` is likewise accepted but unused; entity and command-input types are inlined directly into the hooks file rather than imported, so the hooks module is fully self-contained.
+</Warning>
+
+There is no dedicated CLI command for this projection. The bundled `manifest generate` command currently wires up the Next.js projection only; to emit React Query hooks, invoke the projection programmatically through `getProjection('react-query')` as shown above.

@@ -387,3 +387,339 @@ manifest config inspect --json
 <Tip>
 Commit the inspect output as a snapshot under VCS (e.g. `.manifest/effective-config.snapshot.json`) and gate CI on `git diff --exit-code` against it. Drift in either Manifest defaults or your local config will then surface as a diff before it changes emitted code.
 </Tip>
+
+---
+
+## `manifest watch [source]`
+
+Watches `.manifest` files and rebuilds (compile + generate) on every change. Useful during local development so generated code stays in sync with your source.
+
+```bash
+manifest watch [source] [options]
+```
+
+### Options
+
+`watch` accepts the same flags as `manifest build` — `-p, --projection`, `-s, --surface`, `--ir-output`, `--code-output`, `-g, --glob`, and the `--auth`/`--database`/`--runtime`/`--response` import-path flags — plus:
+
+<ParamField path="--debounce" type="number" default="300">
+  Debounce delay in milliseconds before a detected change triggers a rebuild.
+</ParamField>
+
+<ParamField path="--events" type="boolean" default="false">
+  Emit structured JSON change events to stdout, useful for piping into other tooling.
+</ParamField>
+
+<ParamField path="--clear" type="boolean" default="false">
+  Clear the terminal on each rebuild.
+</ParamField>
+
+### Examples
+
+```bash
+# Watch a directory and rebuild on change
+manifest watch src/
+
+# Watch with a custom debounce and JSON change events
+manifest watch src/ --debounce 300 --events
+```
+
+---
+
+## `manifest validate-ai [source]`
+
+Validates a `.manifest` or IR file and returns scored diagnostics tuned for AI agents, so an agent can gate on a numeric pass threshold rather than parsing free-form output.
+
+```bash
+manifest validate-ai [source] [options]
+```
+
+`source` can be a `.manifest` file, an `.ir.json` file, a directory, or a glob.
+
+### Options
+
+<ParamField path="-f, --format" type="string" default="text">
+  Output format: `text` or `json`.
+</ParamField>
+
+<ParamField path="--schema" type="string">
+  Path to a custom JSON schema file.
+</ParamField>
+
+<ParamField path="--min-score" type="number" default="100">
+  Minimum score required to pass. The command exits non-zero when the score falls below this value.
+</ParamField>
+
+<ParamField path="--verbose" type="boolean" default="false">
+  Include info-level diagnostics in the output.
+</ParamField>
+
+### Examples
+
+```bash
+# Score an IR file as JSON, passing at 80 or above
+manifest validate-ai generated.ir.json --format json --min-score 80
+```
+
+---
+
+## `manifest fmt [source]`
+
+Formats `.manifest` source files using deterministic whitespace normalization. Pairs well with a pre-commit hook to keep source style consistent.
+
+```bash
+manifest fmt [source] [options]
+```
+
+`source` can be a file, directory, or glob.
+
+### Options
+
+<ParamField path="--check" type="boolean" default="false">
+  Fail if any file would change. When set, writing is disabled — ideal for CI.
+</ParamField>
+
+<ParamField path="--write" type="boolean">
+  Write formatted output. This is the default when `--check` is not set.
+</ParamField>
+
+<ParamField path="-g, --glob" type="string">
+  Glob pattern to use when `source` is a directory.
+</ParamField>
+
+### Examples
+
+```bash
+# Check formatting without writing (CI mode)
+manifest fmt src/ --check
+
+# Format and write changes in place
+manifest fmt src/ --write
+```
+
+---
+
+## `manifest diagram [source]`
+
+Generates Mermaid diagrams from IR — entity-relationship, state, and sequence views — so you can visualize a program's shape.
+
+```bash
+manifest diagram [source] [options]
+```
+
+`source` can be a `.manifest`, `.ir.json`, directory, or glob.
+
+### Options
+
+<ParamField path="-o, --output" type="string" default="diagrams">
+  Output directory for generated diagram files.
+</ParamField>
+
+<ParamField path="-t, --type" type="string" default="all">
+  Diagram type: `er`, `state`, `sequence`, or `all`.
+</ParamField>
+
+<ParamField path="-e, --entity" type="string">
+  Filter output to a single entity.
+</ParamField>
+
+<ParamField path="--markdown" type="boolean" default="false">
+  Wrap output in fenced code blocks for embedding in Markdown.
+</ParamField>
+
+### Examples
+
+```bash
+# Generate an ER diagram wrapped in Markdown fences
+manifest diagram src/app.manifest -t er --markdown
+```
+
+---
+
+## `manifest coverage`
+
+Reports command/guard/policy/constraint coverage by correlating compiled IR with conformance and unit test evidence found in the project.
+
+```bash
+manifest coverage [options]
+```
+
+### Options
+
+<ParamField path="--ir" type="string">
+  Path to a compiled IR JSON file.
+</ParamField>
+
+<ParamField path="-s, --source" type="string">
+  Path to `.manifest` source, compiled on the fly.
+</ParamField>
+
+<ParamField path="-r, --root" type="string" default=".">
+  Root directory to scan for test evidence.
+</ParamField>
+
+<ParamField path="-f, --format" type="string" default="text">
+  Output format: `text` or `json`.
+</ParamField>
+
+<ParamField path="--min-coverage" type="number">
+  Minimum coverage percentage required to pass.
+</ParamField>
+
+<ParamField path="--strict" type="boolean" default="false">
+  Exit non-zero when coverage falls below `--min-coverage`.
+</ParamField>
+
+### Examples
+
+```bash
+# Fail CI if coverage drops below 80%
+manifest coverage -s src/app.manifest --min-coverage 80 --strict
+```
+
+---
+
+## `manifest diff`
+
+`diff` is a parent command for comparing source against IR, comparing two IR files, and classifying breaking changes.
+
+```bash
+manifest diff <subcommand> [options]
+```
+
+### `manifest diff source-vs-ir <entityName>`
+
+Compares source-manifest parse output against precompiled IR for a single entity.
+
+<ParamField path="--json" type="boolean" />
+<ParamField path="--src" type="string">Source glob pattern.</ParamField>
+<ParamField path="--ir-root" type="string">One or more IR root paths.</ParamField>
+
+### `manifest diff ir-vs-ir <oldIR> <newIR>`
+
+Compares two IR JSON files and produces a diff report, optionally rendering migration SQL or Prisma steps.
+
+<ParamField path="--json" type="boolean" />
+<ParamField path="--sql" type="boolean">Render the diff as migration SQL.</ParamField>
+<ParamField path="--prisma" type="boolean">Render the diff as Prisma migration steps.</ParamField>
+<ParamField path="-o, --output" type="string">Output path.</ParamField>
+
+```bash
+manifest diff ir-vs-ir old.ir.json new.ir.json --sql
+```
+
+---
+
+## `manifest diff breaking`
+
+Classifies the changes in an IR diff as compatible, deprecated, or breaking, with consumer impact. Run it as a `diff` subcommand. Use `--ci` to gate pipelines on unacknowledged breaking changes.
+
+```bash
+manifest diff breaking <oldIR> <newIR> [options]
+```
+
+### Options
+
+<ParamField path="--json" type="boolean" />
+
+<ParamField path="--ack" type="string">
+  Path to an acknowledgement file listing breaking changes that have been reviewed and accepted.
+</ParamField>
+
+<ParamField path="--ci" type="boolean" default="false">
+  Exit non-zero when there are unacknowledged breaking changes.
+</ParamField>
+
+<ParamField path="-o, --output" type="string">
+  Output path.
+</ParamField>
+
+### Examples
+
+```bash
+# Fail CI on unacknowledged breaking changes
+manifest diff breaking old.ir.json new.ir.json --ci
+```
+
+---
+
+## `manifest migrate`
+
+Analyzes an IR diff to produce a database migration plan, with optional SQL/Prisma preview and reversibility checks.
+
+```bash
+manifest migrate [options]
+```
+
+### Options
+
+<ParamField path="--old-ir" type="string" required>
+  Path to the previous IR file.
+</ParamField>
+
+<ParamField path="--new-ir" type="string" required>
+  Path to the new IR file.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean" default="false">
+  Show the plan without applying it.
+</ParamField>
+
+<ParamField path="--preview" type="boolean" default="false">
+  Show the generated SQL and Prisma steps.
+</ParamField>
+
+<ParamField path="--force" type="boolean" default="false">
+  Apply despite warnings or unacknowledged breaking changes.
+</ParamField>
+
+<ParamField path="--tool" type="string" default="prisma">
+  Migration tool: `prisma` or `drizzle`.
+</ParamField>
+
+<ParamField path="--no-check-reversibility" type="boolean">
+  Skip reversibility validation.
+</ParamField>
+
+<ParamField path="--json" type="boolean" />
+<ParamField path="-o, --output" type="string">Output path.</ParamField>
+
+### Examples
+
+```bash
+# Preview a migration plan between two IR versions
+manifest migrate --old-ir old.ir.json --new-ir new.ir.json --preview
+```
+
+---
+
+## `manifest changelog <from-ref> [to-ref]`
+
+Generates a Markdown changelog from IR diffs between two Git refs. `to-ref` defaults to `HEAD`.
+
+```bash
+manifest changelog <from-ref> [to-ref] [options]
+```
+
+### Options
+
+<ParamField path="-s, --source" type="string" default="**/*.manifest">
+  Source glob pattern.
+</ParamField>
+
+<ParamField path="-o, --output" type="string">
+  Output path for the changelog file.
+</ParamField>
+
+<ParamField path="-t, --title" type="string">
+  Changelog title.
+</ParamField>
+
+<ParamField path="--json" type="boolean" />
+
+### Examples
+
+```bash
+# Generate a changelog from v0.3.0 to HEAD
+manifest changelog v0.3.0 HEAD -o CHANGELOG.md
+```

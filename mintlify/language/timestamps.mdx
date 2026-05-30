@@ -1,0 +1,45 @@
+---
+title: "Automatic timestamp fields"
+sidebarTitle: "Timestamps"
+description: "The timestamps modifier auto-injects read-only createdAt and updatedAt fields and populates them from the deterministic runtime clock on create and update."
+---
+
+The `timestamps` entity modifier auto-injects read-only `createdAt` and `updatedAt` properties and populates them at runtime, removing the boilerplate of declaring and maintaining audit timestamps by hand.
+
+## Syntax
+
+The modifier is a bare keyword placed inside an entity body. No property declarations for `createdAt` or `updatedAt` are needed:
+
+```manifest
+entity Article {
+  property required id: string
+  property required title: string
+  property body: string = ""
+  timestamps
+}
+
+store Article in memory
+```
+
+## Behavior
+
+When an entity declares `timestamps`, the IR compiler sets `IREntity.timestamps: true` and injects two properties — `createdAt` and `updatedAt`, both of type `datetime` with the `readonly` modifier — unless the entity already declares a property of that name. The injection is idempotent and skips names that are already present.
+
+The runtime engine acts on the flag:
+
+- On instance **creation**, when `timestamps` is set, both `createdAt` and `updatedAt` are assigned the value of `getNow()`.
+- On instance **update**, when `timestamps` is set, `updatedAt` is reassigned to `getNow()` while `createdAt` is left untouched.
+
+`getNow()` honors the deterministic clock supplied through the `now` runtime option, so tests can pin timestamps to a fixed value. The Prisma projection translates the flag into native column attributes: `@default(now())` on `createdAt` and `@updatedAt` on `updatedAt`.
+
+## Reference
+
+- Source keyword: `timestamps`.
+- IR field: `IREntity.timestamps?: boolean`.
+- Injected properties: `createdAt`, `updatedAt`, type `datetime`, modifier `readonly`.
+- Runtime population: `getNow()` on create (both fields) and update (`updatedAt` only).
+- Prisma attributes: `@default(now())`, `@updatedAt`.
+
+<Note>
+The injected fields carry the `readonly` modifier, so they cannot be mutated through commands. If a program manually declares `createdAt` or `updatedAt`, the auto-injection defers entirely to the manual declaration and does not add or override anything for that name. Population is driven by the runtime engine's create/update paths — stores or code paths that write instances without going through `createInstance`/`updateInstance` will not receive automatic timestamps.
+</Note>

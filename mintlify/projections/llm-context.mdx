@@ -1,0 +1,57 @@
+---
+title: "LLM context projection"
+sidebarTitle: "LLM Context"
+description: "Generate a structured manifest-context.json document from Manifest IR, optimized for injecting a full domain model into an AI agent's context window."
+---
+
+The LLM Context projection generates a structured `manifest-context.json` document from compiled Manifest IR, optimized for injection into an AI agent's context window. Use it when an agent needs to understand a full domain model — entities, commands, policies, constraints, relationships, enums, events, and stores — in a single context load rather than reasoning over raw `.manifest` source or the full IR.
+
+The projection is registered under the name `llm-context` and lives at `src/manifest/projections/llm-context/generator.ts`.
+
+## What it generates
+
+The projection exposes three surfaces, each emitting a single JSON artifact.
+
+`llm-context.full` builds the complete context document (path hint `manifest-context.json`, artifact id `llm-context-full`). The document carries `$schema: "manifest-context/v1"` and these sections: `meta` (generation timestamp plus compiler version, schema version, and content hash from IR provenance), `domain` (counts of entities, commands, policies, constraints, enums, and events; the module list; and a `multiTenant` flag), `entities`, `commands`, `policies`, `constraints`, and `relationships`. Optional sections `enums`, `events`, `stores`, and the raw `ir` are appended according to options.
+
+`llm-context.summary` builds the same document with `includeRawIR` and `includeExpressions` forced off — guard, action, constraint, and computed-property expressions are replaced with `"[omitted]"` and the raw IR is excluded (path hint `manifest-context-summary.json`).
+
+`llm-context.ir` emits the raw IR object as pretty-printed JSON with no transformation (path hint `manifest-ir.json`). An unrecognized surface returns a warning diagnostic listing the available surfaces.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('llm-context');
+
+// Full context for agent injection
+const full = projection.generate(ir, { surface: 'llm-context.full' });
+
+// Lightweight summary (no raw IR, no expressions)
+const summary = projection.generate(ir, { surface: 'llm-context.summary' });
+
+// Trim further with options
+const lean = projection.generate(ir, {
+  surface: 'llm-context.full',
+  options: { includeRawIR: false, includeStores: false },
+});
+```
+
+## Type mapping & behavior
+
+IR types are rendered to human-readable strings by `formatIRType`: the type name, an optional `<Generic>` suffix, and a trailing ` | null` when nullable (for example `array<string>`, `number | null`). Expressions (guards, actions, constraint and policy bodies, computed-property bodies) are rendered to source-like strings by a standalone `formatExpression` — literals, identifiers, member access, binary/unary operators, calls, conditionals, arrays, objects, and lambdas are all supported. Property and parameter default values are converted to plain JSON values.
+
+For entities, a property is reported `required` when it carries the `required` modifier; constraint `severity` defaults to `"block"` when unset. For commands, a parameter is reported `required` only when it is required and has no default value. Each entity's `commands` field lists the names of commands scoped to it. When `includeExpressions` is false (as in summary mode), every expression field becomes `"[omitted]"`.
+
+## Options
+
+`LlmContextProjectionOptions` accepts six boolean flags, all defaulting to `true`: `includeRawIR`, `includeExpressions`, `includeEnums`, `includeEvents`, `includeStores`, and `emitHeader`. The summary surface overrides `includeRawIR` and `includeExpressions` to `false` regardless of what is passed.
+
+## Notes & limitations
+
+<Warning>
+The `emitHeader` option is declared and defaulted to `true`, but the generator emits pure JSON in all three modes and does not write a header comment — the option has no observable effect on output. The `meta.generatedAt` timestamp is taken from `new Date().toISOString()` at generation time, so the full and summary documents are not byte-for-byte reproducible across runs (the `llm-context.ir` surface, which passes the IR through unchanged, is stable).
+</Warning>
+
+There is no dedicated CLI command; invoke the projection programmatically through `getProjection('llm-context')`.

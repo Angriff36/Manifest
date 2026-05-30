@@ -1,0 +1,181 @@
+---
+title: "Types: enums, decimal/money, value objects, datetime, arrays"
+sidebarTitle: "Types"
+description: "Reference for Manifest's richer property types — enums, decimal and money, value objects, datetime with UTC built-ins, and arrays — including what each one enforces at runtime."
+---
+
+Beyond the four primitive types (`string`, `number`, `boolean`, `timestamp`), Manifest offers richer property types for closed value sets, high-precision numbers, reusable composite shapes, points in time, and collections. Type names in Manifest are open strings rather than a closed primitive set, so a custom type name (an enum or a value object) flows through the type system as a reference without a separate validation pass. This page documents what each type actually provides — and, just as importantly, what it does not.
+
+## Enums
+
+A first-class `enum` declaration defines a closed, named set of values that properties can reference. Each member may carry an optional display label and an optional numeric ordinal, giving entities a typed vocabulary for status fields, priorities, and other fixed value sets.
+
+Enums are top-level declarations:
+
+```manifest
+enum Status {
+  draft
+  published = "Published"
+  archived(2)
+}
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+  property priority: Priority
+}
+
+enum Priority {
+  low = "Low Priority"
+  medium = "Medium Priority"
+  high = "High Priority"
+}
+
+store Article in memory
+```
+
+A member written as `name` is a plain value; `name = "Label"` attaches a display label; `name(ordinal)` attaches a numeric ordinal. The three forms can be mixed freely within one enum. An enum may be referenced as a property type before or after its own declaration in the file, and a property default such as `= draft` refers to a member by name.
+
+The IR carries the full enum definition — a `name`, optional `module`, and a `values` array where each value records its `name` and, only when present, a `label` and an `ordinal`. Absent metadata is omitted rather than defaulted, so the IR stays minimal. This representation is the input downstream projections use to emit database enum columns and TypeScript union types.
+
+<Warning>
+The IR carries only `name`, `label`, and `ordinal` per member. There is **no** enum-specific reference checker in the compiler and **no** transition-constraint machinery on enum members — both are aspirational, not present in the source. Because type names are not a closed set, referencing an undeclared enum name as a property type is not rejected at compile time by the enum machinery itself.
+</Warning>
+
+## Decimal and money
+
+The `decimal` and `money` types represent high-precision numbers with optional precision and scale parameters, intended for monetary amounts and other values where binary floating point is unacceptable.
+
+Both types accept an optional `(precision, scale)` parameter list and can otherwise be used like any scalar:
+
+```manifest
+entity Invoice {
+  property required description: string
+  property amount: decimal(10, 2) = 0
+  property tax: money(12, 4) = 0
+  property total: decimal = 0
+  property optionalFee: money?
+}
+
+store Invoice in memory
+```
+
+`decimal(10, 2)` declares 10 total digits with 2 fractional digits. `money(12, 4)` is the same shape with higher precision. Both types are valid without parameters (`decimal`, `total`), in which case no precision or scale is recorded. The `?` suffix makes the property nullable (`money?`).
+
+The parser special-cases a `(` immediately after the type name only when the name is `decimal` or `money` — any other type name followed by `(` is not treated as parameterized. When present, the precision and scale are stored as a `params` object on the emitted `IRType`; unparameterized types produce no `params`. This `params` object is the input a projection would consume to emit, for example, a Postgres `NUMERIC` column or a `Decimal.js` field.
+
+<Warning>
+`decimal` and `money` do **not** introduce runtime arithmetic or validation of their own. The runtime engine treats their values as ordinary numbers — there is no decimal arithmetic library wired into the evaluator, and precision/scale are metadata carried for projection use, **not enforced at runtime or at compile time**. Any high-precision guarantee depends on a downstream projection rather than the reference runtime.
+</Warning>
+
+## Value objects
+
+A `value` declaration defines a reusable composite type that embeds inline in entity properties rather than living in its own table. Value objects group related fields — money, addresses — into a single named shape that several entities can share.
+
+Value objects are top-level declarations containing only property declarations:
+
+```manifest
+value Money {
+  property amount: decimal
+  property currency: string
+}
+
+value Address {
+  property street: string
+  property city: string
+  property country: string
+}
+
+entity Product {
+  property required id: string
+  property name: string
+  property price: Money
+  property billingAddress: Address
+}
+
+entity Order {
+  property required id: string
+  property total: Money
+  property shippingAddress: Address
+}
+
+store Product in memory
+store Order in memory
+```
+
+An entity references a value object by using its name as a property type (`price: Money`). The same value object can be embedded in multiple entities.
+
+The `value` token is context-sensitive — it is emitted as an identifier rather than a reserved keyword, so `property value: number` and `mutate value = 1` continue to parse without reserved-word errors. Every compiled program carries a top-level `values` array (empty when none are declared), and a property whose type name matches a declared value object is identified by checking that name against `ir.values`. The code generator emits a TypeScript interface for each value object, and the Prisma projection emits a matching property as a `Json` (JSONB) column rather than a foreign-key relationship or a separate table.
+
+<Note>
+Value objects are described as "immutable by design," but that is a design statement, not a runtime-enforced property: the reference runtime does not freeze or reject mutation of embedded value data, and there is no immutability check in the compiler or engine. Value object bodies are restricted to properties — relationships, commands, and other members are rejected by the parser.
+</Note>
+
+## Datetime
+
+Manifest represents points in time with the `datetime` type and offers UTC-based date-component built-ins for extracting parts of a timestamp.
+
+There is **no** dedicated `date`, `time`, `duration`, or `interval` primitive type — those keywords are not in the lexer. The date type the runtime and projections work with is `datetime`, used like any scalar property type. The most common way `datetime` properties appear is via the `timestamps` modifier, which injects `createdAt` and `updatedAt`:
+
+```manifest
+entity Article {
+  property required title: string
+  timestamps
+}
+```
+
+Because type names are open strings, a property may also be declared `property scheduledFor: datetime` and will compile, but no date-specific parsing or validation is attached to such a declaration.
+
+Date components are read at runtime through expression built-ins operating on a numeric millisecond timestamp:
+
+```manifest
+entity DateUtils {
+  property required id: string
+  property baseTs: number = 0
+
+  computed extractedYear: number = year(self.baseTs)
+  computed extractedMonth: number = month(self.baseTs)
+  computed extractedDay: number = day(self.baseTs)
+  computed extractedHours: number = hours(self.baseTs)
+  computed extractedMinutes: number = minutes(self.baseTs)
+  computed extractedSeconds: number = seconds(self.baseTs)
+}
+```
+
+The date built-ins all operate on a number interpreted as milliseconds since the epoch and return a UTC component:
+
+- `year(ts)` returns `getUTCFullYear()`.
+- `month(ts)` returns `getUTCMonth() + 1` (so January is 1, not 0).
+- `day(ts)` returns `getUTCDate()`.
+- `hours(ts)`, `minutes(ts)`, `seconds(ts)` return the corresponding UTC components.
+
+Each returns the input unchanged when it is not a number. UTC methods are used deliberately so results are timezone-independent and deterministic.
+
+<Warning>
+This is the most significant area of overclaiming to avoid. There are **no** `Date`, `Time`, `Duration`, or `Interval` primitive types, no date column mappings for them, and no date arithmetic, comparison, or formatting built-ins beyond component extraction. What genuinely exists is the `datetime` type (notably via `timestamps`) and the six UTC date-component built-ins above.
+</Warning>
+
+## Arrays
+
+Array properties hold multiple scalar values in a single field, distinct from relationships (which model collections of entities). They are declared with either postfix `[]` sugar or explicit `array<T>` generic syntax.
+
+```manifest
+entity TaggedDocument {
+  property required id: string
+  property tags: string[] = []
+  property scores: array<number> = []
+
+  constraint noEmptyTags: self.tags.length > 0
+  constraint hasTags: self.tags.contains("published")
+}
+
+store TaggedDocument in memory
+```
+
+`string[]` and `array<string>` are equivalent. An empty array literal `[]` is a valid default. Constraints can reach into array values with member access such as `self.tags.length` and method-style calls like `self.tags.contains("published")`.
+
+Both forms normalize to an `array` type carrying a `generic` element type in the AST and IR. Array element types may themselves carry parameters — because the inner type goes through the same type parser, the generic element preserves details like decimal precision where applicable. The normalized `array` IR type is the structural input projections consume to emit PostgreSQL array/JSONB columns or Zod array schemas.
+
+<Note>
+The `.length` and `.contains(...)` helpers are expression-level operations rather than dedicated array constraint primitives. The two constraints above are independently evaluated rather than short-circuited, so both can register failures. Array properties are scalar-valued collections and are deliberately separate from `hasMany` relationships, which model entity collections.
+</Note>
