@@ -4,6 +4,16 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0] - 2026-05-30
+
+### Added
+
+- **Canonical `event.subject` metadata** — every event emitted during `runCommand` now carries a `subject` of `{ entity?, command, id? }`, so downstream consumers can identify the originating entity, command, and target instance without inferring identifiers from payload shape.
+  - Deterministic id resolution order: `instanceId` → single created record id → top-level `payload.id` → unset (no fabricated ids).
+  - `subject` is threaded intact through the outbox pipeline (memory + PostgreSQL stores).
+  - Optional `PostgresOutboxStore` `projectSubject` flag projects `subject.entity` / `subject.id` into indexed `subject_entity` / `subject_id` columns for querying.
+- Fully additive and backward-compatible: `subject` is optional on `EmittedEvent`; existing payloads and consumers are unaffected.
+
 ## [1.5.0] - 2026-05-29
 
 ### Added
