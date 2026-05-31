@@ -279,7 +279,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+[auto-bridge snapshot @ 10 changes]
+Files: src/manifest/outbox/stores/postgres.ts (edit), src/manifest/outbox/stores/postgres.sql (edit), src/manifest/runtime-engine.ts (edit)
 
 # === END COGNILAYER ===
