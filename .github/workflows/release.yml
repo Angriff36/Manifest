@@ -101,6 +101,17 @@ jobs:
         run: pnpm test -- --run
 
       - name: Publish to GitHub Packages
-        run: pnpm publish --no-git-checks
+        run: |
+          set +e
+          out="$(pnpm publish --no-git-checks 2>&1)"
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            if printf '%s' "$out" | grep -qiE 'cannot publish over|E(PUBLISH)?CONFLICT|409 Conflict|code E409'; then
+              echo "::notice::Version already published — treating as success (idempotent re-run)."
+              exit 0
+            fi
+            exit "$code"
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
