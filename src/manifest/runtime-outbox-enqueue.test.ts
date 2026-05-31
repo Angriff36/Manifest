@@ -285,3 +285,179 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
     expect(calls[0].map(e => e.event.name)).toEqual(['Created', 'Indexed']);
   });
 });
+
+describe('Runtime event subject metadata', () => {
+  it('populates subject.entity, subject.command, and subject.id when all are available', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(oneEventIRSource);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
+      entityName: 'User',
+      instanceId: 'u-1',
+    });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject).toEqual({
+      entity: 'User',
+      command: 'createUser',
+      id: 'u-1',
+    });
+  });
+
+  it('sets subject.command and subject.entity without id when no instanceId is provided and payload has no id', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(oneEventIRSource);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
+      entityName: 'User',
+    });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject).toBeDefined();
+    expect(entry.event.subject!.entity).toBe('User');
+    expect(entry.event.subject!.command).toBe('createUser');
+    expect(entry.event.subject!.id).toBeUndefined();
+  });
+
+  it('omits subject.entity when entityName is not provided in runCommand options', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(oneEventIRSource);
+    const rt = makeRuntime(ir, store);
+    // Call without entityName in options — command is found by name search
+    const result = await rt.runCommand('createUser', { name: 'Alice' });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject).toBeDefined();
+    expect(entry.event.subject!.command).toBe('createUser');
+    expect(entry.event.subject!.entity).toBeUndefined();
+    expect(entry.event.subject!.id).toBeUndefined();
+  });
+
+  it('falls back to payload.id when no instanceId is provided', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(`
+      entity Item {
+        property name: string
+        event ItemCreated
+        command createItem(id: string, name: string) {
+          emit ItemCreated
+        }
+      }
+    `);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createItem', { id: 'item-42', name: 'Widget' }, {
+      entityName: 'Item',
+    });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject!.entity).toBe('Item');
+    expect(entry.event.subject!.command).toBe('createItem');
+    expect(entry.event.subject!.id).toBe('item-42');
+  });
+
+  it('does not use empty string payload.id as subject.id', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(`
+      entity Item {
+        property name: string
+        event ItemCreated
+        command createItem(id: string, name: string) {
+          emit ItemCreated
+        }
+      }
+    `);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createItem', { id: '', name: 'Widget' }, {
+      entityName: 'Item',
+    });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject!.id).toBeUndefined();
+  });
+
+  it('instanceId takes priority over payload.id', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(`
+      entity Item {
+        property name: string
+        event ItemCreated
+        command createItem(id: string, name: string) {
+          emit ItemCreated
+        }
+      }
+    `);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createItem', { id: 'payload-id', name: 'Widget' }, {
+      entityName: 'Item',
+      instanceId: 'instance-id',
+    });
+
+    expect(result.success).toBe(true);
+    const entry = store.list()[0];
+    expect(entry.event.subject!.id).toBe('instance-id');
+  });
+
+  it('applies consistent subject across multiple events from one command', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(`
+      entity Item {
+        property name: string
+        event Created
+        event Indexed
+        command createAndIndex(name: string) {
+          mutate result = true
+          emit Created
+          emit Indexed
+        }
+      }
+    `);
+    const rt = makeRuntime(ir, store);
+    await rt.runCommand('createAndIndex', { name: 'x' }, {
+      entityName: 'Item',
+      instanceId: 'i-1',
+    });
+
+    const entries = store.list();
+    expect(entries).toHaveLength(2);
+    expect(entries[0].event.subject).toEqual({
+      entity: 'Item',
+      command: 'createAndIndex',
+      id: 'i-1',
+    });
+    expect(entries[1].event.subject).toEqual(entries[0].event.subject);
+  });
+
+  it('subject on emittedEvents matches subject on outbox entries', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(oneEventIRSource);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
+      entityName: 'User',
+      instanceId: 'u-1',
+    });
+
+    expect(result.emittedEvents[0].subject).toEqual(store.list()[0].event.subject);
+  });
+
+  it('subject is backward-compatible: does not alter existing event fields', async () => {
+    const store = new MemoryOutboxStore();
+    const ir = await compile(oneEventIRSource);
+    const rt = makeRuntime(ir, store);
+    const result = await rt.runCommand('createUser', { name: 'Alice' }, {
+      entityName: 'User',
+      correlationId: 'corr-1',
+    });
+
+    const ev = result.emittedEvents[0];
+    expect(ev.name).toBe('UserCreated');
+    expect(ev.correlationId).toBe('corr-1');
+    expect(ev.payload).toBeDefined();
+    expect(ev.subject).toBeDefined();
+    expect(ev.subject!.command).toBe('createUser');
+  });
+});

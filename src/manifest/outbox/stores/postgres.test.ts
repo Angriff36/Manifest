@@ -215,3 +215,66 @@ describe('PostgresOutboxStore — releaseStaleClaims', () => {
     expect(queries).toHaveLength(0);
   });
 });
+
+describe('PostgresOutboxStore — subject projection', () => {
+  it('includes subject_entity and subject_id columns when projectSubject is enabled', async () => {
+    const { pool, queries } = makeFakePool();
+    const store = new PostgresOutboxStore({ pool, projectSubject: true });
+    const e = entry({
+      entryId: 'sp-1',
+      event: {
+        name: 'Created',
+        channel: 'created',
+        payload: {},
+        timestamp: 0,
+        subject: { entity: 'User', command: 'createUser', id: 'u-1' },
+      },
+    });
+    await store.enqueue([e]);
+
+    expect(queries).toHaveLength(1);
+    expect(queries[0].sql).toContain('subject_entity');
+    expect(queries[0].sql).toContain('subject_id');
+    expect(queries[0].params[6]).toBe('User');
+    expect(queries[0].params[7]).toBe('u-1');
+  });
+
+  it('sets subject columns to null when event has no subject', async () => {
+    const { pool, queries } = makeFakePool();
+    const store = new PostgresOutboxStore({ pool, projectSubject: true });
+    await store.enqueue([entry({ entryId: 'sp-2' })]);
+
+    expect(queries[0].params[6]).toBeNull();
+    expect(queries[0].params[7]).toBeNull();
+  });
+
+  it('does not include subject columns when projectSubject is disabled (default)', async () => {
+    const { pool, queries } = makeFakePool();
+    const store = new PostgresOutboxStore({ pool });
+    await store.enqueue([entry({ entryId: 'sp-3' })]);
+
+    expect(queries[0].sql).not.toContain('subject_entity');
+    expect(queries[0].sql).not.toContain('subject_id');
+    expect(queries[0].params).toHaveLength(6);
+  });
+
+  it('preserves subject in JSONB event column regardless of projectSubject setting', async () => {
+    const { pool, queries } = makeFakePool();
+    const store = new PostgresOutboxStore({ pool, projectSubject: false });
+    const e = entry({
+      entryId: 'sp-4',
+      event: {
+        name: 'Created',
+        channel: 'created',
+        payload: {},
+        timestamp: 0,
+        subject: { entity: 'Item', command: 'createItem', id: 'i-1' },
+      },
+    });
+    await store.enqueue([e]);
+
+    const serialized = queries[0].params[2] as string;
+    const parsed = JSON.parse(serialized);
+    expect(parsed.subject).toEqual({ entity: 'Item', command: 'createItem', id: 'i-1' });
+  });
+});

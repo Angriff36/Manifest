@@ -235,11 +235,28 @@ export interface ConstraintFailure {
   resolved?: GuardResolvedValue[];
 }
 
+/**
+ * Canonical subject metadata identifying the originating entity, command,
+ * and target instance for an emitted event. Populated by the runtime during
+ * `runCommand` so downstream consumers can reliably route and correlate
+ * events without inspecting payload internals.
+ */
+export interface EventSubject {
+  /** The Manifest entity name associated with the command, when available. */
+  entity?: string;
+  /** The Manifest command name that emitted the event. */
+  command: string;
+  /** The canonical target instance id, resolved deterministically. */
+  id?: string;
+}
+
 export interface EmittedEvent {
   name: string;
   channel: string;
   payload: unknown;
   timestamp: number;
+  /** Canonical subject metadata for the originating entity/command/instance. */
+  subject?: EventSubject;
   /** Provenance information from the IR at the time of event emission */
   provenance?: {
     contentHash: string;
@@ -1719,8 +1736,19 @@ export class RuntimeEngine {
       causationId: options.causationId,
     };
 
+    // Pre-compute base subject for action-emitted events (entity + command + instanceId).
+    // Full subject.id resolution (created-id / payload.id fallbacks) happens after the
+    // action loop for command-declared events.
+    const baseSubject: EventSubject = { command: commandName };
+    if (options.entityName) {
+      baseSubject.entity = options.entityName;
+    }
+    if (options.instanceId) {
+      baseSubject.id = options.instanceId;
+    }
+
     for (const action of command.actions) {
-      const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta);
+      const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
 
       // Check for transition validation errors after mutate/compute actions
       if (this.lastTransitionError) {
@@ -1761,13 +1789,39 @@ export class RuntimeEngine {
       result = actionResult;
     }
 
+    // Finalize canonical subject metadata for command-declared events.
+    // Resolution order for subject.id:
+    //   1. instanceId passed to runCommand (already set on baseSubject)
+    //   2. A single deterministically created record id (justCreatedInstanceIds)
+    //   3. Top-level payload.id from the emitted event payload (checked per-event below)
+    //   4. Unset
+    const subject: EventSubject = { ...baseSubject };
+    if (!subject.id && this.justCreatedInstanceIds.size === 1) {
+      const [createdId] = this.justCreatedInstanceIds;
+      subject.id = createdId;
+    }
+
     for (const eventName of command.emits) {
       const event = this.ir.events.find(e => e.name === eventName);
       const prov = this.ir.provenance;
+      const eventPayload = { ...input, result };
+
+      // Fallback: resolve subject.id from payload.id if not yet set
+      const eventSubject: EventSubject = subject.id
+        ? { ...subject }
+        : {
+            ...subject,
+            ...(typeof (eventPayload as Record<string, unknown>).id === 'string' &&
+              (eventPayload as Record<string, unknown>).id !== ''
+              ? { id: (eventPayload as Record<string, unknown>).id as string }
+              : {}),
+          };
+
       const emitted: EmittedEvent = {
         name: eventName,
         channel: event?.channel || eventName,
-        payload: { ...input, result },
+        payload: eventPayload,
+        subject: eventSubject,
         timestamp: this.getNow(),
         ...(prov ? {
           provenance: {
@@ -2095,7 +2149,8 @@ export class RuntimeEngine {
     evalContext: Record<string, unknown>,
     options: { entityName?: string; instanceId?: string },
     emitCounter: { value: number },
-    workflowMeta: { correlationId?: string; causationId?: string }
+    workflowMeta: { correlationId?: string; causationId?: string },
+    subject?: EventSubject
   ): Promise<unknown> {
     // Effect boundary enforcement: in deterministic mode, adapter actions hard-error.
     // Sources, in precedence order: options.deterministicMode (explicit caller intent),
@@ -2125,6 +2180,7 @@ export class RuntimeEngine {
           name: 'action_event',
           channel: 'default',
           payload: value,
+          ...(subject ? { subject } : {}),
           timestamp: this.getNow(),
           ...(prov ? {
             provenance: {

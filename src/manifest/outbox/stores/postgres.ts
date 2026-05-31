@@ -29,6 +29,12 @@ export interface PostgresOutboxStoreOptions {
   pool: Pool;
   /** Table name override. Default: `manifest_outbox_entries`. */
   tableName?: string;
+  /**
+   * When true, project `event.subject.entity` and `event.subject.id` into
+   * the `subject_entity` and `subject_id` columns at enqueue time. Requires
+   * the optional columns from the companion schema (postgres.sql). Default: false.
+   */
+  projectSubject?: boolean;
 }
 
 const DEFAULT_TABLE = 'manifest_outbox_entries';
@@ -63,10 +69,12 @@ function rowToEntry(row: OutboxRow): OutboxEntry {
 export class PostgresOutboxStore implements OutboxStore {
   private pool: Pool;
   private tableName: string;
+  private projectSubject: boolean;
 
   constructor(opts: PostgresOutboxStoreOptions) {
     this.pool = opts.pool;
     this.tableName = opts.tableName ?? DEFAULT_TABLE;
+    this.projectSubject = opts.projectSubject ?? false;
   }
 
   /**
@@ -78,22 +86,44 @@ export class PostgresOutboxStore implements OutboxStore {
     if (entries.length === 0) return;
 
     const runner = (tx ?? this.pool) as Pool | PoolClient;
-    const sql = `
-      INSERT INTO ${quoteIdent(this.tableName)} (
-        entry_id, enqueued_at, event, status, attempts, last_error
-      ) VALUES ($1, $2, $3::jsonb, $4, $5, $6)
-      ON CONFLICT (entry_id) DO NOTHING
-    `;
 
-    for (const entry of entries) {
-      await runner.query(sql, [
-        entry.entryId,
-        entry.enqueuedAt,
-        JSON.stringify(entry.event),
-        entry.status,
-        entry.attempts,
-        entry.lastError ?? null,
-      ]);
+    if (this.projectSubject) {
+      const sql = `
+        INSERT INTO ${quoteIdent(this.tableName)} (
+          entry_id, enqueued_at, event, status, attempts, last_error,
+          subject_entity, subject_id
+        ) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
+        ON CONFLICT (entry_id) DO NOTHING
+      `;
+      for (const entry of entries) {
+        await runner.query(sql, [
+          entry.entryId,
+          entry.enqueuedAt,
+          JSON.stringify(entry.event),
+          entry.status,
+          entry.attempts,
+          entry.lastError ?? null,
+          entry.event.subject?.entity ?? null,
+          entry.event.subject?.id ?? null,
+        ]);
+      }
+    } else {
+      const sql = `
+        INSERT INTO ${quoteIdent(this.tableName)} (
+          entry_id, enqueued_at, event, status, attempts, last_error
+        ) VALUES ($1, $2, $3::jsonb, $4, $5, $6)
+        ON CONFLICT (entry_id) DO NOTHING
+      `;
+      for (const entry of entries) {
+        await runner.query(sql, [
+          entry.entryId,
+          entry.enqueuedAt,
+          JSON.stringify(entry.event),
+          entry.status,
+          entry.attempts,
+          entry.lastError ?? null,
+        ]);
+      }
     }
   }
 

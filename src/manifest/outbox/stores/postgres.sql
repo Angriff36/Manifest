@@ -39,6 +39,23 @@ CREATE INDEX IF NOT EXISTS idx_manifest_outbox_pending_unclaimed
 CREATE INDEX IF NOT EXISTS idx_manifest_outbox_status
   ON manifest_outbox_entries (status);
 
+-- Optional: subject projection columns. When `projectSubject` is enabled on the
+-- PostgresOutboxStore, `subject_entity` and `subject_id` are populated from
+-- `event.subject.entity` and `event.subject.id` at enqueue time. These columns
+-- allow efficient querying by entity or instance without JSONB extraction.
+-- The columns are nullable and the indexes are partial — adding them is
+-- backwards-compatible and does not affect existing rows.
+ALTER TABLE manifest_outbox_entries ADD COLUMN IF NOT EXISTS subject_entity TEXT;
+ALTER TABLE manifest_outbox_entries ADD COLUMN IF NOT EXISTS subject_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_manifest_outbox_subject_entity
+  ON manifest_outbox_entries (subject_entity)
+  WHERE subject_entity IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_manifest_outbox_subject_id
+  ON manifest_outbox_entries (subject_id)
+  WHERE subject_id IS NOT NULL;
+
 -- Optional: tenant scoping. Outbox entries inherit their tenant from the
 -- `event.tenantId` JSON field. If RLS is desired, add the column and a
 -- policy similar to the audit table — kept commented out by default.
