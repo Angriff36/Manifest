@@ -140,15 +140,15 @@ When publishing to GitHub Packages:
 
 ## Commands Agents Are Allowed to Run
 
-Use npm for this repo.
+Use pnpm for this repo (it is a pnpm workspace).
 
-- `npm test` (must remain green)
-- `npm run dev` (Kitchen/Runtime manual smoke)
+- `pnpm test` (must remain green)
+- `pnpm run dev` (Kitchen/Runtime manual smoke)
 
 If dependency security work is requested:
 
-- Prefer `npm audit` / `npm audit fix`
-- Avoid `npm audit fix --force` unless the user explicitly accepts breaking
+- Prefer `pnpm audit` / `pnpm audit fix`
+- Avoid `pnpm audit fix --force` unless the user explicitly accepts breaking
   upgrades.
 
 ## Repository “Danger Zones”

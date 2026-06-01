@@ -11,15 +11,15 @@ This is a **language implementation**, not an end-user application. The Runtime 
 ## Essential Commands
 
 ```bash
-npm test                    # Run all tests (630 tests - must always pass)
-npm run typecheck          # TypeScript check without emit
-npm run lint               # ESLint validation
-npm run dev                # Development server (localhost:5173)
-npm run conformance:regen  # Regenerate expected outputs after fixture changes
-npm run bench              # Run benchmarks
+pnpm test                    # Run all tests (630 tests - must always pass)
+pnpm run typecheck          # TypeScript check without emit
+pnpm run lint               # ESLint validation
+pnpm run dev                # Development server (localhost:5173)
+pnpm run conformance:regen  # Regenerate expected outputs after fixture changes
+pnpm run bench              # Run benchmarks
 ```
 
-**Critical**: `npm test` must remain green. No exceptions.
+**Critical**: `pnpm test` must remain green. No exceptions.
 
 ## Architecture
 
@@ -141,10 +141,10 @@ From `AGENTS.md`:
 
 **Validation commands** (run after implementing):
 ```bash
-npm test                    # Must pass
-npm run typecheck          # TypeScript check
-npm run lint               # ESLint
-npm run dev                # Manual smoke test
+pnpm test                    # Must pass
+pnpm run typecheck          # TypeScript check
+pnpm run lint               # ESLint
+pnpm run dev                # Manual smoke test
 ```
 
 ## Danger Zones (High-Risk Changes)
@@ -191,9 +191,9 @@ UI must reflect IR and semantics, not invent them:
 ## Definition of "Done"
 
 A change is only done when:
-- `npm test` is green (630/630 passing)
-- `npm run typecheck` passes
-- `npm run lint` passes
+- `pnpm test` is green (630/630 passing)
+- `pnpm run typecheck` passes
+- `pnpm run lint` passes
 - Spec/test/impl are aligned (no undocumented nonconformance)
 - UI changes have manual verification path described
 - UI demos are actually functional (buttons clickable, flows completable)

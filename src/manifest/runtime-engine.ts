@@ -188,6 +188,7 @@ export interface EntityInstance {
 export interface CommandResult {
   success: boolean;
   result?: unknown;
+  instance?: EntityInstance;
   error?: string;
   deniedBy?: string;
   guardFailure?: GuardFailure;
@@ -1186,77 +1187,105 @@ export class RuntimeEngine {
   }
 
   async createInstance(entityName: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
-    const entity = this.getEntity(entityName);
-    if (!entity) return undefined;
-
     const ownsEvalBudget = this.initEvalBudget();
     try {
-      const defaults: Record<string, unknown> = {};
-      for (const prop of entity.properties) {
-        if (prop.defaultValue) {
-          defaults[prop.name] = this.irValueToJs(prop.defaultValue);
-        } else {
-          defaults[prop.name] = this.getDefaultForType(prop.type);
-        }
-      }
-
-      const mergedData = { ...defaults, ...data };
-
-      if (this.ir.tenant) {
-        const tv = this.resolveTenantValue();
-        if (tv) {
-          mergedData[this.ir.tenant.property] = tv;
-        }
-      }
-
-      // Handle version properties for optimistic concurrency control
-      if (entity.versionProperty) {
-        mergedData[entity.versionProperty] = 1;
-      }
-      if (entity.versionAtProperty) {
-        mergedData[entity.versionAtProperty] = this.getNow();
-      }
-
-      if (entity.timestamps) {
-        const now = this.getNow();
-        mergedData.createdAt = now;
-        mergedData.updatedAt = now;
-      }
-
-      // Validate entity constraints
-      const constraintOutcomes = await this.validateConstraints(entity, mergedData);
-
-      // Only block on severity='block' constraints that failed
-      const blockingFailures = constraintOutcomes.filter(
-        o => !o.passed && o.severity === 'block'
-      );
-
-      if (blockingFailures.length > 0) {
-        // Log blocking constraint failures for diagnostics
-        console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
-        return undefined;
-      }
-
-      // Log non-blocking outcomes (warn/ok) for diagnostics
-      const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
-      if (nonBlockingOutcomes.length > 0) {
-        console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
-      }
-
-      const store = this.stores.get(entityName);
-      if (!store) return undefined;
-
-      const result = await store.create(mergedData);
-
-      // Track newly created instance to prevent version increment on subsequent mutate actions
-      if (result && result.id) {
-        this.justCreatedInstanceIds.add(result.id);
-      }
-
-      return result;
+      return (await this.createInstanceWithOutcomes(entityName, data)).instance;
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
     }
+  }
+
+  private prepareCreateData(
+    entity: IREntity,
+    data: Partial<EntityInstance>
+  ): Record<string, unknown> {
+    const defaults: Record<string, unknown> = {};
+    for (const prop of entity.properties) {
+      if (prop.defaultValue) {
+        defaults[prop.name] = this.irValueToJs(prop.defaultValue);
+      } else {
+        defaults[prop.name] = this.getDefaultForType(prop.type);
+      }
+    }
+
+    const mergedData = { ...defaults, ...data };
+
+    if (this.ir.tenant) {
+      const tv = this.resolveTenantValue();
+      if (tv) {
+        mergedData[this.ir.tenant.property] = tv;
+      }
+    }
+
+    // Handle version properties for optimistic concurrency control
+    if (entity.versionProperty) {
+      mergedData[entity.versionProperty] = 1;
+    }
+    if (entity.versionAtProperty) {
+      mergedData[entity.versionAtProperty] = this.getNow();
+    }
+
+    if (entity.timestamps) {
+      const now = this.getNow();
+      mergedData.createdAt = now;
+      mergedData.updatedAt = now;
+    }
+
+    return mergedData;
+  }
+
+  private reportConstraintOutcomes(constraintOutcomes: ConstraintOutcome[]): boolean {
+    const blockingFailures = constraintOutcomes.filter(
+      o => !o.passed && o.severity === 'block'
+    );
+
+    if (blockingFailures.length > 0) {
+      // Log blocking constraint failures for diagnostics
+      console.warn('[Manifest Runtime] Blocking constraint validation failed:', blockingFailures);
+      return false;
+    }
+
+    // Log non-blocking outcomes (warn/ok) for diagnostics
+    const nonBlockingOutcomes = constraintOutcomes.filter(o => !o.passed && o.severity !== 'block');
+    if (nonBlockingOutcomes.length > 0) {
+      console.info('[Manifest Runtime] Non-blocking constraint outcomes:', nonBlockingOutcomes);
+    }
+
+    return true;
+  }
+
+  private async createInstanceWithOutcomes(
+    entityName: string,
+    data: Partial<EntityInstance>
+  ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
+    const entity = this.getEntity(entityName);
+    if (!entity) return {};
+
+    const mergedData = this.prepareCreateData(entity, data);
+    return this.persistPreparedCreate(entityName, entity, mergedData);
+  }
+
+  private async persistPreparedCreate(
+    entityName: string,
+    entity: IREntity,
+    mergedData: Record<string, unknown>
+  ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
+    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+    if (!this.reportConstraintOutcomes(constraintOutcomes)) {
+      return { constraintOutcomes };
+    }
+
+    const store = this.stores.get(entityName);
+    if (!store) return { constraintOutcomes };
+
+    const result = await store.create(mergedData);
+
+    // Track newly created instance to prevent version increment on subsequent mutate actions
+    if (result && result.id) {
+      this.justCreatedInstanceIds.add(result.id);
+    }
+
+    return { instance: result, constraintOutcomes };
   }
 
   async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -1666,11 +1695,28 @@ export class RuntimeEngine {
       };
     }
 
+    const shouldAutoCreateInstance = commandName === 'create' && !!options.entityName && !options.instanceId;
+    let autoCreateEntity: IREntity | undefined;
+    let autoCreatePreparedData: Record<string, unknown> | undefined;
+    let autoCreateEvalInput: Record<string, unknown> | undefined;
+
+    if (shouldAutoCreateInstance && options.entityName) {
+      autoCreateEntity = this.getEntity(options.entityName);
+      if (autoCreateEntity) {
+        const bodyId = typeof input.id === 'string' && input.id !== '' ? input.id : this.nextRuntimeId();
+        autoCreatePreparedData = this.prepareCreateData(autoCreateEntity, {
+          ...input,
+          id: bodyId,
+        });
+        autoCreateEvalInput = { ...input, id: autoCreatePreparedData.id };
+      }
+    }
+
     const instance = options.instanceId && options.entityName
       ? await this.getInstance(options.entityName, options.instanceId)
-      : undefined;
+      : autoCreatePreparedData as EntityInstance | undefined;
 
-    const evalContext = this.buildEvalContext(input, instance, options.entityName);
+    const evalContext = this.buildEvalContext(autoCreateEvalInput ?? input, instance, options.entityName);
 
     const policyResult = await this.checkPolicies(command, evalContext);
     if (!policyResult.allowed) {
@@ -1723,6 +1769,38 @@ export class RuntimeEngine {
           emittedEvents: [],
         };
       }
+    }
+
+    let autoCreatedInstance: EntityInstance | undefined;
+    let createConstraintOutcomes: ConstraintOutcome[] | undefined;
+
+    if (shouldAutoCreateInstance && options.entityName && autoCreateEntity && autoCreatePreparedData) {
+      const createResult = await this.persistPreparedCreate(
+        options.entityName,
+        autoCreateEntity,
+        autoCreatePreparedData
+      );
+      createConstraintOutcomes = createResult.constraintOutcomes;
+
+      if (!createResult.instance) {
+        const blocking = createConstraintOutcomes?.find(
+          o => !o.passed && !o.overridden && o.severity === 'block'
+        );
+        return {
+          success: false,
+          error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
+          constraintOutcomes: createConstraintOutcomes,
+          overrideRequests: options.overrideRequests,
+          ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+          ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+          emittedEvents: [],
+        };
+      }
+
+      autoCreatedInstance = createResult.instance;
+      options.instanceId = createResult.instance.id;
+      const createdEvalContext = this.buildEvalContext(autoCreateEvalInput ?? input, createResult.instance, options.entityName);
+      Object.assign(evalContext, createdEvalContext);
     }
 
     // Include any OverrideApplied events from constraint evaluation
@@ -1789,6 +1867,12 @@ export class RuntimeEngine {
       result = actionResult;
     }
 
+    if (autoCreatedInstance && options.entityName) {
+      const currentInstance = await this.getInstance(options.entityName, autoCreatedInstance.id);
+      autoCreatedInstance = currentInstance ?? autoCreatedInstance;
+      result = autoCreatedInstance;
+    }
+
     // Finalize canonical subject metadata for command-declared events.
     // Resolution order for subject.id:
     //   1. instanceId passed to runCommand (already set on baseSubject)
@@ -1842,8 +1926,11 @@ export class RuntimeEngine {
     return {
       success: true,
       result,
+      ...(autoCreatedInstance ? { instance: autoCreatedInstance } : {}),
       // Include constraint outcomes in successful result
-      constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+      constraintOutcomes: [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])].length > 0
+        ? [...constraintResult.outcomes, ...(createConstraintOutcomes ?? [])]
+        : undefined,
       ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
       ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
       emittedEvents,

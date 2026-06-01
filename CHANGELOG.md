@@ -4,6 +4,20 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0] - 2026-05-31
+
+### Added
+
+- **First-class `create` command auto-instantiation** — `runCommand('create', body, { entityName })` now prepares a non-persisted create candidate, evaluates policies, command constraints, and guards against it, then persists through `Store.create`.
+  - Uses `body.id` when present, otherwise falls back to `RuntimeOptions.generateId`.
+  - Returns the created entity in both `result` and `newInstance` on the command result.
+  - Event and outbox behavior preserved, including correct `event.subject.id` for the created entity.
+  - Update-style commands (with `instanceId`) are unchanged.
+
+### Changed
+
+- Agent instruction files (`AGENTS.md`, `CLAUDE.md`) corrected to use `pnpm` instead of `npm` throughout, matching the actual pnpm workspace setup.
+
 ## [1.6.0] - 2026-05-30
 
 ### Added
