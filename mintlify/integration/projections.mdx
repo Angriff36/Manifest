@@ -12,6 +12,8 @@ A **projection** reads your compiled Intermediate Representation (IR) and emits 
 | --- | --- | --- | --- |
 | Next.js | `nextjs` | App Router routes, dispatcher, TS types, client SDK | [Next.js projection](/integration/nextjs) |
 | Prisma  | `prisma` | A `schema.prisma` file (models, relations, indexes) | [Prisma projection](/integration/prisma) |
+| SvelteKit | `sveltekit` | `+server.ts`, `+page.server.ts`, form actions, route types, client utilities | [SvelteKit projection](/projections/sveltekit) |
+| Pydantic | `pydantic` | Python Pydantic v2 models, command parameter models, enums, async client code | [Pydantic projection](/projections/pydantic) |
 
 Projections share a single contract — `ProjectionTarget.generate(ir, request)` returns one or more `ProjectionArtifact`s plus structured diagnostics. The CLI's `--projection` flag selects which projection runs; dispatch is generic (the registry resolves the name), so adding a new projection means registering it, not editing a hardcoded dispatch branch.
 

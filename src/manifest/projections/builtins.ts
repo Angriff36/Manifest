@@ -25,6 +25,8 @@ import { MermaidProjection } from './mermaid/generator.js';
 import { JsonSchemaProjection } from './jsonschema/generator.js';
 import { StorybookProjection } from './storybook/generator.js';
 import { HealthCheckProjection } from './health/generator.js';
+import { PydanticProjection } from './pydantic/generator.js';
+import { SvelteKitProjection } from './sveltekit/generator.js';
 
 /**
  * Register all built-in projections.
@@ -81,6 +83,12 @@ export function registerBuiltinProjections(): void {
   // Health check endpoint projection (IR integrity, store connectivity, outbox)
   registerProjection(new HealthCheckProjection());
 
+  // Pydantic v2 model and async httpx client projection
+  registerProjection(new PydanticProjection());
+
+  // SvelteKit server routes, load functions, actions, types, and client utilities
+  registerProjection(new SvelteKitProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -110,5 +118,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new JsonSchemaProjection(),
     new StorybookProjection(),
     new HealthCheckProjection(),
+    new PydanticProjection(),
+    new SvelteKitProjection(),
   ];
 }

@@ -29,6 +29,8 @@ export { MermaidProjection } from './mermaid/generator.js';
 export { JsonSchemaProjection } from './jsonschema/generator.js';
 export { StorybookProjection } from './storybook/generator.js';
 export { HealthCheckProjection } from './health/generator.js';
+export { PydanticProjection } from './pydantic/generator.js';
+export { SvelteKitProjection } from './sveltekit/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
@@ -43,6 +45,8 @@ export type { MermaidProjectionOptions } from './mermaid/generator.js';
 export type { JsonSchemaProjectionOptions } from './jsonschema/types.js';
 export type { StorybookProjectionOptions } from './storybook/generator.js';
 export type { HealthCheckProjectionOptions } from './health/types.js';
+export type { PydanticProjectionOptions } from './pydantic/types.js';
+export type { SvelteKitProjectionOptions } from './sveltekit/types.js';
 
 // Re-export route surface types
 export type {

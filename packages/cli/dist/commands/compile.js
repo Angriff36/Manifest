@@ -103,9 +103,127 @@ function printDiagnostics(diagnostics) {
     });
 }
 /**
+ * Load the multi-compiler for merged compilation
+ */
+async function loadMultiCompiler() {
+    const module = await import('@angriff36/manifest/multi-compiler');
+    return { compileProjectToIR: module.compileProjectToIR };
+}
+/**
+ * Create a ResolverHost backed by the real filesystem
+ */
+function createFsHost() {
+    return {
+        async readFile(absPath) {
+            return fs.readFile(absPath, 'utf-8');
+        },
+        resolvePath(fromDir, relativePath) {
+            return path.resolve(fromDir, relativePath);
+        },
+        async fileExists(absPath) {
+            try {
+                await fs.access(absPath);
+                return true;
+            }
+            catch {
+                return false;
+            }
+        },
+    };
+}
+/**
+ * Find root manifest files (files not referenced by any other file's `use` declarations).
+ * Uses regex extraction to avoid needing to import the full parser.
+ */
+async function findRootFiles(allFiles) {
+    const usedPaths = new Set();
+    const useRegex = /^\s*use\s+"([^"]+)"/gm;
+    for (const file of allFiles) {
+        const source = await fs.readFile(file, 'utf-8');
+        let match;
+        while ((match = useRegex.exec(source)) !== null) {
+            const usePath = match[1];
+            const dir = path.dirname(file);
+            const resolved = path.resolve(dir, usePath);
+            usedPaths.add(resolved);
+        }
+        useRegex.lastIndex = 0; // reset for next file
+    }
+    const roots = allFiles.filter(f => !usedPaths.has(f));
+    return roots.length > 0 ? roots : allFiles;
+}
+/**
+ * Handle merged compilation (--merge flag)
+ */
+async function compileMerged(source, options) {
+    const spinner = ora('Preparing merged compilation').start();
+    try {
+        const files = await getManifestFiles(source || '', options);
+        if (files.length === 0) {
+            spinner.warn('No .manifest files found');
+            return;
+        }
+        spinner.info(`Found ${files.length} file(s) for merged compilation`);
+        // Determine entry files
+        let entries;
+        if (options.entry) {
+            const entryList = Array.isArray(options.entry) ? options.entry : [options.entry];
+            entries = entryList.map(e => path.resolve(process.cwd(), e));
+        }
+        else {
+            // Auto-detect: root files are those not referenced by any other file
+            spinner.text = 'Detecting entry files...';
+            entries = await findRootFiles(files);
+        }
+        spinner.info(`Using ${entries.length} entry file(s)`);
+        const { compileProjectToIR } = await loadMultiCompiler();
+        const host = createFsHost();
+        const basePath = process.cwd();
+        const mergeSpinner = ora('Compiling and merging...').start();
+        const result = await compileProjectToIR({
+            entries,
+            host,
+            useCache: true,
+            basePath,
+        });
+        // Print diagnostics
+        const diagnostics = result.diagnostics;
+        const errors = diagnostics.filter((d) => d.severity === 'error');
+        const warnings = diagnostics.filter((d) => d.severity === 'warning');
+        if (options.diagnostics || errors.length > 0) {
+            printDiagnostics(diagnostics);
+        }
+        if (errors.length > 0 || !result.ir) {
+            mergeSpinner.fail(`Merge compilation failed with ${errors.length} error(s)`);
+            process.exit(1);
+        }
+        // Write merged output
+        const outputPath = options.output
+            ? path.resolve(process.cwd(), options.output.endsWith('.json') ? options.output : path.join(options.output, 'merged.ir.json'))
+            : path.resolve(process.cwd(), 'merged.ir.json');
+        await fs.mkdir(path.dirname(outputPath), { recursive: true });
+        const jsonContent = options.pretty
+            ? JSON.stringify(result.ir, null, 2)
+            : JSON.stringify(result.ir);
+        await fs.writeFile(outputPath, jsonContent, 'utf-8');
+        mergeSpinner.succeed(`Merged ${result.sources.length} file(s) → ${path.relative(process.cwd(), outputPath)}`);
+        if (warnings.length > 0) {
+            console.log(chalk.yellow(`  ${warnings.length} warning(s)`));
+        }
+    }
+    catch (error) {
+        spinner.fail(`Merge compilation failed: ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(1);
+    }
+}
+/**
  * Compile command handler
  */
 export async function compileCommand(source, options = {}) {
+    // Dispatch to merge mode if --merge flag is set
+    if (options.merge) {
+        return compileMerged(source, options);
+    }
     const spinner = ora('Preparing to compile').start();
     try {
         // Get manifest files

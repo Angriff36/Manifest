@@ -1,7 +1,7 @@
 ---
 title: "Manifest CLI command reference"
 sidebarTitle: "Commands"
-description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, and validate — with flags and defaults."
+description: "Full syntax, options, and usage examples for every Manifest CLI command: manifest init, compile, generate, build, validate, and seed — with flags and defaults."
 ---
 
 Every command reads `manifest.config.yaml` from your project root when it exists. CLI flags always take precedence over config values. Run any command with `--help` to see its options inline.
@@ -110,7 +110,7 @@ manifest generate <ir> [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection to use for code generation. Supported values: `nextjs`, `prisma`. The projection determines the framework and file shape of the generated output. Dispatch is generic via the projection registry — adding a new projection means registering it, not editing the CLI.
+  Projection to use for code generation. Supported values include `nextjs`, `prisma`, `sveltekit`, and `pydantic`. The projection determines the framework and file shape of the generated output. Dispatch is generic via the projection registry — adding a new projection means registering it, not editing the CLI.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
@@ -154,7 +154,7 @@ manifest generate ir/ --surface dispatcher --output app/api
 manifest generate ir/ --projection prisma --surface prisma.schema --output prisma
 ```
 
-Projection-specific options (table names, column mappings, decimal precision, indexes, type overrides, foreign-key names for prisma; auth provider, tenant filters, dispatcher mode for nextjs) live in `manifest.config.yaml` under `projections.<name>.options`. See [Configuration](/cli/configuration) and the per-projection guides ([Next.js](/integration/nextjs), [Prisma](/integration/prisma)).
+Projection-specific options (table names, column mappings, decimal precision, indexes, type overrides, foreign-key names for prisma; auth provider, tenant filters, dispatcher mode for nextjs and sveltekit; Python model/client options for pydantic) live in `manifest.config.yaml` under `projections.<name>.options`. See [Configuration](/cli/configuration) and the per-projection guides ([Next.js](/integration/nextjs), [Prisma](/integration/prisma), [SvelteKit](/projections/sveltekit), and [Pydantic](/projections/pydantic)).
 
 #### Exit codes (v0.9.1+)
 
@@ -257,6 +257,64 @@ manifest build \
   --database @repo/database \
   --runtime @repo/manifest/runtime \
   --response @repo/manifest/response
+```
+
+---
+
+## `manifest seed [source]`
+
+Generates deterministic seed data from a `.manifest` source file, compiled `.ir.json` file, or directory containing IR. Seed generation reads entity properties from IR and emits records for local development, staging rehearsals, or demo data.
+
+```bash
+manifest seed [source] [options]
+```
+
+`source` can be a `.manifest` file, an `.ir.json` file, or a directory containing `*.ir.json`. When `source` is a `.manifest` file, the command compiles it first and fails if compilation emits errors.
+
+### Options
+
+<ParamField path="-o, --output" type="string">
+  Output file or directory path. Omit this when using `--json` to print the generated payload to stdout.
+</ParamField>
+
+<ParamField path="--profile" type="string" default="dev">
+  Record-count profile: `dev`, `staging`, or `demo`. Defaults are 5, 20, and 50 records per entity.
+</ParamField>
+
+<ParamField path="-f, --format" type="string" default="json">
+  Output format: `json`, `sql`, or `supabase`.
+</ParamField>
+
+<ParamField path="--count" type="number">
+  Override the selected profile's record count for every generated entity.
+</ParamField>
+
+<ParamField path="--entity" type="string">
+  Limit output to one or more entity names. Repeat the flag to seed multiple selected entities.
+</ParamField>
+
+<ParamField path="--seed" type="number">
+  Deterministic PRNG seed for reproducible output. Use the same seed with the same IR to generate the same values.
+</ParamField>
+
+<ParamField path="--json" type="boolean" default="false">
+  Emit structured JSON to stdout instead of writing files.
+</ParamField>
+
+### Examples
+
+```bash
+# Generate default dev JSON seed data from compiled IR
+manifest seed ir/recipe.ir.json --output seeds/dev.json
+
+# Compile source first, then generate deterministic demo JSON
+manifest seed modules/recipe.manifest --profile demo --seed 42 --output seeds/demo.json
+
+# Generate SQL inserts for a selected entity
+manifest seed ir/ --format sql --entity User --count 10 --output seeds/users.sql
+
+# Print structured seed output to stdout for another tool
+manifest seed ir/recipe.ir.json --json
 ```
 
 ---

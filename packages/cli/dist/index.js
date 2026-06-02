@@ -30,6 +30,7 @@ import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { coverageCommand } from './commands/coverage.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
+import { seedCommand } from './commands/seed.js';
 import { configValidateCommand, configPrintDefaultsCommand, configInspectCommand, } from './commands/config.js';
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
@@ -115,6 +116,8 @@ program
     .option('-g, --glob <pattern>', 'Glob pattern for multiple files (use with output directory)')
     .option('-d, --diagnostics', 'Include diagnostics in output', false)
     .option('--pretty', 'Pretty-print JSON output', true)
+    .option('--merge', 'Merge multiple files into single IR (resolves use declarations)', false)
+    .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
     .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
     if (!options.output && config?.output) {
@@ -302,6 +305,34 @@ program
         output: options.output,
         format: options.format,
         title: options.title,
+    });
+});
+/**
+ * manifest seed [source]
+ *
+ * Generate deterministic seed data files from IR entity definitions.
+ */
+program
+    .command('seed')
+    .description('Generate seed data from IR entity definitions')
+    .argument('[source]', 'Source .manifest file, .ir.json file, or directory')
+    .option('-o, --output <path>', 'Output file path')
+    .option('--profile <profile>', 'Seed profile: dev | staging | demo (default: dev)', 'dev')
+    .option('-f, --format <format>', 'Output format: json | sql | supabase (default: json)', 'json')
+    .option('--count <n>', 'Override record count per entity', (v) => parseInt(v, 10))
+    .option('--entity <name...>', 'Only seed the named entity (repeatable)')
+    .option('--seed <n>', 'Deterministic seed for reproducible output', (v) => parseInt(v, 10))
+    .option('--json', 'Emit structured JSON to stdout instead of writing a file', false)
+    .action(async (source, options = {}) => {
+    await seedCommand({
+        source,
+        output: options.output,
+        profile: options.profile,
+        format: options.format,
+        count: options.count,
+        entity: options.entity,
+        seed: options.seed,
+        json: options.json,
     });
 });
 /**

@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -17,6 +17,10 @@
     "./ir-compiler": {
       "types": "./dist/manifest/ir-compiler.d.ts",
       "import": "./dist/manifest/ir-compiler.js"
+    },
+    "./projections": {
+      "types": "./dist/manifest/projections/index.d.ts",
+      "import": "./dist/manifest/projections/index.js"
     },
     "./projections/nextjs": {
       "types": "./dist/manifest/projections/nextjs/generator.d.ts",
@@ -49,6 +53,14 @@
     "./projections/mermaid": {
       "types": "./dist/manifest/projections/mermaid/generator.d.ts",
       "import": "./dist/manifest/projections/mermaid/generator.js"
+    },
+    "./projections/pydantic": {
+      "types": "./dist/manifest/projections/pydantic/index.d.ts",
+      "import": "./dist/manifest/projections/pydantic/index.js"
+    },
+    "./projections/sveltekit": {
+      "types": "./dist/manifest/projections/sveltekit/index.d.ts",
+      "import": "./dist/manifest/projections/sveltekit/index.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
@@ -183,10 +195,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "@types/pg": "^8.16.0",
+    "@types/pg": "^8.20.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
-    "pg": "^8.18.0",
+    "pg": "^8.21.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zod": "^3.25.0"
@@ -203,17 +215,33 @@
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.18",
+    "@vitejs/plugin-react": "^5.2.0",
+    "autoprefixer": "^10.5.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
-    "eslint-plugin-react-refresh": "^0.4.11",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "glob": "^10.5.0",
     "globals": "^15.9.0",
-    "postcss": "^8.4.35",
+    "postcss": "^8.5.15",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
-    "typescript-eslint": "^8.3.0",
-    "vite": "^5.4.2",
-    "vitest": "^4.0.18"
+    "typescript-eslint": "^8.60.1",
+    "vite": "^6.4.2",
+    "vitest": "^4.1.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "ajv@<6.14.0": "6.14.0",
+      "brace-expansion@<1.1.13": "1.1.13",
+      "brace-expansion@>=2.0.0 <2.0.3": "2.0.3",
+      "flatted@<3.4.0": "3.4.0",
+      "flatted@<=3.4.1": "3.4.2",
+      "minimatch@<3.1.3": "3.1.3",
+      "minimatch@<3.1.4": "3.1.4",
+      "minimatch@>=9.0.0 <9.0.6": "9.0.6",
+      "minimatch@>=9.0.0 <9.0.7": "9.0.7",
+      "picomatch@>=4.0.0 <4.0.4": "4.0.4",
+      "ws@>=8.0.0 <8.20.1": "8.20.1"
+    }
   }
 }

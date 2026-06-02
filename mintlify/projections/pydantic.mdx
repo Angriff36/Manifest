@@ -1,0 +1,73 @@
+---
+title: "Pydantic v2 projection"
+sidebarTitle: "Pydantic"
+description: "Generate Pydantic v2 BaseModel classes, command parameter models, enums, JSON Schema exports, and async httpx client code from Manifest IR."
+---
+
+The Pydantic projection generates Python models from compiled Manifest IR. Use it when a Python service, worker, or client needs typed models that stay aligned with Manifest entities, command parameters, enums, and constraints.
+
+The projection registers under the name `pydantic` and lives in `src/manifest/projections/pydantic/generator.ts`.
+
+## What it generates
+
+The projection exposes four surfaces.
+
+| Surface | What it emits | Path hint |
+| --- | --- | --- |
+| `pydantic.entity` | One `BaseModel` class for a selected entity, or one artifact per entity when no entity is selected | `models/<Entity>.py` |
+| `pydantic.command` | One parameter model per command, plus return wrapper models when a command declares a return type | `models/commands/<command>.py` |
+| `pydantic.models` | A combined module with all entity, command, and enum models | `models/manifest_models.py` |
+| `pydantic.client` | Async `httpx` client helpers for command dispatch | `client/manifest_client.py` |
+
+Entity models include required and optional fields, nullable fields, default values, computed property stubs, and optional JSON Schema exports. Constraint analysis emits validators for numeric ranges, length checks, and regex-style pattern constraints when those constraints are statically recoverable from IR.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('pydantic');
+
+const result = projection.generate(ir, {
+  surface: 'pydantic.models',
+  options: {
+    emitJsonSchema: true,
+    pydanticImportPath: 'pydantic',
+  },
+});
+```
+
+You can import the projection directly:
+
+```ts
+import { PydanticProjection } from '@angriff36/manifest/projections/pydantic';
+
+const projection = new PydanticProjection();
+```
+
+## Type mapping
+
+Manifest scalar types map to Python annotations:
+
+| Manifest type | Python annotation |
+| --- | --- |
+| `string`, `text`, `email`, `url` | `str` |
+| `number`, `float`, `int`, `integer` | `float` or `int` |
+| `decimal`, `money` | `Decimal` |
+| `boolean`, `bool` | `bool` |
+| `date`, `datetime`, `timestamp` | `datetime` |
+| `uuid` | `UUID` |
+| `array<T>` | `list[T]` |
+| `map<T>` | `dict[str, T]` |
+| `json`, `any`, unknown types | `Any` |
+
+Nullable or optional fields are emitted as `T | None = None`.
+
+## Options
+
+`PydanticProjectionOptions` supports `emitTypes`, `emitComputedFields`, `pydanticImportPath`, `emitDatetimeImports`, `emitTypingImports`, `emitUuidImport`, `emitDecimalImport`, `emitHeader`, `useFieldFunction`, `emitJsonSchema`, `clientBaseUrl`, `clientClassName`, and `emitConvenienceFunctions`.
+
+## Verification
+
+The release implementation is covered by `src/manifest/projections/pydantic/generator.test.ts`. The release verification run passed 19 Pydantic projection tests, root typecheck, and `build:lib`.
+

@@ -58,6 +58,8 @@
               "projections/json-schema",
               "projections/express",
               "projections/hono",
+              "projections/sveltekit",
+              "projections/pydantic",
               "projections/mermaid",
               "projections/llm-context"
             ]

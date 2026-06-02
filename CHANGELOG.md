@@ -4,6 +4,14 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-06-02
+
+### Added
+
+- **Pydantic v2 projection** — new built-in `pydantic` projection with entity models, command parameter/return models, enum models, optional JSON Schema exports, and async `httpx` client helpers. Registered via the projection registry and exported through `@angriff36/manifest/projections/pydantic`.
+- **SvelteKit projection** — new built-in `sveltekit` projection for `+server.ts` read/command handlers, `+page.server.ts` load functions and form actions, route types, and client utilities while preserving Manifest runtime command semantics for writes.
+- **`manifest seed` CLI command** — deterministic seed data generation from `.manifest` or `.ir.json` input with `dev`, `staging`, and `demo` profiles, entity filtering, fixed PRNG seeds, and `json`, `sql`, or `supabase` output formats.
+
 ## [1.8.0] - 2026-06-01
 
 ### Added

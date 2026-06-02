@@ -1,0 +1,59 @@
+---
+title: "SvelteKit projection"
+sidebarTitle: "SvelteKit"
+description: "Generate SvelteKit +server.ts routes, +page.server.ts load functions, form actions, route types, and client utilities from Manifest IR."
+---
+
+The SvelteKit projection emits SvelteKit server routes and page-load artifacts from compiled Manifest IR. Use it when you want SvelteKit conventions while preserving Manifest's write semantics: reads may use direct storage queries, but command writes go through `RuntimeEngine.runCommand`.
+
+The projection registers under the name `sveltekit` and lives in `src/manifest/projections/sveltekit/generator.ts`.
+
+## What it generates
+
+The projection exposes five surfaces.
+
+| Surface | What it emits |
+| --- | --- |
+| `sveltekit.server` | `+server.ts` handlers for entity reads and command dispatch |
+| `sveltekit.load` | `+page.server.ts` `load` functions and form actions |
+| `sveltekit.command` | A single command route artifact |
+| `sveltekit.types` | Entity and command TypeScript types |
+| `sveltekit.client` | `$lib` client utilities for invoking Manifest commands |
+
+Generated read paths include tenant filtering and soft-delete filtering when enabled and when the entity declares the relevant fields. Generated command paths parse request bodies, apply optional validation imports, build runtime context from the SvelteKit `locals` user/session shape, and dispatch to Manifest runtime commands.
+
+## Usage
+
+```ts
+import { SvelteKitProjection } from '@angriff36/manifest/projections/sveltekit';
+
+const projection = new SvelteKitProjection();
+
+const result = projection.generate(ir, {
+  surface: 'sveltekit.server',
+  entity: 'Task',
+  options: {
+    authProvider: 'lucia',
+    runtimeImportPath: '$lib/server/manifest-runtime',
+    databaseImportPath: '$lib/server/database',
+  },
+});
+```
+
+## Runtime boundary
+
+The projection follows the Manifest projection rule:
+
+- GET/read handlers may query the database directly.
+- POST command handlers must call `RuntimeEngine.runCommand`.
+
+This keeps policies, command constraints, guards, actions, emits, audit/outbox hooks, and workflow metadata on the runtime path for mutations.
+
+## Options
+
+`SvelteKitProjectionOptions` supports `authProvider`, `authImportPath`, `runtimeImportPath`, `runtimeFactoryName`, `databaseImportPath`, `validationImportPath`, `routesDir`, `includeTenantFilter`, `includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`, `strictMode`, `includeComments`, `unauthorizedStatus`, `tenantProvider`, `emitFormActions`, and `pageTypesImportPath`.
+
+## Verification
+
+The release implementation is covered by `src/manifest/projections/sveltekit/generator.test.ts`. The release verification run passed 40 SvelteKit projection tests, root typecheck, and `build:lib`.
+
