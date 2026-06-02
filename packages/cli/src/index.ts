@@ -46,6 +46,7 @@ import {
   diffSourceVsIRCommand,
 } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
+import { loadTestCommand } from './commands/load-test.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
 import { fmtCommand } from './commands/fmt.js';
@@ -646,6 +647,44 @@ program
         process.exitCode = 1;
       }
     }
+  });
+
+/**
+ * manifest load-test [source]
+ *
+ * Generate k6 or Artillery load test scripts from IR entities and commands.
+ * Produces self-contained scripts with realistic data generation (faker.js
+ * patterns), configurable ramp-up profiles, SLO thresholds, and optional
+ * integration with the Manifest performance profiler.
+ */
+program
+  .command('load-test')
+  .description('Generate k6 or Artillery load test scripts from IR')
+  .argument('[source]', 'Source .manifest file, .ir.json file, or directory')
+  .option('-o, --output <path>', 'Output directory for generated scripts', 'load-tests')
+  .option('-f, --format <format>', 'Script format: k6 | artillery (default: k6)', 'k6')
+  .option('--base-url <url>', 'Base URL for the API under test', 'http://localhost:3000')
+  .option('--ramp-up <stages>', 'Ramp-up profile: "duration:target,duration:target" (e.g. "10s:5,30s:20,1m:50")', '10s:5,30s:20,1m:50')
+  .option('--slo <thresholds>', 'SLO thresholds: "metric:op:value" (e.g. "p95:<:500ms,error_rate:<=:0.01")')
+  .option('--command <name...>', 'Only generate for the named command(s)')
+  .option('--entity <name...>', 'Only include the named entity/entities')
+  .option('--profile', 'Emit per-request profiling timestamps for profiler correlation', false)
+  .option('--timeout <ms>', 'Request timeout in milliseconds', (v) => parseInt(v, 10), 30000)
+  .option('--json', 'Emit structured JSON to stdout instead of writing files', false)
+  .action(async (source, options = {}) => {
+    await loadTestCommand({
+      source,
+      output: options.output,
+      format: options.format,
+      baseUrl: options.baseUrl,
+      rampUp: options.rampUp,
+      slo: options.slo,
+      command: options.command,
+      entity: options.entity,
+      profile: options.profile,
+      timeout: options.timeout,
+      json: options.json,
+    });
   });
 
 emitProgram
