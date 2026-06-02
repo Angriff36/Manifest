@@ -622,7 +622,7 @@ export class Parser {
     this.errors = [];
 
     const program: ManifestProgram = {
-      modules: [], entities: [], commands: [], flows: [], effects: [],
+      uses: [], modules: [], entities: [], commands: [], flows: [], effects: [],
       exposures: [], compositions: [], policies: [], stores: [], events: []
     };
 

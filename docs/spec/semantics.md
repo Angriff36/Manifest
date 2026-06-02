@@ -334,6 +334,42 @@ See also:
 - Both successful and failed results MUST be cached.
 - The idempotency check occurs BEFORE any command evaluation (before building evaluation context, policy checks, constraints, guards, actions, or event emission).
 
+## Reactions
+
+Reactions declare event-driven command dispatch within the Manifest governance boundary.
+
+### Syntax
+```
+on <EventName> run <EntityType>.<commandName>
+  resolve <expression>
+  params { <paramName>: <expression>, ... }
+```
+
+### Compilation
+- Each reaction declaration compiles to an `IRReactionRule` node in the IR `reactions` array.
+- `event`: The triggering event name (MUST reference a declared event).
+- `targetEntity`: Entity type to invoke the command on.
+- `targetCommand`: Command name on the target entity.
+- `resolve`: Expression evaluated against the event payload to produce the target instance ID.
+- `params`: Optional array of `{name, expression}` mappings from event payload to command input.
+
+### Runtime Semantics
+- After a command emits events (step 6 in command execution), the runtime MUST evaluate all reaction rules whose `event` matches each emitted event name.
+- Matching reactions are evaluated in **declaration order** (order in the IR `reactions` array).
+- For each matching reaction:
+  1. Evaluate `resolve` expression with the event payload as context → produces `instanceId`.
+  2. Evaluate each `params[].expression` with the event payload as context → produces command input.
+  3. Invoke `runCommand(targetEntity.targetCommand, input, {instanceId, correlationId, causationId})`.
+- Reaction-triggered commands are full command executions (policies, guards, actions, emits apply).
+- Events emitted by reaction-triggered commands MAY trigger further reactions (cascading).
+- A conforming runtime MUST enforce a maximum reaction depth (default: 10) to prevent infinite loops. When exceeded, the runtime MUST throw a `ManifestReactionDepthError`.
+- Reaction execution is **synchronous within the same turn** (in-process). The triggering command's result includes all events from cascaded reactions.
+- The `correlationId` from the triggering command MUST propagate to all reaction-triggered commands. Each reaction-triggered command receives the triggering event's name as its `causationId`.
+
+### Determinism
+- Given identical IR + identical runtime context + identical input, reactions MUST produce identical results in identical order.
+- Reaction evaluation order is fixed by IR declaration order. No priority or weighting.
+
 ## Expressions
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.
 - The following operators MUST be supported by the default runtime:
@@ -345,6 +381,61 @@ See also:
   - `and` and `or` evaluate with boolean truthiness.
   - `in` checks membership in an array or substring in a string.
   - `contains` checks membership where the left side is array or string.
+
+## Async Commands
+
+Commands may be declared with the `async` modifier to defer action execution to a background worker queue.
+
+### Syntax
+```manifest
+async command processOrder(amount: number) {
+  guard self.status == "pending"
+  mutate status = "processing"
+  mutate total = amount
+  emit OrderProcessed
+}
+```
+
+### IR Representation
+When a command has `async: true`, the IR compiler adds:
+- `async: true` on the `IRCommand`
+- `completionEvent: "{commandName}Completed"` — auto-derived name
+- `failureEvent: "{commandName}Failed"` — auto-derived name
+
+Two synthesized `IREvent` entries are appended to `ir.events`:
+- `{commandName}Completed` on channel `jobs.{commandName}` with payload: `jobId: string`, `result: any`, `completedAt: number`
+- `{commandName}Failed` on channel `jobs.{commandName}` with payload: `jobId: string`, `error: string`, `failedAt: number`
+
+If a user-declared event collides with a synthesized event name, the compiler MUST emit a diagnostic error.
+
+### Execution Semantics
+
+When an async command is invoked (and `context.source !== 'job'`):
+
+1. **Fail-fast validation**: Policies, constraints, and guards are evaluated synchronously. If any fail, the command returns a failure result immediately — no job is enqueued.
+2. **Enqueue**: If validation passes, a `JobRecord` is enqueued via the `JobQueue` adapter. The command returns immediately with `{ jobId, status: 'pending', enqueuedAt }`.
+3. **No actions executed**: Mutations and emits are deferred to the background worker.
+4. **No emitted events**: The immediate return has an empty `emittedEvents` array.
+
+When `context.source === 'job'` (re-entry from the job worker):
+- The async branch is bypassed; the full command body executes (policies → guards → actions → emits → return).
+
+### Job Lifecycle
+- `pending` → enqueued, awaiting worker pickup
+- `running` → worker is executing the command body
+- `completed` → actions succeeded; `{commandName}Completed` event emitted
+- `failed` → actions failed; `{commandName}Failed` event emitted
+
+### Missing JobQueue
+If `RuntimeOptions.jobQueue` is not configured and an async command is invoked, the runtime returns `{ success: false, error: 'MISSING_JOB_QUEUE: ...' }`.
+
+### Deterministic Testing
+The `drainJobs()` method on `RuntimeEngine` drains all pending jobs synchronously in FIFO order, executing each via `_executeCommandInternal` with `context.source = 'job'`. This enables deterministic conformance testing without real worker infrastructure.
+
+### Determinism
+- Job IDs are generated via `RuntimeOptions.generateId()` (deterministic in tests)
+- Timestamps use `RuntimeOptions.now()` (deterministic in tests)
+- Jobs drain in FIFO enqueue order
 
 ## Nonconformance
 There are no known nonconformances. All implementations conform to this specification.

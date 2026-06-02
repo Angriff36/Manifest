@@ -202,7 +202,7 @@ describe('Prisma 7 detail route findFirst vs findUnique (goal step 5)', () => {
 
   async function sample() {
     const result = await compileToIR(
-      `entity Recipe { property id: string property title: string }`
+      `entity Recipe { property id: string property title: string property deletedAt: datetime? }`
     );
     return result.ir!;
   }

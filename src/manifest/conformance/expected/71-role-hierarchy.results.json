@@ -1,0 +1,158 @@
+{
+  "testCases": [
+    {
+      "name": "Manager can execute CreateReport (inherited write + declared execute CreateReport)",
+      "context": {
+        "user": { "id": "mgr-1", "role": "Manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-1", "title": "", "status": "draft" }
+        }
+      },
+      "command": {
+        "name": "CreateReport",
+        "entityName": "Document",
+        "instanceId": "doc-1",
+        "input": { "docId": "doc-1", "docTitle": "Quarterly Report" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "ReportCreated",
+            "channel": "document.report_created",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "doc-1",
+        "title": "Quarterly Report",
+        "status": "draft"
+      }
+    },
+    {
+      "name": "User cannot execute CreateReport (only has read permission)",
+      "context": {
+        "user": { "id": "user-1", "role": "User" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-2", "title": "", "status": "draft" }
+        }
+      },
+      "command": {
+        "name": "CreateReport",
+        "entityName": "Document",
+        "instanceId": "doc-2",
+        "input": { "docId": "doc-2", "docTitle": "Blocked Report" }
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Admin can delete (inherited + declared delete permission)",
+      "context": {
+        "user": { "id": "admin-1", "role": "Admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-3", "title": "Delete Me", "status": "active" }
+        }
+      },
+      "command": {
+        "name": "DeleteDocument",
+        "entityName": "Document",
+        "instanceId": "doc-3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "DocumentDeleted",
+            "channel": "document.deleted",
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "doc-3",
+        "title": "Delete Me",
+        "status": "deleted"
+      }
+    },
+    {
+      "name": "Admin is denied DangerousReset (explicit deny overrides inherited execute)",
+      "context": {
+        "user": { "id": "admin-2", "role": "Admin" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-4", "title": "Protected", "status": "active" }
+        }
+      },
+      "command": {
+        "name": "DangerousReset",
+        "entityName": "Document",
+        "instanceId": "doc-4",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Manager cannot delete (no delete permission)",
+      "context": {
+        "user": { "id": "mgr-2", "role": "Manager" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-5", "title": "Cannot Delete", "status": "active" }
+        }
+      },
+      "command": {
+        "name": "DeleteDocument",
+        "entityName": "Document",
+        "instanceId": "doc-5",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Unknown role is denied (no permissive default)",
+      "context": {
+        "user": { "id": "guest-1", "role": "Guest" }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Document",
+          "data": { "id": "doc-6", "title": "Guest Doc", "status": "draft" }
+        }
+      },
+      "command": {
+        "name": "CreateReport",
+        "entityName": "Document",
+        "instanceId": "doc-6",
+        "input": { "docId": "doc-6", "docTitle": "Guest Report" }
+      },
+      "expectedResult": {
+        "success": false,
+        "emittedEvents": []
+      }
+    }
+  ]
+}

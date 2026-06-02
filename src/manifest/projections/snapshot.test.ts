@@ -254,8 +254,8 @@ describe('projection snapshots', () => {
   const projections = listBuiltinProjections();
 
   // Sanity: ensure we're testing all built-ins
-  it('covers all 13 built-in projections', () => {
-    expect(projections.length).toBe(13);
+  it('covers all 15 built-in projections', () => {
+    expect(projections.length).toBe(15);
   });
 
   for (const projection of projections) {

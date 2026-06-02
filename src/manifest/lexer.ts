@@ -49,6 +49,16 @@ export const KEYWORDS = new Set([
   'timestamps',
   // computed property caching keywords
   'cache', 'request', 'session', 'ttl',
+  // reaction keywords
+  'run', 'resolve', 'params',
+  // approval workflow keywords
+  'approval', 'stages', 'timeout',
+  // async command execution keyword
+  'async',
+  // role hierarchy keywords
+  'extends',
+  // multi-module compilation
+  'use',
 ]);
 
 const OPERATORS = new Set([

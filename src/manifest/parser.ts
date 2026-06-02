@@ -5,7 +5,8 @@ import {
   ComponentRefNode, ConnectionNode, ExpressionNode, TriggerNode, ActionNode, CompilationError,
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
   ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
-  ValueObjectNode, TenantNode
+  ValueObjectNode, TenantNode, ReactionNode, ReactionParamMapping, ApprovalNode, ApprovalStageNode,
+  UseNode, RoleNode, RolePermissionNode
 } from './types';
 
 export class Parser {
@@ -19,15 +20,33 @@ export class Parser {
     this.errors = [];
 
     const program: ManifestProgram = {
-      modules: [], entities: [], enums: [], values: [], commands: [], flows: [], effects: [],
-      exposures: [], compositions: [], policies: [], stores: [], events: []
+      uses: [], modules: [], entities: [], enums: [], values: [], commands: [], flows: [], effects: [],
+      exposures: [], compositions: [], policies: [], stores: [], events: [], reactions: [], roles: []
     };
+
+    // Parse use declarations (must appear before any other declarations)
+    let pastUseDeclarations = false;
+    while (!this.isEnd()) {
+      this.skipNL();
+      if (this.isEnd()) break;
+      if (this.check('KEYWORD', 'use') && !pastUseDeclarations) {
+        program.uses.push(this.parseUse());
+        continue;
+      }
+      pastUseDeclarations = true;
+      break;
+    }
 
     while (!this.isEnd()) {
       this.skipNL();
       if (this.isEnd()) break;
       try {
-        if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
+        if (this.check('KEYWORD', 'use')) {
+          this.errors.push({ message: "'use' declarations must appear before all other declarations", position: this.current()?.position, severity: 'error' });
+          this.advance(); // consume 'use'
+          if (this.check('STRING')) this.advance(); // consume path
+        }
+        else if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
         else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
         else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
         else if (this.check('IDENTIFIER', 'value') || this.check('KEYWORD', 'value')) {
@@ -39,6 +58,15 @@ export class Parser {
           }
           program.tenant = this.parseTenant();
         }
+        else if (this.check('KEYWORD', 'async')) {
+          this.advance(); // consume 'async'
+          if (!this.check('KEYWORD', 'command')) {
+            throw new Error("Expected 'command' after 'async'");
+          }
+          const cmd = this.parseCommand();
+          cmd.async = true;
+          program.commands.push(cmd);
+        }
         else if (this.check('KEYWORD', 'command')) program.commands.push(this.parseCommand());
         else if (this.check('KEYWORD', 'flow')) program.flows.push(this.parseFlow());
         else if (this.check('KEYWORD', 'effect')) program.effects.push(this.parseEffect());
@@ -47,6 +75,8 @@ export class Parser {
         else if (this.check('KEYWORD', 'policy')) program.policies.push(this.parsePolicy(false));
         else if (this.check('KEYWORD', 'store')) program.stores.push(this.parseStore());
         else if (this.check('KEYWORD', 'event')) program.events.push(this.parseOutboxEvent());
+        else if (this.check('KEYWORD', 'on')) program.reactions.push(this.parseReaction());
+        else if (this.check('IDENTIFIER', 'role')) program.roles.push(this.parseRole());
         else this.advance();
       } catch (e) {
         this.errors.push({ message: e instanceof Error ? e.message : 'Parse error', position: this.current()?.position, severity: 'error' });
@@ -56,28 +86,55 @@ export class Parser {
     return { program, errors: this.errors };
   }
 
+  private parseUse(): UseNode {
+    const position = this.current()?.position;
+    this.consume('KEYWORD', 'use');
+    if (!this.check('STRING')) {
+      throw new Error("Expected string path after 'use'");
+    }
+    const path = this.advance().value;
+    if (!path.startsWith('./') && !path.startsWith('../')) {
+      this.errors.push({ message: `use path must be relative (start with './' or '../'), got '${path}'`, position, severity: 'error' });
+    }
+    if (!path.endsWith('.manifest')) {
+      this.errors.push({ message: `use path must end with '.manifest', got '${path}'`, position, severity: 'error' });
+    }
+    return { type: 'Use', path, position };
+  }
+
   private parseModule(): ModuleNode {
     this.consume('KEYWORD', 'module');
     const name = this.consumeIdentifier().value;
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
-    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [];
+    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [], reactions: ReactionNode[] = [], roles: RoleNode[] = [];
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
       if (this.check('PUNCTUATION', '}')) break;
       if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
       else if (this.check('KEYWORD', 'enum')) enums.push(this.parseEnum());
+      else if (this.check('KEYWORD', 'async')) {
+        this.advance(); // consume 'async'
+        if (!this.check('KEYWORD', 'command')) {
+          throw new Error("Expected 'command' after 'async'");
+        }
+        const cmd = this.parseCommand();
+        cmd.async = true;
+        commands.push(cmd);
+      }
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
       else if (this.check('KEYWORD', 'event')) events.push(this.parseOutboxEvent());
+      else if (this.check('KEYWORD', 'on')) reactions.push(this.parseReaction());
+      else if (this.check('IDENTIFIER', 'role')) roles.push(this.parseRole());
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Module', name, entities, enums, commands, policies, stores, events };
+    return { type: 'Module', name, entities, enums, commands, policies, stores, events, reactions, roles };
   }
 
   private parseEntity(): EntityNode {
@@ -88,7 +145,7 @@ export class Parser {
 
     const properties: PropertyNode[] = [], computedProperties: ComputedPropertyNode[] = [], relationships: RelationshipNode[] = [];
     const behaviors: BehaviorNode[] = [], commands: CommandNode[] = [], constraints: ConstraintNode[] = [], policies: PolicyNode[] = [];
-    const transitions: TransitionNode[] = [];
+    const transitions: TransitionNode[] = [], approvals: ApprovalNode[] = [], reactions: ReactionNode[] = [];
     let store: string | undefined;
     let key: string[] | undefined;
     const alternateKeys: string[][] = [];
@@ -103,7 +160,21 @@ export class Parser {
       if (this.check('KEYWORD', 'property')) properties.push(this.parseProperty());
       else if (this.check('KEYWORD', 'computed') || this.check('KEYWORD', 'derived')) computedProperties.push(this.parseComputedProperty());
       else if (this.check('KEYWORD', 'hasMany') || this.check('KEYWORD', 'hasOne') || this.check('KEYWORD', 'belongsTo') || this.check('KEYWORD', 'ref')) relationships.push(this.parseRelationship());
-      else if (this.check('KEYWORD', 'behavior') || this.check('KEYWORD', 'on')) behaviors.push(this.parseBehavior());
+      else if (this.check('KEYWORD', 'behavior')) behaviors.push(this.parseBehavior());
+      else if (this.check('KEYWORD', 'on')) {
+        // Lookahead: "on <EventName> run" = reaction; otherwise = behavior
+        if (this.isReactionLookahead()) reactions.push(this.parseReaction());
+        else behaviors.push(this.parseBehavior());
+      }
+      else if (this.check('KEYWORD', 'async')) {
+        this.advance(); // consume 'async'
+        if (!this.check('KEYWORD', 'command')) {
+          throw new Error("Expected 'command' after 'async'");
+        }
+        const cmd = this.parseCommand();
+        cmd.async = true;
+        commands.push(cmd);
+      }
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
@@ -166,6 +237,7 @@ export class Parser {
         alternateKeys.push(this.parseIdentifierArray());
       }
       else if (this.check('KEYWORD', 'transition')) transitions.push(this.parseTransition());
+      else if (this.check('KEYWORD', 'approval')) approvals.push(this.parseApproval());
       else if (this.check('KEYWORD', 'timestamps')) {
         this.advance();
         timestamps = true;
@@ -188,7 +260,7 @@ export class Parser {
     this.consume('PUNCTUATION', '}');
     return {
       type: 'Entity', name, properties, computedProperties, relationships, behaviors,
-      commands, constraints, policies, transitions, store,
+      commands, constraints, policies, transitions, approvals, reactions, store,
       ...(key ? { key } : {}),
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
       versionProperty, versionAtProperty,
@@ -327,6 +399,116 @@ export class Parser {
       to.push(valToken.type === 'STRING' ? valToken.value : valToken.value);
     }
     return { type: 'Transition', property, from, to };
+  }
+
+  private parseApproval(): ApprovalNode {
+    const position = this.current()?.position;
+    this.consume('KEYWORD', 'approval');
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    let command = '';
+    const stages: ApprovalStageNode[] = [];
+    let timeout: number | undefined;
+    let onTimeout: 'cancel' | 'escalate' | undefined;
+    const emits: string[] = [];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      if (this.check('KEYWORD', 'command')) {
+        this.advance(); // consume 'command'
+        this.consume('OPERATOR', ':');
+        command = this.consumeIdentifier().value;
+      } else if (this.check('KEYWORD', 'stages')) {
+        this.advance(); // consume 'stages'
+        this.consume('PUNCTUATION', '{');
+        this.skipNL();
+        while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+          this.skipNL();
+          if (this.check('PUNCTUATION', '}')) break;
+          if (this.check('IDENTIFIER') || this.check('KEYWORD', 'stage')) {
+            // Support both "stage <name> { ... }" and bare "<name> { ... }"
+            if (this.current()?.value === 'stage') this.advance();
+            stages.push(this.parseApprovalStage());
+          } else {
+            this.advance();
+          }
+          this.skipNL();
+        }
+        this.consume('PUNCTUATION', '}');
+      } else if (this.check('KEYWORD', 'timeout')) {
+        this.advance(); // consume 'timeout'
+        this.consume('OPERATOR', ':');
+        const t = this.advance();
+        timeout = t.type === 'NUMBER' ? parseFloat(t.value) : undefined;
+      } else if (this.check('IDENTIFIER') && this.current()?.value === 'on_timeout') {
+        this.advance(); // consume 'on_timeout'
+        this.consume('OPERATOR', ':');
+        const v = this.check('STRING') ? this.advance().value : this.advance().value;
+        if (v === 'cancel' || v === 'escalate') onTimeout = v;
+      } else if (this.check('KEYWORD', 'emit')) {
+        this.advance(); // consume 'emit'
+        emits.push(this.consumeIdentifier().value);
+      } else {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+
+    if (!command) {
+      throw new Error(`Approval '${name}' must specify a command`);
+    }
+
+    const node: ApprovalNode = { type: 'Approval', name, command, stages, emits, position };
+    if (timeout !== undefined) node.timeout = timeout;
+    if (onTimeout !== undefined) node.onTimeout = onTimeout;
+    return node;
+  }
+
+  private parseApprovalStage(): ApprovalStageNode {
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    let policy: ExpressionNode | undefined;
+    let when: ExpressionNode | undefined;
+    let required = 1;
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      if (this.check('KEYWORD', 'policy')) {
+        this.advance(); // consume 'policy'
+        this.consume('OPERATOR', ':');
+        policy = this.parseExpr();
+      } else if (this.check('KEYWORD', 'when')) {
+        this.advance(); // consume 'when'
+        this.consume('OPERATOR', ':');
+        when = this.parseExpr();
+      } else if (this.check('KEYWORD', 'required')) {
+        this.advance(); // consume 'required'
+        this.consume('OPERATOR', ':');
+        const r = this.advance();
+        required = r.type === 'NUMBER' ? parseFloat(r.value) : 1;
+      } else {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+
+    if (!policy) {
+      throw new Error(`Approval stage '${name}' requires a policy expression`);
+    }
+
+    const node: ApprovalStageNode = { type: 'ApprovalStage', name, policy, required };
+    if (when) node.when = when;
+    return node;
   }
 
   private parseComputedProperty(): ComputedPropertyNode {
@@ -546,6 +728,36 @@ export class Parser {
     return { type: 'Policy', name, action, expression, message, isDefault };
   }
 
+  private parseRole(): RoleNode {
+    const position = this.current()?.position;
+    this.consume('IDENTIFIER', 'role');
+    const name = this.consumeIdentifier().value;
+    let parent: string | undefined;
+    if (this.check('KEYWORD', 'extends')) {
+      this.advance();
+      parent = this.consumeIdentifier().value;
+    }
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+    const permissions: RolePermissionNode[] = [];
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+      if (this.check('KEYWORD', 'allow') || this.check('KEYWORD', 'deny')) {
+        const kind = this.advance().value as 'allow' | 'deny';
+        const action = this.advance().value as RolePermissionNode['action'];
+        let target: string | undefined;
+        if (this.check('IDENTIFIER')) target = this.advance().value;
+        permissions.push({ kind, action, target });
+      } else {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+    return { type: 'Role', name, parent, permissions, position };
+  }
+
   private parseStore(): StoreNode {
     this.consume('KEYWORD', 'store');
     const entity = this.consumeIdentifier().value;
@@ -648,6 +860,61 @@ export class Parser {
       this.consume('PUNCTUATION', ')');
     }
     return { type: 'Trigger', event, parameters };
+  }
+
+  /**
+   * Lookahead to check if the current `on` keyword starts a reaction (`on Event run ...`)
+   * or a behavior (`on Event { ... }` / `on Event then ...`).
+   */
+  private isReactionLookahead(): boolean {
+    // Current token is 'on'. Check if pos+1 is identifier and pos+2 is 'run'
+    const eventToken = this.tokens[this.pos + 1];
+    const runToken = this.tokens[this.pos + 2];
+    return eventToken?.type === 'IDENTIFIER' && runToken?.type === 'KEYWORD' && runToken?.value === 'run';
+  }
+
+  /**
+   * Parses: on <EventName> run <EntityType>.<commandName>
+   *           resolve <expression>
+   *           params { <name>: <expression>, ... }
+   */
+  private parseReaction(): ReactionNode {
+    const position = this.current()?.position;
+    this.consume('KEYWORD', 'on');
+    const event = this.consumeIdentifier().value;
+    this.consume('KEYWORD', 'run');
+    // Parse EntityType.commandName
+    const targetEntity = this.consumeIdentifier().value;
+    this.consume('OPERATOR', '.');
+    const targetCommand = this.consumeIdentifier().value;
+    this.skipNL();
+
+    // Parse 'resolve' clause
+    this.consume('KEYWORD', 'resolve');
+    const resolve = this.parseExpr();
+    this.skipNL();
+
+    // Parse optional 'params' clause
+    let params: ReactionParamMapping[] | undefined;
+    if (this.check('KEYWORD', 'params')) {
+      this.advance(); // consume 'params'
+      params = [];
+      this.consume('PUNCTUATION', '{');
+      this.skipNL();
+      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', '}')) break;
+        const name = this.consumeIdentifier().value;
+        this.consume('OPERATOR', ':');
+        const expression = this.parseExpr();
+        params.push({ name, expression });
+        if (this.check('PUNCTUATION', ',')) this.advance();
+        this.skipNL();
+      }
+      this.consume('PUNCTUATION', '}');
+    }
+
+    return { type: 'Reaction', event, targetEntity, targetCommand, resolve, ...(params ? { params } : {}), position };
   }
 
   private parseAction(): ActionNode {
@@ -1086,5 +1353,5 @@ export class Parser {
   private current() { return this.tokens[this.pos]; }
   private isEnd() { return this.pos >= this.tokens.length || this.tokens[this.pos]?.type === 'EOF'; }
   private skipNL() { while (this.check('NEWLINE', '\n')) this.advance(); }
-  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event', 'tenant'].includes(this.current()?.value || '')) this.advance(); }
+  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event', 'tenant', 'async', 'role'].includes(this.current()?.value || '')) this.advance(); }
 }

@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "49903c04bb4889294fe138309fde8b24091165f495ffeb6784999f81dedd42c7",
+    "irHash": "95b1fe12d1133373e4f8c7a48d5797ffe72a4ace5a10197d7653672c8cd24d4a",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -157,5 +157,6 @@
       },
       "message": "Only administrators can execute commands"
     }
-  ]
+  ],
+  "reactions": []
 }

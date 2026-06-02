@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "4fabfd0f9a7847fb6ab985ca2f5ddf3a0cd1790027dbd24cf5b32828a5167a19",
+    "irHash": "7df2c4add613220c1368bbe320826e0480e405579c8a6e46eab5c68c9312c173",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -680,5 +680,6 @@
       },
       "message": "Only admins or the assigned user can modify this task"
     }
-  ]
+  ],
+  "reactions": []
 }

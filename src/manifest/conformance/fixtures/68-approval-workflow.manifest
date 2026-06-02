@@ -1,0 +1,47 @@
+// Fixture 68: Approval Workflows
+// Tests: approval declarations compile into IR with stages, conditional (when) stages,
+//        timeout, on_timeout, and lifecycle events.
+
+entity PurchaseOrder {
+  property required id: string
+  property amount: number = 0
+  property status: string = "draft"
+
+  command submit() {
+    mutate status = "submitted"
+    emit OrderSubmitted
+  }
+
+  approval submitApproval {
+    command: submit
+    stages {
+      manager {
+        policy: user.role == "manager"
+        required: 1
+      }
+      director {
+        policy: user.role == "director"
+        required: 1
+        when: self.amount > 10000
+      }
+    }
+    timeout: 72
+    on_timeout: "cancel"
+    emit ApprovalRequested
+    emit ApprovalGranted
+  }
+}
+
+store PurchaseOrder in memory
+
+event OrderSubmitted: "order.submitted" {
+  orderId: string
+}
+
+event ApprovalRequested: "approval.requested" {
+  orderId: string
+}
+
+event ApprovalGranted: "approval.granted" {
+  orderId: string
+}

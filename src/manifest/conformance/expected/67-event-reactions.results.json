@@ -1,0 +1,42 @@
+{
+  "testCases": [
+    {
+      "name": "complete command emits OrderCompleted event",
+      "setup": {
+        "createInstances": [
+          {
+            "entity": "Order",
+            "data": { "id": "order-1", "total": 100, "status": "open" }
+          },
+          {
+            "entity": "Invoice",
+            "data": { "id": "order-1", "orderId": "", "amount": 0, "status": "draft" }
+          }
+        ]
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Order",
+        "instanceId": "order-1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "completed",
+        "emittedEvents": [
+          {
+            "name": "OrderCompleted",
+            "channel": "order.completed",
+            "payload": { "result": "completed" },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "order-1",
+        "total": 100,
+        "status": "completed"
+      }
+    }
+  ]
+}

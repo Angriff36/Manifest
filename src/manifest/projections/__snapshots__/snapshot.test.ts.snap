@@ -691,6 +691,142 @@ type Subscription {
 }
 `;
 
+exports[`projection snapshots > health > generated artifacts match snapshot 1`] = `
+{
+  "health.express": "/**
+ * Generated Manifest health check — Express middleware.
+ * Do not edit manually — regenerate from IR.
+ *
+ * Usage: app.get("/manifest/health", manifestHealthHandler);
+ * Returns: { status, timestamp, checks }
+ * HTTP 200 = healthy, HTTP 503 = unhealthy/degraded
+ */
+
+import { runHealthCheck } from '@/lib/manifest-health-handler';
+
+import type { Request, Response } from 'express';
+
+export async function manifestHealthHandler(_req: Request, res: Response): Promise<void> {
+  const report = await runHealthCheck();
+  const statusCode = report.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(report);
+}
+",
+  "health.handler": "/**
+ * Generated Manifest health check handler.
+ * Do not edit manually — regenerate from IR.
+ *
+ * Checks: IR integrity, store connectivity, outbox queue depth.
+ * Compatible with Kubernetes liveness/readiness probes.
+ */
+
+export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+
+export interface ComponentHealth {
+  status: HealthStatus;
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface HealthReport {
+  status: HealthStatus;
+  timestamp: string;
+  checks: {
+    ir: ComponentHealth;
+    stores: Record<string, ComponentHealth>;
+  };
+}
+
+/** Baked IR provenance from compilation. */
+const MANIFEST_IR_META = {
+  contentHash: 'snapshot-fixture-hash',
+  compilerVersion: 'snapshot-test',
+  schemaVersion: '1.0',
+  compiledAt: '2025-01-01T00:00:00.000Z',
+} as const;
+
+/**
+ * Check IR integrity by validating provenance hash.
+ * TODO: Implement live hash computation against loaded IR.
+ */
+function checkIR(): ComponentHealth {
+  return { status: 'healthy', message: 'IR provenance verified', details: MANIFEST_IR_META };
+}
+
+/**
+ * Check connectivity for durable stores.
+ * TODO: Implement actual durable connectivity check.
+ */
+async function checkDurableStore(): Promise<ComponentHealth> {
+  try {
+    // TODO: Add durable connection health check
+    // Example: await pool.query('SELECT 1') or equivalent
+    return { status: 'healthy', message: 'durable store connected' };
+  } catch (error) {
+    return { status: 'unhealthy', message: 'durable store unreachable', details: { error: String(error) } };
+  }
+}
+
+/**
+ * Run all health checks and return an aggregated report.
+ *
+ * Status logic:
+ *   - 'healthy'   — all checks pass
+ *   - 'degraded'  — some non-critical checks fail (stores)
+ *   - 'unhealthy' — IR check fails or all stores unreachable
+ */
+export async function runHealthCheck(): Promise<HealthReport> {
+  const checks: HealthReport['checks'] = {} as HealthReport['checks'];
+  let overallStatus: HealthStatus = 'healthy';
+
+  // IR integrity
+  const irHealth = checkIR();
+  (checks as Record<string, unknown>).ir = irHealth;
+  if (irHealth.status === 'unhealthy') {
+    overallStatus = 'unhealthy';
+  }
+
+  // Store connectivity
+  const storeResults: Record<string, ComponentHealth> = {};
+  storeResults['durable'] = await checkDurableStore();
+  (checks as Record<string, unknown>).stores = storeResults;
+
+  const storeStatuses = Object.values(storeResults);
+  const anyStoreUnhealthy = storeStatuses.some(s => s.status === 'unhealthy');
+  const allStoresUnhealthy = storeStatuses.every(s => s.status === 'unhealthy');
+  if (allStoresUnhealthy && overallStatus !== 'unhealthy') {
+    overallStatus = 'unhealthy';
+  } else if (anyStoreUnhealthy && overallStatus === 'healthy') {
+    overallStatus = 'degraded';
+  }
+
+  return {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    checks,
+  };
+}
+",
+  "health.nextjs": "/**
+ * Generated Manifest health check — Next.js App Router route.
+ * Do not edit manually — regenerate from IR.
+ *
+ * GET /api/manifest/health
+ * Returns: { status, timestamp, checks }
+ * HTTP 200 = healthy, HTTP 503 = unhealthy/degraded
+ */
+
+import { runHealthCheck } from '@/lib/manifest-health-handler';
+
+export async function GET(): Promise<Response> {
+  const report = await runHealthCheck();
+  const statusCode = report.status === 'healthy' ? 200 : 503;
+  return Response.json(report, { status: statusCode });
+}
+",
+}
+`;
+
 exports[`projection snapshots > hono > generated artifacts match snapshot 1`] = `
 {
   "hono.entity.Task": "/**
@@ -2837,8 +2973,7 @@ export async function GET(
     const task = await database.task.findFirst({
       where: {
         id,
-        tenantId,
-        deletedAt: null
+        tenantId
       },
     });
 
@@ -2897,8 +3032,7 @@ export async function GET(
     const user = await database.user.findFirst({
       where: {
         id,
-        tenantId,
-        deletedAt: null
+        tenantId
       },
     });
 
@@ -3039,8 +3173,7 @@ export async function GET(request: NextRequest) {
 
 const tasks = await database.task.findMany({
     where: {
-        tenantId,
-        deletedAt: null
+        tenantId
       },
     orderBy: {
       createdAt: "desc",
@@ -3091,11 +3224,10 @@ export async function GET(request: NextRequest) {
 
 const users = await database.user.findMany({
     where: {
-        tenantId,
-        deletedAt: null
+        tenantId
       },
     orderBy: {
-      createdAt: "desc",
+      id: "desc",
     },
   });
 
@@ -4281,6 +4413,201 @@ export const ROUTE_MANIFEST: readonly RouteMetadata[] = [
   { id: "Task.assignTask", path: "/api/task/assign-task", method: "POST", source: "command", auth: true, tenant: true },
   { id: "Task.updateStatus", path: "/api/task/update-status", method: "POST", source: "command", auth: true, tenant: true },
 ] as const;
+",
+}
+`;
+
+exports[`projection snapshots > storybook > generated artifacts match snapshot 1`] = `
+{
+  "storybook.command.assignTask": "// Auto-generated by Manifest Storybook projection
+// Command: assignTask on Task
+
+import type { Meta, StoryObj } from '@storybook/react';
+import { within, expect } from '@storybook/test';
+import { AssignTaskForm } from '@/components/Task/AssignTaskForm';
+
+const argTypes = {
+  userId: { control: 'text', description: 'required' },
+};
+
+const meta: Meta<typeof AssignTaskForm> = {
+  title: 'Manifest/Commands/Task/AssignTask',
+  component: AssignTaskForm,
+  argTypes,
+  parameters: {
+    manifest: { command: 'assignTask', entity: 'Task', guards: ['userId != ""'] },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const GuardsPass: Story = {
+  args: {
+    userId: 'valid-value',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('guard-status')).toHaveTextContent('pass');
+  },
+};
+
+export const GuardFails: Story = {
+  args: {
+    userId: "",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('guard-status')).toHaveTextContent('denied');
+  },
+};
+",
+  "storybook.command.updateStatus": "// Auto-generated by Manifest Storybook projection
+// Command: updateStatus on Task
+
+import type { Meta, StoryObj } from '@storybook/react';
+import { within, expect } from '@storybook/test';
+import { UpdateStatusForm } from '@/components/Task/UpdateStatusForm';
+
+const argTypes = {
+  newStatus: { control: 'text', description: 'required' },
+};
+
+const meta: Meta<typeof UpdateStatusForm> = {
+  title: 'Manifest/Commands/Task/UpdateStatus',
+  component: UpdateStatusForm,
+  argTypes,
+  parameters: {
+    manifest: { command: 'updateStatus', entity: 'Task', guards: ['newStatus != ""'] },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const GuardsPass: Story = {
+  args: {
+    newStatus: 'valid-value',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('guard-status')).toHaveTextContent('pass');
+  },
+};
+
+export const GuardFails: Story = {
+  args: {
+    newStatus: "",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('guard-status')).toHaveTextContent('denied');
+  },
+};
+",
+  "storybook.entity.Task": "// Auto-generated by Manifest Storybook projection
+// Entity: Task
+
+import type { Meta, StoryObj } from '@storybook/react';
+import { TaskCard } from '@/components/Task';
+
+const argTypes = {
+  id: { control: 'text', description: 'required' },
+  title: { control: 'text', description: 'required, default: ""' },
+  status: { control: 'text', description: 'required, default: "todo"' },
+  priority: { control: { type: "number", step: 1 }, description: 'default: 1' },
+  assigneeId: { control: 'text', description: 'string' },
+  createdAt: { control: 'date', description: 'datetime' },
+  isHighPriority: { control: false, description: 'Computed' },
+};
+
+const meta: Meta<typeof TaskCard> = {
+  title: 'Manifest/Entities/Task',
+  component: TaskCard,
+  argTypes,
+  parameters: {
+    manifest: { entity: 'Task', constraints: ['titleNotEmpty'] },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    id: '',
+    title: "",
+    status: "todo",
+    priority: 1,
+    assigneeId: '',
+    createdAt: new Date().toISOString(),
+  },
+};
+
+export const Complete: Story = {
+  args: {
+    id: 'sample',
+    title: 'sample',
+    status: 'sample',
+    priority: 1,
+    assigneeId: 'sample',
+    createdAt: '2025-01-01T00:00:00.000Z',
+  },
+};
+
+export const ConstraintViolation: Story = {
+  args: {
+    id: '',
+    title: '',
+    status: '',
+    priority: 0,
+    assigneeId: '',
+    createdAt: new Date().toISOString(),
+  },
+  parameters: {
+    manifest: { constraintViolations: ['titleNotEmpty'] },
+  },
+};
+",
+  "storybook.entity.User": "// Auto-generated by Manifest Storybook projection
+// Entity: User
+
+import type { Meta, StoryObj } from '@storybook/react';
+import { UserCard } from '@/components/User';
+
+const argTypes = {
+  id: { control: 'text', description: 'required' },
+  name: { control: 'text', description: 'required' },
+  email: { control: 'text', description: 'required, unique' },
+  role: { control: 'text', description: 'required, default: "member"' },
+};
+
+const meta: Meta<typeof UserCard> = {
+  title: 'Manifest/Entities/User',
+  component: UserCard,
+  argTypes,
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    id: '',
+    name: '',
+    email: '',
+    role: "member",
+  },
+};
+
+export const Complete: Story = {
+  args: {
+    id: 'sample',
+    name: 'sample',
+    email: 'sample',
+    role: 'sample',
+  },
+};
 ",
 }
 `;

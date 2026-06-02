@@ -13,6 +13,7 @@ import {
   OverrideRequest,
   ConcurrencyConflict,
   IRApproval,
+  IRRole,
   JobQueue,
   JobRecord,
 } from './ir';
@@ -570,6 +571,9 @@ export class RuntimeEngine {
     timestamp: number;
   }> = new Map();
 
+  /** Index of roles by name for O(1) permission checks */
+  private roleIndex: Map<string, IRRole> = new Map();
+
   /** Track whether version has been incremented for the current command execution */
   private versionIncrementedForCommand: boolean = false;
 
@@ -656,6 +660,7 @@ export class RuntimeEngine {
     this.options = options;
     this.initializeStores();
     this.buildRelationshipIndex();
+    this.buildRoleIndex();
   }
 
   private initializeStores(): void {
@@ -754,6 +759,29 @@ export class RuntimeEngine {
         });
       }
     }
+  }
+
+  private buildRoleIndex(): void {
+    if (this.ir.roles) {
+      for (const role of this.ir.roles) {
+        this.roleIndex.set(role.name, role);
+      }
+    }
+  }
+
+  /**
+   * Check if a role has a specific permission.
+   * Uses precomputed effectivePermissions for O(1) lookup.
+   * Unknown role → false (no permissive default, per house style).
+   */
+  private roleHasPermission(roleName: string, action: string, target?: string): boolean {
+    const role = this.roleIndex.get(roleName);
+    if (!role) return false;
+    return role.effectivePermissions.some(p => {
+      const actionMatch = p.action === 'all' || p.action === action;
+      const targetMatch = p.target === undefined || p.target === target;
+      return actionMatch && targetMatch;
+    });
   }
 
   /**
@@ -1091,6 +1119,18 @@ export class RuntimeEngine {
           return this.options.flagProvider(name);
         }
         return false;
+      },
+
+      // Role hierarchy builtins
+      hasPermission: (action: unknown, target?: unknown) => {
+        if (typeof action !== 'string') return false;
+        const roleName = this.context.user?.role;
+        if (typeof roleName !== 'string') return false;
+        return this.roleHasPermission(roleName, action, typeof target === 'string' ? target : undefined);
+      },
+      roleAllows: (roleName: unknown, action: unknown, target?: unknown) => {
+        if (typeof roleName !== 'string' || typeof action !== 'string') return false;
+        return this.roleHasPermission(roleName, action, typeof target === 'string' ? target : undefined);
       },
     };
   }

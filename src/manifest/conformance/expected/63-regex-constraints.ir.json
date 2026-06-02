@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "254781617c34353a67e2b4ce389d12d2f873985595af3ff0aba006aaf6ac7952",
+    "irHash": "a41e01c7bd57cd86e54dbcc0c26921c068e492d74a8c25800c5325d3bd375190",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -171,5 +171,6 @@
   ],
   "events": [],
   "commands": [],
-  "policies": []
+  "policies": [],
+  "reactions": []
 }

@@ -18,6 +18,10 @@ import {
   EnumNode,
   ValueObjectNode,
   TenantNode,
+  ReactionNode,
+  ApprovalNode,
+  ApprovalStageNode,
+  RoleNode,
 } from './types';
 import {
   IR,
@@ -45,6 +49,12 @@ import {
   IREnum,
   IRValueObject,
   IRTenant,
+  IRReactionRule,
+  IRReactionParam,
+  IRApproval,
+  IRApprovalStage,
+  IRRole,
+  IRRolePermission,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -378,6 +388,54 @@ export class IRCompiler {
       })),
     ];
 
+    // Synthesize completion/failure events for async commands.
+    // Synthesized events are appended after user-declared events, sorted
+    // among themselves by name for deterministic output.
+    const userEventNames = new Set(events.map(e => e.name));
+    const synthesizedEvents: IREvent[] = [];
+    for (const cmd of commands) {
+      if (cmd.async && cmd.completionEvent && cmd.failureEvent) {
+        // Check for user-declared event name collisions
+        if (userEventNames.has(cmd.completionEvent)) {
+          this.emitDiagnostic(
+            'error',
+            `Async command '${cmd.name}' auto-generates event '${cmd.completionEvent}' which collides with a user-declared event of the same name.`,
+          );
+        }
+        if (userEventNames.has(cmd.failureEvent)) {
+          this.emitDiagnostic(
+            'error',
+            `Async command '${cmd.name}' auto-generates event '${cmd.failureEvent}' which collides with a user-declared event of the same name.`,
+          );
+        }
+
+        // Synthesize completion event
+        synthesizedEvents.push({
+          name: cmd.completionEvent,
+          channel: `jobs.${cmd.name}`,
+          payload: [
+            { name: 'jobId', type: { name: 'string', nullable: false }, required: true },
+            { name: 'result', type: { name: 'any', nullable: true }, required: false },
+            { name: 'completedAt', type: { name: 'number', nullable: false }, required: true },
+          ],
+        });
+
+        // Synthesize failure event
+        synthesizedEvents.push({
+          name: cmd.failureEvent,
+          channel: `jobs.${cmd.name}`,
+          payload: [
+            { name: 'jobId', type: { name: 'string', nullable: false }, required: true },
+            { name: 'error', type: { name: 'string', nullable: false }, required: true },
+            { name: 'failedAt', type: { name: 'number', nullable: false }, required: true },
+          ],
+        });
+      }
+    }
+    // Sort synthesized events by name for deterministic output, then append
+    synthesizedEvents.sort((a, b) => a.name.localeCompare(b.name));
+    events.push(...synthesizedEvents);
+
     this.diagnostics.push(...validateCommandIntentRegistry(
       collectCommandIntentEntries(program, sourcePath),
     ));
@@ -389,6 +447,20 @@ export class IRCompiler {
       ...program.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, undefined, e.name))),
       ...program.modules.flatMap(m => m.entities.flatMap(e => e.policies.map(p => this.transformPolicy(p, m.name, e.name)))),
     ];
+
+    const reactions: IRReactionRule[] = [
+      ...(program.reactions || []).map(r => this.transformReaction(r)),
+      ...program.modules.flatMap(m => (m.reactions || []).map(r => this.transformReaction(r, m.name))),
+      ...program.entities.flatMap(e => (e.reactions || []).map(r => this.transformReaction(r, undefined, e.name))),
+      ...program.modules.flatMap(m => m.entities.flatMap(e => (e.reactions || []).map(r => this.transformReaction(r, m.name, e.name)))),
+    ];
+
+    // Collect and resolve role hierarchy
+    const rawRoles: IRRole[] = [
+      ...program.roles.map(r => this.transformRole(r)),
+      ...program.modules.flatMap(m => m.roles.map(r => this.transformRole(r, m.name))),
+    ];
+    const roles = this.resolveRoleGraph(rawRoles);
 
     // Create provenance once (single timestamp) then compute hash and stamp irHash.
     // Provenance is created WITHOUT irHash first so the hash covers the entire IR
@@ -411,6 +483,8 @@ export class IRCompiler {
       events,
       commands,
       policies,
+      reactions,
+      ...(roles.length > 0 ? { roles } : {}),
     };
 
     // Compute the IR hash and add it to the existing provenance
@@ -421,7 +495,7 @@ export class IRCompiler {
     };
   }
 
-  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[] }): IRModule {
+  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; roles?: RoleNode[] }): IRModule {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
@@ -436,6 +510,8 @@ export class IRCompiler {
         ...m.policies.map(p => p.name),
         ...m.entities.flatMap(e => e.policies.map(p => p.name)),
       ],
+      ...((m.reactions && m.reactions.length > 0) ? { reactions: m.reactions.map(r => `${r.event}→${r.targetEntity}.${r.targetCommand}`) } : {}),
+      ...((m.roles && m.roles.length > 0) ? { roles: m.roles.map(r => r.name) } : {}),
     };
   }
 
@@ -490,6 +566,7 @@ export class IRCompiler {
       versionAtProperty: e.versionAtProperty,
       ...(e.timestamps ? { timestamps: true } : {}),
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
+      ...(e.approvals.length > 0 ? { approvals: e.approvals.map(a => this.transformApproval(a, e)) } : {}),
     };
   }
 
@@ -499,6 +576,63 @@ export class IRCompiler {
       from: t.from,
       to: t.to,
     };
+  }
+
+  private transformApproval(a: ApprovalNode, entity: EntityNode): IRApproval {
+    // Validate: command must reference an existing command on this entity
+    const commandNames = entity.commands.map(c => c.name);
+    if (!commandNames.includes(a.command)) {
+      this.emitDiagnostic(
+        'error',
+        `Approval '${a.name}' references command '${a.command}' which does not exist on entity '${entity.name}'. Available commands: ${commandNames.join(', ') || '(none)'}`,
+        a.position?.line,
+        a.position?.column,
+      );
+    }
+
+    // Validate: at least one stage required
+    if (a.stages.length === 0) {
+      this.emitDiagnostic(
+        'error',
+        `Approval '${a.name}' must declare at least one stage`,
+        a.position?.line,
+        a.position?.column,
+      );
+    }
+
+    // Validate: stage names unique within this approval
+    const stageNames = new Set<string>();
+    for (const s of a.stages) {
+      if (stageNames.has(s.name)) {
+        this.emitDiagnostic(
+          'error',
+          `Duplicate stage name '${s.name}' in approval '${a.name}'`,
+          s.position?.line,
+          s.position?.column,
+        );
+      }
+      stageNames.add(s.name);
+    }
+
+    const node: IRApproval = {
+      name: a.name,
+      command: a.command,
+      stages: a.stages.map(s => this.transformApprovalStage(s)),
+      emits: a.emits,
+    };
+    if (a.timeout !== undefined) node.timeout = a.timeout;
+    if (a.onTimeout !== undefined) node.onTimeout = a.onTimeout;
+    return node;
+  }
+
+  private transformApprovalStage(s: ApprovalStageNode): IRApprovalStage {
+    const node: IRApprovalStage = {
+      name: s.name,
+      policy: this.transformExpression(s.policy),
+      required: s.required,
+    };
+    if (s.when) node.when = this.transformExpression(s.when);
+    return node;
   }
 
   private transformEnum(e: EnumNode, moduleName?: string): IREnum {
@@ -640,6 +774,22 @@ export class IRCompiler {
     };
   }
 
+  private transformReaction(r: ReactionNode, moduleName?: string, entityName?: string): IRReactionRule {
+    const params: IRReactionParam[] | undefined = r.params?.map(p => ({
+      name: p.name,
+      expression: this.transformExpression(p.expression),
+    }));
+    return {
+      event: r.event,
+      targetEntity: r.targetEntity,
+      targetCommand: r.targetCommand,
+      resolve: this.transformExpression(r.resolve),
+      ...(params && params.length > 0 ? { params } : {}),
+      ...(moduleName ? { module: moduleName } : {}),
+      ...(entityName ? { entity: entityName } : {}),
+    };
+  }
+
   private transformCommand(c: CommandNode, moduleName?: string, entityName?: string, entityDefaultPolicies?: string[]): IRCommand {
     const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
     if (c.constraints && c.constraints.length > 0) {
@@ -653,7 +803,7 @@ export class IRCompiler {
       ? [...entityDefaultPolicies]
       : undefined;
 
-    return {
+    const cmd: IRCommand = {
       name: c.name,
       module: moduleName,
       entity: entityName,
@@ -665,6 +815,14 @@ export class IRCompiler {
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,
     };
+
+    if (c.async) {
+      cmd.async = true;
+      cmd.completionEvent = `${c.name}Completed`;
+      cmd.failureEvent = `${c.name}Failed`;
+    }
+
+    return cmd;
   }
 
   private transformParameter(p: ParameterNode): IRParameter {
@@ -693,6 +851,150 @@ export class IRCompiler {
       expression: this.transformExpression(p.expression),
       message: p.message,
     };
+  }
+
+  private transformRole(r: RoleNode, moduleName?: string): IRRole {
+    const sortPerm = (a: IRRolePermission, b: IRRolePermission) => {
+      const ac = a.action.localeCompare(b.action);
+      if (ac !== 0) return ac;
+      return (a.target ?? '').localeCompare(b.target ?? '');
+    };
+    const allow: IRRolePermission[] = r.permissions
+      .filter(p => p.kind === 'allow')
+      .map(p => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
+      .sort(sortPerm);
+    const deny: IRRolePermission[] = r.permissions
+      .filter(p => p.kind === 'deny')
+      .map(p => ({ action: p.action, ...(p.target ? { target: p.target } : {}) }))
+      .sort(sortPerm);
+    return {
+      name: r.name,
+      ...(moduleName ? { module: moduleName } : {}),
+      ...(r.parent ? { parent: r.parent } : {}),
+      allow,
+      deny,
+      effectivePermissions: [], // filled in by resolveRoleGraph
+    };
+  }
+
+  /**
+   * Resolve the role inheritance graph:
+   * 1. Validate: no duplicate names, no unknown parents, no cycles
+   * 2. Flatten inheritance: root-first union of allows
+   * 3. Apply deny: any (action, target) that appears in ANY level's deny is removed
+   * 4. Sort roles by name for deterministic output
+   */
+  private resolveRoleGraph(roles: IRRole[]): IRRole[] {
+    if (roles.length === 0) return [];
+
+    const byName = new Map<string, IRRole>();
+    for (const role of roles) {
+      if (byName.has(role.name)) {
+        this.emitDiagnostic('error', `Duplicate role declaration '${role.name}'`);
+        continue;
+      }
+      byName.set(role.name, role);
+    }
+
+    // Validate parents exist
+    for (const role of roles) {
+      if (role.parent && !byName.has(role.parent)) {
+        this.emitDiagnostic('error', `Role '${role.name}' extends unknown role '${role.parent}'`);
+      }
+    }
+
+    // Cycle detection via DFS coloring
+    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const color = new Map<string, number>();
+    for (const name of byName.keys()) color.set(name, WHITE);
+
+    const hasCycle = (name: string, path: string[]): boolean => {
+      color.set(name, GRAY);
+      path.push(name);
+      const role = byName.get(name);
+      if (role?.parent) {
+        const parentColor = color.get(role.parent);
+        if (parentColor === GRAY) {
+          this.emitDiagnostic('error', `Role cycle detected: ${[...path, role.parent].join(' -> ')}`);
+          return true;
+        }
+        if (parentColor === WHITE && hasCycle(role.parent, path)) {
+          return true;
+        }
+      }
+      color.set(name, BLACK);
+      path.pop();
+      return false;
+    };
+
+    for (const name of byName.keys()) {
+      if (color.get(name) === WHITE) {
+        if (hasCycle(name, [])) break;
+      }
+    }
+
+    // Compute effective permissions for each role
+    const computeEffective = (roleName: string, visited: Set<string>): IRRolePermission[] => {
+      if (visited.has(roleName)) return []; // cycle guard
+      visited.add(roleName);
+      const role = byName.get(roleName);
+      if (!role) return [];
+
+      // Start with parent's effective permissions (root-first)
+      let effective: IRRolePermission[] = [];
+      if (role.parent) {
+        effective = [...computeEffective(role.parent, visited)];
+      }
+
+      // Union with this role's allows
+      for (const a of role.allow) {
+        const exists = effective.some(e => e.action === a.action && (e.target ?? '') === (a.target ?? ''));
+        if (!exists) effective.push({ ...a });
+      }
+
+      // Collect all deny entries from the full chain
+      const allDenies: IRRolePermission[] = [...role.deny];
+      if (role.parent) {
+        const collectDenies = (name: string, seen: Set<string>): IRRolePermission[] => {
+          if (seen.has(name)) return [];
+          seen.add(name);
+          const r = byName.get(name);
+          if (!r) return [];
+          const parentDenies = r.parent ? collectDenies(r.parent, seen) : [];
+          return [...parentDenies, ...r.deny];
+        };
+        allDenies.push(...collectDenies(role.parent, new Set()));
+      }
+
+      // Apply deny: remove any permission matching a deny entry
+      // 'all' action in deny removes all permissions for that target scope
+      effective = effective.filter(perm => {
+        return !allDenies.some(d => {
+          const actionMatch = d.action === 'all' || d.action === perm.action;
+          const targetMatch = d.target === undefined || d.target === perm.target;
+          return actionMatch && targetMatch;
+        });
+      });
+
+      // Expand 'all' action in allows: if effective has an 'all' permission,
+      // it means any action check should match (handled at runtime)
+      // Keep 'all' as-is in effectivePermissions — runtime handles matching
+
+      const sortPerm = (a: IRRolePermission, b: IRRolePermission) => {
+        const ac = a.action.localeCompare(b.action);
+        if (ac !== 0) return ac;
+        return (a.target ?? '').localeCompare(b.target ?? '');
+      };
+
+      return effective.sort(sortPerm);
+    };
+
+    for (const role of byName.values()) {
+      role.effectivePermissions = computeEffective(role.name, new Set());
+    }
+
+    // Sort roles by name for deterministic output
+    return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private transformType(t: TypeNode): IRType {

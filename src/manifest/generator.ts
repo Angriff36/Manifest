@@ -1,4 +1,4 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode } from './types';
+import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode, ReactionNode, RoleNode } from './types';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /** Provenance metadata for generated code */
@@ -35,6 +35,8 @@ export class CodeGenerator {
     for (const f of program.flows) { this.genFlow(f); this.line(); }
     for (const e of program.effects) { this.genEffect(e); this.line(); }
     for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
+    for (const r of (program.reactions || [])) { this.genReaction(r); this.line(); }
+    for (const role of (program.roles || [])) { this.genRole(role); this.line(); }
     for (const x of program.exposures) { this.genExpose(x); this.line(); }
     for (const c of program.compositions) { this.genComposition(c); this.line(); }
 
@@ -411,6 +413,37 @@ export class CodeGenerator {
     this.in();
     this.line(`return EventBus.subscribe('${ev.channel}', fn);`);
     this.de(); this.line('};');
+  }
+
+  private genReaction(r: ReactionNode) {
+    const paramsStr = r.params
+      ? `{ ${r.params.map(p => `${p.name}: ${this.genExpr(p.expression)}`).join(', ')} }`
+      : '{}';
+    this.line(`// Reaction: on ${r.event} → ${r.targetEntity}.${r.targetCommand}`);
+    this.line(`EventBus.subscribe('${r.event}', async (payload) => {`);
+    this.in();
+    this.line(`const instanceId = ${this.genExpr(r.resolve)};`);
+    this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', instanceId, ${paramsStr});`);
+    this.de();
+    this.line('});');
+  }
+
+  private genRole(role: RoleNode) {
+    this.line(`// Role: ${role.name}${role.parent ? ` extends ${role.parent}` : ''}`);
+    this.line(`const ${role.name}Role = {`);
+    this.in();
+    this.line(`name: '${role.name}',`);
+    if (role.parent) this.line(`parent: '${role.parent}',`);
+    const allows = role.permissions.filter(p => p.kind === 'allow');
+    const denies = role.permissions.filter(p => p.kind === 'deny');
+    if (allows.length > 0) {
+      this.line(`allow: [${allows.map(p => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`);
+    }
+    if (denies.length > 0) {
+      this.line(`deny: [${denies.map(p => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`);
+    }
+    this.de();
+    this.line('} as const;');
   }
 
   private genConstraintChecks(constraints: ConstraintNode[], prop: string) {

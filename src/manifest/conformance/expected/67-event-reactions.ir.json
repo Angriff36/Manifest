@@ -1,0 +1,366 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "e3d28b3482223697e3ebb79752aaa0eadf072aedc04466f0e5738a2ed0096796",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "open"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "addItem",
+        "complete"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Invoice",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "createFromOrder"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Invoice",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "OrderUpdated",
+      "channel": "order.updated",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OrderCompleted",
+      "channel": "order.completed",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "finalTotal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "addItem",
+      "entity": "Order",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "total",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "total"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "amount"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "OrderUpdated"
+      ]
+    },
+    {
+      "name": "complete",
+      "entity": "Order",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "total"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "OrderCompleted"
+      ]
+    },
+    {
+      "name": "createFromOrder",
+      "entity": "Invoice",
+      "parameters": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "orderId",
+          "expression": {
+            "kind": "identifier",
+            "name": "orderId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "amount",
+          "expression": {
+            "kind": "identifier",
+            "name": "amount"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": [
+    {
+      "event": "OrderCompleted",
+      "targetEntity": "Invoice",
+      "targetCommand": "createFromOrder",
+      "resolve": {
+        "kind": "member",
+        "object": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "payload"
+          },
+          "property": "_subject"
+        },
+        "property": "id"
+      },
+      "params": [
+        {
+          "name": "orderId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "payload"
+              },
+              "property": "_subject"
+            },
+            "property": "id"
+          }
+        },
+        {
+          "name": "amount",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "result"
+          }
+        }
+      ]
+    }
+  ]
+}

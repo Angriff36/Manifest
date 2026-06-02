@@ -26,6 +26,8 @@ describe('NextJsProjection', () => {
           property id: string
           property name: string
           property category: string?
+          property createdAt: datetime
+          property deletedAt: datetime?
         }
       `;
 
@@ -44,7 +46,10 @@ describe('NextJsProjection', () => {
 
       // Contract: Must filter by tenant (when enabled by default)
       expect(code).toContain('tenantId');
+      // Soft-delete filter emitted because Recipe declares a deletedAt column.
       expect(code).toContain('deletedAt: null');
+      // orderBy references the real createdAt column.
+      expect(code).toContain('createdAt: "desc"');
 
       // Contract: Must have proper error handling
       expect(code).toContain('try {');
@@ -119,6 +124,7 @@ describe('NextJsProjection', () => {
         entity Recipe {
           property id: string
           property name: string
+          property deletedAt: datetime?
         }
       `;
 
@@ -205,6 +211,7 @@ describe('NextJsProjection', () => {
       const source = `
         entity Recipe {
           property id: string
+          property removedAt: datetime?
         }
       `;
 
@@ -235,6 +242,7 @@ describe('NextJsProjection', () => {
           property id: string
           property name: string
           property category: string?
+          property deletedAt: datetime?
         }
       `;
 
@@ -359,6 +367,7 @@ describe('NextJsProjection', () => {
         entity Recipe {
           property id: string
           property name: string
+          property deletedAt: datetime?
         }
       `;
 
@@ -445,6 +454,7 @@ describe('NextJsProjection', () => {
       const source = `
         entity Recipe {
           property id: string
+          property removedAt: datetime?
         }
       `;
 
@@ -465,6 +475,76 @@ describe('NextJsProjection', () => {
       expect(code).toContain('removedAt: null');
       expect(code).not.toContain('tenantId');
       expect(code).not.toContain('deletedAt');
+    });
+  });
+
+  // Regression: the read-query builders must be field-aware. They previously
+  // emitted `deletedAt: null` and `orderBy: { createdAt }` for EVERY entity,
+  // regardless of whether the entity declared those columns. Prisma rejects
+  // such queries at runtime ("Unknown argument deletedAt"). See generator.ts
+  // generatePrismaQuery / _generateDetailRoute.
+  describe('field-aware read queries (deletedAt / createdAt)', () => {
+    it('list route omits soft-delete filter when entity has no deletedAt column', async () => {
+      const source = `
+        entity BankAccount {
+          property id: string
+          property balance: number
+          property createdAt: datetime
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(
+        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'BankAccount' })
+      );
+
+      // No deletedAt column → must NOT emit the soft-delete filter, even though
+      // includeSoftDeleteFilter defaults to on.
+      expect(code).not.toContain('deletedAt');
+      // createdAt column present → orderBy uses it.
+      expect(code).toContain('createdAt: "desc"');
+    });
+
+    it('list route falls back to orderBy id when entity has no createdAt column', async () => {
+      const source = `
+        entity Menu {
+          property id: string
+          property label: string
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(
+        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'Menu' })
+      );
+
+      // No createdAt column → orderBy must reference the always-present id,
+      // never a non-existent createdAt.
+      expect(code).toContain('id: "desc"');
+      expect(code).not.toContain('createdAt');
+      expect(code).not.toContain('deletedAt');
+    });
+
+    it('detail route omits soft-delete filter when entity has no deletedAt column', async () => {
+      const source = `
+        entity Invoice {
+          property id: string
+          property total: number
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(
+        projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Invoice' })
+      );
+
+      expect(code).not.toContain('deletedAt');
+      // Tenant filter is still on by default → id + tenantId is multi-field →
+      // findFirst (Prisma 7 rejects findUnique on non-unique-constraint shapes).
+      expect(code).toContain('database.invoice.findFirst');
     });
   });
 

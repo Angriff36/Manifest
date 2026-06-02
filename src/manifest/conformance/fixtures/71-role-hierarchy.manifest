@@ -1,0 +1,58 @@
+// Role Hierarchy with Permission Inheritance
+// Tests role declarations, extends chains, deny overrides,
+// and runtime permission checks via hasPermission() builtin.
+
+role User {
+  allow read
+}
+
+role Manager extends User {
+  allow write
+  allow execute CreateReport
+}
+
+role Admin extends Manager {
+  allow delete
+  deny execute DangerousReset
+}
+
+entity Document {
+  property required id: string = ""
+  property required title: string = ""
+  property status: string = "draft"
+
+  command CreateReport(docId: string, docTitle: string) {
+    guard hasPermission("execute", "CreateReport")
+    mutate id = docId
+    mutate title = docTitle
+    emit ReportCreated
+  }
+
+  command DeleteDocument() {
+    guard hasPermission("delete")
+    mutate status = "deleted"
+    emit DocumentDeleted
+  }
+
+  command DangerousReset() {
+    guard hasPermission("execute", "DangerousReset")
+    mutate status = "draft"
+    mutate title = ""
+    emit DocumentReset
+  }
+
+  store Document in memory
+}
+
+event ReportCreated: "document.report_created" {
+  id: string
+  title: string
+}
+
+event DocumentDeleted: "document.deleted" {
+  id: string
+}
+
+event DocumentReset: "document.reset" {
+  id: string
+}

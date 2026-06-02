@@ -66,6 +66,8 @@ manifest generate ir/recipe.ir.json --projection nextjs --surface all --output a
 
 The read routes generate Prisma `findMany` / `findUnique` calls. When tenant filtering is enabled (the default), the handler resolves a tenant from the configured auth identity and adds it to the `where` clause; soft-delete filtering adds `deletedAt: null`. Both the tenant ID property and the soft-delete property names are configurable, and either filter can be turned off entirely. The default tenant resolution looks up a `userTenantMapping.findUnique` record, but a pluggable `tenantProvider` can replace that with an app function keyed on `orgId` or `userId`.
 
+The read-query builders are **field-aware**: a clause is only emitted when the entity actually declares the column. The soft-delete filter (`deletedAt: null`) is omitted for entities without the soft-delete property even when `includeSoftDeleteFilter` is on, and the list `orderBy` uses `createdAt` only when that column exists, falling back to the always-present `id` otherwise. This keeps generated queries valid for entities that don't follow the soft-delete / timestamp conventions, rather than emitting clauses Prisma rejects at runtime.
+
 Authentication is driven by `authProvider`. `clerk` emits a `@clerk/nextjs` auth call, `nextauth` emits `getServerSession`, `custom` imports from `authImportPath`, and `none` uses a fixed anonymous identity. Auth rejections return the configurable `unauthorizedStatus` (default 401) and never surface as a 500.
 
 ## Options

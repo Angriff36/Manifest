@@ -4,6 +4,23 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] - 2026-06-01
+
+### Added
+
+- **Declarative event reactions** — `on <Event> run <Entity>.<command>` reaction rules with `resolve <expr>` instance resolution and `params { ... }` mapping. The runtime auto-dispatches the downstream command when the event is emitted, sequenced by declaration order and guarded against runaway cascades (`ManifestReactionDepthError`). Enables cross-entity orchestration (e.g. `OrderCompleted → Invoice.createFromOrder`) declaratively inside Manifest's governance boundary. Conformance fixture `67-event-reactions`.
+- **Multi-stage approval workflows** — `approval` declarations gating a command behind ordered, multi-stage sign-off. Stages declare `policy:`, `required:`, and optional `when:`; plus `timeout:` / `on_timeout:` and lifecycle events. The approval gate runs after guards and before actions (policies → constraints → guards → approval → actions → emits). Conformance fixture `68-approval-workflow`.
+- **Async / background command execution** — `async command` modifier defers actions to a background worker queue. Policies, constraints, and guards are validated synchronously (fail-fast); the command then enqueues a `JobRecord` and returns `{ jobId, status: 'pending', enqueuedAt }`. Auto-synthesizes `{Command}Completed` / `{Command}Failed` events. New `JobQueue` adapter (`MemoryJobQueue` for tests, `RuntimeOptions.jobQueue`, `drainJobs()`). Conformance fixture `69-async-commands`.
+- **Role hierarchy & permission inheritance** — `role <Name> [extends <Parent>] { (allow|deny) <action> [<target>] }`. Effective permissions (root-first union minus absolute deny) are resolved at compile time for O(1) runtime checks, with duplicate / unknown-parent / cycle detection. New builtins `hasPermission(action, target?)` and `roleAllows(roleName, action, target?)`; deny is absolute and unknown roles default-deny. `role` remains a contextual identifier, so existing `property role` / `user.role` usages are unaffected. Conformance fixture `71-role-hierarchy`.
+- **Multi-module compilation** — `use "./path.manifest"` imports with a module resolver (BFS discovery, DFS cycle detection, topological sort) and a multi-compiler that performs cross-file validation and deterministic IR merge. Optional `IRProvenance.sources`; CLI `--merge` / `--entry` flags; new package exports `./multi-compiler`, `./module-resolver`, `./parser`. Single-file compilation is unchanged.
+- **Cross-entity constraint expressions** — constraints can now traverse relationships to arbitrary depth (e.g. `self.customer.status == "active"`) via `_entity` metadata on resolved relationship instances. Conformance fixture `70-cross-entity-constraints`.
+- **Health-check projection** — new built-in projection generating a `/manifest/health` endpoint (`health.handler`, `health.nextjs`, `health.express` surfaces): IR provenance-hash integrity, per-store-target connectivity, and outbox queue-depth checks, with configurable HTTP status mapping (200 healthy / 503 unhealthy|degraded).
+- **Storybook projection** — new built-in projection generating Storybook CSF3 stories and arg types from entities and commands, including `GuardsPass` / `GuardFails` interaction stories and constraint-violation stories.
+
+### Fixed
+
+- **Next.js projection read routes are now field-aware** — the generated Prisma `findMany` / `findFirst` queries only emit the soft-delete filter (`deletedAt: null`) when the entity actually declares that column, and the list `orderBy` uses `createdAt` only when present, falling back to the always-present `id`. Previously these clauses were emitted for every entity, producing queries Prisma rejects at runtime (`Unknown argument deletedAt`) for entities without those columns.
+
 ## [1.7.0] - 2026-05-31
 
 ### Added

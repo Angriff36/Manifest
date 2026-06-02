@@ -320,13 +320,29 @@ function generateTenantLookup(options: NormalizedNextJsOptions): string {
 }
 
 /**
+ * True when the entity declares a property with the given name.
+ *
+ * Read-query generation is field-aware: a filter or orderBy clause may only
+ * reference a column the entity actually has. Emitting `deletedAt: null` or
+ * `orderBy: { createdAt }` for an entity without those columns produces a
+ * query Prisma rejects at runtime ("Unknown argument deletedAt").
+ */
+function entityHasProperty(entity: IREntity, propertyName: string): boolean {
+  return entity.properties.some((p) => p.name === propertyName);
+}
+
+/**
  * Generate Prisma query with filters.
+ *
+ * Field-aware: the soft-delete filter and the orderBy column are only emitted
+ * when the entity declares them. Without this, every generated read route
+ * assumes soft-delete + creation timestamps exist on every entity.
  */
 function generatePrismaQuery(
-  entityName: string,
+  entity: IREntity,
   options: NormalizedNextJsOptions
 ): string {
-  const delegateName = toLowerCamelCase(entityName);
+  const delegateName = toLowerCamelCase(entity.name);
   const variableName = `${delegateName}s`;
   const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
 
@@ -336,7 +352,8 @@ function generatePrismaQuery(
     whereConditions.push(`${tenantIdProperty}`);
   }
 
-  if (includeSoftDeleteFilter) {
+  // Soft-delete filter only when the entity actually declares the column.
+  if (includeSoftDeleteFilter && entityHasProperty(entity, deletedAtProperty)) {
     whereConditions.push(`${deletedAtProperty}: null`);
   }
 
@@ -346,10 +363,14 @@ function generatePrismaQuery(
       },`
     : '';
 
+  // orderBy must reference a real column. Prefer createdAt when present;
+  // otherwise fall back to the always-present id so the query stays valid.
+  const orderByField = entityHasProperty(entity, 'createdAt') ? 'createdAt' : 'id';
+
   return `const ${variableName} = await database.${delegateName}.findMany({
     ${whereClause}
     orderBy: {
-      createdAt: "desc",
+      ${orderByField}: "desc",
     },
   });`;
 }
@@ -1027,7 +1048,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateTenantLookup(options));
     lines.push('');
     if (options.readRoutes.directDbReads) {
-      lines.push(generatePrismaQuery(entity.name, options));
+      lines.push(generatePrismaQuery(entity, options));
     } else {
       // directDbReads disabled: emit a stub that returns an empty list and
       // a diagnostic telling the app to wire its own read source.
@@ -1096,7 +1117,8 @@ export class NextJsProjection implements ProjectionTarget {
     if (options.includeTenantFilter) {
       whereConditions.push(options.tenantIdProperty);
     }
-    if (options.includeSoftDeleteFilter) {
+    // Soft-delete filter only when the entity actually declares the column.
+    if (options.includeSoftDeleteFilter && entityHasProperty(entity, options.deletedAtProperty)) {
       whereConditions.push(`${options.deletedAtProperty}: null`);
     }
     const isMultiField = whereConditions.length > 1;

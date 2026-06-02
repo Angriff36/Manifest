@@ -23,6 +23,8 @@ export interface ModuleNode extends ASTNode {
   policies: PolicyNode[];
   stores: StoreNode[];
   events: OutboxEventNode[];
+  reactions: ReactionNode[];
+  roles: RoleNode[];
 }
 
 export interface TransitionNode extends ASTNode {
@@ -30,6 +32,31 @@ export interface TransitionNode extends ASTNode {
   property: string;
   from: string;
   to: string[];
+}
+
+export interface ApprovalStageNode extends ASTNode {
+  type: 'ApprovalStage';
+  name: string;
+  /** Boolean expression authorizing an approver for this stage */
+  policy: ExpressionNode;
+  /** Number of approvals required to satisfy this stage (default 1) */
+  required: number;
+  /** Optional condition gating whether this stage applies */
+  when?: ExpressionNode;
+}
+
+export interface ApprovalNode extends ASTNode {
+  type: 'Approval';
+  name: string;
+  /** Name of the command this approval gates */
+  command: string;
+  stages: ApprovalStageNode[];
+  /** Timeout in hours for pending approval (optional) */
+  timeout?: number;
+  /** Action on timeout: "cancel" | "escalate" */
+  onTimeout?: 'cancel' | 'escalate';
+  /** Events to emit across the approval lifecycle */
+  emits: string[];
 }
 
 export interface EnumValueNode extends ASTNode {
@@ -58,6 +85,8 @@ export interface EntityNode extends ASTNode {
   constraints: ConstraintNode[];
   policies: PolicyNode[];
   transitions: TransitionNode[];
+  approvals: ApprovalNode[];
+  reactions: ReactionNode[];
   store?: string;
   /** Composite primary key column names, e.g. ["tenantId", "id"] */
   key?: string[];
@@ -119,6 +148,8 @@ export interface CommandNode extends ASTNode {
   actions: ActionNode[];
   emits?: string[];
   returns?: TypeNode;
+  /** When true, defers action execution to a background worker queue */
+  async?: boolean;
 }
 
 export interface ParameterNode extends ASTNode {
@@ -182,6 +213,20 @@ export interface TriggerNode extends ASTNode {
   parameters?: string[];
 }
 
+export interface ReactionParamMapping {
+  name: string;
+  expression: ExpressionNode;
+}
+
+export interface ReactionNode extends ASTNode {
+  type: 'Reaction';
+  event: string;
+  targetEntity: string;
+  targetCommand: string;
+  resolve: ExpressionNode;
+  params?: ReactionParamMapping[];
+}
+
 export interface ActionNode extends ASTNode {
   type: 'Action';
   kind: 'mutate' | 'emit' | 'compute' | 'effect' | 'publish' | 'persist';
@@ -203,6 +248,19 @@ export interface TenantNode extends ASTNode {
   dataType: TypeNode;
   /** Context path to extract tenant value from (e.g. "context.tenantId") */
   contextPath: string;
+}
+
+export interface RolePermissionNode {
+  kind: 'allow' | 'deny';
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  target?: string;
+}
+
+export interface RoleNode extends ASTNode {
+  type: 'Role';
+  name: string;
+  parent?: string;
+  permissions: RolePermissionNode[];
 }
 
 export interface ConstraintNode extends ASTNode {
@@ -348,7 +406,14 @@ export interface LambdaNode extends ASTNode {
   body: ExpressionNode;
 }
 
+export interface UseNode extends ASTNode {
+  type: 'Use';
+  /** Relative path to the referenced .manifest file */
+  path: string;
+}
+
 export interface ManifestProgram {
+  uses: UseNode[];
   modules: ModuleNode[];
   entities: EntityNode[];
   enums: EnumNode[];
@@ -361,6 +426,8 @@ export interface ManifestProgram {
   policies: PolicyNode[];
   stores: StoreNode[];
   events: OutboxEventNode[];
+  reactions: ReactionNode[];
+  roles: RoleNode[];
   tenant?: TenantNode;
 }
 

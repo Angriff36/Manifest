@@ -1,0 +1,371 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "fc06d8af63c519b1361a5e1fc0b433ce42f0acd1e7db4ca631c055cf4563d87b",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Document",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "draft"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "CreateReport",
+        "DeleteDocument",
+        "DangerousReset"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Document",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ReportCreated",
+      "channel": "document.report_created",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DocumentDeleted",
+      "channel": "document.deleted",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "DocumentReset",
+      "channel": "document.reset",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "CreateReport",
+      "entity": "Document",
+      "parameters": [
+        {
+          "name": "docId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "docTitle",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "call",
+          "callee": {
+            "kind": "identifier",
+            "name": "hasPermission"
+          },
+          "args": [
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "execute"
+              }
+            },
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "CreateReport"
+              }
+            }
+          ]
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "id",
+          "expression": {
+            "kind": "identifier",
+            "name": "docId"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "identifier",
+            "name": "docTitle"
+          }
+        }
+      ],
+      "emits": [
+        "ReportCreated"
+      ]
+    },
+    {
+      "name": "DeleteDocument",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "call",
+          "callee": {
+            "kind": "identifier",
+            "name": "hasPermission"
+          },
+          "args": [
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "delete"
+              }
+            }
+          ]
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "deleted"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "DocumentDeleted"
+      ]
+    },
+    {
+      "name": "DangerousReset",
+      "entity": "Document",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "call",
+          "callee": {
+            "kind": "identifier",
+            "name": "hasPermission"
+          },
+          "args": [
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "execute"
+              }
+            },
+            {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "DangerousReset"
+              }
+            }
+          ]
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "draft"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "title",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": ""
+            }
+          }
+        }
+      ],
+      "emits": [
+        "DocumentReset"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [],
+  "roles": [
+    {
+      "name": "Admin",
+      "parent": "Manager",
+      "allow": [
+        {
+          "action": "delete"
+        }
+      ],
+      "deny": [
+        {
+          "action": "execute",
+          "target": "DangerousReset"
+        }
+      ],
+      "effectivePermissions": [
+        {
+          "action": "delete"
+        },
+        {
+          "action": "execute",
+          "target": "CreateReport"
+        },
+        {
+          "action": "read"
+        },
+        {
+          "action": "write"
+        }
+      ]
+    },
+    {
+      "name": "Manager",
+      "parent": "User",
+      "allow": [
+        {
+          "action": "execute",
+          "target": "CreateReport"
+        },
+        {
+          "action": "write"
+        }
+      ],
+      "deny": [],
+      "effectivePermissions": [
+        {
+          "action": "execute",
+          "target": "CreateReport"
+        },
+        {
+          "action": "read"
+        },
+        {
+          "action": "write"
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "allow": [
+        {
+          "action": "read"
+        }
+      ],
+      "deny": [],
+      "effectivePermissions": [
+        {
+          "action": "read"
+        }
+      ]
+    }
+  ]
+}

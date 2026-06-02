@@ -7,8 +7,15 @@ export interface IRTenant {
   contextPath: string;
 }
 
+export interface IRProvenanceSource {
+  /** Relative path from project root */
+  path: string;
+  /** Content hash of the source file (SHA-256) */
+  contentHash: string;
+}
+
 export interface IRProvenance {
-  /** Content hash of the source manifest (SHA-256) */
+  /** Content hash of the source manifest (SHA-256). For merged IR: hash of sorted source hashes. */
   contentHash: string;
   /** Hash of the IR itself for runtime integrity verification (SHA-256) */
   irHash?: string;
@@ -18,6 +25,8 @@ export interface IRProvenance {
   schemaVersion: string;
   /** ISO timestamp of compilation */
   compiledAt: string;
+  /** Source files contributing to this IR. Present only for multi-file compilation. */
+  sources?: IRProvenanceSource[];
 }
 
 export interface IR {
@@ -35,6 +44,10 @@ export interface IR {
   events: IREvent[];
   commands: IRCommand[];
   policies: IRPolicy[];
+  /** Declarative event-reaction rules. Empty array when no reactions declared. */
+  reactions?: IRReactionRule[];
+  /** Role hierarchy with permission inheritance. Only emitted when roles are declared. */
+  roles?: IRRole[];
 }
 
 export interface IRValueObject {
@@ -51,6 +64,8 @@ export interface IRModule {
   stores: string[];
   events: string[];
   policies: string[];
+  reactions?: string[];
+  roles?: string[];
 }
 
 export interface IREnum {
@@ -76,6 +91,29 @@ export interface IRTransition {
   to: string[];
 }
 
+export interface IRApprovalStage {
+  name: string;
+  /** Compiled boolean expression authorizing an approver */
+  policy: IRExpression;
+  /** Required approvals to satisfy this stage */
+  required: number;
+  /** Optional condition gating whether the stage applies */
+  when?: IRExpression;
+}
+
+export interface IRApproval {
+  name: string;
+  /** Command name this approval gates */
+  command: string;
+  stages: IRApprovalStage[];
+  /** Timeout in hours (optional) */
+  timeout?: number;
+  /** Behavior on timeout */
+  onTimeout?: 'cancel' | 'escalate';
+  /** Lifecycle events emitted */
+  emits: string[];
+}
+
 export interface IREntity {
   name: string;
   module?: string;
@@ -99,6 +137,8 @@ export interface IREntity {
   timestamps?: boolean;
   /** Optional allowed state transitions for validation */
   transitions?: IRTransition[];
+  /** Approval workflow declarations gating command execution */
+  approvals?: IRApproval[];
 }
 
 export interface IRProperty {
@@ -184,6 +224,21 @@ export interface IREventField {
   required: boolean;
 }
 
+export interface IRReactionRule {
+  event: string;
+  targetEntity: string;
+  targetCommand: string;
+  resolve: IRExpression;
+  params?: IRReactionParam[];
+  module?: string;
+  entity?: string;
+}
+
+export interface IRReactionParam {
+  name: string;
+  expression: IRExpression;
+}
+
 export interface IRCommand {
   name: string;
   module?: string;
@@ -197,6 +252,12 @@ export interface IRCommand {
   actions: IRAction[];
   emits: string[];
   returns?: IRType;
+  /** When true, defers action execution to a background worker queue */
+  async?: boolean;
+  /** Auto-derived completion event name (set when async=true) */
+  completionEvent?: string;
+  /** Auto-derived failure event name (set when async=true) */
+  failureEvent?: string;
 }
 
 export interface IRParameter {
@@ -219,6 +280,22 @@ export interface IRPolicy {
   action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: IRExpression;
   message?: string;
+}
+
+export interface IRRolePermission {
+  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  target?: string;
+}
+
+export interface IRRole {
+  name: string;
+  module?: string;
+  parent?: string;
+  allow: IRRolePermission[];
+  deny: IRRolePermission[];
+  /** Compiler-computed flattened permission set after inheritance + deny resolution.
+   *  Deterministic, sorted. Runtime uses this for O(1) checks. */
+  effectivePermissions: IRRolePermission[];
 }
 
 export interface IRType {
@@ -309,6 +386,35 @@ export interface ConcurrencyConflict {
   actualVersion: number;
   /** Conflict code for categorization */
   conflictCode: string;
+}
+
+/**
+ * Record representing a deferred async command execution.
+ * The runtime enqueues jobs when an `async` command is invoked and
+ * drains them via `drainJobs()` for deterministic testing or a
+ * background worker for production use.
+ */
+export interface JobRecord {
+  jobId: string;
+  commandName: string;
+  entityName?: string;
+  instanceId?: string;
+  input: Record<string, unknown>;
+  correlationId?: string;
+  causationId?: string;
+  enqueuedAt: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
+
+/**
+ * Adapter interface for async command job persistence.
+ * Implementations must be deterministic in test contexts
+ * (use runtime-provided generateId and now functions).
+ */
+export interface JobQueue {
+  enqueue(job: JobRecord): Promise<void>;
+  drainPending(): Promise<JobRecord[]>;
+  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
 }
 
 export interface CompileToIRResult {

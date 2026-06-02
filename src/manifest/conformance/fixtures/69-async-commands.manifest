@@ -1,0 +1,22 @@
+entity Order {
+  property required id: string
+  property status: string = "pending"
+  property total: number = 0
+
+  async command processOrder(amount: number) {
+    guard self.status == "pending"
+    mutate status = "processing"
+    mutate total = amount
+    emit OrderProcessed
+  }
+
+  command cancelOrder() {
+    guard self.status == "pending"
+    mutate status = "cancelled"
+  }
+}
+
+event OrderProcessed: "order.processed" {
+  orderId: string
+  total: number
+}

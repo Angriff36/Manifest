@@ -233,4 +233,56 @@ npm run test:postgres
 
 The live suites apply the shipped `postgres.sql` schemas verbatim, run the assertions, then drop the tables — successive runs against the same database are idempotent. Default `npm test` skips them when `DATABASE_URL` is unset (CI).
 
+## Job Queue
+
+The `JobQueue` adapter provides persistence for deferred async command execution. When a command is declared with the `async` modifier, the runtime enqueues a `JobRecord` instead of executing the command body synchronously.
+
+### Contract: `src/manifest/ir.ts` — `JobQueue` interface
+
+```typescript
+interface JobRecord {
+  jobId: string;
+  commandName: string;
+  entityName?: string;
+  instanceId?: string;
+  input: Record<string, unknown>;
+  correlationId?: string;
+  causationId?: string;
+  enqueuedAt: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
+
+interface JobQueue {
+  enqueue(job: JobRecord): Promise<void>;
+  drainPending(): Promise<JobRecord[]>;
+  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
+}
+```
+
+### Wire-in
+
+Pass a `JobQueue` implementation via `RuntimeOptions.jobQueue`. The runtime calls:
+- `enqueue()` when an async command passes fail-fast validation
+- `drainPending()` from `RuntimeEngine.drainJobs()` to pick up pending work
+- `updateStatus()` after each job completes or fails
+
+### Built-in Implementation
+
+`MemoryJobQueue` (exported from `runtime-engine.ts`) provides an in-memory implementation suitable for testing and development. It stores jobs in a simple array and drains them in FIFO order.
+
+### Production Implementations
+
+Production deployments should provide a durable `JobQueue` backed by a database (e.g. PostgreSQL) or message broker. The adapter must:
+- Persist jobs durably across process restarts
+- Support concurrent workers (claim semantics, similar to `OutboxStore`)
+- Handle idempotent delivery (jobs should not execute twice)
+
+### Deterministic Testing
+
+The `drainJobs()` method on `RuntimeEngine` is the primary testing surface. It:
+1. Calls `jobQueue.drainPending()` to get all pending jobs
+2. Executes each job via the internal command execution pipeline with `context.source = 'job'`
+3. Emits synthesized completion (`{commandName}Completed`) or failure (`{commandName}Failed`) events
+4. Updates job status via `jobQueue.updateStatus()`
+5. Returns an array of `CommandResult` — one per drained job
 

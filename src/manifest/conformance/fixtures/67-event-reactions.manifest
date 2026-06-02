@@ -1,0 +1,49 @@
+entity Order {
+  property required id: string
+  property total: number = 0
+  property status: string = "open"
+
+  command addItem(amount: number) {
+    mutate total = self.total + amount
+    emit OrderUpdated
+  }
+
+  command complete() {
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted
+  }
+}
+
+entity Invoice {
+  property required id: string
+  property orderId: string = ""
+  property amount: number = 0
+  property status: string = "draft"
+
+  command createFromOrder(orderId: string, amount: number) {
+    mutate orderId = orderId
+    mutate amount = amount
+    mutate status = "pending"
+  }
+}
+
+store Order in memory
+store Invoice in memory
+
+event OrderUpdated: "order.updated" {
+  orderId: string
+  total: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}
+
+on OrderCompleted run Invoice.createFromOrder
+  resolve payload._subject.id
+  params {
+    orderId: payload._subject.id,
+    amount: payload.result
+  }

@@ -1443,4 +1443,172 @@ describe('RuntimeEngine', () => {
       expect(resolvedName == null || resolvedName === undefined).toBe(true);
     });
   });
+
+  describe('Reactions', () => {
+    const reactionSource = `
+entity Order {
+  property required id: string
+  property total: number = 0
+  property status: string = "open"
+
+  command addItem(amount: number) {
+    mutate total = self.total + amount
+    emit OrderUpdated
+  }
+
+  command complete() {
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted
+  }
+}
+
+entity Invoice {
+  property required id: string
+  property orderId: string = ""
+  property amount: number = 0
+  property status: string = "draft"
+
+  command createFromOrder(orderId: string, amount: number) {
+    mutate orderId = orderId
+    mutate amount = amount
+    mutate status = "pending"
+  }
+}
+
+store Order in memory
+store Invoice in memory
+
+event OrderUpdated: "order.updated" {
+  orderId: string
+  total: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}
+
+on OrderCompleted run Invoice.createFromOrder
+  resolve payload._subject.id
+  params {
+    orderId: payload._subject.id,
+    amount: payload.result
+  }
+`;
+
+    it('should execute reaction when matching event is emitted', async () => {
+      const ir = await compileToIR(reactionSource);
+      const runtime = new RuntimeEngine(ir, {}, {
+        now: () => 1000000000000,
+        generateId: () => 'gen-id-1',
+      });
+
+      // Create the Order and Invoice instances
+      await runtime.createInstance('Order', { id: 'order-1', total: 50, status: 'open' });
+      await runtime.createInstance('Invoice', { id: 'order-1', orderId: '', amount: 0, status: 'draft' });
+
+      // Complete the order — should trigger reaction
+      const result = await runtime.runCommand('complete', {}, {
+        entityName: 'Order',
+        instanceId: 'order-1',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.emittedEvents).toBeDefined();
+      expect(result.emittedEvents!.length).toBeGreaterThanOrEqual(1);
+      expect(result.emittedEvents![0].name).toBe('OrderCompleted');
+
+      // Verify the reaction created the Invoice
+      const invoice = await runtime.getInstance('Invoice', 'order-1');
+      expect(invoice).toBeDefined();
+      expect(invoice!.orderId).toBe('order-1');
+      expect(invoice!.amount).toBe('completed'); // payload.result is the last action result
+      expect(invoice!.status).toBe('pending');
+    });
+
+    it('should not execute reaction when no matching event is emitted', async () => {
+      const ir = await compileToIR(reactionSource);
+      const runtime = new RuntimeEngine(ir, {}, {
+        now: () => 1000000000000,
+        generateId: () => 'gen-id-1',
+      });
+
+      await runtime.createInstance('Order', { id: 'order-2', total: 0, status: 'open' });
+      await runtime.createInstance('Invoice', { id: 'order-2', orderId: '', amount: 0, status: 'draft' });
+
+      // addItem emits OrderUpdated, not OrderCompleted — no reaction should fire
+      const result = await runtime.runCommand('addItem', { amount: 25 }, {
+        entityName: 'Order',
+        instanceId: 'order-2',
+      });
+
+      expect(result.success).toBe(true);
+      // Invoice should remain unchanged
+      const invoice = await runtime.getInstance('Invoice', 'order-2');
+      expect(invoice!.status).toBe('draft');
+    });
+
+    it('should propagate correlationId and set causationId on reaction commands', async () => {
+      const ir = await compileToIR(reactionSource);
+      const events: Array<{ name: string; correlationId?: string; causationId?: string }> = [];
+      const runtime = new RuntimeEngine(ir, {}, {
+        now: () => 1000000000000,
+        generateId: () => 'gen-id-1',
+      });
+      runtime.onEvent((e) => {
+        events.push({ name: e.name, correlationId: e.correlationId, causationId: e.causationId });
+      });
+
+      await runtime.createInstance('Order', { id: 'order-3', total: 75, status: 'open' });
+      await runtime.createInstance('Invoice', { id: 'order-3', orderId: '', amount: 0, status: 'draft' });
+
+      await runtime.runCommand('complete', {}, {
+        entityName: 'Order',
+        instanceId: 'order-3',
+        correlationId: 'corr-abc',
+      });
+
+      // The first event is OrderCompleted (from the complete command)
+      expect(events[0].name).toBe('OrderCompleted');
+      expect(events[0].correlationId).toBe('corr-abc');
+    });
+
+    it('should throw ManifestReactionDepthError on infinite reaction loops', async () => {
+      // Create a circular reaction: EventA → Command → emits EventA
+      const circularSource = `
+entity Counter {
+  property required id: string
+  property value: number = 0
+
+  command increment() {
+    mutate value = self.value + 1
+    emit CounterIncremented
+  }
+}
+
+store Counter in memory
+
+event CounterIncremented: "counter.incremented" {
+  counterId: string
+}
+
+on CounterIncremented run Counter.increment
+  resolve payload.counterId
+`;
+      const ir = await compileToIR(circularSource);
+      const runtime = new RuntimeEngine(ir, {}, {
+        now: () => 1000000000000,
+        generateId: () => 'gen-id-1',
+      });
+
+      await runtime.createInstance('Counter', { id: 'counter-1', value: 0 });
+
+      // This should trigger infinite reactions and hit the depth limit
+      await expect(runtime.runCommand('increment', {}, {
+        entityName: 'Counter',
+        instanceId: 'counter-1',
+      })).rejects.toThrow('Reaction depth limit');
+    });
+  });
 });

@@ -141,6 +141,8 @@ program
   .option('-g, --glob <pattern>', 'Glob pattern for multiple files (use with output directory)')
   .option('-d, --diagnostics', 'Include diagnostics in output', false)
   .option('--pretty', 'Pretty-print JSON output', true)
+  .option('--merge', 'Merge multiple files into single IR (resolves use declarations)', false)
+  .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
   .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
     if (!options.output && config?.output) {

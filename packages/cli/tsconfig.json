@@ -28,7 +28,10 @@
       "@angriff36/manifest/audit/postgres": ["../../dist/manifest/audit/sinks/postgres.d.ts"],
       "@angriff36/manifest/outbox": ["../../dist/manifest/outbox/outbox-store.d.ts"],
       "@angriff36/manifest/outbox/memory": ["../../dist/manifest/outbox/stores/memory.d.ts"],
-      "@angriff36/manifest/outbox/postgres": ["../../dist/manifest/outbox/stores/postgres.d.ts"]
+      "@angriff36/manifest/outbox/postgres": ["../../dist/manifest/outbox/stores/postgres.d.ts"],
+      "@angriff36/manifest/multi-compiler": ["../../dist/manifest/multi-compiler.d.ts"],
+      "@angriff36/manifest/module-resolver": ["../../dist/manifest/module-resolver.d.ts"],
+      "@angriff36/manifest/parser": ["../../dist/manifest/parser.d.ts"]
     }
   },
   "include": ["src/**/*"],

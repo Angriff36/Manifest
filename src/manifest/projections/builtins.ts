@@ -23,6 +23,8 @@ import { ExpressProjection } from './express/generator.js';
 import { HonoProjection } from './hono/generator.js';
 import { MermaidProjection } from './mermaid/generator.js';
 import { JsonSchemaProjection } from './jsonschema/generator.js';
+import { StorybookProjection } from './storybook/generator.js';
+import { HealthCheckProjection } from './health/generator.js';
 
 /**
  * Register all built-in projections.
@@ -73,6 +75,12 @@ export function registerBuiltinProjections(): void {
   // JSON Schema projection (draft-07/2019-09/2020-12)
   registerProjection(new JsonSchemaProjection());
 
+  // Storybook CSF3 story projection (entity controls + command interaction stories)
+  registerProjection(new StorybookProjection());
+
+  // Health check endpoint projection (IR integrity, store connectivity, outbox)
+  registerProjection(new HealthCheckProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -100,5 +108,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new HonoProjection(),
     new MermaidProjection(),
     new JsonSchemaProjection(),
+    new StorybookProjection(),
+    new HealthCheckProjection(),
   ];
 }

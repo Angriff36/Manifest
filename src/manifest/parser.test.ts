@@ -35,6 +35,49 @@ entity Bar {
     });
   });
 
+  describe('Use Declaration Parsing', () => {
+    it('should parse use declarations at top of file', () => {
+      const source = `
+use "./types.manifest"
+use "./shared.manifest"
+entity User { property name: string }
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.uses).toHaveLength(2);
+      expect(result.program.uses[0].path).toBe('./types.manifest');
+      expect(result.program.uses[1].path).toBe('./shared.manifest');
+    });
+
+    it('should error on use after declarations', () => {
+      const source = `
+entity User { property name: string }
+use "./types.manifest"
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors.some(e => e.message.includes("'use' declarations must appear before"))).toBe(true);
+    });
+
+    it('should error on absolute paths', () => {
+      const source = 'use "/absolute/path.manifest"';
+      const result = new Parser().parse(source);
+      expect(result.errors.some(e => e.message.includes('must be relative'))).toBe(true);
+    });
+
+    it('should error on non-.manifest extension', () => {
+      const source = 'use "./types.ts"';
+      const result = new Parser().parse(source);
+      expect(result.errors.some(e => e.message.includes('.manifest'))).toBe(true);
+    });
+
+    it('should parse file with no use declarations', () => {
+      const source = 'entity User { property name: string }';
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.uses).toHaveLength(0);
+    });
+  });
+
   describe('Entity Parsing', () => {
     it('should parse empty entity', () => {
       const source = 'entity Empty {}';

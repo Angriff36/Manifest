@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "431924ea634b4ef9a9c766e4b2c0d192647280858a728c061258be7a1914a14e",
+    "irHash": "8ac128ccccd88cfbaffbebef2b23be209b282bf74d06f3886566df4af45c835b",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -475,5 +475,6 @@
         }
       }
     }
-  ]
+  ],
+  "reactions": []
 }

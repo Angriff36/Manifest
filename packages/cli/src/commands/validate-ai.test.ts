@@ -214,7 +214,7 @@ describe('validate-ai – IR JSON validation', () => {
 
   it('detects additional properties with suggestions', async () => {
     const ir = makeValidIR() as any;
-    ir.provenance.sources = ['foo.manifest'];
+    ir.provenance.unknownField = 'should-not-be-here';
     const filePath = await createTempIR(ir);
     try {
       const { result } = await runValidateAIJson(filePath);

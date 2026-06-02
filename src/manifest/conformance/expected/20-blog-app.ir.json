@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "aa9275ff31c18570808958cc30a3dbda8fefecc58578875b28d6e7a217adb199",
+    "irHash": "5e7a7f71cc2ea64a1373c59835d3452a58b3bf42794d351edfca537979ea7814",
     "compilerVersion": "1.0.0",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -2186,5 +2186,6 @@
       },
       "message": "Only editors and admins can moderate comments"
     }
-  ]
+  ],
+  "reactions": []
 }

@@ -280,6 +280,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [auto-bridge snapshot @ 10 changes]
-Files: src/manifest/outbox/stores/postgres.ts (edit), src/manifest/outbox/stores/postgres.sql (edit), src/manifest/runtime-engine.ts (edit)
+Files: src/manifest/parser.ts (edit), src/manifest/lexer.ts (edit), src/manifest/types.ts (edit)
 
 # === END COGNILAYER ===
