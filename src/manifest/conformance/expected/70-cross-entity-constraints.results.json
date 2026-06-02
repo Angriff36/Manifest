@@ -1,0 +1,42 @@
+{
+  "testCases": [
+    {
+      "name": "order with active customer passes cross-entity constraint",
+      "entity": "Order",
+      "data": { "id": "order-1", "total": 100, "customerId": "cust-1" },
+      "setup": {
+        "createInstances": [
+          { "entity": "Customer", "data": { "id": "cust-1", "name": "Alice", "status": "active" } }
+        ]
+      },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "order with inactive customer fails cross-entity constraint",
+      "entity": "Order",
+      "data": { "id": "order-2", "total": 200, "customerId": "cust-2" },
+      "setup": {
+        "createInstances": [
+          { "entity": "Customer", "data": { "id": "cust-2", "name": "Bob", "status": "inactive" } }
+        ]
+      },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "activeCustomer",
+          "expression": "self.customer.status == \"active\""
+        }
+      ]
+    },
+    {
+      "name": "order with missing customer fails cross-entity constraint",
+      "entity": "Order",
+      "data": { "id": "order-3", "total": 50, "customerId": "nonexistent" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "activeCustomer",
+          "expression": "self.customer.status == \"active\""
+        }
+      ]
+    }
+  ]
+}

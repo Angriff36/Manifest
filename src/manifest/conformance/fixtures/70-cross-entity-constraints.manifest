@@ -1,0 +1,15 @@
+entity Customer {
+  property required name: string
+  property status: string = "active"
+  hasMany orders: Order
+}
+
+entity Order {
+  property required total: number
+  belongsTo customer: Customer
+
+  constraint activeCustomer: self.customer.status == "active" "Order requires an active customer"
+}
+
+store Customer in memory
+store Order in memory

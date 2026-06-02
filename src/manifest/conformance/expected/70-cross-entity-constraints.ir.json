@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "116556dcf8e444b3992b56337f7dca24eed4786ff6c96df89706178e27a4d27d",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Customer",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "orders",
+          "kind": "hasMany",
+          "target": "Order"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "customer",
+          "kind": "belongsTo",
+          "target": "Customer"
+        }
+      ],
+      "commands": [],
+      "constraints": [
+        {
+          "name": "activeCustomer",
+          "code": "activeCustomer",
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "customer"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "active"
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Order requires an active customer",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Customer",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

@@ -147,6 +147,12 @@ interface ConstraintTestCase {
   name: string;
   entity: string;
   data: Record<string, unknown>;
+  setup?: {
+    createInstances?: Array<{
+      entity: string;
+      data: Record<string, unknown>;
+    }>;
+  };
   expectedConstraintFailures: Array<{
     constraintName: string;
     expression: string;
@@ -450,6 +456,13 @@ describe('Manifest Conformance Tests', () => {
               expect(ir).not.toBeNull();
 
               const engine = new RuntimeEngine(ir!, {}, createDeterministicOptions());
+
+              // Seed related instances if setup is provided (for cross-entity constraints)
+              if (tc.setup?.createInstances) {
+                for (const inst of tc.setup.createInstances) {
+                  await engine.createInstance(inst.entity, inst.data as EntityInstance);
+                }
+              }
 
               const failures = await engine.checkConstraints(tc.entity, tc.data);
 

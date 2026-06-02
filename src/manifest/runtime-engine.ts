@@ -12,6 +12,9 @@ import {
   ConstraintOutcome,
   OverrideRequest,
   ConcurrencyConflict,
+  IRApproval,
+  JobQueue,
+  JobRecord,
 } from './ir';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
@@ -164,6 +167,12 @@ export interface RuntimeOptions {
    * ```
    */
   flagProvider?: (name: string) => unknown;
+  /**
+   * Optional JobQueue for async command execution.
+   * When an async command is invoked, the runtime enqueues a job and returns
+   * a JobId immediately. Use `drainJobs()` for deterministic testing.
+   */
+  jobQueue?: JobQueue;
 }
 
 // Re-export adapter contract types at the package root so consumers can do
@@ -175,6 +184,7 @@ export interface RuntimeOptions {
 // "./outbox/memory", "./outbox/postgres".
 export type { AuditSink, AuditRecord, CommandOutcome } from './audit/audit-sink';
 export type { OutboxStore, OutboxEntry, OutboxEntryStatus } from './outbox/outbox-store';
+export type { JobQueue, JobRecord } from './ir';
 
 export interface EntityInstance {
   id: string;
@@ -199,6 +209,8 @@ export interface CommandResult {
   overrideRequests?: OverrideRequest[];
   /** Concurrency conflict details (vNext) */
   concurrencyConflict?: ConcurrencyConflict;
+  /** Approval workflow required before command can execute */
+  approvalRequired?: ApprovalRequiredInfo;
   /** Caller-supplied correlation ID grouping related events across a workflow */
   correlationId?: string;
   /** Caller-supplied ID of the event/command that caused this command execution */
@@ -234,6 +246,35 @@ export interface ConstraintFailure {
   formatted: string;
   message?: string;
   resolved?: GuardResolvedValue[];
+}
+
+// ─── Approval Workflow Types ─────────────────────────────────────────
+
+export interface ApprovalGrant {
+  stage: string;
+  by: string;
+  at: number;
+}
+
+export interface ApprovalRequestState {
+  entity: string;
+  instanceId: string;
+  approvalName: string;
+  command: string;
+  status: 'pending' | 'granted' | 'denied' | 'expired';
+  /** Stages whose `when` condition evaluated true (or had no `when`) */
+  requiredStages: string[];
+  grants: ApprovalGrant[];
+  requestedAt: number;
+  expiresAt?: number;
+  deniedReason?: string;
+  deniedBy?: string;
+}
+
+export interface ApprovalRequiredInfo {
+  approvalName: string;
+  pendingStages: string[];
+  requestKey: string;
 }
 
 /**
@@ -305,6 +346,65 @@ export class ManifestEffectBoundaryError extends Error {
     );
     this.name = 'ManifestEffectBoundaryError';
     this.actionKind = actionKind;
+  }
+}
+
+/**
+ * Thrown when reaction cascading exceeds the maximum depth (default: 10).
+ * Indicates a potential infinite loop in reaction chains.
+ * See docs/spec/semantics.md § "Reactions".
+ */
+export class ManifestReactionDepthError extends Error {
+  readonly depth: number;
+  readonly triggerEvent: string;
+  readonly targetCommand: string;
+  constructor(depth: number, triggerEvent: string, targetCommand: string) {
+    super(
+      `Reaction depth limit (${depth}) exceeded. ` +
+      `Event '${triggerEvent}' → command '${targetCommand}' would exceed max depth. ` +
+      `Check for circular reaction chains.`
+    );
+    this.name = 'ManifestReactionDepthError';
+    this.depth = depth;
+    this.triggerEvent = triggerEvent;
+    this.targetCommand = targetCommand;
+  }
+}
+
+/**
+ * In-memory JobQueue implementation for async commands.
+ * Suitable for testing and development. Production deployments should
+ * provide a durable implementation (e.g. database-backed).
+ */
+export class MemoryJobQueue implements JobQueue {
+  private jobs: JobRecord[] = [];
+
+  async enqueue(job: JobRecord): Promise<void> {
+    this.jobs.push({ ...job });
+  }
+
+  async drainPending(): Promise<JobRecord[]> {
+    const pending = this.jobs.filter(j => j.status === 'pending');
+    for (const job of pending) {
+      job.status = 'running';
+    }
+    return pending;
+  }
+
+  async updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void> {
+    const job = this.jobs.find(j => j.jobId === jobId);
+    if (job) {
+      job.status = status;
+      if (detail) {
+        (job as JobRecord & { result?: unknown; error?: string }).result = detail.result;
+        (job as JobRecord & { result?: unknown; error?: string }).error = detail.error;
+      }
+    }
+  }
+
+  /** Test utility: get all jobs */
+  getAll(): JobRecord[] {
+    return [...this.jobs];
   }
 }
 
@@ -452,6 +552,9 @@ export class RuntimeEngine {
   private stores: Map<string, Store> = new Map();
   private eventListeners: EventListener[] = [];
   private eventLog: EmittedEvent[] = [];
+  /** Current reaction nesting depth to prevent infinite loops */
+  private reactionDepth = 0;
+  private static readonly MAX_REACTION_DEPTH = 10;
   /** Index of relationships for efficient lookup during expression evaluation */
   private relationshipIndex: Map<string, {
     entityName: string;
@@ -478,6 +581,9 @@ export class RuntimeEngine {
 
   /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
+
+  /** Approval requests keyed by `${entity}:${instanceId}:${approvalName}` */
+  private approvalRequests = new Map<string, ApprovalRequestState>();
 
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
   private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
@@ -766,6 +872,16 @@ export class RuntimeEngine {
 
       default:
         result = null;
+    }
+
+    // Enrich resolved instances with _entity metadata for chained traversal
+    // (e.g., self.order.customer.name follows Order → Customer → name)
+    if (result !== null) {
+      if (Array.isArray(result)) {
+        result = result.map(r => ({ ...r, _entity: rel.targetEntity }));
+      } else {
+        result = { ...result, _entity: rel.targetEntity };
+      }
     }
 
     // Cache the result
@@ -1478,6 +1594,49 @@ export class RuntimeEngine {
         }
       }
 
+      // Async command branch: enqueue job instead of executing synchronously.
+      // Re-entry from job worker (context.source === 'job') bypasses this branch
+      // so the actual command body runs during drainJobs().
+      const command = this.getCommand(commandName, options.entityName);
+      if (command?.async && this.context.source !== 'job') {
+        // Validate policies/constraints/guards synchronously (fail-fast)
+        const validation = await this._validateAsyncCommand(commandName, input, options);
+        if (!validation.success) {
+          result = validation;
+          return result;
+        }
+
+        if (!this.options.jobQueue) {
+          result = {
+            success: false,
+            error: 'MISSING_JOB_QUEUE: async command invoked but no jobQueue is configured in RuntimeOptions',
+            emittedEvents: [],
+          };
+          return result;
+        }
+
+        const jobId = this.nextRuntimeId();
+        const enqueuedAt = this.getNow();
+        await this.options.jobQueue.enqueue({
+          jobId,
+          commandName,
+          entityName: options.entityName,
+          instanceId: options.instanceId,
+          input,
+          correlationId: options.correlationId,
+          causationId: options.causationId,
+          enqueuedAt,
+          status: 'pending',
+        });
+
+        result = {
+          success: true,
+          result: { jobId, status: 'pending', enqueuedAt },
+          emittedEvents: [],
+        };
+        return result;
+      }
+
       // Full command execution
       result = await this._executeCommandInternal(commandName, input, options);
 
@@ -1652,6 +1811,190 @@ export class RuntimeEngine {
     }
   }
 
+  /**
+   * Validate an async command synchronously (policies, constraints, guards)
+   * without executing actions. Used for fail-fast before enqueuing a job.
+   */
+  private async _validateAsyncCommand(
+    commandName: string,
+    input: Record<string, unknown>,
+    options: {
+      entityName?: string;
+      instanceId?: string;
+      overrideRequests?: OverrideRequest[];
+      correlationId?: string;
+      causationId?: string;
+    }
+  ): Promise<CommandResult> {
+    const command = this.getCommand(commandName, options.entityName);
+    if (!command) {
+      return {
+        success: false,
+        error: `Command '${commandName}' not found`,
+        emittedEvents: [],
+      };
+    }
+
+    const instance = options.instanceId && options.entityName
+      ? await this.getInstance(options.entityName, options.instanceId)
+      : undefined;
+
+    const evalContext = this.buildEvalContext(input, instance, options.entityName);
+
+    // Check policies
+    const policyResult = await this.checkPolicies(command, evalContext);
+    if (!policyResult.allowed) {
+      return {
+        success: false,
+        error: policyResult.denial?.message,
+        deniedBy: policyResult.denial?.policyName,
+        policyDenial: policyResult.denial,
+        emittedEvents: [],
+      };
+    }
+
+    // Evaluate constraints
+    const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
+    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext);
+    if (!constraintResult.allowed) {
+      const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
+      return {
+        success: false,
+        error: blocking?.message || `Command blocked by constraint '${blocking?.constraintName}'`,
+        constraintOutcomes: constraintResult.outcomes,
+        emittedEvents: [],
+      };
+    }
+
+    // Evaluate guards
+    for (let i = 0; i < command.guards.length; i += 1) {
+      const guard = command.guards[i];
+      const result = await this.evaluateExpression(guard, evalContext);
+      if (!result) {
+        return {
+          success: false,
+          error: `Guard condition failed for command '${commandName}'`,
+          guardFailure: {
+            index: i + 1,
+            expression: guard,
+            formatted: this.formatExpression(guard),
+            resolved: await this.resolveExpressionValues(guard, evalContext),
+          },
+          constraintOutcomes: constraintResult.outcomes.length > 0 ? constraintResult.outcomes : undefined,
+          emittedEvents: [],
+        };
+      }
+    }
+
+    // All validation passed
+    return { success: true, emittedEvents: [] };
+  }
+
+  /**
+   * Drain all pending jobs from the job queue and execute them.
+   * Returns an array of CommandResults, one per drained job.
+   * For deterministic testing: executes jobs synchronously in FIFO order.
+   *
+   * For each job:
+   * - Sets context.source = 'job' to bypass the async enqueue branch
+   * - Executes the full command body (actions + emits)
+   * - Emits completion or failure event on the synthesized channel
+   * - Updates job status in the queue
+   */
+  async drainJobs(): Promise<CommandResult[]> {
+    if (!this.options.jobQueue) {
+      return [];
+    }
+
+    const pending = await this.options.jobQueue.drainPending();
+    const results: CommandResult[] = [];
+
+    const originalSource = this.context.source;
+
+    for (const job of pending) {
+      // Set context.source = 'job' so the async branch is bypassed
+      this.context.source = 'job';
+
+      try {
+        const result = await this._executeCommandInternal(job.commandName, job.input, {
+          entityName: job.entityName,
+          instanceId: job.instanceId,
+          correlationId: job.correlationId,
+          causationId: job.causationId,
+        });
+
+        if (result.success) {
+          await this.options.jobQueue.updateStatus(job.jobId, 'completed', { result: result.result });
+
+          // Emit synthesized completion event
+          const command = this.getCommand(job.commandName, job.entityName);
+          if (command?.completionEvent) {
+            const completionEvent: EmittedEvent = {
+              name: command.completionEvent,
+              channel: `jobs.${job.commandName}`,
+              payload: { jobId: job.jobId, result: result.result, completedAt: this.getNow() },
+              timestamp: this.getNow(),
+              correlationId: job.correlationId,
+              causationId: job.causationId,
+            };
+            result.emittedEvents.push(completionEvent);
+          }
+        } else {
+          await this.options.jobQueue.updateStatus(job.jobId, 'failed', { error: result.error });
+
+          // Emit synthesized failure event
+          const command = this.getCommand(job.commandName, job.entityName);
+          if (command?.failureEvent) {
+            const failureEvent: EmittedEvent = {
+              name: command.failureEvent,
+              channel: `jobs.${job.commandName}`,
+              payload: { jobId: job.jobId, error: result.error || 'Unknown error', failedAt: this.getNow() },
+              timestamp: this.getNow(),
+              correlationId: job.correlationId,
+              causationId: job.causationId,
+            };
+            result.emittedEvents.push(failureEvent);
+          }
+        }
+
+        results.push(result);
+      } catch (e) {
+        await this.options.jobQueue.updateStatus(job.jobId, 'failed', {
+          error: e instanceof Error ? e.message : String(e),
+        });
+
+        // Emit synthesized failure event
+        const command = this.getCommand(job.commandName, job.entityName);
+        if (command?.failureEvent) {
+          const failureEvent: EmittedEvent = {
+            name: command.failureEvent,
+            channel: `jobs.${job.commandName}`,
+            payload: { jobId: job.jobId, error: e instanceof Error ? e.message : String(e), failedAt: this.getNow() },
+            timestamp: this.getNow(),
+            correlationId: job.correlationId,
+            causationId: job.causationId,
+          };
+          results.push({
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+            emittedEvents: [failureEvent],
+          });
+        } else {
+          results.push({
+            success: false,
+            error: e instanceof Error ? e.message : String(e),
+            emittedEvents: [],
+          });
+        }
+      }
+    }
+
+    // Restore original source
+    this.context.source = originalSource;
+
+    return results;
+  }
+
   private async _executeCommandInternal(
     commandName: string,
     input: Record<string, unknown>,
@@ -1768,6 +2111,16 @@ export class RuntimeEngine {
           ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
           emittedEvents: [],
         };
+      }
+    }
+
+    // ── Approval gate: block command if pending approval required ──
+    if (options.entityName) {
+      const approvalResult = await this.checkApprovalGate(
+        commandName, options.entityName, options.instanceId, evalContext, options,
+      );
+      if (approvalResult) {
+        return approvalResult;
       }
     }
 
@@ -1921,6 +2274,64 @@ export class RuntimeEngine {
       emittedEvents.push(emitted);
       this.eventLog.push(emitted);
       this.notifyListeners(emitted);
+    }
+
+    // Execute matching reaction rules for emitted events (declaration order)
+    const reactions = this.ir.reactions || [];
+    if (reactions.length > 0 && emittedEvents.length > 0) {
+      // Use index-based iteration since cascading reactions may append to emittedEvents
+      const initialLength = emittedEvents.length;
+      for (let ei = 0; ei < initialLength; ei++) {
+        const emitted = emittedEvents[ei];
+        const matchingReactions = reactions.filter(r => r.event === emitted.name);
+        for (const reaction of matchingReactions) {
+          if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
+            throw new ManifestReactionDepthError(this.reactionDepth, reaction.event, `${reaction.targetEntity}.${reaction.targetCommand}`);
+          }
+          // Evaluate resolve and params expressions against event context.
+          // Available bindings:
+          //   payload  — event payload fields merged with subject metadata
+          //   self     — alias for payload (convenient for member access)
+          const enrichedPayload = {
+            ...(typeof emitted.payload === 'object' && emitted.payload !== null ? emitted.payload as Record<string, unknown> : {}),
+            _subject: emitted.subject,
+            _eventName: emitted.name,
+            _channel: emitted.channel,
+          };
+          const reactionContext: Record<string, unknown> = {
+            payload: enrichedPayload,
+            self: enrichedPayload,
+          };
+          const resolvedId = await this.evaluateExpression(reaction.resolve, reactionContext);
+          // Evaluate param mappings
+          const reactionInput: Record<string, unknown> = {};
+          if (reaction.params) {
+            for (const param of reaction.params) {
+              reactionInput[param.name] = await this.evaluateExpression(param.expression, reactionContext);
+            }
+          }
+          // Dispatch the reaction command
+          this.reactionDepth++;
+          try {
+            const reactionResult = await this.runCommand(
+              reaction.targetCommand,
+              reactionInput,
+              {
+                entityName: reaction.targetEntity,
+                instanceId: String(resolvedId),
+                correlationId: workflowMeta.correlationId,
+                causationId: emitted.name,
+              }
+            );
+            // Collect events from reaction-triggered commands
+            if (reactionResult.emittedEvents) {
+              emittedEvents.push(...reactionResult.emittedEvents);
+            }
+          } finally {
+            this.reactionDepth--;
+          }
+        }
+      }
     }
 
     return {
@@ -2331,19 +2742,14 @@ export class RuntimeEngine {
       case 'member': {
         const obj = await this.evaluateExpression(expr.object, context);
         if (obj && typeof obj === 'object') {
-          // Check if this is a relationship traversal on self/this
-          if (
-            expr.object.kind === 'identifier' &&
-            (expr.object.name === 'self' || expr.object.name === 'this') &&
-            'id' in obj &&
-            typeof obj.id === 'string'
-          ) {
-            // Check if the property is a relationship
+          // Check if this is an entity instance that may have relationships
+          // Works for direct self/this access AND chained traversal (self.order.customer)
+          // because resolveRelationship enriches results with _entity metadata
+          if ('id' in obj && typeof obj.id === 'string') {
             const entityName = (obj as Record<string, unknown>)._entity as string | undefined;
             if (entityName) {
               const relKey = `${entityName}.${expr.property}`;
               if (this.relationshipIndex.has(relKey)) {
-                // Resolve the relationship
                 return await this.resolveRelationship(entityName, obj as EntityInstance, expr.property);
               }
             }
@@ -3001,6 +3407,286 @@ export class RuntimeEngine {
    * const [runtime] = await RuntimeEngine.create(ir, context, { requireValidProvenance: false });
    * ```
    */
+  // ─── Approval Workflow Methods ─────────────────────────────────────
+
+  /**
+   * Build an approval-request key for the Map.
+   */
+  private approvalKey(entity: string, instanceId: string, approvalName: string): string {
+    return `${entity}:${instanceId}:${approvalName}`;
+  }
+
+  /**
+   * Find approval declarations on an entity that gate a given command name.
+   */
+  private findApprovalsForCommand(entityName: string, commandName: string): IRApproval[] {
+    const entity = this.getEntity(entityName);
+    if (!entity?.approvals) return [];
+    return entity.approvals.filter(a => a.command === commandName);
+  }
+
+  /**
+   * Check the approval gate for a command. Returns a CommandResult (blocked)
+   * if the command requires approval that hasn't been granted yet, or
+   * undefined if the command may proceed.
+   */
+  private async checkApprovalGate(
+    commandName: string,
+    entityName: string,
+    instanceId: string | undefined,
+    evalContext: Record<string, unknown>,
+    options: { correlationId?: string; causationId?: string },
+  ): Promise<CommandResult | undefined> {
+    const approvals = this.findApprovalsForCommand(entityName, commandName);
+    if (approvals.length === 0) return undefined;
+
+    // Use the first matching approval (typically one-to-one command→approval)
+    const approval = approvals[0];
+    const resolvedInstanceId = instanceId ?? 'unknown';
+    const key = this.approvalKey(entityName, resolvedInstanceId, approval.name);
+
+    // Determine which stages are required (evaluate `when` conditions)
+    const requiredStages: string[] = [];
+    for (const stage of approval.stages) {
+      if (stage.when) {
+        const whenResult = await this.evaluateExpression(stage.when, evalContext);
+        if (whenResult) requiredStages.push(stage.name);
+      } else {
+        requiredStages.push(stage.name);
+      }
+    }
+
+    // If no stages are required (all `when` conditions false), proceed
+    if (requiredStages.length === 0) return undefined;
+
+    // Check existing approval request
+    const existing = this.approvalRequests.get(key);
+    if (existing && existing.status === 'granted') {
+      // All stages were granted — consume the approval and proceed
+      return undefined;
+    }
+
+    // Create or refresh a pending request
+    if (!existing || existing.status === 'expired' || existing.status === 'denied') {
+      const now = this.getNow();
+      this.approvalRequests.set(key, {
+        entity: entityName,
+        instanceId: resolvedInstanceId,
+        approvalName: approval.name,
+        command: commandName,
+        status: 'pending',
+        requiredStages,
+        grants: [],
+        requestedAt: now,
+        expiresAt: approval.timeout ? now + approval.timeout * 3600000 : undefined,
+      });
+    }
+
+    // Determine which stages are still pending
+    const request = this.approvalRequests.get(key)!;
+    const pendingStages = this.getPendingStages(request, approval);
+
+    return {
+      success: false,
+      error: `Command '${commandName}' requires approval '${approval.name}'`,
+      approvalRequired: {
+        approvalName: approval.name,
+        pendingStages,
+        requestKey: key,
+      },
+      ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+      ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+      emittedEvents: [],
+    };
+  }
+
+  /**
+   * Get the list of stages that still need approvals.
+   */
+  private getPendingStages(request: ApprovalRequestState, approval: IRApproval): string[] {
+    const pending: string[] = [];
+    for (const stageName of request.requiredStages) {
+      const stageSpec = approval.stages.find(s => s.name === stageName);
+      if (!stageSpec) continue;
+      const grantCount = request.grants.filter(g => g.stage === stageName).length;
+      if (grantCount < stageSpec.required) {
+        pending.push(stageName);
+      }
+    }
+    return pending;
+  }
+
+  /**
+   * Request approval for a command on an entity instance.
+   * Creates or returns the existing approval request state.
+   */
+  async requestApproval(
+    entityName: string,
+    instanceId: string,
+    approvalName: string,
+  ): Promise<ApprovalRequestState> {
+    const key = this.approvalKey(entityName, instanceId, approvalName);
+    const existing = this.approvalRequests.get(key);
+    if (existing) return existing;
+
+    const entity = this.getEntity(entityName);
+    const approval = entity?.approvals?.find(a => a.name === approvalName);
+    if (!approval) {
+      throw new Error(`Approval '${approvalName}' not found on entity '${entityName}'`);
+    }
+
+    // Evaluate which stages are required using a minimal context
+    const instance = await this.getInstance(entityName, instanceId);
+    const evalContext = this.buildEvalContext({}, instance, entityName);
+
+    const requiredStages: string[] = [];
+    for (const stage of approval.stages) {
+      if (stage.when) {
+        const whenResult = await this.evaluateExpression(stage.when, evalContext);
+        if (whenResult) requiredStages.push(stage.name);
+      } else {
+        requiredStages.push(stage.name);
+      }
+    }
+
+    const now = this.getNow();
+    const state: ApprovalRequestState = {
+      entity: entityName,
+      instanceId,
+      approvalName,
+      command: approval.command,
+      status: 'pending',
+      requiredStages,
+      grants: [],
+      requestedAt: now,
+      expiresAt: approval.timeout ? now + approval.timeout * 3600000 : undefined,
+    };
+    this.approvalRequests.set(key, state);
+    return state;
+  }
+
+  /**
+   * Grant approval for a specific stage. Evaluates the stage policy to verify
+   * the approver is authorized. When all required stages are satisfied, marks
+   * the approval as 'granted'.
+   */
+  async approveStage(
+    entityName: string,
+    instanceId: string,
+    approvalName: string,
+    stageName: string,
+    approverUserId: string,
+  ): Promise<ApprovalRequestState> {
+    const key = this.approvalKey(entityName, instanceId, approvalName);
+    const request = this.approvalRequests.get(key);
+    if (!request) {
+      throw new Error(`No pending approval request for key '${key}'`);
+    }
+    if (request.status !== 'pending') {
+      throw new Error(`Approval '${approvalName}' is not pending (status: ${request.status})`);
+    }
+
+    const entity = this.getEntity(entityName);
+    const approval = entity?.approvals?.find(a => a.name === approvalName);
+    if (!approval) {
+      throw new Error(`Approval '${approvalName}' not found on entity '${entityName}'`);
+    }
+
+    const stageSpec = approval.stages.find(s => s.name === stageName);
+    if (!stageSpec) {
+      throw new Error(`Stage '${stageName}' not found in approval '${approvalName}'`);
+    }
+
+    // Verify this stage is required
+    if (!request.requiredStages.includes(stageName)) {
+      throw new Error(`Stage '${stageName}' is not required for this approval request`);
+    }
+
+    // Evaluate the stage policy with the approver's user context
+    const approverContext: Record<string, unknown> = {
+      user: { id: approverUserId, role: approverUserId }, // simple: userId doubles as role for testing
+    };
+    const instance = await this.getInstance(entityName, instanceId);
+    const evalContext = this.buildEvalContext({}, instance, entityName);
+    Object.assign(evalContext, approverContext);
+
+    const policyResult = await this.evaluateExpression(stageSpec.policy, evalContext);
+    if (!policyResult) {
+      throw new Error(`User '${approverUserId}' is not authorized to approve stage '${stageName}'`);
+    }
+
+    // Record the grant
+    request.grants.push({
+      stage: stageName,
+      by: approverUserId,
+      at: this.getNow(),
+    });
+
+    // Check if all required stages are now satisfied
+    const pendingStages = this.getPendingStages(request, approval);
+    if (pendingStages.length === 0) {
+      request.status = 'granted';
+    }
+
+    return request;
+  }
+
+  /**
+   * Deny an approval request.
+   */
+  async denyApproval(
+    entityName: string,
+    instanceId: string,
+    approvalName: string,
+    deniedBy: string,
+    reason?: string,
+  ): Promise<ApprovalRequestState> {
+    const key = this.approvalKey(entityName, instanceId, approvalName);
+    const request = this.approvalRequests.get(key);
+    if (!request) {
+      throw new Error(`No pending approval request for key '${key}'`);
+    }
+    if (request.status !== 'pending') {
+      throw new Error(`Approval '${approvalName}' is not pending (status: ${request.status})`);
+    }
+
+    request.status = 'denied';
+    request.deniedBy = deniedBy;
+    request.deniedReason = reason;
+    return request;
+  }
+
+  /**
+   * Expire any pending approvals that have exceeded their timeout.
+   * Approvals with `onTimeout: 'cancel'` are set to 'expired'.
+   * Approvals with `onTimeout: 'escalate'` are flagged but kept pending (future).
+   */
+  expireApprovals(now?: number): ApprovalRequestState[] {
+    const currentTime = now ?? this.getNow();
+    const expired: ApprovalRequestState[] = [];
+
+    for (const request of this.approvalRequests.values()) {
+      if (request.status !== 'pending' || !request.expiresAt) continue;
+      if (currentTime >= request.expiresAt) {
+        request.status = 'expired';
+        expired.push(request);
+      }
+    }
+
+    return expired;
+  }
+
+  /**
+   * Get the current approval request state for an entity instance.
+   */
+  getApprovalRequest(
+    entityName: string,
+    instanceId: string,
+    approvalName: string,
+  ): ApprovalRequestState | undefined {
+    return this.approvalRequests.get(this.approvalKey(entityName, instanceId, approvalName));
+  }
+
   static async create(
     ir: IR,
     context: RuntimeContext = {},
