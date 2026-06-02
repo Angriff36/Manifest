@@ -101,7 +101,6 @@ function irTypeToDart(type: IRType, diagnostics: ProjectionDiagnostic[]): string
 }
 
 /** Serialize an IRValue to a Dart literal string. */
-// @ts-expect-error - kept for future use in default value serialization
 function _irValueToDartLiteral(value: IRValue): string {
   switch (value.kind) {
     case 'string': return `'${value.value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
