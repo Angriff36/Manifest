@@ -8,6 +8,8 @@ interface CompileOptions {
     glob?: string;
     diagnostics?: boolean;
     pretty?: boolean;
+    merge?: boolean;
+    entry?: string | string[];
 }
 /**
  * Compile command handler

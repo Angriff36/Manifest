@@ -89,7 +89,7 @@ async function loadSchema(schemaPath?: string): Promise<AnySchema> {
 // Compiler dynamic import (matches compile.ts pattern)
 // ---------------------------------------------------------------------------
 
-async function loadCompiler() {
+export async function loadCompiler() {
   const module = await import('@angriff36/manifest/ir-compiler');
   return {
     compileToIR: module.compileToIR,

@@ -13,6 +13,13 @@ import chalk from 'chalk';
 import ora from 'ora';
 import type { IR, IREntity, IRCommand, IRProperty, IRType } from '@angriff36/manifest/ir';
 
+// ---------- Internal types ----------
+
+/** IRCommand enriched with the parent entity name for display/generation. */
+interface CommandWithContext extends IRCommand {
+  entityName?: string;
+}
+
 // ---------- Public types ----------
 
 export type LoadTestFormat = 'k6' | 'artillery';
@@ -209,8 +216,8 @@ async function loadIR(source: string | undefined): Promise<IR> {
 
 // ---------- IR inspection ----------
 
-function pickCommands(ir: IR, filter: string[] | undefined): IRCommand[] {
-  const allCommands: IRCommand[] = [];
+function pickCommands(ir: IR, filter: string[] | undefined): CommandWithContext[] {
+  const allCommands: CommandWithContext[] = [];
 
   // Build a map of command name -> full command object (from top-level ir.commands)
   const cmdByName = new Map<string, IRCommand>();
@@ -222,7 +229,7 @@ function pickCommands(ir: IR, filter: string[] | undefined): IRCommand[] {
   const seen = new Set<string>();
   for (const entity of ir.entities) {
     for (const ref of entity.commands) {
-      // entity.commands may be string[] (name references) or IRCommand[] (embedded)
+      // entity.commands is string[] (name references)
       const cmdName = typeof ref === 'string' ? ref : (ref as IRCommand).name;
       if (!cmdName || seen.has(cmdName)) continue;
       const full = cmdByName.get(cmdName);
@@ -624,35 +631,23 @@ function pickPropertiesForCommand(
   command: IRCommand
 ): IRProperty[] {
   // Collect property names referenced by the command.
-  // The IR schema varies: some commands have `parameters` + `actions[].target`,
-  // others have `mutations[].property`. Handle both.
+  // Commands have `parameters` + `actions[].target`.
   const referencedProps = new Set<string>();
 
   // From parameters
-  const parameters = (command as Record<string, unknown>).parameters;
-  if (Array.isArray(parameters)) {
-    for (const p of parameters) {
+  if (Array.isArray(command.parameters)) {
+    for (const p of command.parameters) {
       if (p && typeof p === 'object' && 'name' in p) {
-        referencedProps.add(String((p as { name: string }).name));
+        referencedProps.add(p.name);
       }
     }
   }
 
-  // From mutations (old style: { kind: 'set', property: ... })
-  const mutations = command.mutations || [];
-  for (const m of mutations) {
-    if (m && (m as Record<string, unknown>).kind === 'set' && (m as Record<string, unknown>).property) {
-      referencedProps.add(String((m as Record<string, unknown>).property));
-    }
-  }
-
-  // From actions (new style: { kind: 'mutate', target: ... })
-  const actions = (command as Record<string, unknown>).actions;
-  if (Array.isArray(actions)) {
-    for (const a of actions) {
-      if (a && typeof a === 'object') {
-        const target = (a as Record<string, unknown>).target;
-        if (typeof target === 'string') referencedProps.add(target);
+  // From actions (e.g. { kind: 'mutate', target: 'status' })
+  if (Array.isArray(command.actions)) {
+    for (const a of command.actions) {
+      if (a && typeof a === 'object' && a.target) {
+        referencedProps.add(a.target);
       }
     }
   }
@@ -666,8 +661,9 @@ function pickPropertiesForCommand(
   return entity.properties;
 }
 
-function findEntityForCommand(ir: IR, command: IRCommand): IREntity | undefined {
-  return ir.entities.find((e) => e.name === command.entityName);
+function findEntityForCommand(ir: IR, command: CommandWithContext): IREntity | undefined {
+  const name = command.entityName ?? command.entity;
+  return ir.entities.find((e) => e.name === name);
 }
 
 // ---------- Main command ----------

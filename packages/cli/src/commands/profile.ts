@@ -9,21 +9,19 @@ import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
-import Table from 'cli-table3';
+import type { IR } from '@angriff36/manifest/ir';
+import type { RuntimeEngine } from '@angriff36/manifest/runtime-engine';
+import type {
+  CommandProfile,
+  ProfileSummary,
+  PhaseStats,
+  ExecutionPhase,
+} from '@angriff36/manifest/profiling';
 
-// Import from the main Manifest package
-async function loadRuntime() {
-  const module = await import('@angriff36/manifest/runtime-engine');
-  return {
-    RuntimeEngine: module.RuntimeEngine,
-    summarizeProfiles: module.summarizeProfiles,
-    toFlameGraph: module.toFlameGraph,
-  };
+// Dynamic imports for modules with side effects or not needed at type-check time
+async function loadProfiling() {
+  return await import('@angriff36/manifest/profiling');
 }
-
-// Type imports
-type CommandProfile = import('@angriff36/manifest/runtime-engine').CommandProfile;
-type ProfileSummary = import('@angriff36/manifest/runtime-engine').ProfileSummary;
 
 interface ProfileOptions {
   /** IR file to load */
@@ -47,7 +45,7 @@ interface ProfileOptions {
 /**
  * Load IR from file
  */
-async function loadIR(irPath: string | undefined): Promise<unknown> {
+async function loadIR(irPath: string | undefined): Promise<IR> {
   if (!irPath) {
     // Try to find the first .ir.json file
     const { glob } = await import('glob');
@@ -69,7 +67,7 @@ async function loadIR(irPath: string | undefined): Promise<unknown> {
 
   const resolved = path.resolve(process.cwd(), irPath);
   const content = await fs.readFile(resolved, 'utf-8');
-  return JSON.parse(content);
+  return JSON.parse(content) as IR;
 }
 
 /**
@@ -77,7 +75,7 @@ async function loadIR(irPath: string | undefined): Promise<unknown> {
  */
 function formatDuration(ms: number): string {
   if (ms < 1) {
-    return `${(ms * 1000).toFixed(2)}μs`;
+    return `${(ms * 1000).toFixed(2)}us`;
   }
   if (ms < 1000) {
     return `${ms.toFixed(2)}ms`;
@@ -93,84 +91,61 @@ function formatPercent(value: number): string {
 }
 
 /**
- * Print profiling summary as a table
+ * Pad a string to a given width for table formatting.
+ */
+function padRight(str: string, width: number): string {
+  return str.length >= width ? str : str + ' '.repeat(width - str.length);
+}
+
+/**
+ * Print profiling summary as a formatted table
  */
 function printSummaryTable(summary: ProfileSummary): void {
   console.log('');
-  console.log(chalk.bold('📊 Performance Profile Summary'));
+  console.log(chalk.bold('Performance Profile Summary'));
 
   // Overview table
   console.log('');
   console.log(chalk.gray('Overview'));
-  const overviewTable = new Table({
-    head: [chalk.cyan('Metric'), chalk.cyan('Value')],
-    colWidths: [25, 20],
-  });
-
-  overviewTable.push(
-    ['Total Commands', summary.totalCommands.toString()],
-    ['Total Duration', formatDuration(summary.totalDuration)],
-    ['Average Duration', formatDuration(summary.averageDuration)],
-    ['Slowest Command',
-      chalk.yellow(`${summary.slowestCommand.entityName ? `${summary.slowestCommand.entityName}.` : ''}${summary.slowestCommand.commandName}`)
-    ],
-    ['Slowest Time', chalk.red(formatDuration(summary.slowestCommand.duration))],
-    ['Fastest Command',
-      chalk.green(`${summary.fastestCommand.entityName ? `${summary.fastestCommand.entityName}.` : ''}${summary.fastestCommand.commandName}`)
-    ],
-    ['Fastest Time', chalk.green(formatDuration(summary.fastestCommand.duration))],
-  );
-
-  console.log(overviewTable.toString());
+  console.log(`  ${padRight('Metric', 25)} ${padRight('Value', 20)}`);
+  console.log(`  ${'-'.repeat(25)} ${'-'.repeat(20)}`);
+  console.log(`  ${padRight('Total Commands', 25)} ${summary.totalCommands}`);
+  console.log(`  ${padRight('Total Duration', 25)} ${formatDuration(summary.totalDuration)}`);
+  console.log(`  ${padRight('Average Duration', 25)} ${formatDuration(summary.averageDuration)}`);
+  console.log(`  ${padRight('Slowest Command', 25)} ${chalk.yellow(`${summary.slowestCommand.entityName ? `${summary.slowestCommand.entityName}.` : ''}${summary.slowestCommand.commandName}`)}`);
+  console.log(`  ${padRight('Slowest Time', 25)} ${chalk.red(formatDuration(summary.slowestCommand.duration))}`);
+  console.log(`  ${padRight('Fastest Command', 25)} ${chalk.green(`${summary.fastestCommand.entityName ? `${summary.fastestCommand.entityName}.` : ''}${summary.fastestCommand.commandName}`)}`);
+  console.log(`  ${padRight('Fastest Time', 25)} ${chalk.green(formatDuration(summary.fastestCommand.duration))}`);
 
   // Phase breakdown table
   if (summary.phaseStats.size > 0) {
     console.log('');
     console.log(chalk.gray('Phase Breakdown'));
-    const phaseTable = new Table({
-      head: [chalk.cyan('Phase'), chalk.cyan('Total'), chalk.cyan('Avg'), chalk.cyan('Max'), chalk.cyan('%')],
-      colWidths: [20, 12, 12, 12, 10],
-    });
+    const colWidths = [20, 12, 12, 12, 10];
+    console.log(`  ${padRight('Phase', colWidths[0])} ${padRight('Total', colWidths[1])} ${padRight('Avg', colWidths[2])} ${padRight('Max', colWidths[3])} ${padRight('%', colWidths[4])}`);
+    console.log(`  ${'-'.repeat(colWidths[0])} ${'-'.repeat(colWidths[1])} ${'-'.repeat(colWidths[2])} ${'-'.repeat(colWidths[3])} ${'-'.repeat(colWidths[4])}`);
 
     // Sort phases by total duration (slowest first)
-    const sortedPhases = Array.from(summary.phaseStats.entries())
+    const sortedPhases = Array.from(summary.phaseStats.entries() as IterableIterator<[ExecutionPhase, PhaseStats]>)
       .sort(([, a], [, b]) => b.totalDuration - a.totalDuration);
 
     for (const [phase, stats] of sortedPhases) {
-      const phaseColor = stats.totalDuration > 10 ? 'yellow' : 'white';
-      phaseTable.push(
-        [
-          { content: phase, color: phaseColor as 'white' | 'yellow' },
-          formatDuration(stats.totalDuration),
-          formatDuration(stats.averageDuration),
-          formatDuration(stats.maxDuration),
-          formatPercent(stats.percentOfTotal),
-        ]
-      );
+      const phaseStr = phase.length > colWidths[0] - 2 ? phase.slice(0, colWidths[0] - 2) + '..' : phase;
+      const colorFn = stats.totalDuration > 10 ? chalk.yellow : chalk.white;
+      console.log(`  ${colorFn(padRight(phaseStr, colWidths[0]))} ${padRight(formatDuration(stats.totalDuration), colWidths[1])} ${padRight(formatDuration(stats.averageDuration), colWidths[2])} ${padRight(formatDuration(stats.maxDuration), colWidths[3])} ${padRight(formatPercent(stats.percentOfTotal), colWidths[4])}`);
     }
-
-    console.log(phaseTable.toString());
   }
 
   // Slowest commands table
   if (summary.slowestCommands.length > 0) {
     console.log('');
     console.log(chalk.gray('Slowest Commands'));
-    const slowestTable = new Table({
-      head: [chalk.cyan('Command'), chalk.cyan('Duration')],
-      colWidths: [40, 15],
-    });
+    console.log(`  ${padRight('Command', 40)} ${padRight('Duration', 15)}`);
+    console.log(`  ${'-'.repeat(40)} ${'-'.repeat(15)}`);
 
     for (const cmd of summary.slowestCommands) {
-      slowestTable.push(
-        [
-          `${cmd.entityName ? `${cmd.entityName}.` : ''}${cmd.commandName}`,
-          chalk.yellow(formatDuration(cmd.duration)),
-        ]
-      );
+      console.log(`  ${padRight(`${cmd.entityName ? `${cmd.entityName}.` : ''}${cmd.commandName}`, 40)} ${chalk.yellow(formatDuration(cmd.duration))}`);
     }
-
-    console.log(slowestTable.toString());
   }
 }
 
@@ -178,13 +153,13 @@ function printSummaryTable(summary: ProfileSummary): void {
  * Export profiling data as JSON
  */
 async function exportProfileData(
-  profiles: Awaited<ReturnType<typeof import('@angriff36/manifest/runtime-engine').getProfiles>>,
+  profiles: CommandProfile[],
   exportPath: string
 ): Promise<void> {
   const resolved = path.resolve(process.cwd(), exportPath);
   await fs.mkdir(path.dirname(resolved), { recursive: true });
   await fs.writeFile(resolved, JSON.stringify(profiles, null, 2), 'utf-8');
-  console.log(chalk.green(`\n✓ Profile data exported to: ${resolved}`));
+  console.log(chalk.green(`\nProfile data exported to: ${resolved}`));
 }
 
 /**
@@ -198,11 +173,14 @@ export async function profileCommand(options: ProfileOptions = {}): Promise<void
     const ir = await loadIR(options.ir);
     spinner.succeed(`Loaded IR`);
 
+    // Load profiling functions
+    const { summarizeProfiles, toFlameGraph } = await loadProfiling();
+
     // Initialize runtime with profiling
     spinner.start('Initializing runtime');
-    const { RuntimeEngine, summarizeProfiles, toFlameGraph } = await loadRuntime();
+    const { RuntimeEngine } = await import('@angriff36/manifest/runtime-engine');
 
-    const runtime = new RuntimeEngine(ir as import('@angriff36/manifest').IR, {}, {
+    const runtime = new RuntimeEngine(ir, {}, {
       profiling: {
         enabled: true,
         detailed: options.detailed ?? false,

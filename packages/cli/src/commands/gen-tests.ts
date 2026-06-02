@@ -293,9 +293,9 @@ async function validateAndCompileFixture(
   try {
     const result = await compileToIR(source, { sourcePath: '<generated>' });
 
-    if (result.diagnostics && result.diagnostics.some(d => d.severity === 'error')) {
-      const errors = result.diagnostics.filter(d => d.severity === 'error');
-      throw new Error(`Compilation failed: ${errors.map(e => e.message).join(', ')}`);
+    if (result.diagnostics && result.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
+      const errors = result.diagnostics.filter((d: { severity: string }) => d.severity === 'error');
+      throw new Error(`Compilation failed: ${errors.map((e: { message: string }) => e.message).join(', ')}`);
     }
 
     return {

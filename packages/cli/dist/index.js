@@ -33,6 +33,8 @@ import { integrationCheckCommand } from './commands/integration-check.js';
 import { configValidateCommand, configPrintDefaultsCommand, configInspectCommand, } from './commands/config.js';
 import { cacheStatusCommand, doctorCommand, duplicatesCommand, inspectEntityCommand, runtimeCheckCommand, diffSourceVsIRCommand, } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
+import { loadTestCommand } from './commands/load-test.js';
+import { mockCommand } from './commands/mock.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
 import { fmtCommand } from './commands/fmt.js';
@@ -115,6 +117,8 @@ program
     .option('-g, --glob <pattern>', 'Glob pattern for multiple files (use with output directory)')
     .option('-d, --diagnostics', 'Include diagnostics in output', false)
     .option('--pretty', 'Pretty-print JSON output', true)
+    .option('--merge', 'Merge multiple files into single IR (resolves use declarations)', false)
+    .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
     .action(async (source, options = {}) => {
     const config = (await getConfig()) ?? {};
     if (!options.output && config?.output) {
@@ -401,6 +405,30 @@ program
     await harnessCommand(manifest, options);
 });
 /**
+ * manifest mock <source>
+ *
+ * Start a local HTTP mock server that simulates API routes derived from
+ * compiled Manifest IR. Uses RuntimeEngine with in-memory stores for real
+ * command execution. Enables frontend teams to develop against a realistic
+ * API before the backend is deployed.
+ */
+program
+    .command('mock')
+    .description('Start a local mock HTTP server from IR (for frontend development)')
+    .argument('<source>', 'Source .manifest file or compiled .ir.json')
+    .option('-p, --port <number>', 'Port number', '4000')
+    .option('--host <host>', 'Bind host', '127.0.0.1')
+    .option('--cors', 'Enable CORS headers', false)
+    .option('--scenario <mode>', 'Hint mode: default|guard-fail|constraint-fail', 'default')
+    .action(async (source, options = {}) => {
+    await mockCommand(source, {
+        port: options.port,
+        host: options.host,
+        cors: options.cors,
+        scenario: options.scenario,
+    });
+});
+/**
  * manifest routes
  *
  * Compile all .manifest files and output the canonical route manifest.
@@ -579,6 +607,43 @@ program
             process.exitCode = 1;
         }
     }
+});
+/**
+ * manifest load-test [source]
+ *
+ * Generate k6 or Artillery load test scripts from IR entities and commands.
+ * Produces self-contained scripts with realistic data generation (faker.js
+ * patterns), configurable ramp-up profiles, SLO thresholds, and optional
+ * integration with the Manifest performance profiler.
+ */
+program
+    .command('load-test')
+    .description('Generate k6 or Artillery load test scripts from IR')
+    .argument('[source]', 'Source .manifest file, .ir.json file, or directory')
+    .option('-o, --output <path>', 'Output directory for generated scripts', 'load-tests')
+    .option('-f, --format <format>', 'Script format: k6 | artillery (default: k6)', 'k6')
+    .option('--base-url <url>', 'Base URL for the API under test', 'http://localhost:3000')
+    .option('--ramp-up <stages>', 'Ramp-up profile: "duration:target,duration:target" (e.g. "10s:5,30s:20,1m:50")', '10s:5,30s:20,1m:50')
+    .option('--slo <thresholds>', 'SLO thresholds: "metric:op:value" (e.g. "p95:<:500ms,error_rate:<=:0.01")')
+    .option('--command <name...>', 'Only generate for the named command(s)')
+    .option('--entity <name...>', 'Only include the named entity/entities')
+    .option('--profile', 'Emit per-request profiling timestamps for profiler correlation', false)
+    .option('--timeout <ms>', 'Request timeout in milliseconds', (v) => parseInt(v, 10), 30000)
+    .option('--json', 'Emit structured JSON to stdout instead of writing files', false)
+    .action(async (source, options = {}) => {
+    await loadTestCommand({
+        source,
+        output: options.output,
+        format: options.format,
+        baseUrl: options.baseUrl,
+        rampUp: options.rampUp,
+        slo: options.slo,
+        command: options.command,
+        entity: options.entity,
+        profile: options.profile,
+        timeout: options.timeout,
+        json: options.json,
+    });
 });
 emitProgram
     .command('registries')
