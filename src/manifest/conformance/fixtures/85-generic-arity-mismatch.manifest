@@ -1,0 +1,15 @@
+// Error: instantiation provides wrong number of type arguments
+
+entity Item {
+  property id: string = ""
+}
+
+entity Paginated<T, U> {
+  property first: T = ""
+  property second: U = ""
+}
+
+// Error: Paginated expects 2 type args, only 1 provided
+entity Bad = Paginated<Item> {
+  property extra: string = ""
+}

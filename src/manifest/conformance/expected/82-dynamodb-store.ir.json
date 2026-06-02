@@ -1,0 +1,137 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "a12c21a52828182becbd5bf7fb24a3097e0bd3602adb2c62081ffc70883214f2",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Product",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "price",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "updatePrice"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Product",
+      "target": "dynamodb",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ProductUpdated",
+      "channel": "product.updated",
+      "payload": [
+        {
+          "name": "productId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "price",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "updatePrice",
+      "entity": "Product",
+      "parameters": [
+        {
+          "name": "newPrice",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">=",
+          "left": {
+            "kind": "identifier",
+            "name": "newPrice"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "price",
+          "expression": {
+            "kind": "identifier",
+            "name": "newPrice"
+          }
+        }
+      ],
+      "emits": [
+        "ProductUpdated"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

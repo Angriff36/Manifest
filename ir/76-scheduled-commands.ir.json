@@ -1,0 +1,170 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "4144bace20f113c616da67b6745f92b69796daf7bc6576d8fee8776a80705c4f",
+    "irHash": "c8860d8b49de38e286bf564106275f91849ece8ecb52e3eae1410346bbbfa825",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2026-06-02T10:47:54.216Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "archivedAt",
+          "type": {
+            "name": "number",
+            "nullable": true
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "archive"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [],
+  "events": [],
+  "commands": [
+    {
+      "name": "backupData",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "lastBackupAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "cleanupOldData",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "cleanedAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "generateReport",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "reportGenerated",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "sendDigest",
+      "parameters": [
+        {
+          "name": "date",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "sentAt",
+          "expression": {
+            "kind": "identifier",
+            "name": "date"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "archive",
+      "entity": "Order",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "archived"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "archivedAt",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

@@ -1,0 +1,17 @@
+// @manifest/stdlib: AuditAction
+// Canonical action verbs for audit log entries.
+// Import via: use "./path/to/@manifest/stdlib/manifest/enums/audit-action.manifest"
+
+enum AuditAction {
+  create = "Create"
+  update = "Update"
+  remove = "Delete"
+  archive = "Archive"
+  restore = "Restore"
+  publishItem = "Publish"
+  unpublish = "Unpublish"
+  approve = "Approve"
+  reject = "Reject"
+  assign = "Assign"
+  unassign = "Unassign"
+}

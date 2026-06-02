@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Patient",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "ssn",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "encrypted"
+          ]
+        },
+        {
+          "name": "medicalNotes",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "encrypted",
+            "required"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "PaymentMethod",
+      "properties": [
+        {
+          "name": "label",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "cardNumber",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "encrypted"
+          ]
+        },
+        {
+          "name": "cvv",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "encrypted"
+          ]
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

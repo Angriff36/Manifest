@@ -1,0 +1,33 @@
+entity BankAccount {
+  property required id: string
+  property balance: number = 0
+  property owner: string = ""
+
+  command deposit(amount: number) {
+    guard amount > 0
+    mutate balance = balance + amount
+    emit AccountDeposited
+  }
+
+  command withdraw(amount: number) {
+    guard amount > 0
+    guard self.balance >= amount
+    mutate balance = balance - amount
+    emit AccountWithdrawn
+  }
+}
+
+store BankAccount in eventSourced {
+  snapshotInterval: 10
+  exposeEventLog: true
+}
+
+event AccountDeposited: "account.deposited" {
+  accountId: string
+  amount: number
+}
+
+event AccountWithdrawn: "account.withdrawn" {
+  accountId: string
+  amount: number
+}

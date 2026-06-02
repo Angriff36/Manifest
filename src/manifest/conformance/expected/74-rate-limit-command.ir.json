@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "2421059c91c928d23d13852b8684f05fe14d44e8b445fbc86214151e22202894",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [],
+  "enums": [],
+  "stores": [],
+  "events": [
+    {
+      "name": "NotificationSent",
+      "channel": "NotificationSent",
+      "payload": {
+        "name": "notifications",
+        "nullable": false
+      }
+    },
+    {
+      "name": "TenantActionPerformed",
+      "channel": "TenantActionPerformed",
+      "payload": {
+        "name": "actions",
+        "nullable": false
+      }
+    }
+  ],
+  "commands": [
+    {
+      "name": "sendNotification",
+      "parameters": [
+        {
+          "name": "recipient",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "context"
+            },
+            "property": "authenticated"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [],
+      "emits": [
+        "NotificationSent"
+      ],
+      "rateLimit": {
+        "maxRequests": 10,
+        "windowMs": 1000,
+        "scope": "user",
+        "burstAllowance": 5
+      }
+    },
+    {
+      "name": "globalAction",
+      "parameters": [
+        {
+          "name": "data",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "persist",
+          "expression": {
+            "kind": "identifier",
+            "name": "globalActionLog"
+          }
+        }
+      ],
+      "emits": [],
+      "rateLimit": {
+        "maxRequests": 100,
+        "windowMs": 60000,
+        "scope": "global"
+      }
+    },
+    {
+      "name": "tenantAction",
+      "parameters": [
+        {
+          "name": "data",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [],
+      "emits": [
+        "TenantActionPerformed"
+      ],
+      "rateLimit": {
+        "maxRequests": 50,
+        "windowMs": 10000,
+        "scope": "tenant"
+      }
+    }
+  ],
+  "policies": [],
+  "reactions": [],
+  "schedules": []
+}

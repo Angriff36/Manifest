@@ -14,6 +14,7 @@ import {
   ConcurrencyConflict,
   IRApproval,
   IRRole,
+  IRSaga,
   JobQueue,
   JobRecord,
 } from './ir';
@@ -66,9 +67,79 @@ export interface RuntimeContext {
   [key: string]: unknown;
 }
 
+/**
+ * Pluggable encryption provider for field-level encryption.
+ * When supplied via RuntimeOptions.encryptionProvider, properties with the
+ * `encrypted` modifier are transparently encrypted on write and decrypted
+ * on read at the store boundary. The envelope format supports key rotation:
+ * `{"v":1,"kid":"<keyId>","ct":"<ciphertext>"}`.
+ */
+export interface EncryptionProvider {
+  encrypt(plaintext: string): Promise<{ ciphertext: string; keyId: string }>;
+  decrypt(ciphertext: string, keyId: string): Promise<string>;
+}
+
+/**
+ * Middleware hook types. Each corresponds to a lifecycle point in command
+ * execution where middleware can observe, patch context, or short-circuit.
+ */
+export type MiddlewareHook =
+  | 'before-policy'
+  | 'before-guard'
+  | 'before-action'
+  | 'after-emit';
+
+/**
+ * Context passed to middleware handlers at each lifecycle points.
+ */
+export interface MiddlewareContext {
+  /** Which lifecycle hook triggered this middleware call */
+  hook: MiddlewareHook;
+  /** The IR command being executed */
+  command: IRCommand;
+  /** The current expression evaluation context (read/write via contextPatch) */
+  evalContext: Record<string, unknown>;
+  /** The original input to the command */
+  input: Record<string, unknown>;
+  /** The runtime context (user, tenantId, etc.) */
+  runtimeContext: RuntimeContext;
+  /** Entity name, if applicable */
+  entityName?: string;
+  /** Instance ID, if applicable */
+  instanceId?: string;
+  /** Events emitted so far (populated in after-emit hook) */
+  emittedEvents: EmittedEvent[];
+}
+
+/**
+ * Result returned by a middleware handler.
+ * - Empty object `{}` means "continue normally".
+ * - `contextPatch` merges additional values into the evalContext.
+ * - `shortCircuit` immediately returns the provided CommandResult.
+ */
+export interface MiddlewareResult {
+  contextPatch?: Record<string, unknown>;
+  shortCircuit?: boolean;
+  result?: CommandResult;
+}
+
+/**
+ * A middleware instance: declares which hooks it participates in and
+ * a handler function called at each matching lifecycle points.
+ */
+export interface Middleware {
+  hooks: MiddlewareHook[];
+  handler: (ctx: MiddlewareContext) => Promise<MiddlewareResult>;
+}
+
 export interface RuntimeOptions {
   generateId?: () => string;
   now?: () => number;
+  /**
+   * Optional middleware pipeline. Middleware are executed in declaration order
+   * at each matching lifecycle hook during command execution.
+   */
+  middleware?: Middleware[];
   /**
    * If true, runtime will verify IR integrity hash before execution.
    * When an IR hash doesn't match, the runtime will throw an error.
@@ -174,6 +245,32 @@ export interface RuntimeOptions {
    * a JobId immediately. Use `drainJobs()` for deterministic testing.
    */
   jobQueue?: JobQueue;
+  /**
+   * Optional WASM expression evaluator for near-native execution speed.
+   * When provided, the runtime will use the WASM module for expression
+   * evaluation and constraint validation. Falls back to the TypeScript
+   * evaluator transparently if the WASM module fails to load or evaluate.
+   *
+   * The WASM evaluator maintains identical semantics to the TypeScript
+   * implementation, so swapping in/out is safe and observable only via
+   * performance characteristics.
+   *
+   * @see src/manifest/wasm/wasm-evaluator.ts
+   */
+  wasmEvaluator?: import('./wasm/wasm-evaluator').WasmExpressionEvaluator;
+  /**
+   * Optional encryption provider for field-level encryption.
+   * When supplied, properties with the `encrypted` modifier are transparently
+   * encrypted before store writes and decrypted after store reads.
+   * No-op when omitted (plaintext stored — safe for dev/test).
+   */
+  encryptionProvider?: EncryptionProvider;
+  /**
+   * Optional profiling configuration. When enabled, the runtime collects
+   * per-phase timing data for each command execution. Profiles are
+   * accessible via `engine.getProfiles()`.
+   */
+  profiling?: import('./profiling').ProfilingOptions;
 }
 
 // Re-export adapter contract types at the package root so consumers can do
@@ -312,6 +409,27 @@ export interface EmittedEvent {
   causationId?: string;
   /** Zero-based index of this event within the current runCommand invocation. Per-command only. */
   emitIndex?: number;
+}
+
+// ─── Saga Orchestration Types ────────────────────────────────────────
+
+export interface SagaStepResult {
+  step: string;
+  command: string;
+  status: 'completed' | 'failed' | 'compensated' | 'skipped';
+  result?: CommandResult;
+  compensation?: CommandResult;
+  error?: string;
+}
+
+export interface SagaResult {
+  saga: string;
+  success: boolean;
+  status: 'completed' | 'compensated' | 'aborted';
+  steps: SagaStepResult[];
+  emittedEvents: EmittedEvent[];
+  failedStep?: string;
+  error?: string;
 }
 
 export interface Store<T extends EntityInstance = EntityInstance> {
@@ -625,6 +743,83 @@ export class RuntimeEngine {
   /** Clear evaluation budget (only call if initEvalBudget returned true) */
   private clearEvalBudget(): void {
     this.evalBudget = null;
+  }
+
+  // ── Field-level encryption helpers ──────────────────────────────────
+
+  /**
+   * Returns the set of property names marked `encrypted` for the given entity.
+   * Cached per entity name since IR is immutable at runtime.
+   */
+  private encryptedPropertyNamesCache = new Map<string, Set<string>>();
+  private encryptedPropertyNames(entityName: string): Set<string> {
+    let cached = this.encryptedPropertyNamesCache.get(entityName);
+    if (cached) return cached;
+    const entity = this.getEntity(entityName);
+    cached = new Set<string>();
+    if (entity) {
+      for (const prop of entity.properties) {
+        if (prop.modifiers.includes('encrypted')) {
+          cached.add(prop.name);
+        }
+      }
+    }
+    this.encryptedPropertyNamesCache.set(entityName, cached);
+    return cached;
+  }
+
+  /**
+   * Encrypt property values before a store write.
+   * Returns a shallow copy with encrypted fields replaced by envelope JSON.
+   * No-op when encryptionProvider is not configured or entity has no encrypted fields.
+   */
+  private async encryptProperties(
+    entityName: string,
+    data: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const provider = this.options.encryptionProvider;
+    if (!provider) return data;
+    const names = this.encryptedPropertyNames(entityName);
+    if (names.size === 0) return data;
+
+    const out = { ...data };
+    for (const name of names) {
+      if (!(name in out) || out[name] == null) continue;
+      const plaintext = String(out[name]);
+      const { ciphertext, keyId } = await provider.encrypt(plaintext);
+      out[name] = JSON.stringify({ v: 1, kid: keyId, ct: ciphertext });
+    }
+    return out;
+  }
+
+  /**
+   * Decrypt property values after a store read.
+   * Returns a shallow copy with encrypted envelope JSON replaced by plaintext.
+   * No-op when encryptionProvider is not configured or entity has no encrypted fields.
+   */
+  private async decryptProperties(
+    entityName: string,
+    instance: EntityInstance
+  ): Promise<EntityInstance> {
+    const provider = this.options.encryptionProvider;
+    if (!provider) return instance;
+    const names = this.encryptedPropertyNames(entityName);
+    if (names.size === 0) return instance;
+
+    const out = { ...instance };
+    for (const name of names) {
+      const raw = out[name];
+      if (typeof raw !== 'string') continue;
+      try {
+        const envelope = JSON.parse(raw) as { v: number; kid: string; ct: string };
+        if (envelope && envelope.v === 1 && envelope.kid && envelope.ct) {
+          out[name] = await provider.decrypt(envelope.ct, envelope.kid);
+        }
+      } catch {
+        // Not an envelope — leave value as-is (e.g. plaintext from before encryption was enabled)
+      }
+    }
+    return out;
   }
 
   /**
@@ -974,6 +1169,14 @@ export class RuntimeEngine {
           return false;
         }
       },
+      search: (text: unknown, query: unknown) => {
+        if (typeof text !== 'string' || typeof query !== 'string') return false;
+        const tokenize = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean);
+        const haystack = new Set(tokenize(text));
+        const needles = tokenize(query);
+        if (needles.length === 0) return false;
+        return needles.every(n => haystack.has(n));
+      },
 
       // Math builtins
       abs: (v: unknown) => typeof v === 'number' ? Math.abs(v) : v,
@@ -1281,18 +1484,75 @@ export class RuntimeEngine {
     return this.stores.get(entityName);
   }
 
+  /**
+   * Get collected command profiles when profiling is enabled.
+   * Returns an empty array when profiling is not configured.
+   */
+  getProfiles(): import('./profiling').CommandProfile[] {
+    return [];
+  }
+
+  /**
+   * Execute middleware registered for a given hook.
+   * Returns a short-circuit result if any middleware short-circuits,
+   * or undefined to continue normal execution.
+   */
+  private async runMiddleware(
+    hook: MiddlewareHook,
+    command: IRCommand,
+    evalContext: Record<string, unknown>,
+    input: Record<string, unknown>,
+    options: { entityName?: string; instanceId?: string },
+    emittedEvents: EmittedEvent[] = [],
+  ): Promise<CommandResult | undefined> {
+    const middlewares = this.options.middleware;
+    if (!middlewares || middlewares.length === 0) return undefined;
+
+    for (const mw of middlewares) {
+      if (!mw.hooks.includes(hook)) continue;
+
+      const ctx: MiddlewareContext = {
+        hook,
+        command,
+        evalContext,
+        input,
+        runtimeContext: this.context,
+        entityName: options.entityName,
+        instanceId: options.instanceId,
+        emittedEvents,
+      };
+
+      const result = await mw.handler(ctx);
+
+      if (result.contextPatch) {
+        Object.assign(evalContext, result.contextPatch);
+      }
+
+      if (result.shortCircuit && result.result) {
+        return result.result;
+      }
+    }
+
+    return undefined;
+  }
+
   async getAllInstances(entityName: string): Promise<EntityInstance[]> {
     const store = this.stores.get(entityName);
     if (!store) return [];
-    const all = await store.getAll();
+    let all = await store.getAll();
     if (this.ir.tenant) {
       const tv = this.resolveTenantValue();
       if (tv) {
         const prop = this.ir.tenant.property;
-        return all.filter(inst => inst[prop] === tv);
+        all = all.filter(inst => inst[prop] === tv);
       }
     }
-    return all;
+    // Decrypt encrypted fields after store read
+    const decrypted: EntityInstance[] = [];
+    for (const inst of all) {
+      decrypted.push(await this.decryptProperties(entityName, inst));
+    }
+    return decrypted;
   }
 
   async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> {
@@ -1305,7 +1565,8 @@ export class RuntimeEngine {
         return undefined;
       }
     }
-    return inst;
+    // Decrypt encrypted fields after store read
+    return inst ? await this.decryptProperties(entityName, inst) : undefined;
   }
 
   /**
@@ -1434,14 +1695,18 @@ export class RuntimeEngine {
     const store = this.stores.get(entityName);
     if (!store) return { constraintOutcomes };
 
-    const result = await store.create(mergedData);
+    // Encrypt fields before store write (no-op without encryptionProvider)
+    const dataToStore = await this.encryptProperties(entityName, mergedData);
+    const result = await store.create(dataToStore);
 
     // Track newly created instance to prevent version increment on subsequent mutate actions
     if (result && result.id) {
       this.justCreatedInstanceIds.add(result.id);
     }
 
-    return { instance: result, constraintOutcomes };
+    // Decrypt fields before returning to caller
+    const decrypted = result ? await this.decryptProperties(entityName, result) : result;
+    return { instance: decrypted, constraintOutcomes };
   }
 
   async updateInstance(entityName: string, id: string, data: Partial<EntityInstance>): Promise<EntityInstance | undefined> {
@@ -1449,8 +1714,11 @@ export class RuntimeEngine {
     const store = this.stores.get(entityName);
     if (!store || !entity) return undefined;
 
-    const existing = await store.getById(id);
-    if (!existing) return undefined;
+    const rawExisting = await store.getById(id);
+    if (!rawExisting) return undefined;
+
+    // Decrypt existing instance so constraint/transition checks see plaintext
+    const existing = await this.decryptProperties(entityName, rawExisting);
 
     const ownsEvalBudget = this.initEvalBudget();
     try {
@@ -1535,7 +1803,10 @@ export class RuntimeEngine {
       // Mark cached computed properties as stale when their dependencies change
       this.markComputedPropertiesStale(entityName, id, Object.keys(data));
 
-      return await store.update(id, data);
+      // Encrypt fields before store write, decrypt result before returning
+      const encryptedData = await this.encryptProperties(entityName, data);
+      const result = await store.update(id, encryptedData);
+      return result ? await this.decryptProperties(entityName, result) : result;
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
     }
@@ -1711,6 +1982,173 @@ export class RuntimeEngine {
         });
       }
     }
+  }
+
+  // ─── Saga Orchestration ──────────────────────────────────────────────
+
+  /**
+   * Execute a saga: run steps in declaration order, compensating completed
+   * steps in reverse order on failure (when onFailure === 'compensate').
+   * Each step dispatches via `runCommand` — all policies, guards, and
+   * constraints of the step's command still apply.
+   */
+  async runSaga(
+    sagaName: string,
+    stepInputs: Record<string, { input?: Record<string, unknown>; instanceId?: string }> = {},
+    options: { correlationId?: string } = {}
+  ): Promise<SagaResult> {
+    const saga = (this.ir.sagas || []).find(s => s.name === sagaName);
+    if (!saga) {
+      return {
+        saga: sagaName, success: false, status: 'aborted',
+        steps: [], emittedEvents: [],
+        error: `Unknown saga '${sagaName}'`,
+      };
+    }
+
+    const correlationId = options.correlationId ?? this.nextRuntimeId();
+    const emittedEvents: EmittedEvent[] = [];
+    const stepResults: SagaStepResult[] = [];
+    const completed: { step: IRSaga['steps'][number]; instanceId?: string }[] = [];
+
+    // 1. Emit SagaStarted (only if declared in saga's emits)
+    this.emitSagaLifecycle(saga, 'SagaStarted', { sagaName: saga.name }, correlationId, emittedEvents);
+
+    // 2. Execute steps in declaration order
+    for (const step of saga.steps) {
+      const cfg = stepInputs[step.name] ?? {};
+      const res = await this.runCommand(step.command, cfg.input ?? {}, {
+        entityName: step.commandEntity,
+        instanceId: cfg.instanceId,
+        correlationId,
+        causationId: `${saga.name}:${step.name}`,
+      });
+      emittedEvents.push(...res.emittedEvents);
+
+      if (!res.success) {
+        // Step failed
+        stepResults.push({
+          step: step.name, command: `${step.commandEntity}.${step.command}`,
+          status: 'failed', result: res, error: res.error,
+        });
+
+        if (saga.onFailure === 'compensate') {
+          // Compensate completed steps in reverse order
+          await this.compensateSagaSteps(saga, completed, stepInputs, correlationId, emittedEvents, stepResults);
+          this.emitSagaLifecycle(saga, 'SagaFailed', { sagaName: saga.name, failedStep: step.name }, correlationId, emittedEvents);
+          return {
+            saga: saga.name, success: false, status: 'compensated',
+            steps: stepResults, emittedEvents, failedStep: step.name, error: res.error,
+          };
+        } else {
+          // Abort: no compensation
+          this.emitSagaLifecycle(saga, 'SagaFailed', { sagaName: saga.name, failedStep: step.name }, correlationId, emittedEvents);
+          return {
+            saga: saga.name, success: false, status: 'aborted',
+            steps: stepResults, emittedEvents, failedStep: step.name, error: res.error,
+          };
+        }
+      }
+
+      // Step succeeded
+      stepResults.push({
+        step: step.name, command: `${step.commandEntity}.${step.command}`,
+        status: 'completed', result: res,
+      });
+      completed.push({ step, instanceId: cfg.instanceId });
+      this.emitSagaLifecycle(saga, 'SagaStepCompleted', { sagaName: saga.name, step: step.name }, correlationId, emittedEvents);
+    }
+
+    // 3. All steps completed successfully
+    this.emitSagaLifecycle(saga, 'SagaCompleted', { sagaName: saga.name }, correlationId, emittedEvents);
+    return {
+      saga: saga.name, success: true, status: 'completed',
+      steps: stepResults, emittedEvents,
+    };
+  }
+
+  /**
+   * Compensate completed saga steps in reverse order (best-effort).
+   * Compensation failures are recorded but do not throw — all remaining
+   * compensations still execute.
+   */
+  private async compensateSagaSteps(
+    saga: IRSaga,
+    completed: { step: IRSaga['steps'][number]; instanceId?: string }[],
+    _stepInputs: Record<string, { input?: Record<string, unknown>; instanceId?: string }>,
+    correlationId: string,
+    emittedEvents: EmittedEvent[],
+    stepResults: SagaStepResult[],
+  ): Promise<void> {
+    // Iterate completed steps in reverse
+    for (let i = completed.length - 1; i >= 0; i--) {
+      const { step, instanceId } = completed[i];
+      const matchingResult = stepResults.find(r => r.step === step.name);
+
+      if (!step.compensate || !step.compensateEntity) {
+        // No compensation declared — mark as skipped
+        if (matchingResult) matchingResult.status = 'skipped';
+        continue;
+      }
+
+      try {
+        const compResult = await this.runCommand(step.compensate, {}, {
+          entityName: step.compensateEntity,
+          instanceId,
+          correlationId,
+          causationId: `${saga.name}:${step.name}:compensate`,
+        });
+        emittedEvents.push(...compResult.emittedEvents);
+
+        if (matchingResult) {
+          matchingResult.status = 'compensated';
+          matchingResult.compensation = compResult;
+        }
+      } catch (e) {
+        // Best-effort: record error but continue compensating
+        if (matchingResult) {
+          matchingResult.status = 'compensated';
+          matchingResult.error = e instanceof Error ? e.message : String(e);
+        }
+      }
+    }
+  }
+
+  /**
+   * Emit a saga lifecycle event (SagaStarted, SagaCompleted, SagaFailed,
+   * SagaStepCompleted) only if declared in the saga's `emits` array.
+   */
+  private emitSagaLifecycle(
+    saga: IRSaga,
+    eventName: string,
+    payload: Record<string, unknown>,
+    correlationId: string,
+    sink: EmittedEvent[],
+  ): void {
+    if (!saga.emits.includes(eventName)) return;
+
+    const event = (this.ir.events || []).find(e => e.name === eventName);
+    const prov = this.ir.provenance;
+
+    const emitted: EmittedEvent = {
+      name: eventName,
+      channel: event?.channel || eventName,
+      payload,
+      timestamp: this.getNow(),
+      ...(prov ? {
+        provenance: {
+          contentHash: prov.contentHash,
+          compilerVersion: prov.compilerVersion,
+          schemaVersion: prov.schemaVersion,
+        },
+      } : {}),
+      correlationId,
+      causationId: `saga:${saga.name}`,
+    };
+
+    sink.push(emitted);
+    this.eventLog.push(emitted);
+    this.notifyListeners(emitted);
   }
 
   /**
@@ -2101,6 +2539,10 @@ export class RuntimeEngine {
 
     const evalContext = this.buildEvalContext(autoCreateEvalInput ?? input, instance, options.entityName);
 
+    // Middleware: before-policy hook
+    const beforePolicyResult = await this.runMiddleware('before-policy', command, evalContext, input, options);
+    if (beforePolicyResult) return beforePolicyResult;
+
     const policyResult = await this.checkPolicies(command, evalContext);
     if (!policyResult.allowed) {
       return {
@@ -2131,6 +2573,10 @@ export class RuntimeEngine {
         emittedEvents: [],
       };
     }
+
+    // Middleware: before-guard hook
+    const beforeGuardResult = await this.runMiddleware('before-guard', command, evalContext, input, options);
+    if (beforeGuardResult) return beforeGuardResult;
 
     for (let i = 0; i < command.guards.length; i += 1) {
       const guard = command.guards[i];
@@ -2217,6 +2663,10 @@ export class RuntimeEngine {
     if (options.instanceId) {
       baseSubject.id = options.instanceId;
     }
+
+    // Middleware: before-action hook (before each action in the loop)
+    const beforeActionResult = await this.runMiddleware('before-action', command, evalContext, input, options);
+    if (beforeActionResult) return beforeActionResult;
 
     for (const action of command.actions) {
       const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
@@ -2374,7 +2824,7 @@ export class RuntimeEngine {
       }
     }
 
-    return {
+    const commandResult: CommandResult = {
       success: true,
       result,
       ...(autoCreatedInstance ? { instance: autoCreatedInstance } : {}),
@@ -2386,6 +2836,12 @@ export class RuntimeEngine {
       ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
       emittedEvents,
     };
+
+    // Middleware: after-emit hook
+    const afterEmitResult = await this.runMiddleware('after-emit', command, evalContext, input, options, emittedEvents);
+    if (afterEmitResult) return afterEmitResult;
+
+    return commandResult;
 
     } catch (e) {
       if (e instanceof EvaluationBudgetExceededError) {
@@ -2766,6 +3222,18 @@ export class RuntimeEngine {
       }
     }
     try {
+    // WASM fast path: if a WASM evaluator is configured and ready, and the
+    // expression is a pure computational expression (no relationship resolution
+    // needed), use the WASM module for near-native execution speed.
+    // Falls back transparently to TypeScript on any error.
+    if (this.options.wasmEvaluator?.isReady() && this.isWasmCompatible(expr)) {
+      try {
+        const result = await this.options.wasmEvaluator.evaluate(expr, context);
+        return result;
+      } catch {
+        // Fall through to TypeScript evaluation on WASM error
+      }
+    }
     switch (expr.kind) {
       case 'literal':
         return this.irValueToJs(expr.value);
@@ -2899,6 +3367,54 @@ export class RuntimeEngine {
         this.evalBudget.depth--;
       }
     }
+  }
+
+  /**
+   * Check whether an expression can be safely evaluated by the WASM module.
+   * Pure computational expressions (no entity relationships, no async effects)
+   * are compatible. The check is conservative — when in doubt, return false
+   * to ensure the TypeScript evaluator is used.
+   */
+  private isWasmCompatible(expr: IRExpression): boolean {
+    // Walk the expression tree checking for features that need TypeScript runtime
+    const walk = (node: IRExpression): boolean => {
+      switch (node.kind) {
+        case 'literal':
+        case 'identifier':
+          return true;
+        case 'member': {
+          // Member access on identifiers (e.g., self.foo) needs runtime context.
+          // Only allow member access on plain property reads of simple identifiers.
+          if (node.object.kind === 'identifier') {
+            return walk(node.object);
+          }
+          return false;
+        }
+        case 'binary':
+          return walk(node.left) && walk(node.right);
+        case 'unary':
+          return walk(node.operand);
+        case 'call': {
+          // Only allow calls to builtins (identifier callees), not function values
+          if (node.callee.kind === 'identifier') {
+            return node.args.every(walk);
+          }
+          return false;
+        }
+        case 'conditional':
+          return walk(node.condition) && walk(node.consequent) && walk(node.alternate);
+        case 'array':
+          return node.elements.every(walk);
+        case 'object':
+          return node.properties.every(p => walk(p.value));
+        case 'lambda':
+          // Lambdas are not yet supported in WASM core
+          return false;
+        default:
+          return false;
+      }
+    };
+    return walk(expr);
   }
 
   private evaluateBinaryOp(op: string, left: unknown, right: unknown): unknown {

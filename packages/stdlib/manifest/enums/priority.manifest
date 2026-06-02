@@ -1,0 +1,10 @@
+// @manifest/stdlib: Priority
+// Standard priority levels for tasks, tickets, and queueable items.
+// Import via: use "./path/to/@manifest/stdlib/manifest/enums/priority.manifest"
+
+enum Priority {
+  low = "Low"
+  medium = "Medium"
+  high = "High"
+  critical = "Critical"
+}

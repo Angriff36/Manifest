@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@angriff36/manifest/*": ["../../dist/manifest/*"],
+      "@angriff36/manifest": ["../../dist/manifest/runtime-engine.d.ts"],
+      "@angriff36/manifest/ir-compiler": ["../../dist/manifest/ir-compiler.d.ts"],
+      "@angriff36/manifest/ir": ["../../dist/manifest/ir.d.ts"],
+      "@angriff36/manifest/parser": ["../../dist/manifest/parser.d.ts"],
+      "@angriff36/manifest/lexer": ["../../dist/manifest/lexer.d.ts"],
+      "@angriff36/manifest/types": ["../../dist/manifest/types.d.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts"
+  ]
+}

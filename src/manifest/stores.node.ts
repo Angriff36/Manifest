@@ -436,3 +436,473 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
     return rest as T;
   }
 }
+
+// ─── DynamoDB Store ──────────────────────────────────────────────────
+
+/**
+ * Configuration for DynamoDBStore.
+ */
+export interface DynamoDBConfig {
+  /** DynamoDB table name. Default: 'entities' */
+  tableName?: string;
+  /** Partition key attribute name. Default: 'pk' */
+  partitionKey?: string;
+  /** Sort key attribute name. Default: 'sk' */
+  sortKey?: string;
+  /** Entity prefix for partition key. Default: entity name uppercased */
+  entityPrefix?: string;
+  /** AWS region */
+  region?: string;
+  /** Pre-initialized DynamoDB DocumentClient */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: any;
+}
+
+/**
+ * Build a DynamoDB key from an entity ID and configuration.
+ */
+export function buildDynamoDBKey(
+  id: string,
+  config: Partial<DynamoDBConfig>,
+  entityName: string
+): Record<string, string> {
+  const pkName = config.partitionKey ?? 'pk';
+  const prefix = config.entityPrefix ?? entityName.toUpperCase();
+  const key: Record<string, string> = { [pkName]: `${prefix}#${id}` };
+  if (config.sortKey) {
+    key[config.sortKey] = id;
+  }
+  return key;
+}
+
+/**
+ * DynamoDB-backed store adapter using single-table design pattern.
+ *
+ * Requires `@aws-sdk/lib-dynamodb` at runtime. Items are stored with
+ * composite keys (pk/sk) for single-table design. The client is injected
+ * via config so tests can use mocks.
+ */
+export class DynamoDBStore<T extends EntityInstance = EntityInstance> implements Store<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client: any;
+  private tableName: string;
+  private partitionKey: string;
+  private sortKey: string | undefined;
+  private entityPrefix: string;
+  private generateId: () => string;
+
+  constructor(
+    private entityName: string,
+    config: DynamoDBConfig,
+    generateId?: () => string
+  ) {
+    this.client = config.client;
+    this.tableName = config.tableName ?? 'entities';
+    this.partitionKey = config.partitionKey ?? 'pk';
+    this.sortKey = config.sortKey;
+    this.entityPrefix = config.entityPrefix ?? entityName.toUpperCase();
+    this.generateId = generateId || (() => crypto.randomUUID());
+  }
+
+  private buildKey(id: string): Record<string, string> {
+    return buildDynamoDBKey(id, {
+      partitionKey: this.partitionKey,
+      sortKey: this.sortKey,
+      entityPrefix: this.entityPrefix,
+    }, this.entityName);
+  }
+
+  private entityToItem(entity: T): Record<string, unknown> {
+    const key = this.buildKey(entity.id);
+    return { ...key, ...entity };
+  }
+
+  private itemToEntity(item: Record<string, unknown>): T {
+    const { pk, sk, ...rest } = item;
+    return rest as T;
+  }
+
+  async getAll(): Promise<T[]> {
+    const command = new this.client.ScanCommand({
+      TableName: this.tableName,
+    });
+    const result = await this.client.send(command);
+    return (result.Items ?? []).map((item: Record<string, unknown>) => this.itemToEntity(item));
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    const key = this.buildKey(id);
+    const command = new this.client.GetCommand({
+      TableName: this.tableName,
+      Key: key,
+    });
+    const result = await this.client.send(command);
+    return result.Item ? this.itemToEntity(result.Item) : undefined;
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    const id = (data.id as string) || this.generateId();
+    const entity = { ...data, id } as T;
+    const item = this.entityToItem(entity);
+
+    const command = new this.client.PutCommand({
+      TableName: this.tableName,
+      Item: item,
+      ConditionExpression: 'attribute_not_exists(#pk)',
+      ExpressionAttributeNames: { '#pk': this.partitionKey },
+    });
+    await this.client.send(command);
+    return entity;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    const existing = await this.getById(id);
+    if (!existing) return undefined;
+
+    const updated = { ...existing, ...data, id } as T;
+    const item = this.entityToItem(updated);
+
+    const command = new this.client.PutCommand({
+      TableName: this.tableName,
+      Item: item,
+    });
+    await this.client.send(command);
+    return updated;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const key = this.buildKey(id);
+    try {
+      const command = new this.client.DeleteCommand({
+        TableName: this.tableName,
+        Key: key,
+        ConditionExpression: 'attribute_exists(#pk)',
+        ExpressionAttributeNames: { '#pk': this.partitionKey },
+      });
+      await this.client.send(command);
+      return true;
+    } catch (err: unknown) {
+      const e = err as { name?: string };
+      if (e?.name === 'ConditionalCheckFailedException') return false;
+      throw err;
+    }
+  }
+
+  async clear(): Promise<void> {
+    const scanCommand = new this.client.ScanCommand({
+      TableName: this.tableName,
+    });
+    const result = await this.client.send(scanCommand);
+    const items = result.Items ?? [];
+
+    if (items.length === 0) return;
+
+    const deleteRequests = items.map((item: Record<string, unknown>) => ({
+      DeleteRequest: {
+        Key: {
+          [this.partitionKey]: item[this.partitionKey],
+          ...(this.sortKey ? { [this.sortKey]: item[this.sortKey] } : {}),
+        },
+      },
+    }));
+
+    // BatchWrite supports up to 25 items
+    for (let i = 0; i < deleteRequests.length; i += 25) {
+      const batch = deleteRequests.slice(i, i + 25);
+      const command = new this.client.BatchWriteCommand({
+        RequestItems: { [this.tableName]: batch },
+      });
+      await this.client.send(command);
+    }
+  }
+
+  async close(): Promise<void> {
+    // DynamoDB client lifecycle is managed externally
+  }
+}
+
+// ─── Redis Store ──────────────────────────────────────────────────────
+
+/**
+ * Configuration for RedisStore.
+ */
+export interface RedisConfig {
+  /** Redis connection URL */
+  url?: string;
+  /** Key prefix for all stored entities */
+  keyPrefix?: string;
+  /** Default TTL in seconds (optional) */
+  defaultTTL?: number;
+}
+
+/**
+ * Redis-backed store adapter.
+ *
+ * Requires `ioredis` at runtime. Entities are stored as JSON strings
+ * under keys like `{keyPrefix}{entityName}:{id}`.
+ */
+export class RedisStore<T extends EntityInstance = EntityInstance> implements Store<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client: any;
+  private keyPrefix: string;
+  private defaultTTL: number | undefined;
+  private generateId: () => string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private subscribers: Map<string, Array<(event: any) => void>> = new Map();
+
+  constructor(
+    entityName: string,
+    config: RedisConfig = {},
+    generateId?: () => string
+  ) {
+    this.keyPrefix = config.keyPrefix ?? `${entityName.toLowerCase()}:`;
+    this.defaultTTL = config.defaultTTL;
+    this.generateId = generateId || (() => crypto.randomUUID());
+    // ioredis is loaded lazily; for tests, the client is injected differently
+    // This constructor expects to work with or without ioredis installed
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Redis = require('ioredis');
+      this.client = new Redis(config.url || 'redis://localhost:6379');
+    } catch {
+      // ioredis not available; tests inject mocks
+    }
+  }
+
+  private entityKey(id: string): string {
+    return `${this.keyPrefix}${id}`;
+  }
+
+  async getAll(): Promise<T[]> {
+    const keys = await this.client.keys(`${this.keyPrefix}*`);
+    if (keys.length === 0) return [];
+    const values = await this.client.mget(...keys);
+    return values
+      .filter((v: string | null) => v !== null)
+      .map((v: string) => JSON.parse(v));
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    const data = await this.client.get(this.entityKey(id));
+    return data ? JSON.parse(data) : undefined;
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    const id = (data.id as string) || this.generateId();
+    const entity = { ...data, id } as T;
+    const key = this.entityKey(id);
+    await this.client.set(key, JSON.stringify(entity));
+    if (this.defaultTTL) {
+      await this.client.expire(key, this.defaultTTL);
+    }
+    return entity;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    const existing = await this.getById(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...data, id } as T;
+    await this.client.set(this.entityKey(id), JSON.stringify(updated));
+    return updated;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await this.client.del(this.entityKey(id));
+    return result > 0;
+  }
+
+  async clear(): Promise<void> {
+    const keys = await this.client.keys(`${this.keyPrefix}*`);
+    if (keys.length > 0) {
+      await this.client.del(...keys);
+    }
+  }
+
+  async close(): Promise<void> {
+    if (this.client && typeof this.client.quit === 'function') {
+      await this.client.quit();
+    }
+  }
+
+  // TTL management helpers (used in tests)
+  async getTTL(): Promise<number> {
+    const keys = await this.client.keys(`${this.keyPrefix}*`);
+    if (keys.length === 0) return -1;
+    return this.client.ttl(keys[0]);
+  }
+
+  async setTTL(ttl: number | undefined): Promise<void> {
+    const keys = await this.client.keys(`${this.keyPrefix}*`);
+    for (const key of keys) {
+      if (ttl === undefined) {
+        await this.client.persist(key);
+      } else {
+        await this.client.expire(key, ttl);
+      }
+    }
+  }
+
+  // Pub/sub helpers for event publishing
+  async publishEvent(channel: string, event: unknown): Promise<void> {
+    await this.client.publish(channel, JSON.stringify(event));
+  }
+
+  async subscribe(channel: string, callback: (event: unknown) => void): Promise<void> {
+    if (!this.subscribers.has(channel)) {
+      this.subscribers.set(channel, []);
+    }
+    this.subscribers.get(channel)!.push(callback);
+    // For a real implementation, use a dedicated subscriber connection
+  }
+}
+
+// ─── Turso (LibSQL) Store ─────────────────────────────────────────────
+
+/**
+ * Configuration for TursoStore.
+ */
+export interface TursoConfig {
+  /** Turso/LibSQL connection URL */
+  url: string;
+  /** Auth token (optional for local SQLite) */
+  authToken?: string;
+  /** Table name. Default: 'entities' */
+  tableName?: string;
+  /** Pre-initialized LibSQL client (for testing or custom setups) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client?: any;
+}
+
+/**
+ * Generate SQL DDL for the Turso/LibSQL entity table.
+ */
+export function generateTursoSchema(tableName: string = 'entities'): string {
+  return `
+    CREATE TABLE IF NOT EXISTS "${tableName}" (
+      id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
+    CREATE INDEX IF NOT EXISTS "idx_${tableName}_data" ON "${tableName}" (data);
+  `.trim();
+}
+
+/**
+ * Turso/LibSQL-backed store adapter.
+ *
+ * Requires `@libsql/client` at runtime. Entities are stored as JSON in a
+ * `data` column, similar to the PostgreSQL adapter.
+ */
+export class TursoStore<T extends EntityInstance = EntityInstance> implements Store<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client: any;
+  private tableName: string;
+  private generateId: () => string;
+  private initialized = false;
+
+  constructor(config: TursoConfig, generateId?: () => string) {
+    this.generateId = generateId || (() => crypto.randomUUID());
+    this.tableName = config.tableName || 'entities';
+    // Use injected client if provided (for testing)
+    if (config.client) {
+      this.client = config.client;
+    } else {
+      // Client is created via @libsql/client dynamically
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const libsql = require('@libsql/client');
+        this.client = libsql.createClient({
+          url: config.url,
+          authToken: config.authToken,
+        });
+      } catch {
+        // @libsql/client not available; tests use mocks via vi.mock
+      }
+    }
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+    const sql = generateTursoSchema(this.tableName);
+    // Execute each statement separately (LibSQL client doesn't support multi-statement)
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    for (const stmt of statements) {
+      await this.client.execute(stmt);
+    }
+    this.initialized = true;
+  }
+
+  async getAll(): Promise<T[]> {
+    await this.ensureInitialized();
+    const result = await this.client.execute({
+      sql: `SELECT data FROM "${this.tableName}" ORDER BY created_at`,
+    });
+    return result.rows.map((row: { data: string }) => JSON.parse(row.data));
+  }
+
+  async getById(id: string): Promise<T | undefined> {
+    await this.ensureInitialized();
+    const result = await this.client.execute({
+      sql: `SELECT data FROM "${this.tableName}" WHERE id = ?`,
+      args: [id],
+    });
+    return result.rows.length > 0 ? JSON.parse(result.rows[0].data) : undefined;
+  }
+
+  async create(data: Partial<T>): Promise<T> {
+    await this.ensureInitialized();
+    const id = (data.id as string) || this.generateId();
+    const entity = { ...data, id } as T;
+    await this.client.execute({
+      sql: `INSERT INTO "${this.tableName}" (id, data) VALUES (?, ?)
+            ON CONFLICT (id) DO UPDATE SET data = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+      args: [id, JSON.stringify(entity), JSON.stringify(entity)],
+    });
+    return entity;
+  }
+
+  async update(id: string, data: Partial<T>): Promise<T | undefined> {
+    await this.ensureInitialized();
+    const existing = await this.getById(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...data, id } as T;
+    await this.client.execute({
+      sql: `UPDATE "${this.tableName}" SET data = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
+      args: [JSON.stringify(updated), id],
+    });
+    return updated;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.client.execute({
+      sql: `DELETE FROM "${this.tableName}" WHERE id = ?`,
+      args: [id],
+    });
+    return (result.rowsAffected ?? 0) > 0;
+  }
+
+  async clear(): Promise<void> {
+    await this.ensureInitialized();
+    await this.client.execute(`DELETE FROM "${this.tableName}"`);
+  }
+
+  async transaction<R>(callback: (tx: unknown) => Promise<R>): Promise<R> {
+    const tx = await this.client.transaction();
+    try {
+      const result = await callback(tx);
+      await tx.commit();
+      return result;
+    } catch (err) {
+      await tx.rollback();
+      throw err;
+    }
+  }
+
+  async close(): Promise<void> {
+    if (this.client && typeof this.client.close === 'function') {
+      await this.client.close();
+    }
+  }
+}

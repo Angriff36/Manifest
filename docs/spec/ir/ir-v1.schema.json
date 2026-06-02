@@ -82,12 +82,26 @@
       },
       "description": "Declarative event-reaction rules. When a matching event is emitted, the runtime dispatches the target command."
     },
+    "sagas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/IRSaga"
+      },
+      "description": "Saga orchestration definitions sequencing commands with compensation."
+    },
     "roles": {
       "type": "array",
       "items": {
         "$ref": "#/definitions/IRRole"
       },
       "description": "Role hierarchy with permission inheritance. effectivePermissions is the deny-resolved flattened set."
+    },
+    "webhooks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/IRWebhook"
+      },
+      "description": "Webhook declarations mapping inbound HTTP payloads to Manifest command invocations."
     }
   },
   "definitions": {
@@ -203,12 +217,26 @@
           },
           "description": "Reaction rule names declared in this module"
         },
+        "sagas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Saga names declared in this module"
+        },
         "roles": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Role names declared in this module"
+        },
+        "webhooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Webhook names declared in this module"
         }
       }
     },
@@ -488,7 +516,9 @@
               "indexed",
               "private",
               "readonly",
-              "optional"
+              "optional",
+              "searchable",
+              "encrypted"
             ]
           }
         }
@@ -1516,6 +1546,67 @@
         }
       }
     },
+    "IRSaga": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "steps", "onFailure", "emits"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Saga name (unique within program)"
+        },
+        "module": {
+          "type": "string",
+          "description": "Module name if defined in a module"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IRSagaStep"
+          },
+          "description": "Ordered saga steps"
+        },
+        "onFailure": {
+          "type": "string",
+          "enum": ["compensate", "abort"],
+          "description": "Failure strategy: compensate runs completed steps in reverse, abort halts without compensation"
+        },
+        "emits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lifecycle events emitted by the saga orchestrator"
+        }
+      }
+    },
+    "IRSagaStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "commandEntity", "command"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Step identifier (unique within saga)"
+        },
+        "commandEntity": {
+          "type": "string",
+          "description": "Entity on which the forward command is invoked"
+        },
+        "command": {
+          "type": "string",
+          "description": "Forward command name"
+        },
+        "compensateEntity": {
+          "type": "string",
+          "description": "Entity for the compensating command (present only when compensate is declared)"
+        },
+        "compensate": {
+          "type": "string",
+          "description": "Compensating command name (absent = no compensation for this step)"
+        }
+      }
+    },
     "IRRolePermission": {
       "type": "object",
       "additionalProperties": false,
@@ -1575,6 +1666,64 @@
             "$ref": "#/definitions/IRRolePermission"
           },
           "description": "Compiler-computed flattened permission set after inheritance + deny resolution. Deterministic, sorted."
+        }
+      }
+    },
+    "IRWebhookSignature": {
+      "type": "object",
+      "required": ["algorithm", "header", "secret"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["hmac-sha256", "hmac-sha512"],
+          "description": "HMAC signature algorithm for payload verification"
+        },
+        "header": {
+          "type": "string",
+          "description": "HTTP header containing the signature value (e.g. \"X-Hub-Signature-256\")"
+        },
+        "secret": {
+          "type": "string",
+          "description": "Context path to extract the shared secret at runtime (e.g. \"context.webhookSecret\")"
+        }
+      }
+    },
+    "IRWebhookParam": {
+      "type": "object",
+      "required": ["name", "expression"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "expression": { "$ref": "#/definitions/IRExpression" }
+      }
+    },
+    "IRWebhook": {
+      "type": "object",
+      "required": ["name", "path", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "module": { "type": "string" },
+        "path": {
+          "type": "string",
+          "description": "HTTP path pattern for this webhook route (e.g. \"/webhooks/stripe\")"
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTP method to match. Defaults to POST at runtime."
+        },
+        "command": { "type": "string" },
+        "entity": { "type": "string", "description": "Optional entity context for entity-scoped commands" },
+        "signature": { "$ref": "#/definitions/IRWebhookSignature" },
+        "idempotencyHeader": {
+          "type": "string",
+          "description": "HTTP header name from which to extract the idempotency key for deduplication"
+        },
+        "transform": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/IRWebhookParam" },
+          "description": "Payload transformation expressions: maps command parameter names to payload field expressions"
         }
       }
     }

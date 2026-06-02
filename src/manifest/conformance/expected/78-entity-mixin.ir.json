@@ -1,0 +1,195 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "56210a513b4ba38b3494d5aa4ae22e58a1ed2baa37713c2b70eff3e08ef57736",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Timestampable",
+      "properties": [
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "SoftDeletable",
+      "properties": [
+        {
+          "name": "deletedAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "SoftDelete"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Article",
+      "properties": [
+        {
+          "name": "createdAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "updatedAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "deletedAt",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "SoftDelete"
+      ],
+      "constraints": [],
+      "policies": [],
+      "mixins": [
+        "Timestampable",
+        "SoftDeletable"
+      ]
+    }
+  ],
+  "enums": [],
+  "stores": [],
+  "events": [
+    {
+      "name": "EntitySoftDeleted",
+      "channel": "entity.soft_deleted",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "SoftDelete",
+      "entity": "SoftDeletable",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "deletedAt",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "2024-01-01"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "EntitySoftDeleted"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

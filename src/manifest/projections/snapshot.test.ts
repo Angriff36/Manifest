@@ -254,8 +254,8 @@ describe('projection snapshots', () => {
   const projections = listBuiltinProjections();
 
   // Sanity: ensure we're testing all built-ins
-  it('covers all 15 built-in projections', () => {
-    expect(projections.length).toBe(15);
+  it('covers all 20 built-in projections', () => {
+    expect(projections.length).toBe(20);
   });
 
   for (const projection of projections) {
@@ -269,9 +269,17 @@ describe('projection snapshots', () => {
           snapshot[artifact.id] = stabilize(artifact.code);
         }
 
-        // At least one artifact should be generated
-        expect(Object.keys(snapshot).length).toBeGreaterThan(0);
+        // At least one artifact should be generated, unless the projection
+        // requires projection-specific options (e.g., materialized-views needs
+        // `views` in options) and only emits warning diagnostics.
+        const hasOnlyOptionWarnings = result.artifacts.length === 0
+          && result.diagnostics.length > 0
+          && result.diagnostics.every(d => d.severity === 'warning');
+        if (!hasOnlyOptionWarnings) {
+          expect(Object.keys(snapshot).length).toBeGreaterThan(0);
+        }
 
+        // Snapshot even when empty so that future changes are caught
         expect(snapshot).toMatchSnapshot();
       });
 

@@ -1,0 +1,18 @@
+entity Product {
+  property required id: string
+  property name: string
+  property price: number = 0
+
+  command updatePrice(newPrice: number) {
+    guard newPrice >= 0
+    mutate price = newPrice
+    emit ProductUpdated
+  }
+}
+
+store Product in dynamodb
+
+event ProductUpdated: "product.updated" {
+  productId: string
+  price: number
+}

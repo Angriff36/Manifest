@@ -288,7 +288,7 @@ export function definePlugin(plugin: ManifestPlugin): ManifestPlugin {
 export const RESERVED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
   'now', 'uuid',
   'trim', 'split', 'count', 'startsWith', 'endsWith', 'replace',
-  'toUpperCase', 'toLowerCase', 'length', 'substring', 'indexOf', 'matches',
+  'toUpperCase', 'toLowerCase', 'length', 'substring', 'indexOf', 'matches', 'search',
   'abs', 'round', 'floor', 'ceil', 'min', 'max', 'between',
   'sum', 'avg', 'min_of', 'max_of', 'count_of', 'filter', 'map',
   'year', 'month', 'day', 'hours', 'minutes', 'seconds',

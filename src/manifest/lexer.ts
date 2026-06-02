@@ -21,7 +21,7 @@ export const KEYWORDS = new Set([
   'as', 'from', 'to', 'with', 'where', 'connect', 'returns',
   'string', 'number', 'boolean', 'list', 'map', 'any', 'void',
   'true', 'false', 'null',
-  'required', 'unique', 'indexed', 'private', 'readonly', 'optional',
+  'required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'searchable', 'encrypted',
   'rest', 'graphql', 'websocket', 'function', 'server',
   'http', 'storage', 'timer', 'custom',
   'memory', 'postgres', 'supabase', 'localStorage',
@@ -59,6 +59,10 @@ export const KEYWORDS = new Set([
   'extends',
   // multi-module compilation
   'use',
+  // saga workflow keyword
+  'saga',
+  // webhook declaration keywords
+  'webhook', 'signature', 'idempotencyHeader', 'transform',
 ]);
 
 const OPERATORS = new Set([

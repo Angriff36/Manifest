@@ -1,0 +1,28 @@
+{
+  "name": "@manifest/lsp-server",
+  "version": "0.1.0",
+  "description": "Language Server Protocol (LSP) server for the Manifest DSL",
+  "type": "module",
+  "bin": {
+    "manifest-lsp": "./bin/manifest-lsp.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@angriff36/manifest": "workspace:*",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "^5.5.3",
+    "vitest": "latest"
+  }
+}

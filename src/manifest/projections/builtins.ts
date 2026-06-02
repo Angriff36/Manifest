@@ -25,6 +25,11 @@ import { MermaidProjection } from './mermaid/generator.js';
 import { JsonSchemaProjection } from './jsonschema/generator.js';
 import { StorybookProjection } from './storybook/generator.js';
 import { HealthCheckProjection } from './health/generator.js';
+import { MaterializedViewsProjection } from './materialized-views/generator.js';
+import { ElasticsearchProjection } from './elasticsearch/generator.js';
+import { TerraformProjection } from './terraform/generator.js';
+import { AnalyticsProjection } from './analytics/generator.js';
+import { SvelteKitProjection } from './sveltekit/generator.js';
 
 /**
  * Register all built-in projections.
@@ -81,6 +86,21 @@ export function registerBuiltinProjections(): void {
   // Health check endpoint projection (IR integrity, store connectivity, outbox)
   registerProjection(new HealthCheckProjection());
 
+  // Materialized views projection (PostgreSQL CREATE MATERIALIZED VIEW DDL)
+  registerProjection(new MaterializedViewsProjection());
+
+  // Elasticsearch search projection (index mappings, templates, indexer, client)
+  registerProjection(new ElasticsearchProjection());
+
+  // Terraform HCL infrastructure-as-code projection (AWS RDS, GCP Cloud SQL, Supabase)
+  registerProjection(new TerraformProjection());
+
+  // Analytics tracking-plan projection (Segment/Mixpanel/Amplitude/Snowplow)
+  registerProjection(new AnalyticsProjection());
+
+  // SvelteKit projection (server routes, load functions, client utilities)
+  registerProjection(new SvelteKitProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -110,5 +130,10 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new JsonSchemaProjection(),
     new StorybookProjection(),
     new HealthCheckProjection(),
+    new MaterializedViewsProjection(),
+    new ElasticsearchProjection(),
+    new TerraformProjection(),
+    new AnalyticsProjection(),
+    new SvelteKitProjection(),
   ];
 }

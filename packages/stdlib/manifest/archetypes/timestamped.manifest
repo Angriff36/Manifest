@@ -1,0 +1,27 @@
+// @manifest/stdlib: Timestamped archetype
+//
+// Reference pattern: any entity that needs createdAt / updatedAt tracking.
+//
+// Pattern: add the `timestamps` keyword to your entity body. The runtime
+// auto-populates these fields on create and update operations.
+//
+// Usage in your own file:
+//
+//   use "./node_modules/@manifest/stdlib/manifest/values/audit-trail.manifest"
+//
+//   entity Article {
+//     property required id: string
+//     property title: string
+//     timestamps
+//   }
+//
+//   store Article in memory
+//
+// The `timestamps` keyword is a built-in language feature. The value object
+// below is exported as a typed reference for projections (e.g., a generated
+// Prisma client may want a structured representation).
+
+value Timestamps {
+  property createdAt: string = ""
+  property updatedAt: string = ""
+}

@@ -1,0 +1,11 @@
+entity FeatureFlags {
+  property required id: string
+  property flags: map<boolean> = {}
+  property metadata: map<string>
+  property config: map<int>?
+
+  constraint hasFlags: self.flags.size > 0
+  constraint debugEnabled: self.flags.has("debug")
+}
+
+store FeatureFlags in memory

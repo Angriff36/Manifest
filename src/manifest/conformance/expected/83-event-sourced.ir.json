@@ -1,0 +1,250 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "2f1ea1229ac40b089282a9b10b6be052d6366443e2062fae8798e895c78b3c42",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "BankAccount",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "balance",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "owner",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "deposit",
+        "withdraw"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "BankAccount",
+      "target": "eventSourced",
+      "config": {
+        "snapshotInterval": {
+          "kind": "number",
+          "value": 10
+        },
+        "exposeEventLog": {
+          "kind": "boolean",
+          "value": true
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "AccountDeposited",
+      "channel": "account.deposited",
+      "payload": [
+        {
+          "name": "accountId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "AccountWithdrawn",
+      "channel": "account.withdrawn",
+      "payload": [
+        {
+          "name": "accountId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "deposit",
+      "entity": "BankAccount",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "identifier",
+            "name": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "balance",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "identifier",
+              "name": "balance"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "amount"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "AccountDeposited"
+      ]
+    },
+    {
+      "name": "withdraw",
+      "entity": "BankAccount",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "identifier",
+            "name": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        },
+        {
+          "kind": "binary",
+          "operator": ">=",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "balance"
+          },
+          "right": {
+            "kind": "identifier",
+            "name": "amount"
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "balance",
+          "expression": {
+            "kind": "binary",
+            "operator": "-",
+            "left": {
+              "kind": "identifier",
+              "name": "balance"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "amount"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "AccountWithdrawn"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

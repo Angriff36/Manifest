@@ -1,0 +1,177 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Manifest",
+  "scopeName": "source.manifest",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#declarations" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#modifiers" },
+    { "include": "#operators" },
+    { "include": "#constants" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.manifest",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.manifest",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.manifest",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.manifest",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.manifest",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.manifest",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.manifest",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(entity|module|enum|command|policy|store|event|computed|derived|constraint|flow|effect|expose|compose|behavior|approval|tenant|role)\\b\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.manifest" },
+            "2": { "name": "entity.name.type.manifest" }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.manifest",
+          "match": "\\b(on|when|then|guard|returns|transition|async|use|run|resolve|params|stages|timeout)\\b"
+        },
+        {
+          "name": "keyword.other.action.manifest",
+          "match": "\\b(emit|mutate|compute|publish|persist)\\b"
+        },
+        {
+          "name": "keyword.other.relationship.manifest",
+          "match": "\\b(hasMany|hasOne|belongsTo|ref|through)\\b"
+        },
+        {
+          "name": "keyword.other.preposition.manifest",
+          "match": "\\b(as|from|to|with|where|connect)\\b"
+        },
+        {
+          "name": "keyword.other.access.manifest",
+          "match": "\\b(read|write|delete|execute|all|override|allow|deny)\\b"
+        },
+        {
+          "name": "keyword.other.store.manifest",
+          "match": "\\b(memory|postgres|supabase|localStorage)\\b"
+        },
+        {
+          "name": "keyword.other.expose.manifest",
+          "match": "\\b(rest|graphql|websocket|function|server)\\b"
+        },
+        {
+          "name": "keyword.other.fk.manifest",
+          "match": "\\b(key|fields|references|onDelete|onUpdate|cascade|restrict|setNull|setDefault|noAction)\\b"
+        },
+        {
+          "name": "keyword.other.concurrency.manifest",
+          "match": "\\b(versionProperty|versionAtProperty)\\b"
+        },
+        {
+          "name": "keyword.other.constraint.manifest",
+          "match": "\\b(overrideable|ok|warn|block)\\b"
+        },
+        {
+          "name": "keyword.other.cache.manifest",
+          "match": "\\b(cache|request|session|ttl)\\b"
+        },
+        {
+          "name": "keyword.other.misc.manifest",
+          "match": "\\b(default|timestamps|extends)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.manifest",
+          "match": "\\b(string|number|boolean|list|map|any|void|decimal|money)\\b"
+        }
+      ]
+    },
+    "modifiers": {
+      "patterns": [
+        {
+          "name": "storage.modifier.manifest",
+          "match": "\\b(required|unique|indexed|private|readonly|optional)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.manifest",
+          "match": "\\b(and|or|not|is|in|contains)\\b"
+        },
+        {
+          "name": "keyword.operator.manifest",
+          "match": "(=>|->|==|!=|<=|>=|&&|\\|\\||\\?\\.|\\.\\.|[+\\-*/%=<>!?:])"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.manifest",
+          "match": "\\b(true|false|null)\\b"
+        },
+        {
+          "name": "variable.language.manifest",
+          "match": "\\b(user|self|context|this)\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.property.manifest",
+          "match": "(?<=\\.)([A-Za-z_]\\w*)"
+        }
+      ]
+    }
+  }
+}

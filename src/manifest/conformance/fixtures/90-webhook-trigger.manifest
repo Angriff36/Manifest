@@ -1,0 +1,43 @@
+// Webhook inbound trigger declarations
+// Tests: simple webhook, entity-scoped webhook with signature verification,
+//        idempotency header, and payload transformation expressions.
+
+entity Order {
+  property status: string
+  property amount: number
+  property externalId: string
+
+  command Create() {
+    guard status == null
+    mutate status = "pending"
+  }
+
+  command UpdatePayment(paymentId: string, amountPaid: number) {
+    mutate amount = amountPaid
+    mutate externalId = paymentId
+  }
+}
+
+command NotifySlack(channel: string, message: string) {
+  emit SlackNotification
+}
+
+// Simple webhook: maps path to a command
+webhook SlackInbound "/webhooks/slack" run NotifySlack
+  transform: {
+    channel: payload.channel,
+    message: payload.text
+  }
+
+// Full-featured webhook with entity-scoped command, HMAC signature, and idempotency
+webhook StripePayment "/webhooks/stripe" run Order.UpdatePayment
+  signature {
+    algorithm: "hmac-sha256"
+    header: "Stripe-Signature"
+    secret: "context.stripeWebhookSecret"
+  }
+  idempotencyHeader: "Idempotency-Key"
+  transform: {
+    paymentId: payload.data.object.id,
+    amountPaid: payload.data.object.amount
+  }

@@ -1,0 +1,76 @@
+entity Payment {
+  property required id: string
+  property amount: number = 0
+  property status: string = "none"
+
+  command charge(amount: number) {
+    mutate amount = amount
+    mutate status = "charged"
+    emit PaymentCharged
+  }
+
+  command refund() {
+    mutate status = "refunded"
+    emit PaymentRefunded
+  }
+
+  store in memory
+}
+
+entity Inventory {
+  property required id: string
+  property reserved: boolean = false
+
+  command reserve() {
+    mutate reserved = true
+    emit InventoryReserved
+  }
+
+  command release() {
+    mutate reserved = false
+    emit InventoryReleased
+  }
+
+  store in memory
+}
+
+entity Notification {
+  property required id: string
+  property sent: boolean = false
+
+  command send() {
+    mutate sent = true
+    emit NotificationSent
+  }
+
+  store in memory
+}
+
+event PaymentCharged: "payment.charged" { id: string }
+event PaymentRefunded: "payment.refunded" { id: string }
+event InventoryReserved: "inventory.reserved" { id: string }
+event InventoryReleased: "inventory.released" { id: string }
+event NotificationSent: "notification.sent" { id: string }
+event SagaStarted: "saga.started" { sagaName: string }
+event SagaCompleted: "saga.completed" { sagaName: string }
+event SagaFailed: "saga.failed" { sagaName: string }
+event SagaStepCompleted: "saga.step.completed" { sagaName: string }
+
+saga ProcessOrder {
+  step chargePayment {
+    command: Payment.charge
+    compensate: Payment.refund
+  }
+  step reserveInventory {
+    command: Inventory.reserve
+    compensate: Inventory.release
+  }
+  step notifyCustomer {
+    command: Notification.send
+  }
+  on_failure: "compensate"
+  emit SagaStarted
+  emit SagaCompleted
+  emit SagaFailed
+  emit SagaStepCompleted
+}

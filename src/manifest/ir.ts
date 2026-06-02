@@ -46,8 +46,12 @@ export interface IR {
   policies: IRPolicy[];
   /** Declarative event-reaction rules. Empty array when no reactions declared. */
   reactions?: IRReactionRule[];
+  /** Saga orchestration definitions sequencing commands with compensation. */
+  sagas?: IRSaga[];
   /** Role hierarchy with permission inheritance. Only emitted when roles are declared. */
   roles?: IRRole[];
+  /** Webhook declarations mapping inbound HTTP payloads to command invocations. */
+  webhooks?: IRWebhook[];
 }
 
 export interface IRValueObject {
@@ -65,7 +69,9 @@ export interface IRModule {
   events: string[];
   policies: string[];
   reactions?: string[];
+  sagas?: string[];
   roles?: string[];
+  webhooks?: string[];
 }
 
 export interface IREnum {
@@ -148,7 +154,7 @@ export interface IRProperty {
   modifiers: PropertyModifier[];
 }
 
-export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional';
+export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional' | 'searchable' | 'encrypted';
 
 export interface IRComputedPropertyCache {
   strategy: 'request' | 'session' | 'ttl';
@@ -237,6 +243,64 @@ export interface IRReactionRule {
 export interface IRReactionParam {
   name: string;
   expression: IRExpression;
+}
+
+export interface IRSagaStep {
+  /** Step identifier (unique within saga) */
+  name: string;
+  /** Entity on which the forward command is invoked */
+  commandEntity: string;
+  /** Forward command name */
+  command: string;
+  /** Compensating entity (present only when compensate is declared) */
+  compensateEntity?: string;
+  /** Compensating command name (absent = no compensation for this step) */
+  compensate?: string;
+}
+
+export interface IRSaga {
+  name: string;
+  module?: string;
+  steps: IRSagaStep[];
+  /** Failure strategy. Always present (compiler normalizes default 'compensate'). */
+  onFailure: 'compensate' | 'abort';
+  /** Lifecycle events emitted by the saga orchestrator */
+  emits: string[];
+}
+
+export type IRSignatureAlgorithm = 'hmac-sha256' | 'hmac-sha512';
+
+export interface IRWebhookSignature {
+  algorithm: IRSignatureAlgorithm;
+  /** HTTP header containing the signature (e.g. "X-Hub-Signature-256") */
+  header: string;
+  /** Context path to extract the shared secret at runtime (e.g. "context.webhookSecret") */
+  secret: string;
+}
+
+export interface IRWebhookParam {
+  name: string;
+  /** Expression evaluated against the request body to produce the parameter value */
+  expression: IRExpression;
+}
+
+export interface IRWebhook {
+  name: string;
+  module?: string;
+  /** HTTP path pattern (e.g. "/webhooks/stripe") */
+  path: string;
+  /** HTTP method (e.g. "POST", "PUT"). Defaults to "POST" at runtime. */
+  method?: string;
+  /** Name of the command to invoke when the webhook fires */
+  command: string;
+  /** Optional entity context for entity-scoped commands */
+  entity?: string;
+  /** HMAC signature verification configuration */
+  signature?: IRWebhookSignature;
+  /** HTTP header name from which to extract the idempotency key */
+  idempotencyHeader?: string;
+  /** Payload transformation: maps command parameter names to payload expressions */
+  transform?: IRWebhookParam[];
 }
 
 export interface IRCommand {

@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "normalized-ir-hash",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "externalId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "Create",
+        "UpdatePayment"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [],
+  "events": [],
+  "commands": [
+    {
+      "name": "NotifySlack",
+      "parameters": [
+        {
+          "name": "channel",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [],
+      "emits": [
+        "SlackNotification"
+      ]
+    },
+    {
+      "name": "Create",
+      "entity": "Order",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "identifier",
+            "name": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "null"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "UpdatePayment",
+      "entity": "Order",
+      "parameters": [
+        {
+          "name": "paymentId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amountPaid",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "amount",
+          "expression": {
+            "kind": "identifier",
+            "name": "amountPaid"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "externalId",
+          "expression": {
+            "kind": "identifier",
+            "name": "paymentId"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": [],
+  "webhooks": [
+    {
+      "name": "SlackInbound",
+      "path": "/webhooks/slack",
+      "command": "NotifySlack",
+      "transform": [
+        {
+          "name": "channel",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "channel"
+          }
+        },
+        {
+          "name": "message",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "payload"
+            },
+            "property": "text"
+          }
+        }
+      ]
+    },
+    {
+      "name": "StripePayment",
+      "path": "/webhooks/stripe",
+      "command": "UpdatePayment",
+      "entity": "Order",
+      "signature": {
+        "algorithm": "hmac-sha256",
+        "header": "Stripe-Signature",
+        "secret": "context.stripeWebhookSecret"
+      },
+      "idempotencyHeader": "Idempotency-Key",
+      "transform": [
+        {
+          "name": "paymentId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "payload"
+                },
+                "property": "data"
+              },
+              "property": "object"
+            },
+            "property": "id"
+          }
+        },
+        {
+          "name": "amountPaid",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "payload"
+                },
+                "property": "data"
+              },
+              "property": "object"
+            },
+            "property": "amount"
+          }
+        }
+      ]
+    }
+  ]
+}

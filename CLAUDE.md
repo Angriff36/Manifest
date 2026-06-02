@@ -280,6 +280,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [auto-bridge snapshot @ 10 changes]
-Files: src/manifest/parser.ts (edit), src/manifest/lexer.ts (edit), src/manifest/types.ts (edit)
+Files: src/manifest/projections/analytics/generator.ts (edit), src/manifest/federation/types.ts (edit), src/manifest/federation/federation.test.ts (edit), src/manifest/conformance/federation-conformance.test.ts (edit)
 
 # === END COGNILAYER ===

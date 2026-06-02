@@ -22,8 +22,8 @@ describe('plugin-api', () => {
   });
 
   describe('RESERVED_BUILTIN_NAMES', () => {
-    it('contains all 35 builtins', () => {
-      expect(RESERVED_BUILTIN_NAMES.size).toBe(35);
+    it('contains all 36 builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.size).toBe(36);
     });
 
     it('includes core builtins', () => {
@@ -40,6 +40,7 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('substring')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('indexOf')).toBe(true);
       expect(RESERVED_BUILTIN_NAMES.has('matches')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('search')).toBe(true);
     });
 
     it('includes math builtins', () => {

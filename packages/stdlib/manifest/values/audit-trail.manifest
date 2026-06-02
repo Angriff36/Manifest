@@ -1,0 +1,11 @@
+// @manifest/stdlib: AuditTrail
+// Audit metadata value object tracking who performed an action and when.
+// Designed to be embedded in entities that need change-tracking.
+// Import via: use "./path/to/@manifest/stdlib/manifest/values/audit-trail.manifest"
+
+value AuditTrail {
+  property actorId: string
+  property action: string
+  property performedAt: string = ""
+  property reason: string = ""
+}

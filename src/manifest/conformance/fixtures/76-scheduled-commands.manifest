@@ -1,0 +1,36 @@
+// Scheduled commands with various trigger types
+schedule dailyBackup cron "0 0 * * *" run backupData
+
+schedule frequentCleanup interval "5m" run cleanupOldData
+
+schedule weeklyReport every 1 weeks run generateReport
+
+schedule morningDigest cron "0 9 * * *" run sendDigest(date: now())
+
+schedule archiveOldOrders cron "0 2 * * *" run Order.archive
+
+command backupData() {
+  mutate lastBackupAt = now()
+}
+
+command cleanupOldData() {
+  mutate cleanedAt = now()
+}
+
+command generateReport() {
+  mutate reportGenerated = true
+}
+
+command sendDigest(date: number) {
+  mutate sentAt = date
+}
+
+entity Order {
+  property status: string
+  property archivedAt: number?
+
+  command archive() {
+    mutate status = "archived"
+    mutate archivedAt = now()
+  }
+}

@@ -1,0 +1,445 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "36db432492da9fc9f83bf62c5e5fef9187cd90ae83ae31e7ef9afe5d4af5a257",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Payment",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "none"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "charge",
+        "refund"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Inventory",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "reserved",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "reserve",
+        "release"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Notification",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "sent",
+          "type": {
+            "name": "boolean",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "boolean",
+            "value": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "send"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Payment",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Inventory",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Notification",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "PaymentCharged",
+      "channel": "payment.charged",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "PaymentRefunded",
+      "channel": "payment.refunded",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "InventoryReserved",
+      "channel": "inventory.reserved",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "InventoryReleased",
+      "channel": "inventory.released",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "NotificationSent",
+      "channel": "notification.sent",
+      "payload": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SagaStarted",
+      "channel": "saga.started",
+      "payload": [
+        {
+          "name": "sagaName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SagaCompleted",
+      "channel": "saga.completed",
+      "payload": [
+        {
+          "name": "sagaName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SagaFailed",
+      "channel": "saga.failed",
+      "payload": [
+        {
+          "name": "sagaName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SagaStepCompleted",
+      "channel": "saga.step.completed",
+      "payload": [
+        {
+          "name": "sagaName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "charge",
+      "entity": "Payment",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "amount",
+          "expression": {
+            "kind": "identifier",
+            "name": "amount"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "charged"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "PaymentCharged"
+      ]
+    },
+    {
+      "name": "refund",
+      "entity": "Payment",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "refunded"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "PaymentRefunded"
+      ]
+    },
+    {
+      "name": "reserve",
+      "entity": "Inventory",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "reserved",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": [
+        "InventoryReserved"
+      ]
+    },
+    {
+      "name": "release",
+      "entity": "Inventory",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "reserved",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": false
+            }
+          }
+        }
+      ],
+      "emits": [
+        "InventoryReleased"
+      ]
+    },
+    {
+      "name": "send",
+      "entity": "Notification",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "sent",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "boolean",
+              "value": true
+            }
+          }
+        }
+      ],
+      "emits": [
+        "NotificationSent"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [],
+  "sagas": [
+    {
+      "name": "ProcessOrder",
+      "steps": [
+        {
+          "name": "chargePayment",
+          "commandEntity": "Payment",
+          "command": "charge",
+          "compensateEntity": "Payment",
+          "compensate": "refund"
+        },
+        {
+          "name": "reserveInventory",
+          "commandEntity": "Inventory",
+          "command": "reserve",
+          "compensateEntity": "Inventory",
+          "compensate": "release"
+        },
+        {
+          "name": "notifyCustomer",
+          "commandEntity": "Notification",
+          "command": "send"
+        }
+      ],
+      "onFailure": "compensate",
+      "emits": [
+        "SagaStarted",
+        "SagaCompleted",
+        "SagaFailed",
+        "SagaStepCompleted"
+      ]
+    }
+  ]
+}

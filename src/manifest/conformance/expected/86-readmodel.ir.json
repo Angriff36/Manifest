@@ -1,0 +1,363 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "e0e9ce5c09bbbb1838e1a8d3035ff28854eac7e0f2172596aaf564f5d56b7209",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Order",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "customerId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "total",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "open"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "addItem",
+        "complete"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Order",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "OrderItemAdded",
+      "channel": "order.item-added",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "newTotal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OrderCompleted",
+      "channel": "order.completed",
+      "payload": [
+        {
+          "name": "orderId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "finalTotal",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "addItem",
+      "entity": "Order",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "identifier",
+            "name": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "total",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "total"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "amount"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "OrderItemAdded"
+      ],
+      "emitPayloads": [
+        {
+          "event": "OrderItemAdded",
+          "field": "orderId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "id"
+          }
+        },
+        {
+          "event": "OrderItemAdded",
+          "field": "amount",
+          "expression": {
+            "kind": "identifier",
+            "name": "amount"
+          }
+        },
+        {
+          "event": "OrderItemAdded",
+          "field": "newTotal",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "total"
+          }
+        }
+      ]
+    },
+    {
+      "name": "complete",
+      "entity": "Order",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "total"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "completed"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "OrderCompleted"
+      ],
+      "emitPayloads": [
+        {
+          "event": "OrderCompleted",
+          "field": "orderId",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "id"
+          }
+        },
+        {
+          "event": "OrderCompleted",
+          "field": "finalTotal",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "total"
+          }
+        }
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [],
+  "readModels": [
+    {
+      "name": "OrderSummary",
+      "entity": "Order",
+      "properties": [],
+      "computedProperties": [],
+      "subscriptions": [
+        {
+          "event": "OrderItemAdded",
+          "fieldMap": [
+            {
+              "name": "id",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "event"
+                },
+                "property": "orderId"
+              }
+            },
+            {
+              "name": "total",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "event"
+                },
+                "property": "newTotal"
+              }
+            }
+          ]
+        },
+        {
+          "event": "OrderCompleted",
+          "fieldMap": [
+            {
+              "name": "id",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "event"
+                },
+                "property": "orderId"
+              }
+            },
+            {
+              "name": "status",
+              "expression": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "completed"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "storeTarget": "memory"
+    }
+  ]
+}

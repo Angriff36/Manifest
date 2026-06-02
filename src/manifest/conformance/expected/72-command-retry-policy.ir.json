@@ -1,0 +1,416 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "d1065f137397861bd34dc87b48e114978d7111d3226a36aaf4c15db94da08f45",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Task",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "attempts",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "process",
+        "processLinear",
+        "processFixed"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [],
+  "events": [
+    {
+      "name": "TaskProcessed",
+      "channel": "task.processed",
+      "payload": {
+        "name": "unknown",
+        "nullable": false
+      }
+    }
+  ],
+  "commands": [
+    {
+      "name": "process",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "identifier",
+            "name": "retry"
+          }
+        },
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "object",
+            "properties": [
+              {
+                "key": "maxAttempts",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 3
+                  }
+                }
+              },
+              {
+                "key": "backoff",
+                "value": {
+                  "kind": "identifier",
+                  "name": "exponential"
+                }
+              },
+              {
+                "key": "delay",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 1000
+                  }
+                }
+              },
+              {
+                "key": "jitter",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "boolean",
+                    "value": true
+                  }
+                }
+              },
+              {
+                "key": "retryOn",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "CONCURRENCY_CONFLICT"
+                  }
+                }
+              },
+              {
+                "key": "retryOn",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "TIMEOUT"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "processing"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "attempts",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "attempts"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 1
+              }
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TaskProcessed"
+      ]
+    },
+    {
+      "name": "processLinear",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "identifier",
+            "name": "retry"
+          }
+        },
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "object",
+            "properties": [
+              {
+                "key": "maxAttempts",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 5
+                  }
+                }
+              },
+              {
+                "key": "backoff",
+                "value": {
+                  "kind": "identifier",
+                  "name": "linear"
+                }
+              },
+              {
+                "key": "delay",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 500
+                  }
+                }
+              },
+              {
+                "key": "jitter",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "boolean",
+                    "value": false
+                  }
+                }
+              },
+              {
+                "key": "retryOn",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "CONCURRENCY_CONFLICT"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "processing"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TaskProcessed"
+      ]
+    },
+    {
+      "name": "processFixed",
+      "entity": "Task",
+      "parameters": [],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": "==",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "self"
+            },
+            "property": "status"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "pending"
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "identifier",
+            "name": "retry"
+          }
+        },
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "object",
+            "properties": [
+              {
+                "key": "maxAttempts",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 3
+                  }
+                }
+              },
+              {
+                "key": "backoff",
+                "value": {
+                  "kind": "identifier",
+                  "name": "fixed"
+                }
+              },
+              {
+                "key": "delay",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "number",
+                    "value": 2000
+                  }
+                }
+              },
+              {
+                "key": "jitter",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "boolean",
+                    "value": false
+                  }
+                }
+              },
+              {
+                "key": "retryOn",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "TIMEOUT"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "processing"
+            }
+          }
+        }
+      ],
+      "emits": [
+        "TaskProcessed"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

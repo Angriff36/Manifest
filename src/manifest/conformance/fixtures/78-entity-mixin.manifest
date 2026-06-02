@@ -1,0 +1,26 @@
+// Entity Composition via mixin
+// Tests mixin keyword: child entity composes members from multiple
+// trait entities. Resolved at IR compile time.
+
+entity Timestampable {
+  property createdAt: string = ""
+  property updatedAt: string = ""
+}
+
+entity SoftDeletable {
+  property deletedAt: string = ""
+
+  command SoftDelete() {
+    mutate deletedAt = "2024-01-01"
+    emit EntitySoftDeleted
+  }
+}
+
+entity Article mixin Timestampable, SoftDeletable {
+  property required id: string = ""
+  property title: string = ""
+}
+
+event EntitySoftDeleted: "entity.soft_deleted" {
+  id: string
+}

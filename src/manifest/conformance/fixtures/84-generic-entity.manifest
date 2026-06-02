@@ -1,0 +1,22 @@
+// Generic entity with type parameter
+// Tests `entity Name<T>` declaration and `entity Alias = Name<TypeArg>`
+// instantiation. The generic template is compile-time only and not emitted
+// in the IR; only the concrete instantiation is emitted.
+
+entity Item {
+  property id: string = ""
+  property name: string = ""
+}
+
+// Generic template: Paginated is a reusable pagination wrapper
+entity Paginated<T> {
+  property page: number = 0
+  property total: number = 0
+  property items: T = ""
+  hasMany items: T
+}
+
+// Concrete instantiation: Paginated_Item
+entity ItemList = Paginated<Item> {
+  property category: string = "all"
+}

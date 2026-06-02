@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "816cdc6dbc21d5ac1a59847ff35cd72892dc626d481dec3801577f66e29fe1ba",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "FeatureFlags",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "flags",
+          "type": {
+            "name": "map",
+            "generic": {
+              "name": "boolean",
+              "nullable": false
+            },
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "object",
+            "properties": {}
+          },
+          "modifiers": []
+        },
+        {
+          "name": "metadata",
+          "type": {
+            "name": "map",
+            "generic": {
+              "name": "string",
+              "nullable": false
+            },
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "config",
+          "type": {
+            "name": "map",
+            "generic": {
+              "name": "int",
+              "nullable": false
+            },
+            "nullable": true
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [
+        {
+          "name": "hasFlags",
+          "code": "hasFlags",
+          "expression": {
+            "kind": "binary",
+            "operator": ">",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "flags"
+              },
+              "property": "size"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "block",
+          "overrideable": false
+        },
+        {
+          "name": "debugEnabled",
+          "code": "debugEnabled",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "member",
+              "object": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "flags"
+              },
+              "property": "has"
+            },
+            "args": [
+              {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "debug"
+                }
+              }
+            ]
+          },
+          "severity": "block",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "FeatureFlags",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

@@ -262,8 +262,11 @@ function emitPropertyLine(
   }
 
   const attrPart = attrs.length ? ' ' + attrs.join(' ') : '';
+  const encryptedComment = prop.modifiers.includes('encrypted')
+    ? ' // @encrypted — envelope-encrypted at runtime'
+    : '';
   return {
-    line: `  ${prop.name} ${scalar}${listSuffix}${nullableSuffix}${attrPart}`,
+    line: `  ${prop.name} ${scalar}${listSuffix}${nullableSuffix}${attrPart}${encryptedComment}`,
     diagnostics,
   };
 }
@@ -629,6 +632,13 @@ function emitModel(
       if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
       lines.push(`  @@index([${tenantProp}])`);
     }
+  }
+
+  // @@fulltext for searchable properties
+  const searchableFields = entity.properties.filter(p => p.modifiers.includes('searchable')).map(p => p.name);
+  if (searchableFields.length > 0) {
+    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+    lines.push(`  @@fulltext([${searchableFields.join(', ')}])`);
   }
 
   lines.push('}');

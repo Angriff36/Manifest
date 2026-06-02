@@ -1,0 +1,69 @@
+{
+  "testCases": [
+    {
+      "name": "search guard passes when body contains 'manifest' as whole word",
+      "setup": {
+        "createInstance": {
+          "entity": "Article",
+          "data": { "id": "a1", "title": "Intro", "body": "The manifest language is great", "views": 0 }
+        }
+      },
+      "command": {
+        "name": "publishIfRelevant",
+        "entityName": "Article",
+        "instanceId": "a1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "a1",
+        "title": "Intro",
+        "body": "The manifest language is great",
+        "views": 1
+      }
+    },
+    {
+      "name": "search guard fails when body does not contain 'manifest'",
+      "setup": {
+        "createInstance": {
+          "entity": "Article",
+          "data": { "id": "a2", "title": "Other", "body": "No relevant keywords here", "views": 0 }
+        }
+      },
+      "command": {
+        "name": "publishIfRelevant",
+        "entityName": "Article",
+        "instanceId": "a2",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'publishIfRelevant'",
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "search guard fails on partial word match (manifests != manifest)",
+      "setup": {
+        "createInstance": {
+          "entity": "Article",
+          "data": { "id": "a3", "title": "Partial", "body": "Many manifests exist in the wild", "views": 0 }
+        }
+      },
+      "command": {
+        "name": "publishIfRelevant",
+        "entityName": "Article",
+        "instanceId": "a3",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Guard condition failed for command 'publishIfRelevant'",
+        "emittedEvents": []
+      }
+    }
+  ]
+}

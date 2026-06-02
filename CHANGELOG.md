@@ -4,6 +4,106 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0] - 2026-06-02
+
+76 new features across 5 themed groups. This is the largest Manifest release to date, adding 16 new projection targets, 4 store adapters, entity inheritance/generics, distributed workflow primitives, a full AI integration surface, and comprehensive developer tooling.
+
+### Language & Type System
+
+- **Expanded Date/Time types** — `date`, `time`, `datetime`, `duration` primitives with ISO 8601 semantics
+- **Map / Record type** — `map<V>` for key-value property types
+- **Entity inheritance** — `entity Child extends Parent { ... }` and `mixin` composition with cycle/unknown-parent detection
+- **Generic / parameterized entities** — `entity Paginated<T> { ... }` with compile-time instantiation and type substitution
+- **Command retry policy** — declarative retry with backoff, max attempts, and retryable error matching
+- **Rate limiting** — per-command rate limit declarations with sliding window and bucket algorithms
+- **Scheduled / cron commands** — `schedule "cron expression" run Entity.command` triggers
+- **Field-level encryption** — `encrypted` property modifier with adapter-driven encrypt/decrypt
+- **Full-text search** — `fulltext` index declarations with language-aware tokenization config
+- **Webhook triggers** — inbound `webhook` declarations parsing HTTP payloads into commands
+- **Data masking** — `masked` property modifier with role-based unmasking policies
+- **Expression language extensions** — string interpolation, ternary, null coalescing, array comprehensions
+- **Standard library (stdlib)** — curated set of reusable Manifest modules (validation, formatting, etc.)
+- **Custom expression functions** — plugin API for registering user-defined builtins at runtime
+- **Event sourcing store** — append-only event store adapter with snapshot + replay
+
+### Projections & SDK Generation
+
+- **OpenAPI 3.1 projection** — generates OpenAPI specs with schemas, security, and operation IDs from IR
+- **JSON Schema projection** — Draft-07 JSON Schema from entity/property definitions
+- **Zod schema projection** — Zod validation schemas with constraint-aware refinements
+- **TanStack Query hooks** — React Query / Vue Query hook generation for entity CRUD
+- **Remix projection** — Remix / React Router v7 route and loader generation
+- **SvelteKit projection** — SvelteKit server routes and type-safe stores
+- **Flutter / Dart projection** — Dart model classes with JSON serialization
+- **Python Pydantic projection** — Pydantic v2 model generation with validators
+- **Terraform projection** — Infrastructure-as-Code from store/entity declarations
+- **Kysely projection** — Type-safe SQL query builder types from IR entities
+- **Materialized view projection** — SQL materialized view DDL for PostgreSQL
+- **Analytics projection** — Event schema generation for analytics platforms
+- **Elasticsearch / OpenSearch projection** — Index mappings and ingest pipelines
+- **Python SDK generation** — Full Python client SDK with type hints and async support
+- **Storybook projection** — CSF3 stories with guard pass/fail and constraint interaction stories
+- **Hono edge projection** — Hono edge-runtime handler generation
+
+### Runtime, Stores & Infrastructure
+
+- **DynamoDB store adapter** — Full DynamoDB store with outbox pattern support
+- **Redis store adapter** — Redis-backed store with pub/sub event emission
+- **Turso / libSQL store adapter** — libSQL-compatible store with WAL mode
+- **Transactional outbox** — Atomic state + event commit pattern with PostgreSQL and DynamoDB implementations
+- **Runtime middleware** — Before/after middleware pipeline for command execution hooks
+- **Interactive REPL** — `manifest repl` for live Manifest expression and command evaluation
+- **Time-travel debugger** — Runtime state rewind/replay for debugging command sequences
+- **Federated multi-service runtime** — Cross-service entity references and remote command dispatch
+- **Saga orchestration** — Multi-step distributed workflow declarations with compensating actions
+- **Real-time subscriptions** — WebSocket-based entity change subscriptions
+- **Custom store adapter API** — Plugin-based store registration via `definePlugin`
+- **Plugin API** — Third-party extension system for projections, stores, and builtins
+- **Seed data generator** — Auto-generate seed data from IR entity/relationship definitions
+- **Performance profiler** — Runtime command/constraint profiling with bottleneck detection
+
+### Developer Tooling & AI Integration
+
+- **AI Agent SDK** — Typed SDK (`@angriff36/manifest/agent-sdk`) wrapping runtime with LLM-friendly tool interfaces (Anthropic, OpenAI, Vercel AI compatible)
+- **AI test generator** — AI-assisted conformance test generation from IR descriptions
+- **LLM context export** — `llms.txt` and structured context for LLM consumption
+- **LLM IR validator** — Validate and repair LLM-generated IR against the schema
+- **MCP server** — Manifest Model Context Protocol server for AI tool integration
+- **Code formatter** — `manifest fmt` with configurable indentation and style rules
+- **Import system** — `use "./path.manifest"` cross-file references with module resolution
+- **Online playground** — Shareable web playground with URL-encoded state
+- **VS Code extension** — Syntax highlighting, diagnostics, and go-to-definition
+- **Language Server Protocol** — Full LSP implementation with completion, hover, diagnostics
+- **Watch mode compiler** — Incremental rebuild on file change with diagnostic streaming
+- **IR version control** — IR version registry with changelog tracking and diff
+- **IR compression** — Binary serialization for compact IR transport and storage
+- **IR graph visualizer** — Entity relationship graph from IR with interactive exploration
+- **Changelog from IR diff** — Automated changelog generation comparing two IR versions
+- **Command coverage reporter** — Guard and constraint coverage analysis for commands
+- **Documentation site generator** — Auto-generated API docs from IR entities and commands
+- **Natural language transpiler** — `manifest generate --from-prompt "..."` with LLM-backed generation
+- **Environment variable mapping** — `manifest preflight` validates env vars against config schema
+- **Event subject metadata** — Canonical `event.subject` metadata on all emitted events
+- **Health check export fix** — Corrected HealthCheckProjection package exports and registration
+- **Health check ESM fix** — Fixed missing `.js` extension in ESM import paths
+
+### Advanced Runtime & Platform
+
+- **WebAssembly runtime** — WASM compilation target for browser/edge Manifest execution
+- **Interactive tutorial mode** — Step-by-step guided tutorial in the diagnostic UI
+- **Constraint test harness** — Interactive constraint validation testing surface
+- **Policy matrix viewer** — Visual policy/action/role matrix display
+- **Bundle size analyzer** — Generated code bundle size reporting and tree-shaking analysis
+- **Load testing fixtures** — k6/Artillery load test generation from IR commands
+- **Mock server** — Auto-generated mock server for testing without real stores
+- **Snapshot testing** — Snapshot testing for generated projection code
+- **Property-based testing** — Fast-check property-based tests for runtime engine
+
+### Feature List & Release Tooling
+
+- **Feature list document** — `docs/FEATURE-LIST.md` cataloging all 116 features with implementation details
+- **Feature list generator** — `tools/gen_feature_list.py` for regenerating from automaker state
+
 ## [1.8.0] - 2026-06-01
 
 ### Added

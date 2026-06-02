@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://manifest-lang.org/schemas/tutorial-v1.schema.json",
+  "title": "Manifest Tutorial",
+  "description": "A structured tutorial for learning Manifest. Tutorials are defined as JSON and can be contributed by the community. They are consumed by the diagnostic UI's tutorial mode to walk new users through writing their first .manifest programs.",
+  "type": "object",
+  "required": ["id", "title", "description", "difficulty", "estimatedMinutes", "author", "tags", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this tutorial (kebab-case recommended)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title shown in the tutorial list"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description (1-2 sentences) shown in the tutorial list"
+    },
+    "difficulty": {
+      "enum": ["beginner", "intermediate", "advanced"],
+      "description": "Difficulty level, used for filtering and color coding"
+    },
+    "estimatedMinutes": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Estimated time to complete in minutes"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or contributor name"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for filtering/categorization (e.g. 'basics', 'commands', 'computed')"
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of other tutorials that must be completed first (gating)"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "instruction", "starterCode", "expectedCode", "hints", "validation"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique step identifier within this tutorial"
+          },
+          "title": {
+            "type": "string",
+            "description": "Step title shown in the step header"
+          },
+          "instruction": {
+            "type": "string",
+            "description": "Main instructional text (supports markdown-style formatting)"
+          },
+          "starterCode": {
+            "type": "string",
+            "description": "Code loaded into the editor when the user starts this step"
+          },
+          "expectedCode": {
+            "type": "string",
+            "description": "Solution code, revealed when the user clicks 'Show Answer'"
+          },
+          "optional": {
+            "type": "boolean",
+            "description": "If true, this step can be skipped"
+          },
+          "unlocks": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Feature/concept names unlocked by completing this step (progressive disclosure)"
+          },
+          "hints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "description": "The hint text to display"
+                },
+                "afterFailures": {
+                  "type": "number",
+                  "description": "Only show this hint after this many failed validation attempts"
+                },
+                "final": {
+                  "type": "boolean",
+                  "description": "If true, this is the 'final' hint shown when user is stuck"
+                }
+              }
+            }
+          },
+          "validation": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "enum": [
+                    "compiles",
+                    "has-entity",
+                    "has-property",
+                    "has-command",
+                    "has-guard",
+                    "has-computed",
+                    "has-policy",
+                    "source-contains",
+                    "source-matches",
+                    "ir-has"
+                  ],
+                  "description": "Type of validation check to perform"
+                }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "type": { "const": "has-entity" } } },
+                  "then": { "required": ["name"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "has-property" } } },
+                  "then": { "required": ["entity", "property"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "has-command" } } },
+                  "then": { "required": ["name"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "has-guard" } } },
+                  "then": { "required": ["command"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "has-computed" } } },
+                  "then": { "required": ["entity", "name"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "has-policy" } } },
+                  "then": { "required": ["name"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "source-contains" } } },
+                  "then": { "required": ["text"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "source-matches" } } },
+                  "then": { "required": ["pattern"] }
+                },
+                {
+                  "if": { "properties": { "type": { "const": "ir-has" } } },
+                  "then": { "required": ["path"] }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

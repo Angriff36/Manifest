@@ -47,6 +47,7 @@ import {
 } from './commands/doctor.js';
 import { diffIRCommand } from './commands/ir-diff.js';
 import { loadTestCommand } from './commands/load-test.js';
+import { mockCommand } from './commands/mock.js';
 import { breakingChangeCommand } from './commands/breaking-change.js';
 import { migrateCommand } from './commands/migrate.js';
 import { fmtCommand } from './commands/fmt.js';
@@ -450,6 +451,31 @@ program
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
   .action(async (manifest, options = {}) => {
     await harnessCommand(manifest, options);
+  });
+
+/**
+ * manifest mock <source>
+ *
+ * Start a local HTTP mock server that simulates API routes derived from
+ * compiled Manifest IR. Uses RuntimeEngine with in-memory stores for real
+ * command execution. Enables frontend teams to develop against a realistic
+ * API before the backend is deployed.
+ */
+program
+  .command('mock')
+  .description('Start a local mock HTTP server from IR (for frontend development)')
+  .argument('<source>', 'Source .manifest file or compiled .ir.json')
+  .option('-p, --port <number>', 'Port number', '4000')
+  .option('--host <host>', 'Bind host', '127.0.0.1')
+  .option('--cors', 'Enable CORS headers', false)
+  .option('--scenario <mode>', 'Hint mode: default|guard-fail|constraint-fail', 'default')
+  .action(async (source, options = {}) => {
+    await mockCommand(source, {
+      port: options.port,
+      host: options.host,
+      cors: options.cors,
+      scenario: options.scenario,
+    });
   });
 
 /**

@@ -1,0 +1,10 @@
+// Entity Inheritance Error: Cycle Detection
+// Tests diagnostic when extends chain contains a cycle.
+
+entity Alpha extends Beta {
+  property name: string = ""
+}
+
+entity Beta extends Alpha {
+  property label: string = ""
+}

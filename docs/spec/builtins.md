@@ -1,6 +1,6 @@
 # Built-ins
 
-Last updated: 2026-02-12
+Last updated: 2026-06-02
 Status: Active
 Authority: Binding
 Enforced by: src/manifest/conformance/**, npm test
@@ -58,6 +58,13 @@ Evidence: conformance fixture `56-expression-builtins.manifest`.
 - `length(v)` — string or array length
 - `substring(s, start, end?)`, `indexOf(s, search)`
 - `matches(s, pattern)` — regex test; returns `true` if `s` matches the regex `pattern`, `false` if `s` is non-string, `pattern` is non-string, or `pattern` is an invalid regex. Compile-time validation emits an error diagnostic when `pattern` is a literal with invalid regex syntax.
+- `search(text, query)` — full-text match. Returns `true` iff every whitespace-delimited word token in `query` appears as a whole word (case-insensitive) in `text`. Returns `false` if either argument is non-string or query is empty. Deterministic and pure. Evidence: conformance fixture `89-full-text-search.manifest`.
+
+### Property Modifier: `searchable`
+
+The `searchable` modifier may be applied to `string` properties to declare them as full-text search targets. The compiler emits an error diagnostic if `searchable` is applied to a non-string property. In projection generators, `searchable` properties generate:
+- **Prisma**: `@@fulltext([field1, field2])` model attribute
+- **Drizzle (PostgreSQL)**: GIN index on `to_tsvector('english', ...)` expression
 
 ### Math
 
@@ -146,9 +153,9 @@ precedence on name collision — reserved names cannot be overridden.
 
 ### Reserved Names
 
-The following 35 names are reserved and cannot be used by plugins:
+The following 36 names are reserved and cannot be used by plugins:
 `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`,
-`toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`,
+`toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`,
 `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`,
 `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`,
 `year`, `month`, `day`, `hours`, `minutes`, `seconds`,

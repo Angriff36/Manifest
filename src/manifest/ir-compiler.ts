@@ -22,6 +22,8 @@ import {
   ApprovalNode,
   ApprovalStageNode,
   RoleNode,
+  SagaNode,
+  WebhookNode,
 } from './types';
 import {
   IR,
@@ -55,6 +57,11 @@ import {
   IRApprovalStage,
   IRRole,
   IRRolePermission,
+  IRSaga,
+  IRSagaStep,
+  IRWebhook,
+  IRWebhookSignature,
+  IRWebhookParam,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -455,12 +462,22 @@ export class IRCompiler {
       ...program.modules.flatMap(m => m.entities.flatMap(e => (e.reactions || []).map(r => this.transformReaction(r, m.name, e.name)))),
     ];
 
+    const sagas: IRSaga[] = [
+      ...(program.sagas || []).map(s => this.transformSaga(s)),
+      ...program.modules.flatMap(m => (m.sagas || []).map(s => this.transformSaga(s, m.name))),
+    ];
+
     // Collect and resolve role hierarchy
     const rawRoles: IRRole[] = [
       ...program.roles.map(r => this.transformRole(r)),
       ...program.modules.flatMap(m => m.roles.map(r => this.transformRole(r, m.name))),
     ];
     const roles = this.resolveRoleGraph(rawRoles);
+
+    const webhooks: IRWebhook[] = [
+      ...(program.webhooks || []).map(w => this.transformWebhook(w)),
+      ...program.modules.flatMap(m => (m.webhooks || []).map(w => this.transformWebhook(w, m.name))),
+    ];
 
     // Create provenance once (single timestamp) then compute hash and stamp irHash.
     // Provenance is created WITHOUT irHash first so the hash covers the entire IR
@@ -484,7 +501,9 @@ export class IRCompiler {
       commands,
       policies,
       reactions,
+      ...(sagas.length > 0 ? { sagas } : {}),
       ...(roles.length > 0 ? { roles } : {}),
+      ...(webhooks.length > 0 ? { webhooks } : {}),
     };
 
     // Compute the IR hash and add it to the existing provenance
@@ -495,7 +514,7 @@ export class IRCompiler {
     };
   }
 
-  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; roles?: RoleNode[] }): IRModule {
+  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; sagas?: SagaNode[]; roles?: RoleNode[]; webhooks?: WebhookNode[] }): IRModule {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
@@ -511,7 +530,9 @@ export class IRCompiler {
         ...m.entities.flatMap(e => e.policies.map(p => p.name)),
       ],
       ...((m.reactions && m.reactions.length > 0) ? { reactions: m.reactions.map(r => `${r.event}→${r.targetEntity}.${r.targetCommand}`) } : {}),
+      ...((m.sagas && m.sagas.length > 0) ? { sagas: m.sagas.map(s => s.name) } : {}),
       ...((m.roles && m.roles.length > 0) ? { roles: m.roles.map(r => r.name) } : {}),
+      ...((m.webhooks && m.webhooks.length > 0) ? { webhooks: m.webhooks.map(w => w.name) } : {}),
     };
   }
 
@@ -539,6 +560,14 @@ export class IRCompiler {
     const regularPolicies = e.policies.filter(p => !p.isDefault).map(p => p.name);
 
     const properties = e.properties.map(p => this.transformProperty(p));
+
+    // Validate searchable modifier: only valid on string properties
+    for (const p of e.properties) {
+      if (p.modifiers.includes('searchable') && p.dataType.name !== 'string') {
+        this.emitDiagnostic('error', `Property '${p.name}' on entity '${e.name}': 'searchable' modifier is only valid on string properties (got '${p.dataType.name}').`);
+      }
+    }
+
     if (e.timestamps) {
       const hasCreatedAt = properties.some(p => p.name === 'createdAt');
       const hasUpdatedAt = properties.some(p => p.name === 'updatedAt');
@@ -787,6 +816,52 @@ export class IRCompiler {
       ...(params && params.length > 0 ? { params } : {}),
       ...(moduleName ? { module: moduleName } : {}),
       ...(entityName ? { entity: entityName } : {}),
+    };
+  }
+
+  private transformSaga(s: SagaNode, moduleName?: string): IRSaga {
+    const steps: IRSagaStep[] = s.steps.map(step => ({
+      name: step.name,
+      commandEntity: step.commandEntity,
+      command: step.command,
+      ...(step.compensate
+        ? { compensateEntity: step.compensateEntity ?? step.commandEntity, compensate: step.compensate }
+        : {}),
+    }));
+    return {
+      name: s.name,
+      ...(moduleName ? { module: moduleName } : {}),
+      steps,
+      onFailure: s.onFailure,
+      emits: s.emits,
+    };
+  }
+
+  private transformWebhook(w: WebhookNode, moduleName?: string): IRWebhook {
+    const transform: IRWebhookParam[] | undefined = w.transform?.map(p => ({
+      name: p.name,
+      expression: this.transformExpression(p.expression),
+    }));
+
+    let signature: IRWebhookSignature | undefined;
+    if (w.signature) {
+      signature = {
+        algorithm: w.signature.algorithm,
+        header: w.signature.header,
+        secret: w.signature.secret,
+      };
+    }
+
+    return {
+      name: w.name,
+      ...(moduleName ? { module: moduleName } : {}),
+      path: w.path,
+      ...(w.method ? { method: w.method } : {}),
+      command: w.command,
+      ...(w.entity ? { entity: w.entity } : {}),
+      ...(signature ? { signature } : {}),
+      ...(w.idempotencyHeader ? { idempotencyHeader: w.idempotencyHeader } : {}),
+      ...(transform && transform.length > 0 ? { transform } : {}),
     };
   }
 

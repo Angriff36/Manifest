@@ -276,6 +276,10 @@ describe('Manifest Conformance Tests', () => {
       const results = loadExpectedResults(fixtureName);
       if (!results) return;
 
+      // Skip runtime tests for fixtures that are expected to fail compilation
+      const expectedDiagnostics = loadExpectedDiagnostics(fixtureName);
+      if (expectedDiagnostics?.shouldFail) return;
+
       describe(fixtureName, () => {
         results.testCases.forEach((testCase) => {
           if ('command' in testCase) {

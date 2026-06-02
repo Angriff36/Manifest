@@ -1,0 +1,42 @@
+// Federation: entity schemas exposed for cross-service command invocation
+entity Order {
+  property required id: string
+  property customerId: string = ""
+  property total: number = 0
+  property status: string = "open"
+
+  command createOrder(custId: string, amount: number) {
+    guard amount > 0
+    guard self.customerId == "" or self.status == "open"
+    mutate customerId = custId
+    mutate total = amount
+    mutate status = "open"
+    emit OrderCreated
+  }
+
+  command completeOrder() {
+    guard self.status == "open"
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted
+  }
+
+  command getOrderSummary() {
+    guard self.id != ""
+  }
+}
+
+policy authenticated execute: context.actorId != null "Caller must be authenticated"
+
+store Order in memory
+
+event OrderCreated: "order.created" {
+  orderId: string
+  customerId: string
+  total: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}

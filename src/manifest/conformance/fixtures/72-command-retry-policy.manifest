@@ -1,0 +1,50 @@
+// Test: Command retry policy with backoff strategies and jitter
+
+entity Task {
+  property id: string
+  property status: string
+  property attempts: number
+
+  command process() {
+    retry {
+      maxAttempts: 3
+      backoff: exponential
+      delay: 1000
+      jitter: true
+      retryOn: "CONCURRENCY_CONFLICT"
+      retryOn: "TIMEOUT"
+    }
+    guard self.status == "pending"
+    mutate status = "processing"
+    mutate attempts = self.attempts + 1
+    emit TaskProcessed
+  }
+
+  command processLinear() {
+    retry {
+      maxAttempts: 5
+      backoff: linear
+      delay: 500
+      jitter: false
+      retryOn: "CONCURRENCY_CONFLICT"
+    }
+    guard self.status == "pending"
+    mutate status = "processing"
+    emit TaskProcessed
+  }
+
+  command processFixed() {
+    retry {
+      maxAttempts: 3
+      backoff: fixed
+      delay: 2000
+      jitter: false
+      retryOn: "TIMEOUT"
+    }
+    guard self.status == "pending"
+    mutate status = "processing"
+    emit TaskProcessed
+  }
+}
+
+event TaskProcessed: "task.processed"

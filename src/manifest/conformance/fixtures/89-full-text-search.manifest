@@ -1,0 +1,13 @@
+entity Article {
+  property required id: string
+  property searchable title: string = ""
+  property searchable body: string = ""
+  property views: number = 0
+
+  command publishIfRelevant() {
+    guard search(self.body, "manifest")
+    mutate views = self.views + 1
+  }
+}
+
+store Article in memory

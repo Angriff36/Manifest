@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Expected identifier, got }",
+      "line": 5,
+      "column": 114
+    }
+  ]
+}

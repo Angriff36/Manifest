@@ -1,0 +1,43 @@
+{
+  "name": "@manifest/stdlib",
+  "version": "0.1.0",
+  "description": "Curated standard library of reusable entity archetypes, property types, and constraint definitions for the Manifest DSL",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest/values/money": "./manifest/values/money.manifest",
+    "./manifest/values/address": "./manifest/values/address.manifest",
+    "./manifest/values/email": "./manifest/values/email.manifest",
+    "./manifest/values/phone": "./manifest/values/phone.manifest",
+    "./manifest/values/audit-trail": "./manifest/values/audit-trail.manifest",
+    "./manifest/enums/status": "./manifest/enums/status.manifest",
+    "./manifest/enums/priority": "./manifest/enums/priority.manifest",
+    "./manifest/enums/audit-action": "./manifest/enums/audit-action.manifest",
+    "./manifest/archetypes/timestamped": "./manifest/archetypes/timestamped.manifest",
+    "./manifest/archetypes/soft-deletable": "./manifest/archetypes/soft-deletable.manifest",
+    "./manifest/archetypes/owned": "./manifest/archetypes/owned.manifest",
+    "./manifest/archetypes/auditable": "./manifest/archetypes/auditable.manifest",
+    "./manifest/archetypes/state-machine": "./manifest/archetypes/state-machine.manifest",
+    "./manifest": "./manifest/**",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "manifest",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@angriff36/manifest": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "^5.5.3",
+    "vitest": "latest"
+  }
+}

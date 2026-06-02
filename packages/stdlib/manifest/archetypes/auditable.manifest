@@ -1,0 +1,36 @@
+// @manifest/stdlib: Auditable archetype
+//
+// Reference pattern: entities that need a record of who performed which
+// action and when. This goes beyond Timestamped (which only tracks when
+// the row was created/updated) by recording the actor and intent.
+//
+// Pattern: pair the runtime's built-in `event` declarations with an
+// `AuditTrail` value object embedded on the entity. Emit an event for
+// every state-changing command.
+//
+// Usage in your own file:
+//
+//   use "./node_modules/@manifest/stdlib/manifest/values/audit-trail.manifest"
+//
+//   entity Invoice {
+//     property required id: string
+//     property amount: number
+//     timestamps
+//     property lastAudit: AuditTrail
+//
+//     event auditRecorded(actor: string, action: string)
+//
+//     command recordChange(actor: string, action: string) {
+//       mutate lastAudit = AuditTrail { actor, action }
+//       emit auditRecorded(actor, action)
+//     }
+//
+//     store Invoice in memory
+//   }
+
+value AuditableEntity {
+  property createdBy: string
+  property updatedBy: string
+  property createdAt: string = ""
+  property updatedAt: string = ""
+}

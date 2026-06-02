@@ -1,0 +1,6 @@
+// Entity Inheritance Error: Unknown Parent
+// Tests diagnostic when extending a non-existent entity.
+
+entity Child extends NonExistent {
+  property name: string = ""
+}

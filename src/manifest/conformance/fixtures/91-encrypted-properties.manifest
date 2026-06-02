@@ -1,0 +1,14 @@
+// Test: encrypted property modifier on string properties
+// Verifies that the `encrypted` modifier is parsed and emitted in IR metadata.
+
+entity Patient {
+  property name: string
+  property encrypted ssn: string
+  property encrypted required medicalNotes: string
+}
+
+entity PaymentMethod {
+  property label: string
+  property encrypted cardNumber: string
+  property encrypted cvv: string
+}

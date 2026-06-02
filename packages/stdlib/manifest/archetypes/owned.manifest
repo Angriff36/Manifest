@@ -1,0 +1,31 @@
+// @manifest/stdlib: Owned archetype
+//
+// Reference pattern: entities that belong to a specific user/tenant/owner.
+// Adds an `ownerId` reference plus a `transferOwnership` command.
+//
+// Pattern: combine a string `ownerId` property with a `belongsTo` relationship
+// to your User entity and an ownership-transfer command guarded by policy.
+//
+// Usage in your own file:
+//
+//   use "./user.manifest"
+//
+//   entity Project {
+//     property required id: string
+//     property name: string
+//     property ownerId: string
+//     timestamps
+//     belongsTo owner: User
+//
+//     command transferOwnership(newOwnerId: string) {
+//       guard newOwnerId != ""
+//       mutate ownerId = newOwnerId
+//     }
+//
+//     store Project in memory
+//   }
+
+value Ownership {
+  property ownerId: string
+  property acquiredAt: string = ""
+}

@@ -1,0 +1,9 @@
+// @manifest/stdlib: PhoneNumber
+// Standard phone number value object with E.164 normalization hint.
+// Import via: use "./path/to/@manifest/stdlib/manifest/values/phone.manifest"
+
+value PhoneNumber {
+  property countryCode: string = "+1"
+  property digits: string
+  property extension: string = ""
+}

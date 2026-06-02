@@ -6,7 +6,8 @@ import {
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
   ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
   ValueObjectNode, TenantNode, ReactionNode, ReactionParamMapping, ApprovalNode, ApprovalStageNode,
-  UseNode, RoleNode, RolePermissionNode
+  UseNode, RoleNode, RolePermissionNode, SagaNode, SagaStepNode,
+  WebhookNode, WebhookSignatureNode, WebhookParamMapping
 } from './types';
 
 export class Parser {
@@ -21,7 +22,8 @@ export class Parser {
 
     const program: ManifestProgram = {
       uses: [], modules: [], entities: [], enums: [], values: [], commands: [], flows: [], effects: [],
-      exposures: [], compositions: [], policies: [], stores: [], events: [], reactions: [], roles: []
+      exposures: [], compositions: [], policies: [], stores: [], events: [], reactions: [], sagas: [], roles: [],
+      webhooks: []
     };
 
     // Parse use declarations (must appear before any other declarations)
@@ -76,7 +78,9 @@ export class Parser {
         else if (this.check('KEYWORD', 'store')) program.stores.push(this.parseStore());
         else if (this.check('KEYWORD', 'event')) program.events.push(this.parseOutboxEvent());
         else if (this.check('KEYWORD', 'on')) program.reactions.push(this.parseReaction());
+        else if (this.check('KEYWORD', 'saga')) program.sagas.push(this.parseSaga());
         else if (this.check('IDENTIFIER', 'role')) program.roles.push(this.parseRole());
+        else if (this.check('KEYWORD', 'webhook')) program.webhooks.push(this.parseWebhook());
         else this.advance();
       } catch (e) {
         this.errors.push({ message: e instanceof Error ? e.message : 'Parse error', position: this.current()?.position, severity: 'error' });
@@ -108,7 +112,7 @@ export class Parser {
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
-    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [], reactions: ReactionNode[] = [], roles: RoleNode[] = [];
+    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [], reactions: ReactionNode[] = [], sagas: SagaNode[] = [], roles: RoleNode[] = [], webhooks: WebhookNode[] = [];
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -129,12 +133,14 @@ export class Parser {
       else if (this.check('KEYWORD', 'store')) stores.push(this.parseStore());
       else if (this.check('KEYWORD', 'event')) events.push(this.parseOutboxEvent());
       else if (this.check('KEYWORD', 'on')) reactions.push(this.parseReaction());
+      else if (this.check('KEYWORD', 'saga')) sagas.push(this.parseSaga());
       else if (this.check('IDENTIFIER', 'role')) roles.push(this.parseRole());
+      else if (this.check('KEYWORD', 'webhook')) webhooks.push(this.parseWebhook());
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Module', name, entities, enums, commands, policies, stores, events, reactions, roles };
+    return { type: 'Module', name, entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks };
   }
 
   private parseEntity(): EntityNode {
@@ -365,7 +371,7 @@ export class Parser {
   private parseProperty(): PropertyNode {
     this.consume('KEYWORD', 'property');
     const modifiers: string[] = [];
-    while (['required', 'unique', 'indexed', 'private', 'readonly', 'optional'].includes(this.current()?.value || '')) {
+    while (['required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'searchable', 'encrypted'].includes(this.current()?.value || '')) {
       modifiers.push(this.advance().value);
     }
     const name = this.consumeIdentifier().value;
@@ -917,6 +923,253 @@ export class Parser {
     return { type: 'Reaction', event, targetEntity, targetCommand, resolve, ...(params ? { params } : {}), position };
   }
 
+  /**
+   * Parses: webhook <name> "<path>" run [Entity.]<command>
+   *           [method: "POST"]
+   *           [signature { algorithm: "hmac-sha256", header: "X-Sig", secret: "context.secret" }]
+   *           [idempotencyHeader: "X-Idempotency-Key"]
+   *           [transform: { <param>: <expr>, ... }]
+   */
+  private parseWebhook(): WebhookNode {
+    const position = this.current()?.position;
+    this.consume('KEYWORD', 'webhook');
+    const name = this.consumeIdentifier().value;
+    this.skipNL();
+
+    // Parse path string
+    if (!this.check('STRING')) {
+      throw new Error(`Expected path string after webhook '${name}'`);
+    }
+    const path = this.advance().value;
+    this.skipNL();
+
+    // 'run' keyword
+    this.consume('KEYWORD', 'run');
+
+    // Parse optional Entity.commandName
+    let entity: string | undefined;
+    let command: string;
+    const firstIdent = this.consumeIdentifier().value;
+    if (this.check('OPERATOR', '.')) {
+      this.advance(); // consume '.'
+      entity = firstIdent;
+      command = this.consumeIdentifier().value;
+    } else {
+      command = firstIdent;
+    }
+    this.skipNL();
+
+    // Parse optional block clauses
+    let method: string | undefined;
+    let signature: WebhookSignatureNode | undefined;
+    let idempotencyHeader: string | undefined;
+    let transform: WebhookParamMapping[] | undefined;
+
+    // Lookahead: continue parsing clauses while we see webhook-specific keywords
+    while (!this.isEnd() && (
+      this.check('IDENTIFIER', 'method') ||
+      this.check('KEYWORD', 'signature') ||
+      this.check('KEYWORD', 'idempotencyHeader') ||
+      this.check('KEYWORD', 'transform')
+    )) {
+      if (this.check('IDENTIFIER', 'method')) {
+        this.advance();
+        this.consume('OPERATOR', ':');
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string method after 'method:'`);
+        }
+        method = this.advance().value;
+      } else if (this.check('KEYWORD', 'signature')) {
+        this.advance();
+        signature = this.parseWebhookSignature();
+      } else if (this.check('KEYWORD', 'idempotencyHeader')) {
+        this.advance();
+        this.consume('OPERATOR', ':');
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string header name after 'idempotencyHeader:'`);
+        }
+        idempotencyHeader = this.advance().value;
+      } else if (this.check('KEYWORD', 'transform')) {
+        this.advance();
+        this.consume('OPERATOR', ':');
+        this.consume('PUNCTUATION', '{');
+        this.skipNL();
+        transform = [];
+        while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+          this.skipNL();
+          if (this.check('PUNCTUATION', '}')) break;
+          const pname = this.consumeIdentifier().value;
+          this.consume('OPERATOR', ':');
+          const pexpr = this.parseExpr();
+          transform.push({ name: pname, expression: pexpr });
+          if (this.check('PUNCTUATION', ',')) this.advance();
+          this.skipNL();
+        }
+        this.consume('PUNCTUATION', '}');
+      }
+      this.skipNL();
+    }
+
+    const node: WebhookNode = {
+      type: 'Webhook',
+      name,
+      path,
+      command,
+      position,
+    };
+    if (method) node.method = method;
+    if (entity) node.entity = entity;
+    if (signature) node.signature = signature;
+    if (idempotencyHeader) node.idempotencyHeader = idempotencyHeader;
+    if (transform && transform.length > 0) node.transform = transform;
+    return node;
+  }
+
+  /**
+   * Parses: { algorithm: "hmac-sha256", header: "X-Hub-Signature-256", secret: "context.secret" }
+   */
+  private parseWebhookSignature(): WebhookSignatureNode {
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    let algorithm: 'hmac-sha256' | 'hmac-sha512' | undefined;
+    let header: string | undefined;
+    let secret: string | undefined;
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      const field = this.consumeIdentifierOrKeyword().value;
+      this.consume('OPERATOR', ':');
+
+      if (field === 'algorithm') {
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string algorithm in signature block`);
+        }
+        const alg = this.advance().value;
+        if (alg === 'hmac-sha256' || alg === 'hmac-sha512') {
+          algorithm = alg;
+        } else {
+          throw new Error(`Unsupported signature algorithm '${alg}'. Supported: hmac-sha256, hmac-sha512`);
+        }
+      } else if (field === 'header') {
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string header name in signature block`);
+        }
+        header = this.advance().value;
+      } else if (field === 'secret') {
+        if (!this.check('STRING')) {
+          throw new Error(`Expected string secret path in signature block`);
+        }
+        secret = this.advance().value;
+      } else {
+        // Skip unknown field
+        this.parseExpr();
+      }
+      this.skipNL();
+      if (this.check('PUNCTUATION', ',')) this.advance();
+    }
+    this.consume('PUNCTUATION', '}');
+
+    if (!algorithm || !header || !secret) {
+      throw new Error(`Signature block requires algorithm, header, and secret fields`);
+    }
+
+    return { type: 'WebhookSignature', algorithm, header, secret };
+  }
+
+  /**
+   * Parses: saga <Name> {
+   *   step <name> { command: Entity.cmd [compensate: Entity.cmd] }
+   *   ...
+   *   [on_failure: "compensate"|"abort"]
+   *   [emit EventName]
+   * }
+   *
+   * Note: 'step' and 'compensate' are NOT keywords — matched as IDENTIFIERs
+   * to avoid breaking existing code that uses 'step' as a property name.
+   */
+  private parseSaga(): SagaNode {
+    const position = this.current()?.position;
+    this.consume('KEYWORD', 'saga');
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    const steps: SagaStepNode[] = [];
+    let onFailure: 'compensate' | 'abort' = 'compensate';
+    const emits: string[] = [];
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      if (this.check('IDENTIFIER') && this.current()?.value === 'step') {
+        steps.push(this.parseSagaStep());
+      } else if (this.check('IDENTIFIER') && this.current()?.value === 'on_failure') {
+        this.advance(); // consume 'on_failure'
+        this.consume('OPERATOR', ':');
+        const v = this.check('STRING') ? this.advance().value : this.advance().value;
+        if (v === 'compensate' || v === 'abort') onFailure = v;
+      } else if (this.check('KEYWORD', 'emit')) {
+        this.advance(); // consume 'emit'
+        emits.push(this.consumeIdentifier().value);
+      } else {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+
+    if (steps.length === 0) {
+      throw new Error(`Saga '${name}' must declare at least one step`);
+    }
+
+    return { type: 'Saga', name, steps, onFailure, emits, position };
+  }
+
+  private parseSagaStep(): SagaStepNode {
+    this.advance(); // consume 'step' (IDENTIFIER, not keyword)
+    const name = this.consumeIdentifier().value;
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+
+    let commandEntity = '', command = '';
+    let compensateEntity: string | undefined, compensate: string | undefined;
+
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+
+      if (this.check('KEYWORD', 'command')) {
+        this.advance(); // consume 'command'
+        this.consume('OPERATOR', ':');
+        commandEntity = this.consumeIdentifier().value;
+        this.consume('OPERATOR', '.');
+        command = this.consumeIdentifier().value;
+      } else if (this.check('IDENTIFIER') && this.current()?.value === 'compensate') {
+        this.advance(); // consume 'compensate'
+        this.consume('OPERATOR', ':');
+        compensateEntity = this.consumeIdentifier().value;
+        this.consume('OPERATOR', '.');
+        compensate = this.consumeIdentifier().value;
+      } else {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+
+    if (!command) {
+      throw new Error(`Saga step '${name}' must specify a command`);
+    }
+
+    const node: SagaStepNode = { type: 'SagaStep', name, commandEntity, command };
+    if (compensate) { node.compensateEntity = compensateEntity; node.compensate = compensate; }
+    return node;
+  }
+
   private parseAction(): ActionNode {
     let kind: ActionNode['kind'] = 'compute', target: string | undefined;
     if (this.check('KEYWORD', 'mutate')) { this.advance(); kind = 'mutate'; target = this.consumeIdentifier().value; this.consume('OPERATOR', '='); }
@@ -1353,5 +1606,5 @@ export class Parser {
   private current() { return this.tokens[this.pos]; }
   private isEnd() { return this.pos >= this.tokens.length || this.tokens[this.pos]?.type === 'EOF'; }
   private skipNL() { while (this.check('NEWLINE', '\n')) this.advance(); }
-  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event', 'tenant', 'async', 'role'].includes(this.current()?.value || '')) this.advance(); }
+  private sync() { this.advance(); while (!this.isEnd() && !['entity', 'enum', 'flow', 'effect', 'expose', 'compose', 'module', 'command', 'policy', 'store', 'event', 'tenant', 'async', 'saga', 'role', 'webhook'].includes(this.current()?.value || '')) this.advance(); }
 }

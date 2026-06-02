@@ -1,0 +1,70 @@
+{
+  "testCases": [
+    {
+      "name": "addItem command triggers read model update via OrderItemAdded",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-1", "customerId": "cust-1", "total": 0, "status": "open" }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-1",
+        "input": { "amount": 50 }
+      },
+      "readModel": "OrderSummary",
+      "expectedRows": [
+        {
+          "id": "order-1",
+          "total": 50
+        }
+      ]
+    },
+    {
+      "name": "multiple addItem commands accumulate read model total",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-2", "customerId": "cust-1", "total": 0, "status": "open" }
+        }
+      },
+      "command": {
+        "name": "addItem",
+        "entityName": "Order",
+        "instanceId": "order-2",
+        "input": { "amount": 75 }
+      },
+      "readModel": "OrderSummary",
+      "expectedRows": [
+        {
+          "id": "order-2",
+          "total": 75
+        }
+      ]
+    },
+    {
+      "name": "complete command merges status field into read model",
+      "setup": {
+        "createInstance": {
+          "entity": "Order",
+          "data": { "id": "order-3", "customerId": "cust-2", "total": 100, "status": "open" }
+        }
+      },
+      "command": {
+        "name": "complete",
+        "entityName": "Order",
+        "instanceId": "order-3",
+        "input": {}
+      },
+      "readModel": "OrderSummary",
+      "expectedRows": [
+        {
+          "id": "order-3",
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

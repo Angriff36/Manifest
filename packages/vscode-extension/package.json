@@ -1,0 +1,86 @@
+{
+  "name": "manifest-lang",
+  "displayName": "Manifest Language",
+  "description": "Language support for the Manifest DSL — syntax highlighting, diagnostics, autocomplete, and more",
+  "version": "0.1.0",
+  "publisher": "angriff36",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Angriff36/Manifest.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:manifest"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "manifest",
+        "aliases": [
+          "Manifest",
+          "manifest"
+        ],
+        "extensions": [
+          ".manifest"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "manifest",
+        "scopeName": "source.manifest",
+        "path": "./syntaxes/manifest.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "manifest",
+        "path": "./snippets/manifest.code-snippets"
+      }
+    ],
+    "configuration": {
+      "title": "Manifest",
+      "properties": {
+        "manifest.semanticDiagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable fast local semantic diagnostics for Manifest source files."
+        },
+        "manifest.semanticDiagnostics.projectionHints": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable projection-aware hints such as ambiguous bare number storage fields."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@angriff36/manifest": "workspace:*",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.3"
+  }
+}

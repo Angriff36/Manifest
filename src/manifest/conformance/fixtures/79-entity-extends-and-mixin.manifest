@@ -1,0 +1,27 @@
+// Entity Inheritance + Mixin Combined
+// Tests both extends and mixin on the same entity.
+// extends provides single inheritance, mixin composes from multiple traits.
+
+entity Auditable {
+  property auditLog: string = ""
+}
+
+entity BaseRecord {
+  property required id: string = ""
+  property version: number = 0
+}
+
+entity Document extends BaseRecord mixin Auditable {
+  property title: string = ""
+  property content: string = ""
+
+  command Publish() {
+    mutate version = self.version + 1
+    emit DocumentPublished
+  }
+}
+
+event DocumentPublished: "document.published" {
+  id: string
+  version: number
+}

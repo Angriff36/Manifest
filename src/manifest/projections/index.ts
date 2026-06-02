@@ -29,6 +29,9 @@ export { MermaidProjection } from './mermaid/generator.js';
 export { JsonSchemaProjection } from './jsonschema/generator.js';
 export { StorybookProjection } from './storybook/generator.js';
 export { HealthCheckProjection } from './health/generator.js';
+export { MaterializedViewsProjection } from './materialized-views/generator.js';
+export { ElasticsearchProjection } from './elasticsearch/generator.js';
+export { TerraformProjection } from './terraform/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
@@ -43,6 +46,24 @@ export type { MermaidProjectionOptions } from './mermaid/generator.js';
 export type { JsonSchemaProjectionOptions } from './jsonschema/types.js';
 export type { StorybookProjectionOptions } from './storybook/generator.js';
 export type { HealthCheckProjectionOptions } from './health/types.js';
+export type { MaterializedViewsProjectionOptions } from './materialized-views/options.js';
+export type { ElasticsearchProjectionOptions } from './elasticsearch/options.js';
+export type { TerraformProjectionOptions, TerraformProvider, TerraformBucket, TerraformDatabaseConfig } from './terraform/options.js';
+export type {
+  MaterializedViewDefinition,
+  MaterializedViewIndex,
+  MaterializedViewRefreshStrategy,
+  MaterializedViewSchedule,
+  MaterializedViewTrigger,
+} from './materialized-views/types.js';
+export type {
+  ElasticsearchIndexDefinition,
+  ESFieldOverride,
+  ESIngestPipeline,
+  ESIngestPipelineProcessor,
+  ESAnalyzerConfig,
+  ESIndexerConfig,
+} from './elasticsearch/types.js';
 
 // Re-export route surface types
 export type {

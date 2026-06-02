@@ -1,0 +1,34 @@
+// @manifest/stdlib: SoftDeletable archetype
+//
+// Reference pattern: entities that should be marked as deleted rather than
+// physically removed, so the row can be restored later.
+//
+// Pattern: add a `deletedAt` timestamp and a `softDelete`/`restore` command
+// pair. The runtime still records the entity in the store, but downstream
+// reads can filter on `deletedAt == null`.
+//
+// Usage in your own file:
+//
+//   entity Comment {
+//     property required id: string
+//     property body: string
+//     property deletedAt: string = ""
+//     timestamps
+//
+//     command softDelete() {
+//       guard self.deletedAt == ""
+//       mutate deletedAt = "now"
+//     }
+//
+//     command restore() {
+//       guard self.deletedAt != ""
+//       mutate deletedAt = ""
+//     }
+//
+//     store Comment in memory
+//   }
+
+value SoftDeleteMarker {
+  property deletedAt: string = ""
+  property deletedBy: string = ""
+}

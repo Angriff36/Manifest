@@ -1,0 +1,37 @@
+// @manifest/stdlib: StateMachine archetype
+//
+// Reference pattern: entities whose status field can only move through a
+// defined set of transitions. The runtime enforces these via the
+// `transition` keyword and blocks invalid moves at execution time.
+//
+// Pattern: declare a `transition status from "X" to [...]` block for each
+// source state. Wrap each state change in a command so the transition is
+// recorded as a single auditable operation.
+//
+// Usage in your own file:
+//
+//   entity Order {
+//     property required id: string
+//     property status: string = "pending"
+//     timestamps
+//
+//     transition status from "pending" to ["confirmed", "cancelled"]
+//     transition status from "confirmed" to ["shipped", "cancelled"]
+//     transition status from "shipped" to ["delivered"]
+//     transition status from "delivered" to ["refunded"]
+//     transition status from "cancelled" to []
+//
+//     command confirm() { mutate status = "confirmed" }
+//     command ship()    { mutate status = "shipped" }
+//     command deliver() { mutate status = "delivered" }
+//     command cancel()  { mutate status = "cancelled" }
+//     command refund()  { mutate status = "refunded" }
+//
+//     store Order in memory
+//   }
+
+value StateMachineFields {
+  property status: string = "draft"
+  property previousStatus: string = ""
+  property statusChangedAt: string = ""
+}

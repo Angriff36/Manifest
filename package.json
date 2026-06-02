@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -57,6 +57,10 @@
     "./stores": {
       "types": "./dist/manifest/stores.node.d.ts",
       "import": "./dist/manifest/stores.node.js"
+    },
+    "./projections": {
+      "types": "./dist/manifest/projections/registry.d.ts",
+      "import": "./dist/manifest/projections/registry.js"
     },
     "./registry/emit": {
       "types": "./dist/manifest/registry/emit.d.ts",
@@ -122,6 +126,18 @@
       "types": "./dist/manifest/parser.d.ts",
       "import": "./dist/manifest/parser.js"
     },
+    "./lexer": {
+      "types": "./dist/manifest/lexer.d.ts",
+      "import": "./dist/manifest/lexer.js"
+    },
+    "./types": {
+      "types": "./dist/manifest/types.d.ts",
+      "import": "./dist/manifest/types.js"
+    },
+    "./wasm": {
+      "types": "./dist/manifest/wasm/index.d.ts",
+      "import": "./dist/manifest/wasm/index.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -130,15 +146,19 @@
   },
   "bin": {
     "manifest": "./packages/cli/dist/index.js",
-    "manifest-mcp": "./packages/mcp-server/bin/manifest-mcp.js"
+    "manifest-mcp": "./packages/mcp-server/bin/manifest-mcp.js",
+    "manifest-lsp": "./packages/lsp-server/bin/manifest-lsp.js"
   },
   "files": [
     "dist/manifest/**",
     "packages/cli/dist/**",
     "packages/mcp-server/dist/**",
     "packages/mcp-server/bin/**",
+    "packages/lsp-server/dist/**",
+    "packages/lsp-server/bin/**",
     "src/manifest/audit/sinks/*.sql",
     "src/manifest/outbox/stores/*.sql",
+    "src/manifest/wasm/*.wasm",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/semantics.md",
     "docs/spec/registry/*.schema.json",
@@ -179,13 +199,16 @@
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
-    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build && pnpm --filter @manifest/mcp-server run build"
+    "wasm:build": "asc assembly/index.ts --target release --outFile src/manifest/wasm/manifest-runtime.wasm --optimize --runtime stub --exportRuntime",
+    "wasm:build:debug": "asc assembly/index.ts --target debug --outFile src/manifest/wasm/manifest-runtime-debug.wasm",
+    "prepublishOnly": "pnpm run build:lib && pnpm run wasm:build && pnpm --filter @manifest/cli run build && pnpm --filter @manifest/mcp-server run build && pnpm --filter @manifest/lsp-server run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@types/pg": "^8.16.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
+    "lz-string": "^1.5.0",
     "pg": "^8.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -200,10 +223,15 @@
     }
   },
   "devDependencies": {
+    "@assemblyscript/loader": "^0.27.31",
     "@eslint/js": "^9.9.1",
+    "@msgpack/msgpack": "^3.0.0",
+    "fast-check": "^3.0.0",
+    "@types/lz-string": "^1.5.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "assemblyscript": "^0.27.31",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

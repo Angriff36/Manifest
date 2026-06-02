@@ -1,0 +1,11 @@
+// @manifest/stdlib: Status
+// Common lifecycle status enum used by entities that follow a draft/published/archived pattern.
+// Import via: use "./path/to/@manifest/stdlib/manifest/enums/status.manifest"
+
+enum Status {
+  draft = "Draft"
+  active = "Active"
+  published = "Published"
+  archived = "Archived"
+  deleted = "Deleted"
+}

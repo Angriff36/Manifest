@@ -1,4 +1,4 @@
-import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode, ReactionNode, RoleNode } from './types';
+import { ManifestProgram, EntityNode, FlowNode, EffectNode, ExposeNode, CompositionNode, ExpressionNode, BehaviorNode, ConstraintNode, CommandNode, StoreNode, OutboxEventNode, RelationshipNode, TypeNode as ASTTypeNode, ReactionNode, RoleNode, SagaNode } from './types';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
 /** Provenance metadata for generated code */
@@ -36,6 +36,7 @@ export class CodeGenerator {
     for (const e of program.effects) { this.genEffect(e); this.line(); }
     for (const ev of program.events) { this.genOutboxEvent(ev); this.line(); }
     for (const r of (program.reactions || [])) { this.genReaction(r); this.line(); }
+    for (const s of (program.sagas || [])) { this.genSaga(s); this.line(); }
     for (const role of (program.roles || [])) { this.genRole(role); this.line(); }
     for (const x of program.exposures) { this.genExpose(x); this.line(); }
     for (const c of program.compositions) { this.genComposition(c); this.line(); }
@@ -442,6 +443,27 @@ export class CodeGenerator {
     if (denies.length > 0) {
       this.line(`deny: [${denies.map(p => `{ action: '${p.action}'${p.target ? `, target: '${p.target}'` : ''} }`).join(', ')}],`);
     }
+    this.de();
+    this.line('} as const;');
+  }
+
+  private genSaga(s: SagaNode) {
+    this.line(`// Saga: ${s.name} (on_failure: ${s.onFailure})`);
+    this.line(`export const ${s.name}Saga = {`);
+    this.in();
+    this.line(`name: '${s.name}',`);
+    this.line(`onFailure: '${s.onFailure}',`);
+    this.line(`steps: [`);
+    this.in();
+    for (const step of s.steps) {
+      const comp = step.compensate
+        ? `, compensate: '${step.compensateEntity}.${step.compensate}'`
+        : '';
+      this.line(`{ name: '${step.name}', command: '${step.commandEntity}.${step.command}'${comp} },`);
+    }
+    this.de();
+    this.line(`],`);
+    this.line(`emits: [${s.emits.map(e => `'${e}'`).join(', ')}],`);
     this.de();
     this.line('} as const;');
   }

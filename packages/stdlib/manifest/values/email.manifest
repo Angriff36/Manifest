@@ -1,0 +1,8 @@
+// @manifest/stdlib: EmailAddress
+// Validated email address value object.
+// Import via: use "./path/to/@manifest/stdlib/manifest/values/email.manifest"
+
+value EmailAddress {
+  property address: string
+  property verified: boolean = false
+}

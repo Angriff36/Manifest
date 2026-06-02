@@ -244,3 +244,30 @@ export interface NextJsProjectionOptions {
     directDbReads?: boolean;
   };
 }
+
+/**
+ * Configuration options for Remix projections.
+ */
+export interface RemixProjectionOptions {
+  authProvider?: 'clerk' | 'remix-auth' | 'custom' | 'none';
+  authImportPath?: string;
+  databaseImportPath?: string;
+  responseImportPath?: string;
+  runtimeImportPath?: string;
+  sessionStoragePath?: string;
+  includeTenantFilter?: boolean;
+  includeSoftDeleteFilter?: boolean;
+  tenantIdProperty?: string;
+  deletedAtProperty?: string;
+  routesDir?: string;
+  strictMode?: boolean;
+  includeComments?: boolean;
+  includeErrorBoundary?: boolean;
+  unauthorizedStatus?: number;
+  remixVersion?: 'v2' | 'v7';
+  tenantProvider?: {
+    importPath: string;
+    functionName: string;
+    lookupKey: 'orgId' | 'userId';
+  };
+}

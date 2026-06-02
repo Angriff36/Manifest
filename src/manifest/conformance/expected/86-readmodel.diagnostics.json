@@ -1,0 +1,53 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Expected ), got :",
+      "line": 11,
+      "column": 32
+    },
+    {
+      "severity": "error",
+      "message": "Expected ), got :",
+      "line": 17,
+      "column": 32
+    },
+    {
+      "severity": "error",
+      "message": "Expected {, got \n",
+      "line": 35,
+      "column": 15
+    },
+    {
+      "severity": "error",
+      "message": "Expected IDENTIFIER, got .",
+      "line": 37,
+      "column": 14
+    },
+    {
+      "severity": "error",
+      "message": "Expected IDENTIFIER, got .",
+      "line": 38,
+      "column": 17
+    },
+    {
+      "severity": "error",
+      "message": "Expected IDENTIFIER, got .",
+      "line": 41,
+      "column": 14
+    },
+    {
+      "severity": "error",
+      "message": "Reserved word 'in' cannot be used as an identifier",
+      "line": 44,
+      "column": 11
+    },
+    {
+      "severity": "error",
+      "message": "Expected in, got memory",
+      "line": 44,
+      "column": 18
+    }
+  ]
+}

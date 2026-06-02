@@ -1,0 +1,8 @@
+// @manifest/stdlib: Money
+// Reusable monetary value object with currency.
+// Import via: use "./path/to/@manifest/stdlib/manifest/values/money.manifest"
+
+value Money {
+  property amount: decimal
+  property currency: string = "USD"
+}

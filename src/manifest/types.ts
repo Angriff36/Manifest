@@ -24,7 +24,9 @@ export interface ModuleNode extends ASTNode {
   stores: StoreNode[];
   events: OutboxEventNode[];
   reactions: ReactionNode[];
+  sagas: SagaNode[];
   roles: RoleNode[];
+  webhooks: WebhookNode[];
 }
 
 export interface TransitionNode extends ASTNode {
@@ -227,6 +229,29 @@ export interface ReactionNode extends ASTNode {
   params?: ReactionParamMapping[];
 }
 
+export interface SagaStepNode extends ASTNode {
+  type: 'SagaStep';
+  name: string;
+  /** Target entity for the forward command */
+  commandEntity: string;
+  /** Forward command name */
+  command: string;
+  /** Optional compensating entity */
+  compensateEntity?: string;
+  /** Optional compensating command name */
+  compensate?: string;
+}
+
+export interface SagaNode extends ASTNode {
+  type: 'Saga';
+  name: string;
+  steps: SagaStepNode[];
+  /** Failure strategy; defaults to 'compensate' */
+  onFailure: 'compensate' | 'abort';
+  /** Lifecycle events to emit */
+  emits: string[];
+}
+
 export interface ActionNode extends ASTNode {
   type: 'Action';
   kind: 'mutate' | 'emit' | 'compute' | 'effect' | 'publish' | 'persist';
@@ -412,6 +437,40 @@ export interface UseNode extends ASTNode {
   path: string;
 }
 
+export interface WebhookParamMapping {
+  name: string;
+  expression: ExpressionNode;
+}
+
+export interface WebhookSignatureNode extends ASTNode {
+  type: 'WebhookSignature';
+  /** Signature algorithm: 'hmac-sha256' or 'hmac-sha512' */
+  algorithm: 'hmac-sha256' | 'hmac-sha512';
+  /** HTTP header containing the signature (e.g. "X-Hub-Signature-256") */
+  header: string;
+  /** Context path to the shared secret (e.g. "context.webhookSecret") */
+  secret: string;
+}
+
+export interface WebhookNode extends ASTNode {
+  type: 'Webhook';
+  name: string;
+  /** HTTP path pattern for this webhook route (e.g. "/webhooks/stripe") */
+  path: string;
+  /** HTTP method to match (default: POST) */
+  method?: string;
+  /** Name of the command to invoke when the webhook fires */
+  command: string;
+  /** Optional entity context for the command (e.g. for entity-scoped commands) */
+  entity?: string;
+  /** HMAC signature verification configuration */
+  signature?: WebhookSignatureNode;
+  /** Header name to extract idempotency key from */
+  idempotencyHeader?: string;
+  /** Payload transformation expressions: maps command parameter names to payload field expressions */
+  transform?: WebhookParamMapping[];
+}
+
 export interface ManifestProgram {
   uses: UseNode[];
   modules: ModuleNode[];
@@ -427,7 +486,9 @@ export interface ManifestProgram {
   stores: StoreNode[];
   events: OutboxEventNode[];
   reactions: ReactionNode[];
+  sagas: SagaNode[];
   roles: RoleNode[];
+  webhooks: WebhookNode[];
   tenant?: TenantNode;
 }
 

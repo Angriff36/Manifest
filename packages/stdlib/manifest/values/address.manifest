@@ -1,0 +1,12 @@
+// @manifest/stdlib: Address
+// Standard postal address value object.
+// Import via: use "./path/to/@manifest/stdlib/manifest/values/address.manifest"
+
+value Address {
+  property street1: string
+  property street2: string = ""
+  property city: string
+  property state: string
+  property postalCode: string
+  property country: string = "US"
+}

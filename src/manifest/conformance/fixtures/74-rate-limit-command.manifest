@@ -1,0 +1,38 @@
+// Rate Limiting on Commands (vNext)
+
+event NotificationSent: notifications {
+  payload: string
+}
+
+command sendNotification(recipient: string, message: string) {
+  rateLimit {
+    maxRequests: 10
+    windowMs: 1000
+    scope: user
+    burstAllowance: 5
+  }
+  guard context.authenticated == true
+  emit NotificationSent
+}
+
+command globalAction(data: string) {
+  rateLimit {
+    maxRequests: 100
+    windowMs: 60000
+    scope: global
+  }
+  persist globalActionLog
+}
+
+event TenantActionPerformed: actions {
+  payload: string
+}
+
+command tenantAction(data: string) {
+  rateLimit {
+    maxRequests: 50
+    windowMs: 10000
+    scope: tenant
+  }
+  emit TenantActionPerformed
+}

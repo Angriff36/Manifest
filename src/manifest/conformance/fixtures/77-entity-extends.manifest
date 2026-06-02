@@ -1,0 +1,42 @@
+// Entity Inheritance via extends
+// Tests single inheritance: child entity inherits properties, commands,
+// policies, and constraints from parent entity. Resolved at IR compile time.
+
+entity BaseEntity {
+  property required id: string = ""
+  property createdAt: string = ""
+  property active: boolean = true
+
+  constraint activeFlag {
+    expression: self.active == true
+    severity: warn
+    message: "Entity is not active"
+  }
+
+  policy AdminOnly execute: user.role == "admin"
+    "Only admins can access"
+
+  command Archive() {
+    guard self.active == true
+    mutate active = false
+    emit EntityArchived
+  }
+}
+
+entity ChildEntity extends BaseEntity {
+  property name: string = ""
+
+  command Rename(newName: string) {
+    mutate name = newName
+    emit EntityRenamed
+  }
+}
+
+event EntityArchived: "entity.archived" {
+  id: string
+}
+
+event EntityRenamed: "entity.renamed" {
+  id: string
+  name: string
+}

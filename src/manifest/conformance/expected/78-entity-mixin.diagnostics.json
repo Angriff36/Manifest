@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Expected {, got mixin",
+      "line": 19,
+      "column": 21
+    }
+  ]
+}

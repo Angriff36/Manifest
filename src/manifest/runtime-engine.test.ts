@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RuntimeEngine, EvaluationBudgetExceededError, type RuntimeContext, type RuntimeOptions, type EntityInstance } from './runtime-engine';
+import { RuntimeEngine, EvaluationBudgetExceededError, type RuntimeContext, type RuntimeOptions, type EntityInstance, type EncryptionProvider } from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR, IRExpression } from './ir';
 import { COMPILER_VERSION } from './version';
@@ -1609,6 +1609,198 @@ on CounterIncremented run Counter.increment
         entityName: 'Counter',
         instanceId: 'counter-1',
       })).rejects.toThrow('Reaction depth limit');
+    });
+  });
+
+  describe('encrypted modifier', () => {
+    function createMockEncryptionProvider(): EncryptionProvider {
+      return {
+        encrypt: async (plaintext: string) => ({
+          ciphertext: Buffer.from(plaintext).toString('base64'),
+          keyId: 'test-key-1',
+        }),
+        decrypt: async (ciphertext: string, _keyId: string) =>
+          Buffer.from(ciphertext, 'base64').toString('utf-8'),
+      };
+    }
+
+    it('should store encrypted property as envelope JSON', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const provider = createMockEncryptionProvider();
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+        encryptionProvider: provider,
+      });
+
+      const instance = await runtime.createInstance('Patient', {
+        name: 'Alice',
+        ssn: '123-45-6789',
+      });
+
+      expect(instance).toBeDefined();
+      // Caller sees plaintext (decrypt happened after store write)
+      expect(instance!.ssn).toBe('123-45-6789');
+      expect(instance!.name).toBe('Alice');
+    });
+
+    it('should decrypt on getInstance', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const provider = createMockEncryptionProvider();
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+        encryptionProvider: provider,
+      });
+
+      await runtime.createInstance('Patient', { name: 'Bob', ssn: '987-65-4321' });
+      const fetched = await runtime.getInstance('Patient', 'patient-1');
+
+      expect(fetched).toBeDefined();
+      expect(fetched!.ssn).toBe('987-65-4321');
+    });
+
+    it('should decrypt on getAllInstances', async () => {
+      let idCounter = 0;
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const provider = createMockEncryptionProvider();
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => `patient-${++idCounter}`,
+        encryptionProvider: provider,
+      });
+
+      await runtime.createInstance('Patient', { name: 'Alice', ssn: '111-11-1111' });
+      await runtime.createInstance('Patient', { name: 'Bob', ssn: '222-22-2222' });
+      const all = await runtime.getAllInstances('Patient');
+
+      expect(all).toHaveLength(2);
+      expect(all.map(p => p.ssn).sort()).toEqual(['111-11-1111', '222-22-2222']);
+    });
+
+    it('should re-encrypt on updateInstance', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const encryptCalls: string[] = [];
+      const provider: EncryptionProvider = {
+        encrypt: async (plaintext: string) => {
+          encryptCalls.push(plaintext);
+          return {
+            ciphertext: Buffer.from(plaintext).toString('base64'),
+            keyId: 'test-key-1',
+          };
+        },
+        decrypt: async (ciphertext: string, _keyId: string) =>
+          Buffer.from(ciphertext, 'base64').toString('utf-8'),
+      };
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+        encryptionProvider: provider,
+      });
+
+      await runtime.createInstance('Patient', { name: 'Alice', ssn: '111-11-1111' });
+      encryptCalls.length = 0; // reset
+
+      const updated = await runtime.updateInstance('Patient', 'patient-1', { ssn: '999-99-9999' });
+
+      expect(updated).toBeDefined();
+      expect(updated!.ssn).toBe('999-99-9999');
+      expect(encryptCalls).toContain('999-99-9999');
+    });
+
+    it('should be a no-op without encryptionProvider', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      // No encryptionProvider in options
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+      });
+
+      const instance = await runtime.createInstance('Patient', {
+        name: 'Alice',
+        ssn: '123-45-6789',
+      });
+
+      expect(instance).toBeDefined();
+      expect(instance!.ssn).toBe('123-45-6789');
+
+      const fetched = await runtime.getInstance('Patient', 'patient-1');
+      expect(fetched!.ssn).toBe('123-45-6789');
+    });
+
+    it('should preserve keyId in envelope for key rotation', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const provider = createMockEncryptionProvider();
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+        encryptionProvider: provider,
+      });
+
+      await runtime.createInstance('Patient', { name: 'Alice', ssn: '123-45-6789' });
+
+      // Verify decrypt was called with the right keyId by spying
+      const decryptSpy = vi.spyOn(provider, 'decrypt');
+      await runtime.getInstance('Patient', 'patient-1');
+
+      expect(decryptSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'test-key-1',
+      );
+    });
+
+    it('should not encrypt non-encrypted properties', async () => {
+      const ir = await compileToIR(`
+        entity Patient {
+          property name: string
+          property encrypted ssn: string
+        }
+      `);
+      const encryptCalls: string[] = [];
+      const provider: EncryptionProvider = {
+        encrypt: async (plaintext: string) => {
+          encryptCalls.push(plaintext);
+          return {
+            ciphertext: Buffer.from(plaintext).toString('base64'),
+            keyId: 'test-key-1',
+          };
+        },
+        decrypt: async (ciphertext: string, _keyId: string) =>
+          Buffer.from(ciphertext, 'base64').toString('utf-8'),
+      };
+      const runtime = new RuntimeEngine(ir, {}, {
+        generateId: () => 'patient-1',
+        encryptionProvider: provider,
+      });
+
+      await runtime.createInstance('Patient', { name: 'Alice', ssn: '123-45-6789' });
+
+      // Only 'ssn' should be encrypted, not 'name'
+      expect(encryptCalls).toEqual(['123-45-6789']);
     });
   });
 });

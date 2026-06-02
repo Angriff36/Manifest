@@ -1,0 +1,24 @@
+{
+  "targets": {
+    "release": {
+      "outFile": "src/manifest/wasm/manifest-runtime.wasm",
+      "optimizeLevel": 3,
+      "shrinkLevel": 0,
+      "converge": false,
+      "noAssert": true
+    },
+    "debug": {
+      "outFile": "src/manifest/wasm/manifest-runtime-debug.wasm",
+      "optimizeLevel": 0,
+      "shrinkLevel": 0,
+      "debug": true
+    }
+  },
+  "options": {
+    "exportMemory": true,
+    "exportRuntime": true,
+    "importMemory": false,
+    "memoryBase": 0,
+    "tableBase": 0
+  }
+}

@@ -214,6 +214,12 @@ function emitPropertyColumn(
     modifiers.push('.unique()');
   }
 
+  // Encrypted column annotation (informational — encryption is handled at runtime)
+  const isEncrypted = prop.modifiers.includes('encrypted');
+  if (isEncrypted) {
+    diagnostics.push({ severity: 'info', message: `Column '${prop.name}' is marked encrypted — values are envelope-encrypted at runtime.` });
+  }
+
   // Default value
   if (prop.defaultValue && !isId) {
     const def = literalToDrizzleDefault(prop.defaultValue);
@@ -229,8 +235,9 @@ function emitPropertyColumn(
 
   columnExpr += modifiers.join('');
 
+  const commentPrefix = isEncrypted ? `  // @encrypted — values stored as envelope JSON\n` : '';
   return {
-    line: `  ${prop.name}: ${columnExpr},`,
+    line: `${commentPrefix}  ${prop.name}: ${columnExpr},`,
     diagnostics,
   };
 }
@@ -605,9 +612,9 @@ function emitTable(
 function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): string[] {
   const idx = options.indexes?.[entity.name];
   const lines: string[] = [];
+  const varName = options.tableMappings?.[entity.name] ?? entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
 
   if (idx && idx.length > 0) {
-    const varName = options.tableMappings?.[entity.name] ?? entity.name.charAt(0).toLowerCase() + entity.name.slice(1);
     for (const entry of idx) {
       const fields = Array.isArray(entry) ? entry : entry.fields;
       const name = !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
@@ -615,6 +622,17 @@ function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): strin
       lines.push(`  .on(${fields.map(f => `${varName}.${f}`).join(', ')});`);
       lines.push(``);
     }
+  }
+
+  // GIN tsvector index for searchable properties (PostgreSQL only)
+  const dialect = (options.dialect ?? 'postgresql') as DrizzleDialect;
+  const searchableFields = entity.properties.filter(p => p.modifiers.includes('searchable')).map(p => p.name);
+  if (searchableFields.length > 0 && dialect === 'postgresql') {
+    const tsvectorParts = searchableFields.map(f => `"${f}"`).join(` || ' ' || `);
+    const idxName = `${varName}_search_idx`;
+    lines.push(`export const ${idxName} = index("${idxName}")`);
+    lines.push(`  .using("gin", sql\`to_tsvector('english', ${tsvectorParts})\`);`);
+    lines.push(``);
   }
 
   return lines;

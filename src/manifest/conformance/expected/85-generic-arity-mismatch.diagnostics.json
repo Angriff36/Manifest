@@ -1,0 +1,17 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Expected {, got <",
+      "line": 7,
+      "column": 17
+    },
+    {
+      "severity": "error",
+      "message": "Expected {, got =",
+      "line": 13,
+      "column": 12
+    }
+  ]
+}

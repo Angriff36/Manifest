@@ -1,0 +1,45 @@
+// ReadModel: denormalized view of entity state updated reactively via event subscriptions
+entity Order {
+  property required id: string
+  property customerId: string = ""
+  property total: number = 0
+  property status: string = "open"
+
+  command addItem(amount: number) {
+    guard amount > 0
+    mutate total = self.total + amount
+    emit OrderItemAdded(orderId: self.id, amount: amount, newTotal: self.total)
+  }
+
+  command complete() {
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted(orderId: self.id, finalTotal: self.total)
+  }
+}
+
+store Order in memory
+
+event OrderItemAdded: "order.item-added" {
+  orderId: string
+  amount: number
+  newTotal: number
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}
+
+readModel OrderSummary {
+  entity Order
+  subscribe OrderItemAdded {
+    id: event.orderId
+    total: event.newTotal
+  }
+  subscribe OrderCompleted {
+    id: event.orderId
+    status: "completed"
+  }
+  store in memory
+}

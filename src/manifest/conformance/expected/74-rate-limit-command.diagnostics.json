@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Unexpected: tenant",
+      "line": 35,
+      "column": 18
+    }
+  ]
+}

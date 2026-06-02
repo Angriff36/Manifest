@@ -1,0 +1,19 @@
+// Rate Limiting on Policies (vNext)
+
+policy ReadRestricted read: context.role == 'admin' rateLimit { maxRequests: 1000 windowMs: 60000 scope: user }
+
+policy WriteRestricted write: context.role == 'admin' rateLimit { maxRequests: 100 windowMs: 60000 scope: tenant } message: "Only admins can write"
+
+entity Document {
+  property title: string required
+  property content: string
+  policies { ReadRestricted, WriteRestricted }
+
+  command create(docTitle: string, docContent: string)
+    guard length(docTitle) > 0
+    => mutate this { title: docTitle, content: docContent }
+
+  command updateContent(newContent: string)
+    guard length(newContent) > 0
+    => mutate this { content: newContent }
+}
