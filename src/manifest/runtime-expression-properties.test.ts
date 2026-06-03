@@ -144,9 +144,13 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
             if (result1 === undefined || result2 === undefined) {
               expect(result1).toBe(result2);
             } else if (typeof result1 === 'number' && typeof result2 === 'number') {
-              // Allow for floating point imprecision (NaN/Infinity are idempotent too)
-              if (Number.isNaN(result1) || Number.isNaN(result2)) {
-                expect(Number.isNaN(result1)).toBe(Number.isNaN(result2));
+              // Non-finite results (NaN, ±Infinity — e.g. x/0, 0/0, x%0) are
+              // idempotent too: identical inputs must yield the identical
+              // non-finite value. Object.is gives NaN===NaN and distinguishes
+              // +Infinity from -Infinity, where `Infinity - Infinity` would be
+              // NaN and break a difference-based comparison.
+              if (!Number.isFinite(result1) || !Number.isFinite(result2)) {
+                expect(Object.is(result1, result2)).toBe(true);
               } else {
                 expect(Math.abs((result1 as number) - (result2 as number))).toBeLessThan(1e-10);
               }
