@@ -141,6 +141,50 @@ Generate a static documentation site from IR.
 manifest docs src/ -f markdown -o docs-site
 ```
 
+### IR merge workflow (`mergeIrs` behavior)
+
+When `manifest docs` receives multiple inputs (directory or glob), it compiles and/or loads each input IR and merges them into one aggregate IR used for page generation.
+
+Expected merge behavior:
+
+- Initialize every required IR array field before merge: `modules`, `values`, `entities`, `enums`, `stores`, `events`, `commands`, `policies`.
+- For each input IR, append each array into the merged aggregate.
+- Always propagate `values` the same way as other top-level arrays. This is required by the IR schema and by downstream tools that read reusable value-object definitions.
+
+Reference merge skeleton:
+
+```ts
+const mergedIR: IR = {
+	version: '1.0',
+	provenance: firstProvenance,
+	modules: [],
+	values: [],
+	entities: [],
+	enums: [],
+	stores: [],
+	events: [],
+	commands: [],
+	policies: [],
+};
+
+for (const ir of inputIRs) {
+	mergedIR.modules.push(...ir.modules);
+	mergedIR.values.push(...ir.values);
+	mergedIR.entities.push(...ir.entities);
+	mergedIR.enums.push(...ir.enums);
+	mergedIR.stores.push(...ir.stores);
+	mergedIR.events.push(...ir.events);
+	mergedIR.commands.push(...ir.commands);
+	mergedIR.policies.push(...ir.policies);
+}
+```
+
+Notes:
+
+- `values` is a required IR v1 field and must always be present, even when empty.
+- If a merge implementation omits `values` initialization or propagation, the merged output is nonconformant with `docs/spec/ir/ir-v1.schema.json` and may fail validation.
+- Deterministic merges should also sort merged arrays by stable keys before computing hashes or writing output.
+
 ## diagram
 
 Generate Mermaid diagrams from IR.

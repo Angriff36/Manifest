@@ -31,13 +31,14 @@ import type {
   ProjectionTarget,
 } from '../interface';
 
-import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry, type ForeignKeyConfig } from './options.js';
+import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry, type ForeignKeyConfig, type PrismaProvider } from './options.js';
 import {
   resolvePrismaScalar,
   isDecimalScalar,
   DEFAULT_DECIMAL_PRECISION,
   DEFAULT_DECIMAL_SCALE,
 } from './type-mapping.js';
+import { resolveColumnName, resolveTableName } from '../shared/naming.js';
 
 // ============================================================================
 // Surface identifiers
@@ -65,6 +66,51 @@ const PERSISTENT_TARGETS: ReadonlySet<IRStore['target']> = new Set([
 
 function isPersistent(target: IRStore['target']): boolean {
   return PERSISTENT_TARGETS.has(target);
+}
+
+// ============================================================================
+// Multi-schema layout
+// ============================================================================
+
+/**
+ * Providers that support multiple database schemas in Prisma. Enabling
+ * `multiSchema` with any other provider is a hard error.
+ */
+const MULTISCHEMA_PROVIDERS: ReadonlySet<PrismaProvider> = new Set<PrismaProvider>([
+  'postgresql',
+  'cockroachdb',
+  'sqlserver',
+]);
+
+/**
+ * Resolve the database schema a model belongs to, or `undefined` when the
+ * flat layout is in effect (multiSchema disabled). Resolution order:
+ *   1. explicit `entitySchema[name]` override
+ *   2. the entity's IR `module` (the real layout we are preserving)
+ *   3. `defaultSchema` (default `"public"`)
+ */
+function resolveSchemaName(entity: IREntity, options: PrismaProjectionOptions): string | undefined {
+  const ms = options.multiSchema;
+  if (!ms?.enabled) return undefined;
+  return ms.entitySchema?.[entity.name] ?? entity.module ?? ms.defaultSchema ?? 'public';
+}
+
+/**
+ * Build the datasource `schemas = [...]` list: explicit entries first (order
+ * preserved), then any schema referenced by a model but not explicitly listed,
+ * appended in sorted order. Guarantees every referenced schema is declared.
+ */
+function buildSchemasList(entities: IREntity[], options: PrismaProjectionOptions): string[] {
+  const ordered: string[] = [...(options.multiSchema?.schemas ?? [])];
+  const used = new Set<string>();
+  for (const entity of entities) {
+    const schema = resolveSchemaName(entity, options);
+    if (schema) used.add(schema);
+  }
+  for (const schema of [...used].sort()) {
+    if (!ordered.includes(schema)) ordered.push(schema);
+  }
+  return ordered;
 }
 
 // ============================================================================
@@ -208,6 +254,11 @@ function emitPropertyLine(
     attrs.push(`@map("${colMapOverride}")`);
   } else if (isId && isMongo) {
     attrs.push('@map("_id")');
+  } else if (options.naming) {
+    // Auto-casing convention: emit @map only when the physical name differs
+    // from the IR property name. The Prisma field identifier stays prop.name.
+    const phys = resolveColumnName(prop.name, options.naming);
+    if (phys !== prop.name) attrs.push(`@map("${phys}")`);
   }
 
   const prec = options.precision?.[entity.name]?.[prop.name];
@@ -476,8 +527,14 @@ function emitRelationship(
           const fkType = targetPropPrismaType(rel.target, refField, ir, options);
           // For single-column 1:1 → @unique on the column. For composite, @@unique at model level.
           const uniqueAttr = (!isComposite && isOneToOne) ? ' @unique' : '';
-          const colMap = options.columnMappings?.[entity.name]?.[fkField];
-          const colMapAttr = colMap ? ` @map("${colMap}")` : '';
+          // Explicit columnMappings override wins; otherwise the auto-casing
+          // convention maps the physical FK column name (identifier stays fkField).
+          let physMap = options.columnMappings?.[entity.name]?.[fkField];
+          if (!physMap && options.naming) {
+            const phys = resolveColumnName(fkField, options.naming);
+            if (phys !== fkField) physMap = phys;
+          }
+          const colMapAttr = physMap ? ` @map("${physMap}")` : '';
           lines.push(`  ${fkField} ${fkType}${uniqueAttr}${colMapAttr}`);
         }
       }
@@ -593,8 +650,14 @@ function emitModel(
     }
   }
 
-  // @@map (table name override)
-  const tableMap = options.tableMappings?.[entity.name];
+  // @@map (table name override). Explicit tableMappings wins; otherwise the
+  // auto-casing convention maps the physical table name (model name stays
+  // entity.name, so relations/indexes are unaffected).
+  let tableMap = options.tableMappings?.[entity.name];
+  if (!tableMap && options.naming) {
+    const phys = resolveTableName(entity.name, options.naming);
+    if (phys !== entity.name) tableMap = phys;
+  }
   let hadModelAttr = false;
   if (tableMap) {
     lines.push('');
@@ -641,10 +704,17 @@ function emitModel(
     lines.push(`  @@fulltext([${searchableFields.join(', ')}])`);
   }
 
+  // @@schema — preserve the model's module layout when multiSchema is enabled.
+  const schemaName = resolveSchemaName(entity, options);
+  if (schemaName) {
+    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+    lines.push(`  @@schema("${schemaName}")`);
+  }
+
   lines.push('}');
 
   if (ir.tenant) {
-    const tableName = options.tableMappings?.[entity.name] ?? entity.name;
+    const tableName = tableMap ?? entity.name;
     const tenantCol = ir.tenant.property;
     lines.push('');
     lines.push(`// -- RLS policy (apply manually or via migration):`);
@@ -660,15 +730,25 @@ function emitModel(
 // Schema-level emission (datasource + generator + models)
 // ============================================================================
 
-function emitDatasourceBlock(provider: PrismaProjectionOptions['provider']): string[] {
+function emitDatasourceBlock(
+  provider: PrismaProjectionOptions['provider'],
+  schemas: readonly string[] = [],
+): string[] {
   if (!provider) return [];
   // Prisma 7+: datasource block carries only the provider — no `url` property.
   // The connection URL MUST be supplied by the consumer via prisma.config.ts.
   // A prisma.config.ts companion artifact is emitted alongside this schema.
+  //
+  // Multi-schema: when models declare `@@schema(...)`, the datasource must list
+  // every referenced schema via `schemas = [...]`. multiSchema is GA in current
+  // Prisma (no previewFeatures flag required).
+  const datasource = ['datasource db {', `  provider = "${provider}"`];
+  if (schemas.length > 0) {
+    datasource.push(`  schemas  = [${schemas.map(s => `"${s}"`).join(', ')}]`);
+  }
+  datasource.push('}');
   return [
-    'datasource db {',
-    `  provider = "${provider}"`,
-    '}',
+    ...datasource,
     '',
     'generator client {',
     '  provider = "prisma-client-js"',
@@ -719,8 +799,27 @@ export class PrismaProjection implements ProjectionTarget {
       };
     }
 
-    const options = normalizeOptions(request.options);
+    let options = normalizeOptions(request.options);
     const diagnostics: ProjectionDiagnostic[] = [];
+
+    // Multi-schema provider guard. Multiple schemas are a PostgreSQL /
+    // CockroachDB / SQL Server capability; on any other provider we cannot
+    // emit a valid multi-schema layout, so fall back to flat and explain why.
+    if (
+      options.multiSchema?.enabled &&
+      options.provider &&
+      !MULTISCHEMA_PROVIDERS.has(options.provider)
+    ) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER',
+        message:
+          `multiSchema is enabled but provider '${options.provider}' does not support multiple database schemas. ` +
+          `Prisma multi-schema requires 'postgresql', 'cockroachdb', or 'sqlserver'. ` +
+          `Models are emitted WITHOUT @@schema (flat layout). Remove multiSchema or switch provider.`,
+      });
+      options = { ...options, multiSchema: { ...options.multiSchema, enabled: false } };
+    }
 
     const storeByEntity = new Map<string, IRStore['target']>();
     for (const s of ir.stores) storeByEntity.set(s.entity, s.target);
@@ -763,6 +862,24 @@ export class PrismaProjection implements ProjectionTarget {
       emittedEntities.add(entity.name);
     }
 
+    // Schemas referenced by the models we are about to emit (empty when
+    // multiSchema is disabled). Drives both the datasource `schemas = [...]`
+    // list and the models-only advisory below.
+    const schemasList = buildSchemasList(toEmit, options);
+
+    // Models-only mode (no provider → no datasource block): @@schema is still
+    // emitted, but the consumer's existing datasource must declare the schemas.
+    if (options.multiSchema?.enabled && !options.provider && schemasList.length > 0) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'PRISMA_MULTISCHEMA_MODELS_ONLY',
+        message:
+          `multiSchema is enabled with no provider (models-only mode). @@schema(...) is emitted on each model, ` +
+          `but no datasource block is generated. Ensure your existing datasource declares ` +
+          `schemas = [${schemasList.map(s => `"${s}"`).join(', ')}].`,
+      });
+    }
+
     const context: RelationContext = { emittedEntities };
     const modelBlocks: string[] = [];
     for (const entity of toEmit) {
@@ -775,7 +892,7 @@ export class PrismaProjection implements ProjectionTarget {
       '// Auto-generated by @manifest/projection-prisma',
       '// DO NOT EDIT — regenerate with the projection.',
       '',
-      ...emitDatasourceBlock(options.provider),
+      ...emitDatasourceBlock(options.provider, schemasList),
     ];
 
     const headerStr = header.join('\n');

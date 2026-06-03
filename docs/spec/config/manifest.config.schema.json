@@ -37,9 +37,71 @@
     "env": {
       "$ref": "#/definitions/EnvironmentMapping",
       "description": "Environment variable mapping for stores, auth, adapters, and custom settings."
+    },
+    "hooks": {
+      "$ref": "#/definitions/HooksConfig",
+      "description": "Git pre-commit hook settings consumed by `manifest install-hooks`."
+    },
+    "plugins": {
+      "type": "array",
+      "description": "Third-party plugin declarations loaded by the CLI. Inspected via `manifest plugins`.",
+      "items": { "$ref": "#/definitions/PluginDeclaration" }
+    },
+    "naming": {
+      "$ref": "#/definitions/NamingConvention",
+      "description": "Global identifier-casing convention inherited by projections that map IR names to physical database names (currently Prisma). A per-projection `projections.<name>.options.naming` overrides it."
     }
   },
   "definitions": {
+    "HooksConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Settings for `manifest install-hooks` (git pre-commit integration).",
+      "properties": {
+        "skipInCi": {
+          "type": "boolean",
+          "description": "Skip running the generated hook in CI environments.",
+          "default": true
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["husky", "simple-git-hooks"],
+          "description": "Git hook manager the pre-commit hook is installed into.",
+          "default": "husky"
+        },
+        "runFmt": {
+          "type": "boolean",
+          "description": "Run `manifest fmt` from the generated pre-commit hook.",
+          "default": true
+        },
+        "runValidate": {
+          "type": "boolean",
+          "description": "Run `manifest validate` from the generated pre-commit hook.",
+          "default": true
+        }
+      }
+    },
+    "PluginDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "description": "Declares a Manifest plugin for the CLI to load.",
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "npm package name or relative file path to the plugin module."
+        },
+        "options": {
+          "type": "object",
+          "description": "Plugin-specific options passed to the plugin at load time."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the plugin is active.",
+          "default": true
+        }
+      }
+    },
     "EnvVarDefinition": {
       "type": "object",
       "description": "Definition of a single environment variable referenced by the application.",
@@ -460,8 +522,36 @@
             "type": "object",
             "additionalProperties": { "type": "array", "items": { "type": "string" } }
           }
+        },
+        "naming": {
+          "$ref": "#/definitions/NamingConvention",
+          "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (model/field identifiers stay the IR name). Explicit tableMappings/columnMappings override it."
         }
       }
+    },
+    "NamingConvention": {
+      "description": "Identifier-casing convention. String shorthand 'snake_case' expands to { table: 'snake_case', column: 'snake_case', pluralizeTables: true }.",
+      "oneOf": [
+        { "type": "string", "enum": ["snake_case"] },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "table": {
+              "description": "Case style for table/model physical names. Default 'preserve'.",
+              "enum": ["snake_case", "camelCase", "PascalCase", "preserve"]
+            },
+            "column": {
+              "description": "Case style for column/field physical names. Default 'preserve'.",
+              "enum": ["snake_case", "camelCase", "preserve"]
+            },
+            "pluralizeTables": {
+              "description": "Pluralize resolved table names. Default true.",
+              "type": "boolean"
+            }
+          }
+        }
+      ]
     }
   }
 }

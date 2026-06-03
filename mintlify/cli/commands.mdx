@@ -261,6 +261,82 @@ manifest build \
 
 ---
 
+## `manifest docs [source]`
+
+Generates a static API reference site from one or more Manifest sources. Inputs can be `.manifest` (compiled first) or `.ir.json` files (loaded directly).
+
+```bash
+manifest docs [source] [options]
+```
+
+`source` can be a single file, a directory, or a glob.
+
+### Options
+
+<ParamField path="-o, --output" type="string" default="docs-site">
+  Output directory for generated docs.
+</ParamField>
+
+<ParamField path="-f, --format" type="string" default="html">
+  Output format: `html` or `markdown`.
+</ParamField>
+
+<ParamField path="-t, --title" type="string" default="Manifest API Reference">
+  Site title used in generated pages.
+</ParamField>
+
+### IR merge workflow (`mergeIrs` behavior)
+
+When `manifest docs` receives multiple inputs, it merges all compiled/loaded IR objects into one aggregate IR for page generation.
+
+Expected merge contract:
+
+1. Initialize all required IR arrays before merging: `modules`, `values`, `entities`, `enums`, `stores`, `events`, `commands`, `policies`.
+2. Append each input IR array into the merged array.
+3. Propagate `values` exactly like the other top-level arrays.
+
+```ts
+const mergedIR: IR = {
+  version: '1.0',
+  provenance: firstProvenance,
+  modules: [],
+  values: [],
+  entities: [],
+  enums: [],
+  stores: [],
+  events: [],
+  commands: [],
+  policies: [],
+};
+
+for (const ir of inputIRs) {
+  mergedIR.modules.push(...ir.modules);
+  mergedIR.values.push(...ir.values);
+  mergedIR.entities.push(...ir.entities);
+  mergedIR.enums.push(...ir.enums);
+  mergedIR.stores.push(...ir.stores);
+  mergedIR.events.push(...ir.events);
+  mergedIR.commands.push(...ir.commands);
+  mergedIR.policies.push(...ir.policies);
+}
+```
+
+<Note>
+`values` is required by the IR v1 schema even when empty. Any merge path that does not initialize and populate `values` can produce nonconformant merged IR and break downstream tooling.
+</Note>
+
+### Examples
+
+```bash
+# Build docs from all manifest/IR files under src
+manifest docs src/ --format markdown --output docs-site
+
+# Build docs from a single compiled IR
+manifest docs ir/app.ir.json --output docs-site
+```
+
+---
+
 ## `manifest validate [ir]`
 
 Validates one or more IR JSON files against the IR v1 JSON schema using [Ajv](https://ajv.js.org). When `ir` is omitted, the CLI searches the current directory for all `*.ir.json` files (excluding `node_modules`, `dist`, and `.next`).

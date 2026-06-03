@@ -6,8 +6,12 @@
  * class references that cannot be expressed in JSON Schema.
  *
  * The schema itself lives at docs/spec/config/manifest.config.schema.json
- * and ships with the package via package.json#files so downstream repos
- * can reference it via $schema for editor IntelliSense.
+ * and ships with the package via package.json#files. Validation always loads
+ * this bundled copy (see locateConfigSchema) — it never fetches a URL, so the
+ * `$schema` line in a user's config is decorative as far as the CLI is
+ * concerned. Manifest publishes no resolvable schema URL; for editor
+ * IntelliSense, downstream repos should map the bundled file in
+ * .vscode/settings.json rather than point `$schema` at a public URL.
  */
 
 import fs from 'node:fs/promises';

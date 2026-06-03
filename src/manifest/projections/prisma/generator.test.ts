@@ -1874,3 +1874,281 @@ describe('PrismaProjection — regression: duplicate @default dedup', () => {
     expect(tagsLine).toMatch(/^\s+tags\s+String\[\]\s+@default\(\[\]\)$/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Multi-schema layout (G6): preserve module layout instead of flattening.
+// ---------------------------------------------------------------------------
+
+/** A durable entity in a named module (the "real layout" signal). */
+function moduleEntity(name: string, moduleName: string | undefined): IREntity {
+  return {
+    name,
+    module: moduleName,
+    properties: [
+      { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+    ],
+    computedProperties: [],
+    relationships: [],
+    commands: [],
+    constraints: [],
+    policies: [],
+  };
+}
+
+describe('PrismaProjection — multi-schema layout (G6)', () => {
+  it('is OFF by default: no @@schema, no schemas list (back-compat)', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
+    }).artifacts[0].code;
+
+    expect(code).not.toMatch(/@@schema/);
+    expect(code).not.toMatch(/schemas\s*=/);
+  });
+
+  it('derives @@schema from entity.module and lists schemas on the datasource', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.entities.push(moduleEntity('Invoice', 'billing'));
+    ir.stores.push(durableStore('User'));
+    ir.stores.push(durableStore('Invoice'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
+    });
+    const code = result.artifacts[0].code;
+
+    // datasource lists both schemas (sorted: auth, billing).
+    expect(code).toMatch(/^\s+schemas\s+=\s+\["auth", "billing"\]$/m);
+    // each model carries its module's @@schema.
+    expect(code).toMatch(/model User \{[\s\S]*?@@schema\("auth"\)[\s\S]*?\}/);
+    expect(code).toMatch(/model Invoice \{[\s\S]*?@@schema\("billing"\)[\s\S]*?\}/);
+    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+  });
+
+  it('entitySchema override takes precedence over the module', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        provider: 'postgresql',
+        multiSchema: { enabled: true, entitySchema: { User: 'identity' } },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/@@schema\("identity"\)/);
+    expect(code).not.toMatch(/@@schema\("auth"\)/);
+    expect(code).toMatch(/^\s+schemas\s+=\s+\["identity"\]$/m);
+  });
+
+  it('falls back to defaultSchema for a module-less entity', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('Setting', undefined));
+    ir.stores.push(durableStore('Setting'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true, defaultSchema: 'core' } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/@@schema\("core"\)/);
+  });
+
+  it('module-less entity defaults to "public" when defaultSchema is unset', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('Setting', undefined));
+    ir.stores.push(durableStore('Setting'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/@@schema\("public"\)/);
+  });
+
+  it('preserves explicit schemas order and appends used-but-unlisted schemas', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));      // listed
+    ir.entities.push(moduleEntity('Audit', 'logging'));  // NOT listed → appended
+    ir.stores.push(durableStore('User'));
+    ir.stores.push(durableStore('Audit'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        provider: 'postgresql',
+        multiSchema: { enabled: true, schemas: ['public', 'auth'] },
+      },
+    }).artifacts[0].code;
+
+    // explicit order preserved (public, auth), then appended sorted (logging).
+    expect(code).toMatch(/^\s+schemas\s+=\s+\["public", "auth", "logging"\]$/m);
+  });
+
+  it('errors on an unsupported provider and falls back to a flat layout', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'mysql', multiSchema: { enabled: true } },
+    });
+    const code = result.artifacts[0].code;
+
+    expect(result.diagnostics.some(d => d.code === 'PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER' && d.severity === 'error')).toBe(true);
+    expect(code).not.toMatch(/@@schema/);
+    expect(code).not.toMatch(/schemas\s*=/);
+  });
+
+  it('models-only mode (no provider): emits @@schema + info diagnostic, no datasource', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { multiSchema: { enabled: true } },
+    });
+    const code = result.artifacts[0].code;
+
+    expect(code).toMatch(/@@schema\("auth"\)/);
+    expect(code).not.toMatch(/datasource db \{/);
+    const info = result.diagnostics.find(d => d.code === 'PRISMA_MULTISCHEMA_MODELS_ONLY');
+    expect(info?.severity).toBe('info');
+    expect(info?.message).toMatch(/schemas = \["auth"\]/);
+    // models-only → no prisma.config.ts companion (provider unset).
+    expect(result.artifacts).toHaveLength(1);
+  });
+});
+
+describe('PrismaProjection — naming convention (auto casing)', () => {
+  /** Entity with camelCase columns to exercise the convention. */
+  function userAccountEntity(): IREntity {
+    return {
+      name: 'UserAccount',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: [] },
+        { name: 'displayName', type: { name: 'string', nullable: false }, modifiers: [] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    };
+  }
+
+  it("naming: 'snake_case' maps camelCase columns and pluralizes the table; identifiers unchanged", () => {
+    const ir = emptyIR();
+    ir.entities.push(userAccountEntity());
+    ir.stores.push(durableStore('UserAccount'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
+    }).artifacts[0].code;
+
+    // Prisma field identifier stays camelCase; only @map carries the physical name.
+    expect(code).toMatch(/^\s+createdAt DateTime\? @map\("created_at"\)$/m);
+    expect(code).toMatch(/^\s+displayName String\? @map\("display_name"\)$/m);
+    // Model name stays PascalCase; @@map carries the pluralized physical name.
+    expect(code).toMatch(/^model UserAccount \{/m);
+    expect(code).toMatch(/^\s+@@map\("user_accounts"\)$/m);
+  });
+
+  it("does not @map names that are already in the target case (id stays bare)", () => {
+    const ir = emptyIR();
+    ir.entities.push(userAccountEntity());
+    ir.stores.push(durableStore('UserAccount'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id$/m);
+    expect(code).not.toMatch(/id String @id @map/);
+  });
+
+  it('maps default FK columns under the convention (authorId → author_id)', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Author', {
+        relationships: [{ name: 'books', kind: 'hasMany', target: 'Book' }],
+      }),
+      bareEntity('Book', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'Author' }],
+      }),
+    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { naming: 'snake_case' },
+    }).artifacts[0].code;
+
+    // FK identifier stays authorId; physical column mapped; relation reference unchanged.
+    expect(code).toMatch(/^\s+authorId String @map\("author_id"\)$/m);
+    expect(code).toMatch(/^\s+author Author @relation\(fields: \[authorId\], references: \[id\]\)$/m);
+  });
+
+  it('explicit tableMappings / columnMappings override the convention', () => {
+    const ir = emptyIR();
+    ir.entities.push(userAccountEntity());
+    ir.stores.push(durableStore('UserAccount'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        naming: 'snake_case',
+        tableMappings: { UserAccount: 'accounts' },
+        columnMappings: { UserAccount: { createdAt: 'inserted_at' } },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+@@map\("accounts"\)$/m);
+    expect(code).not.toMatch(/user_accounts/);
+    expect(code).toMatch(/^\s+createdAt DateTime\? @map\("inserted_at"\)$/m);
+    expect(code).not.toMatch(/created_at/);
+  });
+
+  it('pluralizeTables: false casing without pluralization', () => {
+    const ir = emptyIR();
+    ir.entities.push(widgetEntity());
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { naming: { table: 'snake_case', column: 'snake_case', pluralizeTables: false } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+@@map\("widget"\)$/m);
+  });
+
+  it('no naming option → output identical to default (no @map/@@map added)', () => {
+    const ir = emptyIR();
+    ir.entities.push(userAccountEntity());
+    ir.stores.push(durableStore('UserAccount'));
+
+    const withoutOption = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    const withEmptyOptions = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {},
+    }).artifacts[0].code;
+
+    expect(withoutOption).toBe(withEmptyOptions);
+    expect(withoutOption).not.toMatch(/@map/);
+    expect(withoutOption).not.toMatch(/@@map/);
+  });
+});

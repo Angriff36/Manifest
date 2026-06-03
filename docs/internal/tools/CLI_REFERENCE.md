@@ -584,7 +584,9 @@ pnpm exec manifest audit-routes \
 `manifest.config.yaml`:
 
 ```yaml
-$schema: https://manifest.dev/config.schema.json
+# No $schema URL: validation uses the schema bundled with the package, not a
+# remote URL. For editor IntelliSense, map the bundled schema via
+# .vscode/settings.json (yaml.schemas).
 
 # Source files
 src: "**/*.manifest"

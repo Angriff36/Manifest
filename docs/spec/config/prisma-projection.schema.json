@@ -117,6 +117,57 @@
     "urlEnvVar": {
       "description": "Environment variable name for the database connection URL in the emitted prisma.config.ts companion. Defaults to 'DATABASE_URL'. Only relevant when provider is set.",
       "type": "string"
+    },
+    "multiSchema": {
+      "description": "Preserve the model's module layout as database schemas instead of flattening into one schema. Emits @@schema(...) per model and schemas=[...] on the datasource. PostgreSQL / CockroachDB / SQL Server only.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Master switch. Default false (flat layout, fully back-compatible).",
+          "type": "boolean",
+          "default": false
+        },
+        "schemas": {
+          "description": "Explicit datasource schema list. Order preserved; any schema used by a model but missing here is appended (sorted) so the datasource lists every referenced schema.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "entitySchema": {
+          "description": "Per-entity schema override. Key = IR entity name; value = schema name. Takes precedence over the entity's IR module.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "defaultSchema": {
+          "description": "Schema for entities with neither an entitySchema override nor an IR module. Default 'public'.",
+          "type": "string",
+          "default": "public"
+        }
+      }
+    },
+    "naming": {
+      "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (the Prisma model name and field identifiers stay the IR name, so relations/indexes are unaffected). Explicit tableMappings/columnMappings override it. String shorthand 'snake_case' ≡ { table: 'snake_case', column: 'snake_case', pluralizeTables: true }.",
+      "oneOf": [
+        { "type": "string", "enum": ["snake_case"] },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "table": {
+              "description": "Case style for table physical names (@@map). Default 'preserve'.",
+              "enum": ["snake_case", "camelCase", "PascalCase", "preserve"]
+            },
+            "column": {
+              "description": "Case style for column physical names (@map). Default 'preserve'.",
+              "enum": ["snake_case", "camelCase", "preserve"]
+            },
+            "pluralizeTables": {
+              "description": "Pluralize resolved table names. Default true.",
+              "type": "boolean"
+            }
+          }
+        }
+      ]
     }
   }
 }

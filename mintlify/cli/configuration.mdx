@@ -30,7 +30,17 @@ You can always override a config value for a single run without modifying the fi
 ## Top-level fields
 
 <ParamField path="$schema" type="string">
-  Optional JSON Schema URL for editor validation and autocomplete. Set to `https://manifest.dev/config.schema.json` to get inline validation in editors that support JSON Schema.
+  Optional pointer to the config JSON Schema for editor IntelliSense. Manifest does **not** publish a resolvable schema URL, and `manifest config validate` loads the schema bundled with the package — it never fetches a URL. For autocomplete without a dead link, map the bundled schema in `.vscode/settings.json`:
+
+  ```jsonc
+  {
+    "yaml.schemas": {
+      "./node_modules/@angriff36/manifest/docs/spec/config/manifest.config.schema.json": ["manifest.config.yaml", ".manifestrc.yaml"]
+    }
+  }
+  ```
+
+  If you do set `$schema`, point it at a real local path — never a public URL Manifest doesn't host.
 </ParamField>
 
 <ParamField path="src" type="string" default="**/*.manifest">
@@ -47,6 +57,23 @@ You can always override a config value for a single run without modifying the fi
   ```yaml
   output: ir/
   ```
+</ParamField>
+
+<ParamField path="naming" type="string | object">
+  Global identifier-casing convention inherited by projections that map IR names to physical database names (currently the Prisma projection). Opt-in; omit to emit IR names verbatim. A per-projection `projections.<name>.options.naming` overrides this default.
+
+  The string shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }` — e.g. `createdAt` → `@map("created_at")`, `Widget` → `@@map("widgets")`. The object form tunes each axis (`table`: `snake_case` | `camelCase` | `PascalCase` | `preserve`; `column`: `snake_case` | `camelCase` | `preserve`; `pluralizeTables`: boolean, default `true`).
+
+  ```yaml
+  naming: snake_case
+  # or:
+  naming:
+    table: snake_case
+    column: snake_case
+    pluralizeTables: true
+  ```
+
+  Only `@map`/`@@map` attributes are added — Prisma model names and field identifiers stay as the IR name, so relations and indexes are unaffected. Explicit `tableMappings`/`columnMappings` always win and are the escape hatch for irregular plurals.
 </ParamField>
 
 <ParamField path="prismaSchema" type="string">
@@ -373,7 +400,6 @@ The following file shows every field with representative values:
 
 ```yaml
 # manifest.config.yaml
-$schema: https://manifest.dev/config.schema.json
 
 src: modules/**/*.manifest
 output: ir/
@@ -397,7 +423,6 @@ And the equivalent for a workspace monorepo with all options set explicitly:
 
 ```yaml
 # manifest.config.yaml (monorepo)
-$schema: https://manifest.dev/config.schema.json
 
 src: modules/**/*.manifest
 output: ir/

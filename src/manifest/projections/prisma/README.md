@@ -39,6 +39,80 @@ Prisma schema artifacts. It does NOT participate in runtime semantics.
 | `fieldAttributes` | `Record<Entity, Record<Prop, string[]>>` | `@unique`, `@default(now())`, `@updatedAt` |
 | `indexes` | `Record<Entity, IndexEntry[]>` | `@@index([...])` |
 | `foreignKeys` | `Record<Entity, Record<Rel, string>>` | Override FK column name |
+| `multiSchema` | `{ enabled, schemas?, entitySchema?, defaultSchema? }` | `@@schema("...")` per model + `schemas=[...]` on datasource |
+| `naming` | `'snake_case' \| { table?, column?, pluralizeTables? }` | Auto-casing: emits `@map`/`@@map` for camelCase→snake_case, etc. |
+
+## Naming convention (auto casing)
+
+By default the projection emits IR names verbatim — to render camelCase IR
+identifiers as `snake_case` database columns you would hand-write a
+`columnMappings` entry per field. The `naming` option automates that:
+
+```yaml
+projections:
+  prisma:
+    options:
+      naming: snake_case        # createdAt → @map("created_at"), Widget → @@map("widgets")
+```
+
+The shorthand `snake_case` expands to
+`{ table: 'snake_case', column: 'snake_case', pluralizeTables: true }`. The object
+form lets you tune each axis:
+
+```yaml
+      naming:
+        table: snake_case       # snake_case | camelCase | PascalCase | preserve
+        column: snake_case      # snake_case | camelCase | preserve
+        pluralizeTables: true   # Widget → widgets (default true)
+```
+
+**It only ever adds `@map`/`@@map`.** The Prisma *model name* and *field
+identifiers* stay as the IR name, so relation `fields`/`references`, `@@id`,
+`@@unique`, and `@@index` references are unaffected — only the physical database
+name changes. A `@map`/`@@map` is emitted only when the physical name actually
+differs (so `id` stays bare).
+
+Resolution order per name:
+
+1. explicit `tableMappings` / `columnMappings` (always win)
+2. the `naming` convention
+3. the IR name verbatim
+
+Explicit `tableMappings` is also the **escape hatch** for irregular plurals the
+built-in pluralizer gets wrong (it covers common English rules plus a small
+irregular set: person→people, child→children, …).
+
+A **global** `naming` may be set once at the top level of `manifest.config.yaml`
+and is inherited by the Prisma projection; a per-projection
+`projections.prisma.options.naming` overrides the global default.
+
+## Multi-schema layout
+
+Manifest entities already carry their **module** in IR (`IREntity.module`). By
+default the projection flattens every model into the database's default schema.
+Enabling `multiSchema` preserves the real module layout:
+
+```yaml
+projections:
+  prisma:
+    options:
+      provider: postgresql            # postgresql | cockroachdb | sqlserver only
+      multiSchema:
+        enabled: true                 # default false (flat, back-compatible)
+        schemas: ["public", "auth"]   # optional explicit order; used schemas auto-appended
+        entitySchema:                 # optional per-entity override (beats module)
+          LegacyUser: identity
+        defaultSchema: public         # for entities with no module/override
+```
+
+Per-model schema resolution: `entitySchema[name]` → `entity.module` →
+`defaultSchema` (`"public"`). The datasource lists explicit `schemas` first
+(order preserved), then any used-but-unlisted schema appended sorted, so every
+referenced schema is always declared. Emitting `@@schema` with a non-multi-schema
+provider is a hard diagnostic and falls back to the flat layout. With no
+`provider` (models-only mode) `@@schema` is still emitted for merging into an
+existing datasource. Multi-schema is GA in current Prisma — no `previewFeatures`
+flag is emitted.
 
 ## Extraction Bootstrap Workflow
 
@@ -68,7 +142,8 @@ diffs (e.g., Manifest default="" on optional fields, extra declared properties).
 
 | Feature | Status |
 |---|---|
-| `@@schema("name")` | Not in Manifest grammar |
+| `@@schema("name")` | **Available via `multiSchema` config** — derives from `IREntity.module` (G6) |
+| Multi-file schema output (one file per schema) | Not yet — single-artifact only (deferred) |
 | `@default(dbgenerated(...))` auto-detection | Available via `fieldAttributes` config |
 | `@default(now())` auto-detection | Available via `fieldAttributes` config |
 | `@updatedAt` auto-detection | Available via `fieldAttributes` config |

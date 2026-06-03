@@ -38,6 +38,19 @@ export interface ManifestConfig {
     options?: Record<string, unknown>;
   }>;
 
+  /**
+   * Optional: Global identifier-casing convention inherited by projections
+   * that map IR names to physical database names (currently Prisma). A
+   * per-projection `projections.<name>.options.naming` overrides it.
+   * String shorthand `'snake_case'` or an object form
+   * `{ table, column, pluralizeTables }`.
+   */
+  naming?: 'snake_case' | {
+    table?: 'snake_case' | 'camelCase' | 'PascalCase' | 'preserve';
+    column?: 'snake_case' | 'camelCase' | 'preserve';
+    pluralizeTables?: boolean;
+  };
+
   /** Environment variable mapping for store/auth/adapter configuration */
   env?: EnvMapping;
 
@@ -162,8 +175,12 @@ export interface CombinedConfig {
 // Constants
 // ============================================================================
 
+// No `$schema` default: Manifest publishes no resolvable schema URL, and
+// `manifest config validate` loads the bundled schema from the package, not a
+// URL. Injecting a dead URL into the effective config would imply validation
+// that does not happen. `$schema` remains an optional user-set field (a local
+// path or editor mapping) on the ManifestConfig type.
 const DEFAULT_CONFIG: ManifestConfig = {
-  $schema: 'https://manifest.dev/config.schema.json',
   src: '**/*.manifest',
   output: 'ir/',
 };

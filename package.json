@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -149,6 +149,10 @@
     "./types": {
       "types": "./dist/manifest/types.d.ts",
       "import": "./dist/manifest/types.js"
+    },
+    "./config": {
+      "types": "./dist/manifest/config.d.ts",
+      "import": "./dist/manifest/config.js"
     },
     "./wasm": {
       "types": "./dist/manifest/wasm/index.d.ts",

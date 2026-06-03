@@ -16,6 +16,10 @@
  *   trivially mergeable by entity name.
  */
 
+import type { NamingConventionInput } from '../shared/naming.js';
+
+export type { NamingConventionInput };
+
 /** Entity name as it appears in IR (`IREntity.name`). */
 export type EntityName = string;
 /** Property name as it appears in IR (`IRProperty.name`). */
@@ -58,6 +62,39 @@ export type PrismaProvider =
 export type IndexEntry =
   | string[]
   | { fields: string[]; name?: string };
+
+/**
+ * Multi-schema layout config.
+ *
+ * Manifest entities already carry their module membership in IR
+ * (`IREntity.module`). By default the Prisma projection flattens every model
+ * into the database's default schema. Enabling `multiSchema` preserves the
+ * real module layout by emitting a `@@schema("...")` attribute on each model
+ * and a `schemas = [...]` list on the datasource.
+ *
+ * Per-model schema resolution (when `enabled`):
+ *   1. `entitySchema[entityName]` if present  (explicit override)
+ *   2. else the entity's IR `module` name      (the real layout)
+ *   3. else `defaultSchema` (default `"public"`)
+ *
+ * Multi-schema is a PostgreSQL / CockroachDB / SQL Server capability. Enabling
+ * it with any other provider produces a hard diagnostic and the projection
+ * falls back to the flat layout.
+ */
+export interface MultiSchemaConfig {
+  /** Master switch. Default false — flat layout, fully back-compatible. */
+  enabled?: boolean;
+  /**
+   * Explicit datasource schema list. Order is preserved; any schema actually
+   * used by a model but missing here is appended (sorted) so the datasource
+   * always lists every referenced schema, as Prisma requires.
+   */
+  schemas?: string[];
+  /** Per-entity schema override. Takes precedence over the entity's module. */
+  entitySchema?: Record<EntityName, string>;
+  /** Schema for entities with neither an override nor a module. Default `"public"`. */
+  defaultSchema?: string;
+}
 
 export interface PrismaProjectionOptions {
   /**
@@ -174,6 +211,38 @@ export interface PrismaProjectionOptions {
    * so the CLI/consumer writer knows where to put it. Default: `"schema.prisma"`.
    */
   output?: string;
+
+  /**
+   * Multi-schema layout. When enabled, models are placed into database schemas
+   * derived from their IR module (overridable per entity) instead of being
+   * flattened into the default schema. See {@link MultiSchemaConfig}.
+   */
+  multiSchema?: MultiSchemaConfig;
+
+  /**
+   * Automatic identifier casing convention. Opt-in; when omitted the
+   * projection emits IR names verbatim (fully back-compatible).
+   *
+   * The convention only ever adds `@map`/`@@map` attributes — the Prisma
+   * model name and field identifiers stay as the IR name, so relation
+   * `fields`/`references` and indexes are unaffected. Only the *physical*
+   * database name changes.
+   *
+   * String shorthand:
+   *   naming: 'snake_case'
+   *     ≡ { table: 'snake_case', column: 'snake_case', pluralizeTables: true }
+   *   → `createdAt` column emits `@map("created_at")`,
+   *     `Widget` model emits `@@map("widgets")`.
+   *
+   * Resolution order per name:
+   *   1. explicit `tableMappings` / `columnMappings` override (always wins)
+   *   2. this convention (emits `@map`/`@@map` only when the physical name differs)
+   *   3. IR name verbatim
+   *
+   * Explicit `tableMappings` is the escape hatch for irregular plurals the
+   * built-in pluralizer gets wrong.
+   */
+  naming?: NamingConventionInput;
 }
 
 /**
@@ -210,5 +279,11 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     fieldAttributes: input.fieldAttributes ?? {},
     urlEnvVar: input.urlEnvVar,
     output: input.output ?? PRISMA_PROJECTION_DEFAULTS.output,
+    // Passed through as-is. Absent → undefined → flat layout (back-compat).
+    // resolveSchemaName in the generator guards on multiSchema?.enabled.
+    multiSchema: input.multiSchema,
+    // Passed through as-is. Absent → undefined → IR names verbatim (back-compat).
+    // The generator normalizes the shorthand/object form via normalizeNaming.
+    naming: input.naming,
   };
 }

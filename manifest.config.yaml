@@ -1,3 +1,15 @@
-$schema: https://manifest.dev/config.schema.json
 src: '**/*.manifest'
 output: ir/
+
+# Global identifier-casing convention inherited by projections that map IR
+# names to physical database names (currently Prisma). Opt-in; omit to emit IR
+# names verbatim. A per-projection `projections.<name>.options.naming` overrides
+# this default.
+#
+# naming: snake_case          # createdAt → @map("created_at"), Widget → @@map("widgets")
+#
+# Object form (tune each axis):
+# naming:
+#   table: snake_case         # snake_case | camelCase | PascalCase | preserve
+#   column: snake_case        # snake_case | camelCase | preserve
+#   pluralizeTables: true     # Widget → widgets (default true)

@@ -70,7 +70,9 @@ manifest init --force
 
 ```yaml
 # manifest.config.yaml
-$schema: https://manifest.dev/config.schema.json
+# No $schema URL: `manifest config validate` uses the schema bundled with the
+# package, not a remote URL. For editor IntelliSense, map the bundled schema in
+# .vscode/settings.json (yaml.schemas) instead.
 
 src: modules/**/*.manifest
 output: ir/

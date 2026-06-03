@@ -73,6 +73,7 @@ describe('validateConfig', () => {
             },
             dbAttributes: { Order: { amount: 'Decimal(14, 2)' } },
             fieldAttributes: { Order: { code: ['@unique'] } },
+            naming: { table: 'snake_case', column: 'snake_case', pluralizeTables: true },
           },
         },
       },
@@ -80,6 +81,24 @@ describe('validateConfig', () => {
     const result = await validateConfig(config);
     expect(result.ok).toBe(true);
     expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it("accepts a global naming default (string shorthand)", async () => {
+    const config: ManifestConfig = {
+      naming: 'snake_case',
+      projections: { prisma: { options: { provider: 'postgresql' } } },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('rejects an invalid naming case value', async () => {
+    const config = {
+      projections: { prisma: { options: { naming: { column: 'kebab-case' } } } },
+    } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
   });
 
   it('accepts a dispatcher block with externalExecutor mode', async () => {
@@ -209,6 +228,86 @@ describe('validateConfig', () => {
     const result = await validateConfig(config);
     const diag = result.diagnostics.find((d) => d.path.endsWith('executionMode'));
     expect(diag?.path).toBe('projections.nextjs.options.dispatcher.executionMode');
+  });
+
+  // ── G0: hooks + plugins are real, consumed config keys (manifest install-hooks,
+  //    manifest plugins). They must validate, not be rejected as unknown keys.
+  it('accepts a hooks block with all documented keys', async () => {
+    const config: ManifestConfig = {
+      src: '**/*.manifest',
+      hooks: {
+        skipInCi: true,
+        provider: 'husky',
+        runFmt: true,
+        runValidate: true,
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('accepts the simple-git-hooks provider', async () => {
+    const result = await validateConfig({ hooks: { provider: 'simple-git-hooks' } });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects an invalid hooks.provider enum value', async () => {
+    const config = { hooks: { provider: 'lefthook' } } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    const diag = result.diagnostics.find((d) => d.path.endsWith('provider'));
+    expect(diag?.allowed).toEqual(['husky', 'simple-git-hooks']);
+  });
+
+  it('rejects an unknown key inside hooks', async () => {
+    const config = { hooks: { runLint: true } } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('runLint'))).toBe(true);
+  });
+
+  it('accepts a plugins array with module/options/enabled', async () => {
+    const config: ManifestConfig = {
+      src: '**/*.manifest',
+      plugins: [
+        { module: '@acme/manifest-audit', enabled: true, options: { level: 'strict' } },
+        { module: './local/redaction-plugin.ts' },
+      ],
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('rejects a plugin declaration missing the required module key', async () => {
+    const config = { plugins: [{ enabled: true }] } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('module'))).toBe(true);
+  });
+
+  it('rejects an unknown key inside a plugin declaration', async () => {
+    const config = {
+      plugins: [{ module: '@acme/x', version: '1.0.0' }],
+    } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('version'))).toBe(true);
+  });
+
+  it('accepts a full config combining projections, env, hooks, and plugins', async () => {
+    const config: ManifestConfig = {
+      src: 'modules/**/*.manifest',
+      output: 'ir/',
+      projections: { nextjs: { output: 'app/api', options: { authProvider: 'clerk' } } },
+      env: { stores: { DATABASE_URL: { name: 'DATABASE_URL', required: true } } },
+      hooks: { provider: 'husky', runValidate: true },
+      plugins: [{ module: '@acme/manifest-audit' }],
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
   });
 });
 

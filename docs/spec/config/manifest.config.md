@@ -27,11 +27,73 @@ config takes precedence over YAML for its `build` sub-block.
 The TypeScript file may *also* contain a `build` block — that block is
 merged on top of YAML and validated identically.
 
-Add this line to your YAML config for editor IntelliSense:
+### Validation and editor IntelliSense
 
-```yaml
-$schema: https://manifest.lang/spec/config/manifest.config.schema.json
+`manifest config validate` always loads the schema **bundled with the package**
+at `docs/spec/config/manifest.config.schema.json` (shipped via
+`package.json#files`). It never fetches a URL. Manifest does **not** publish a
+resolvable `$schema` URL — adding one to your config would imply remote
+validation that does not happen.
+
+For editor IntelliSense without a dead URL, map the bundled schema in
+`.vscode/settings.json`:
+
+```jsonc
+// .vscode/settings.json
+{
+  "yaml.schemas": {
+    "./node_modules/@angriff36/manifest/docs/spec/config/manifest.config.schema.json": [
+      "manifest.config.yaml",
+      "manifest.config.yml",
+      ".manifestrc.yaml",
+      ".manifestrc.yml"
+    ]
+  }
+}
 ```
+
+The `$schema` key is still accepted in config (it's optional). If you set it,
+point it at a real local path — never a public URL Manifest doesn't host.
+
+---
+
+## Typed TypeScript config (`defineConfig`)
+
+For `manifest.config.ts`, import the typed `defineConfig` helper to get
+autocomplete and compile-time checking of the config shape:
+
+```ts
+// manifest.config.ts
+import { defineConfig } from "@angriff36/manifest/config";
+import { PrismaOrderStore } from "./stores/order";
+
+export default defineConfig({
+  stores: {
+    Order: { implementation: PrismaOrderStore, prismaModel: "orders" },
+  },
+  resolveUser: async (auth) => {
+    const session = await getSession(auth.headers);
+    return session ? { id: session.userId, role: session.role } : null;
+  },
+  build: {
+    src: "modules/**/*.manifest",
+    output: "ir/",
+    hooks: { provider: "husky", runValidate: true },
+    plugins: [{ module: "@acme/manifest-audit" }],
+  },
+});
+```
+
+`defineConfig` is an **identity function** — it returns its argument unchanged
+at runtime and injects no defaults; it exists purely for editor/type support.
+The exported types (`ManifestRuntimeConfig`, `ManifestBuildConfig`,
+`ManifestHooksConfig`, `ManifestPluginDeclaration`, …) are available from the
+same `@angriff36/manifest/config` entry point.
+
+> The types cover the config surface that ships **today**. The richer vNext
+> sections (validation, merge integrity, provenance, runtime, drift gates) are a
+> [design proposal](../../internal/proposals/config/manifest-config-vnext.md),
+> not implemented, and are intentionally not modelled by `defineConfig`.
 
 ---
 
@@ -43,6 +105,53 @@ $schema: https://manifest.lang/spec/config/manifest.config.schema.json
 | `output`       | `ir/`              | string     | Directory for compiled IR JSON. |
 | `prismaSchema` | (auto-discovered)  | string     | Optional path to a Prisma schema for property alignment scans. When omitted, Manifest checks `prisma/schema.prisma`, `schema.prisma`, `db/schema.prisma`. |
 | `projections`  | `{}`               | object     | Per-projection config blocks. |
+| `env`          | `{}`               | object     | Environment-variable declarations for `manifest preflight`. Grouped under `stores`, `auth`, `adapters`, `custom`. |
+| `hooks`        | (see below)        | object     | Git pre-commit hook settings consumed by `manifest install-hooks`. |
+| `plugins`      | `[]`               | array      | Third-party plugin declarations loaded by the CLI; inspected via `manifest plugins`. |
+
+---
+
+## `hooks`
+
+Settings for `manifest install-hooks`, which installs a git pre-commit hook that
+runs Manifest checks before each commit.
+
+```yaml
+hooks:
+  skipInCi: true            # default
+  provider: husky           # husky | simple-git-hooks
+  runFmt: true              # default
+  runValidate: true         # default
+```
+
+| Key           | Default  | Type                            | What it controls |
+|---------------|----------|---------------------------------|------------------|
+| `skipInCi`    | `true`   | boolean                         | Skip running the generated hook in CI environments. |
+| `provider`    | `husky`  | `husky` \| `simple-git-hooks`   | Git hook manager the pre-commit hook is installed into. |
+| `runFmt`      | `true`   | boolean                         | Run `manifest fmt` from the generated pre-commit hook. |
+| `runValidate` | `true`   | boolean                         | Run `manifest validate` from the generated pre-commit hook. |
+
+---
+
+## `plugins`
+
+Declares Manifest plugins for the CLI to load. Each entry points at an npm
+package or a relative module path. List loaded plugins with `manifest plugins`.
+
+```yaml
+plugins:
+  - module: "@acme/manifest-audit"      # npm package or relative path
+    enabled: true                        # default true
+    options:
+      level: strict
+  - module: "./local/redaction-plugin.ts"
+```
+
+| Key       | Required | Default | Type   | What it controls |
+|-----------|----------|---------|--------|------------------|
+| `module`  | yes      | —       | string | npm package name or relative file path to the plugin module. |
+| `options` | no       | —       | object | Plugin-specific options passed to the plugin at load time. |
+| `enabled` | no       | `true`  | boolean| Whether the plugin is active. |
 
 ---
 
