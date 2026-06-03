@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { RuntimeEngine, type RuntimeContext } from './runtime-engine';
 import { IRCompiler } from './ir-compiler';
 import type { IR } from './ir';
+import { MemoryApprovalStore } from './approval/stores/memory';
 
 // Helper to compile manifest source to IR
 async function compileToIR(source: string): Promise<IR> {
@@ -476,6 +477,92 @@ describe('Approval Workflow', () => {
         instanceId: 'po-008',
       });
       expect(result.success).toBe(true);
+    });
+  });
+
+  // ─── BUG 3: durable approvalStore + real role/permission context ───────
+  describe('Durable approvalStore + role context', () => {
+    it('makes a request created by engine A approvable by a fresh engine B', async () => {
+      const irA = await compileToIR(APPROVAL_SOURCE);
+      const irB = await compileToIR(APPROVAL_SOURCE);
+
+      // Shared durable backing store (stands in for Postgres/Redis in prod).
+      const approvalStore = new MemoryApprovalStore();
+
+      // Engine A — the request that blocks the command.
+      const engineA = new RuntimeEngine(irA, { user: { id: 'u1', role: 'employee' } }, {
+        now: () => 1000000,
+        generateId: () => 'po-dur',
+        approvalStore,
+      });
+      await engineA.createInstance('PurchaseOrder', { id: 'po-dur', amount: 5000, status: 'draft' });
+
+      const blocked = await engineA.runCommand('submit', {}, {
+        entityName: 'PurchaseOrder',
+        instanceId: 'po-dur',
+      });
+      expect(blocked.success).toBe(false);
+      expect(blocked.approvalRequired!.pendingStages).toEqual(['manager']);
+
+      // Engine B — freshly constructed (e.g. a new HTTP request), same store.
+      // It must SEE engine A's pending request and be able to approve it.
+      const engineB = new RuntimeEngine(irB, { user: { id: 'u2', role: 'employee' } }, {
+        now: () => 1000000,
+        approvalStore,
+      });
+      const granted = await engineB.approveStage(
+        'PurchaseOrder', 'po-dur', 'submitApproval', 'manager',
+        { id: 'mgr-alice', role: 'manager' },
+      );
+      expect(granted.status).toBe('granted');
+
+      // Engine A retries — the grant written by engine B is durable, so the
+      // command now proceeds. (Without a shared store this is impossible.)
+      const ok = await engineA.runCommand('submit', {}, {
+        entityName: 'PurchaseOrder',
+        instanceId: 'po-dur',
+      });
+      expect(ok.success).toBe(true);
+    });
+
+    it('evaluates the stage policy against a real role distinct from the userId', async () => {
+      const ir = await compileToIR(APPROVAL_SOURCE);
+      const approvalStore = new MemoryApprovalStore();
+      const runtime = new RuntimeEngine(ir, { user: { id: 'u1', role: 'employee' } }, {
+        now: () => 1000000,
+        generateId: () => 'po-rbac',
+        approvalStore,
+      });
+      await runtime.createInstance('PurchaseOrder', { id: 'po-rbac', amount: 5000, status: 'draft' });
+      await runtime.runCommand('submit', {}, { entityName: 'PurchaseOrder', instanceId: 'po-rbac' });
+
+      // Approver id 'alice' has NOTHING to do with the role; her role is the
+      // gate. The old userId-doubles-as-role hack would reject this.
+      const state = await runtime.approveStage(
+        'PurchaseOrder', 'po-rbac', 'submitApproval', 'manager',
+        { id: 'alice', role: 'manager' },
+      );
+      expect(state.status).toBe('granted');
+      expect(state.grants[0].by).toBe('alice');
+    });
+
+    it('rejects an approver whose real role fails the stage policy', async () => {
+      const ir = await compileToIR(APPROVAL_SOURCE);
+      const approvalStore = new MemoryApprovalStore();
+      const runtime = new RuntimeEngine(ir, { user: { id: 'u1', role: 'employee' } }, {
+        now: () => 1000000,
+        generateId: () => 'po-rbac2',
+        approvalStore,
+      });
+      await runtime.createInstance('PurchaseOrder', { id: 'po-rbac2', amount: 5000, status: 'draft' });
+      await runtime.runCommand('submit', {}, { entityName: 'PurchaseOrder', instanceId: 'po-rbac2' });
+
+      await expect(
+        runtime.approveStage(
+          'PurchaseOrder', 'po-rbac2', 'submitApproval', 'manager',
+          { id: 'bob', role: 'employee' },
+        ),
+      ).rejects.toThrow('not authorized');
     });
   });
 });

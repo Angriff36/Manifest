@@ -233,6 +233,41 @@ npm run test:postgres
 
 The live suites apply the shipped `postgres.sql` schemas verbatim, run the assertions, then drop the tables — successive runs against the same database are idempotent. Default `npm test` skips them when `DATABASE_URL` is unset (CI).
 
+## Approval Store
+
+Durable multi-stage approval state is exposed via the `ApprovalStore` adapter (`src/manifest/approval/approval-store.ts`):
+
+- `load(key)` — fetch the approval request for the runtime's opaque `<entity>:<instanceId>:<approvalName>` key, or `undefined`;
+- `save(key, state)` — insert-or-replace the full `ApprovalRequestState` (called when the runtime creates a pending request or records a stage grant/denial);
+- `list()` — enumerate all stored requests (dashboards, sweeps);
+- `expire(now)` — transition every pending request past its `expiresAt` to `expired` and return them; durable adapters SHOULD do this as a single set-based statement (e.g. `UPDATE … RETURNING`).
+
+Wire-in via `RuntimeOptions.approvalStore`.
+
+### Why this exists
+
+Approval state must outlive a single request. Consumers that build a fresh `RuntimeEngine` per HTTP request (the normal serverless/stateless pattern) would otherwise lose every pending approval between requests, making manager-now / finance-later chains impossible. With a shared `ApprovalStore`, an approval created by one engine instance is visible and approvable by any later engine bound to the same store.
+
+### Runtime Behavior (Implemented)
+
+When `RuntimeOptions.approvalStore` is supplied, the runtime treats it as the source of truth for approval state. `checkApprovalGate` (during `runCommand`), `requestApproval`, `approveStage`, and `denyApproval` all read via `load` and write via `save`. An in-process `Map` is still maintained as a write-through mirror so the synchronous `getApprovalRequest`/`expireApprovals` accessors stay coherent within one engine. When **no** store is supplied, that `Map` is the store (single-process / test use only).
+
+Durable timeout sweeping in store mode runs via `approvalStore.expire(now)` from a cron/worker — the synchronous `RuntimeEngine.expireApprovals()` only sees requests the current engine has touched.
+
+### Approver Role Context (Implemented)
+
+`RuntimeEngine.approveStage(entity, instanceId, approvalName, stage, approver)` accepts either:
+
+- a **string** — legacy form where the userId doubles as the role (`user.id` and `user.role` are both the string); kept for backward compatibility, or
+- an **object** `{ id, role?, roles?, … }` — a real RBAC context. The full object is exposed to the stage policy as `user.*`, so a policy like `user.role == "manager"` evaluates against the approver's actual role, independent of their id.
+
+This replaces the prior behavior where the userId was forced to double as the role, which made real role-based stage policies impossible to express.
+
+### First-Party Stores
+
+- `MemoryApprovalStore` (`src/manifest/approval/stores/memory.ts`) — in-memory, with deep-cloning `load`/`save` so stored state cannot be mutated by reference. Sharing one instance across multiple engines reproduces durable cross-request behavior in tests.
+- `PostgresApprovalStore` (`src/manifest/approval/stores/postgres.ts`) — durable, backed by `pg`. Schema in `src/manifest/approval/stores/postgres.sql`. `save` is `INSERT … ON CONFLICT (request_key) DO UPDATE`; `expire` is a single `UPDATE … WHERE status='pending' AND expires_at <= $1 RETURNING …`. Mock-based unit-tested in CI.
+
 ## Job Queue
 
 The `JobQueue` adapter provides persistence for deferred async command execution. When a command is declared with the `async` modifier, the runtime enqueues a `JobRecord` instead of executing the command body synchronously.

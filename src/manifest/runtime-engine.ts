@@ -224,6 +224,17 @@ export interface RuntimeOptions {
    */
   outboxStore?: import('./outbox/outbox-store').OutboxStore;
   /**
+   * Optional durable ApprovalStore for multi-stage approval persistence.
+   * When supplied, pending approval requests, stage grants, and denials are
+   * read from and written to this store, so an approval created by one
+   * engine instance is visible to a freshly-constructed engine (the normal
+   * stateless-per-request pattern). When omitted, approval state lives in an
+   * in-process Map (single-process / test use only).
+   * Contract: src/manifest/approval/approval-store.ts. Memory + Postgres
+   * adapters ship via "./approval/memory" and "./approval/postgres".
+   */
+  approvalStore?: import('./approval/approval-store').ApprovalStore;
+  /**
    * Optional feature flag provider function.
    * Called with a flag name and returns the flag value (boolean, string, number, or object).
    * Enables the `flag(name)` built-in to resolve feature flags declaratively
@@ -282,6 +293,7 @@ export interface RuntimeOptions {
 // "./outbox/memory", "./outbox/postgres".
 export type { AuditSink, AuditRecord, CommandOutcome } from './audit/audit-sink';
 export type { OutboxStore, OutboxEntry, OutboxEntryStatus } from './outbox/outbox-store';
+export type { ApprovalStore } from './approval/approval-store';
 export type { JobQueue, JobRecord } from './ir';
 
 export interface EntityInstance {
@@ -369,6 +381,16 @@ export interface ApprovalRequestState {
   deniedBy?: string;
 }
 
+/**
+ * Identity of a user approving a stage. A bare string is the legacy form
+ * where the userId doubles as the role (kept for backward compatibility).
+ * Prefer the object form to express real RBAC — `role`/`roles`/permissions
+ * are made available to the stage policy as `user.*`, independent of `id`.
+ */
+export type ApprovalApprover =
+  | string
+  | { id: string; role?: string; roles?: string[]; [key: string]: unknown };
+
 export interface ApprovalRequiredInfo {
   approvalName: string;
   pendingStages: string[];
@@ -416,7 +438,15 @@ export interface EmittedEvent {
 export interface SagaStepResult {
   step: string;
   command: string;
-  status: 'completed' | 'failed' | 'compensated' | 'skipped';
+  /**
+   * - `completed`           — forward command succeeded
+   * - `failed`              — forward command failed (the step that triggered compensation)
+   * - `compensated`         — forward command was successfully reversed by its compensation
+   * - `compensation_failed` — a compensation was attempted but failed its guard/policy or threw;
+   *                           the step is NOT considered reversed (potential dangling state)
+   * - `skipped`             — completed step had no compensation declared (nothing to reverse)
+   */
+  status: 'completed' | 'failed' | 'compensated' | 'compensation_failed' | 'skipped';
   result?: CommandResult;
   compensation?: CommandResult;
   error?: string;
@@ -704,8 +734,39 @@ export class RuntimeEngine {
   /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
 
-  /** Approval requests keyed by `${entity}:${instanceId}:${approvalName}` */
+  /**
+   * In-process approval request cache, keyed by
+   * `${entity}:${instanceId}:${approvalName}`. Always maintained as a mirror
+   * so the synchronous `getApprovalRequest`/`expireApprovals` accessors work.
+   * When `options.approvalStore` is set, that store is the source of truth and
+   * this Map is just a write-through mirror; otherwise this Map IS the store.
+   */
   private approvalRequests = new Map<string, ApprovalRequestState>();
+
+  /**
+   * Load an approval request, preferring the durable store when configured.
+   * Refreshes the in-process mirror so synchronous accessors stay coherent.
+   */
+  private async loadApprovalState(key: string): Promise<ApprovalRequestState | undefined> {
+    const store = this.options.approvalStore;
+    if (store) {
+      const loaded = await store.load(key);
+      if (loaded) this.approvalRequests.set(key, loaded);
+      else this.approvalRequests.delete(key);
+      return loaded;
+    }
+    return this.approvalRequests.get(key);
+  }
+
+  /**
+   * Persist an approval request to the durable store (when configured) and
+   * always mirror it in-process so a later synchronous read sees it.
+   */
+  private async saveApprovalState(key: string, state: ApprovalRequestState): Promise<void> {
+    this.approvalRequests.set(key, state);
+    const store = this.options.approvalStore;
+    if (store) await store.save(key, state);
+  }
 
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
   private evalBudget: { depth: number; steps: number; maxDepth: number; maxSteps: number } | null = null;
@@ -2075,7 +2136,7 @@ export class RuntimeEngine {
   private async compensateSagaSteps(
     saga: IRSaga,
     completed: { step: IRSaga['steps'][number]; instanceId?: string }[],
-    _stepInputs: Record<string, { input?: Record<string, unknown>; instanceId?: string }>,
+    stepInputs: Record<string, { input?: Record<string, unknown>; instanceId?: string }>,
     correlationId: string,
     emittedEvents: EmittedEvent[],
     stepResults: SagaStepResult[],
@@ -2091,8 +2152,14 @@ export class RuntimeEngine {
         continue;
       }
 
+      // Hand the original forward-step input to the compensation. A refund
+      // needs the charge's amount, a release needs the reserve's quantity, etc.
+      // Without this, the compensation command's guards see nothing and the
+      // reversal silently no-ops. See spec/semantics.md § Saga compensation.
+      const compensationInput = stepInputs[step.name]?.input ?? {};
+
       try {
-        const compResult = await this.runCommand(step.compensate, {}, {
+        const compResult = await this.runCommand(step.compensate, compensationInput, {
           entityName: step.compensateEntity,
           instanceId,
           correlationId,
@@ -2101,13 +2168,23 @@ export class RuntimeEngine {
         emittedEvents.push(...compResult.emittedEvents);
 
         if (matchingResult) {
-          matchingResult.status = 'compensated';
           matchingResult.compensation = compResult;
+          // A compensation that fails its guard/policy/constraint returns
+          // success:false (no throw). Such a step was NOT reversed — surface
+          // it as compensation_failed rather than mislabeling it 'compensated'.
+          if (compResult.success) {
+            matchingResult.status = 'compensated';
+          } else {
+            matchingResult.status = 'compensation_failed';
+            matchingResult.error = compResult.error;
+          }
         }
       } catch (e) {
-        // Best-effort: record error but continue compensating
+        // A thrown compensation is also a failed reversal. Record the error and
+        // keep compensating the remaining steps (best-effort), but do not claim
+        // this step was reversed.
         if (matchingResult) {
-          matchingResult.status = 'compensated';
+          matchingResult.status = 'compensation_failed';
           matchingResult.error = e instanceof Error ? e.message : String(e);
         }
       }
@@ -2800,6 +2877,20 @@ export class RuntimeEngine {
               reactionInput[param.name] = await this.evaluateExpression(param.expression, reactionContext);
             }
           }
+          // A reaction whose target command is `create` must flow through the
+          // auto-create path (runCommand only auto-creates when instanceId is
+          // ABSENT). Forcing instanceId here made create-target reactions run
+          // mutate actions against a non-existent instance and persist nothing.
+          // For create targets the resolved value identifies the NEW instance's
+          // id, so thread it through as input.id (unless params set one).
+          const isCreateTarget = reaction.targetCommand === 'create';
+          let reactionInstanceId: string | undefined = String(resolvedId);
+          if (isCreateTarget) {
+            reactionInstanceId = undefined;
+            if (reactionInput.id === undefined && resolvedId !== undefined && resolvedId !== null) {
+              reactionInput.id = String(resolvedId);
+            }
+          }
           // Dispatch the reaction command
           this.reactionDepth++;
           try {
@@ -2808,7 +2899,7 @@ export class RuntimeEngine {
               reactionInput,
               {
                 entityName: reaction.targetEntity,
-                instanceId: String(resolvedId),
+                instanceId: reactionInstanceId,
                 correlationId: workflowMeta.correlationId,
                 causationId: emitted.name,
               }
@@ -4015,17 +4106,18 @@ export class RuntimeEngine {
     // If no stages are required (all `when` conditions false), proceed
     if (requiredStages.length === 0) return undefined;
 
-    // Check existing approval request
-    const existing = this.approvalRequests.get(key);
+    // Check existing approval request (durable store wins when configured)
+    const existing = await this.loadApprovalState(key);
     if (existing && existing.status === 'granted') {
       // All stages were granted — consume the approval and proceed
       return undefined;
     }
 
     // Create or refresh a pending request
-    if (!existing || existing.status === 'expired' || existing.status === 'denied') {
+    let request = existing;
+    if (!request || request.status === 'expired' || request.status === 'denied') {
       const now = this.getNow();
-      this.approvalRequests.set(key, {
+      request = {
         entity: entityName,
         instanceId: resolvedInstanceId,
         approvalName: approval.name,
@@ -4035,11 +4127,11 @@ export class RuntimeEngine {
         grants: [],
         requestedAt: now,
         expiresAt: approval.timeout ? now + approval.timeout * 3600000 : undefined,
-      });
+      };
+      await this.saveApprovalState(key, request);
     }
 
     // Determine which stages are still pending
-    const request = this.approvalRequests.get(key)!;
     const pendingStages = this.getPendingStages(request, approval);
 
     return {
@@ -4082,7 +4174,7 @@ export class RuntimeEngine {
     approvalName: string,
   ): Promise<ApprovalRequestState> {
     const key = this.approvalKey(entityName, instanceId, approvalName);
-    const existing = this.approvalRequests.get(key);
+    const existing = await this.loadApprovalState(key);
     if (existing) return existing;
 
     const entity = this.getEntity(entityName);
@@ -4117,7 +4209,7 @@ export class RuntimeEngine {
       requestedAt: now,
       expiresAt: approval.timeout ? now + approval.timeout * 3600000 : undefined,
     };
-    this.approvalRequests.set(key, state);
+    await this.saveApprovalState(key, state);
     return state;
   }
 
@@ -4131,10 +4223,10 @@ export class RuntimeEngine {
     instanceId: string,
     approvalName: string,
     stageName: string,
-    approverUserId: string,
+    approver: ApprovalApprover,
   ): Promise<ApprovalRequestState> {
     const key = this.approvalKey(entityName, instanceId, approvalName);
-    const request = this.approvalRequests.get(key);
+    const request = await this.loadApprovalState(key);
     if (!request) {
       throw new Error(`No pending approval request for key '${key}'`);
     }
@@ -4158,23 +4250,29 @@ export class RuntimeEngine {
       throw new Error(`Stage '${stageName}' is not required for this approval request`);
     }
 
-    // Evaluate the stage policy with the approver's user context
-    const approverContext: Record<string, unknown> = {
-      user: { id: approverUserId, role: approverUserId }, // simple: userId doubles as role for testing
-    };
+    // Build the approver's user context for the stage policy. A bare string
+    // is the legacy form (userId doubles as role); an object carries a real
+    // role/roles/permissions so RBAC policies like `user.role == "manager"`
+    // evaluate against the actual role rather than the user id.
+    const approverId = typeof approver === 'string' ? approver : approver.id;
+    const userContext: Record<string, unknown> =
+      typeof approver === 'string'
+        ? { id: approver, role: approver }
+        : { ...approver };
+
     const instance = await this.getInstance(entityName, instanceId);
     const evalContext = this.buildEvalContext({}, instance, entityName);
-    Object.assign(evalContext, approverContext);
+    Object.assign(evalContext, { user: userContext });
 
     const policyResult = await this.evaluateExpression(stageSpec.policy, evalContext);
     if (!policyResult) {
-      throw new Error(`User '${approverUserId}' is not authorized to approve stage '${stageName}'`);
+      throw new Error(`User '${approverId}' is not authorized to approve stage '${stageName}'`);
     }
 
     // Record the grant
     request.grants.push({
       stage: stageName,
-      by: approverUserId,
+      by: approverId,
       at: this.getNow(),
     });
 
@@ -4184,6 +4282,7 @@ export class RuntimeEngine {
       request.status = 'granted';
     }
 
+    await this.saveApprovalState(key, request);
     return request;
   }
 
@@ -4198,7 +4297,7 @@ export class RuntimeEngine {
     reason?: string,
   ): Promise<ApprovalRequestState> {
     const key = this.approvalKey(entityName, instanceId, approvalName);
-    const request = this.approvalRequests.get(key);
+    const request = await this.loadApprovalState(key);
     if (!request) {
       throw new Error(`No pending approval request for key '${key}'`);
     }
@@ -4209,6 +4308,7 @@ export class RuntimeEngine {
     request.status = 'denied';
     request.deniedBy = deniedBy;
     request.deniedReason = reason;
+    await this.saveApprovalState(key, request);
     return request;
   }
 
@@ -4216,6 +4316,11 @@ export class RuntimeEngine {
    * Expire any pending approvals that have exceeded their timeout.
    * Approvals with `onTimeout: 'cancel'` are set to 'expired'.
    * Approvals with `onTimeout: 'escalate'` are flagged but kept pending (future).
+   *
+   * Operates on the in-process request set. In durable mode
+   * (`options.approvalStore` configured), run set-based expiry across all
+   * stored requests via `approvalStore.expire(now)` from a cron/worker; this
+   * synchronous accessor only sees requests this engine has touched.
    */
   expireApprovals(now?: number): ApprovalRequestState[] {
     const currentTime = now ?? this.getNow();

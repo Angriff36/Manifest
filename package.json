@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.0.6",
+  "version": "2.1.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -93,6 +93,18 @@
     "./outbox/postgres": {
       "types": "./dist/manifest/outbox/stores/postgres.d.ts",
       "import": "./dist/manifest/outbox/stores/postgres.js"
+    },
+    "./approval": {
+      "types": "./dist/manifest/approval/approval-store.d.ts",
+      "import": "./dist/manifest/approval/approval-store.js"
+    },
+    "./approval/memory": {
+      "types": "./dist/manifest/approval/stores/memory.d.ts",
+      "import": "./dist/manifest/approval/stores/memory.js"
+    },
+    "./approval/postgres": {
+      "types": "./dist/manifest/approval/stores/postgres.d.ts",
+      "import": "./dist/manifest/approval/stores/postgres.js"
     },
     "./ir-diff": {
       "types": "./dist/manifest/ir-diff.d.ts",

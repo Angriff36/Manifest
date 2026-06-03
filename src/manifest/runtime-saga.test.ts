@@ -371,4 +371,120 @@ saga AbortOrder {
       expect(result.error).toContain('Unknown saga');
     });
   });
+
+  // ─── BUG 1: compensation must receive the original step input ──────────
+  describe('compensation input + failure reporting', () => {
+    // refund() takes `amount` — the SAME input shape as charge(). A correct
+    // engine must hand the original forward-step input to the compensation,
+    // otherwise refund's guard (amount > 0) fails and nothing is reversed.
+    const COMPENSATION_SOURCE = `
+entity Payment {
+  property required id: string
+  property amount: number = 0
+  property status: string = "none"
+
+  command charge(amount: number) {
+    mutate amount = amount
+    mutate status = "charged"
+    emit PaymentCharged
+  }
+
+  command refund(amount: number) {
+    guard amount > 0
+    mutate amount = 0
+    mutate status = "refunded"
+    emit PaymentRefunded
+  }
+
+  store in memory
+}
+
+entity Inventory {
+  property required id: string
+  property reserved: boolean = false
+
+  command reserve() {
+    guard false
+    mutate reserved = true
+    emit InventoryReserved
+  }
+
+  command release() {
+    mutate reserved = false
+  }
+
+  store in memory
+}
+
+event PaymentCharged: "payment.charged" { id: string }
+event PaymentRefunded: "payment.refunded" { id: string }
+event InventoryReserved: "inventory.reserved" { id: string }
+event SagaStarted: "saga.started" { sagaName: string }
+event SagaFailed: "saga.failed" { sagaName: string }
+
+saga ChargeThenReserve {
+  step chargePayment {
+    command: Payment.charge
+    compensate: Payment.refund
+  }
+  step reserveInventory {
+    command: Inventory.reserve
+    compensate: Inventory.release
+  }
+  on_failure: "compensate"
+  emit SagaStarted
+  emit SagaFailed
+}
+`;
+
+    it('passes the original step input to the compensation command and reverses state', async () => {
+      const ir2 = await compileToIR(COMPENSATION_SOURCE);
+      const runtime = new RuntimeEngine(ir2);
+      await runtime.createInstance('Payment', { id: 'pay-comp', amount: 0, status: 'none' });
+      await runtime.createInstance('Inventory', { id: 'inv-comp', reserved: false });
+
+      const result = await runtime.runSaga('ChargeThenReserve', {
+        chargePayment: { input: { amount: 100 }, instanceId: 'pay-comp' },
+        reserveInventory: { instanceId: 'inv-comp' },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.failedStep).toBe('reserveInventory');
+
+      const chargeStep = result.steps.find(s => s.step === 'chargePayment')!;
+      // Compensation actually ran (its guard saw amount=100), so it reversed state.
+      expect(chargeStep.status).toBe('compensated');
+      expect(chargeStep.compensation?.success).toBe(true);
+
+      // The refund executed: state was actually reversed.
+      const payment = await runtime.getInstance('Payment', 'pay-comp');
+      expect(payment!.status).toBe('refunded');
+      expect(payment!.amount).toBe(0);
+
+      // PaymentRefunded proves the compensation command really executed.
+      expect(result.emittedEvents.some(e => e.name === 'PaymentRefunded')).toBe(true);
+    });
+
+    it('reports compensation_failed when the compensation command fails its guard', async () => {
+      // refund() guard is amount > 0; pass amount = 0 so the refund guard fails.
+      const ir2 = await compileToIR(COMPENSATION_SOURCE);
+      const runtime = new RuntimeEngine(ir2);
+      await runtime.createInstance('Payment', { id: 'pay-fail', amount: 0, status: 'none' });
+      await runtime.createInstance('Inventory', { id: 'inv-fail', reserved: false });
+
+      const result = await runtime.runSaga('ChargeThenReserve', {
+        chargePayment: { input: { amount: 0 }, instanceId: 'pay-fail' },
+        reserveInventory: { instanceId: 'inv-fail' },
+      });
+
+      expect(result.success).toBe(false);
+      const chargeStep = result.steps.find(s => s.step === 'chargePayment')!;
+      // The compensation FAILED — it must NOT be mislabeled 'compensated'.
+      expect(chargeStep.status).toBe('compensation_failed');
+
+      // State was never reversed.
+      const payment = await runtime.getInstance('Payment', 'pay-fail');
+      expect(payment!.status).toBe('charged');
+    });
+  });
 });

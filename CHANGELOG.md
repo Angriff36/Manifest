@@ -4,6 +4,64 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0] - 2026-06-02
+
+Three runtime defects that made advertised orchestration features silently fail
+for downstream consumers (sagas, reactions, approvals) are fixed, plus a new
+durable approval-persistence adapter family. No breaking API changes — the one
+new `SagaStepResult.status` value and the widened `approveStage` approver
+parameter are backward compatible.
+
+### Fixed
+
+- **Saga compensation passed empty input (data-loss / silent no-op)** — When a
+  saga step failed and the engine compensated completed steps in reverse, each
+  compensation command was invoked with `{}`. Any compensation needing the
+  original step's payload (e.g. a refund needing the charge amount) got nothing,
+  failed its guard, had the failure swallowed, and was still mislabeled
+  `compensated`. The compensation now receives the **original forward step's
+  input**, and a compensation that fails its guard/policy or throws is reported
+  as the new status `compensation_failed` instead of `compensated`. See
+  `src/manifest/runtime-engine.ts` (`compensateSagaSteps`) and
+  `runtime-saga.test.ts`.
+- **`on <Event> run <Entity>.create` reactions were a silent no-op** — Reaction
+  dispatch always set `instanceId`, but auto-create only fires when `instanceId`
+  is absent, so create-target reactions ran mutate actions against a
+  non-existent instance and persisted nothing. Create-target reactions now route
+  through the auto-create path (the resolved value becomes the new instance's
+  `id`). The marketed "EventCreated → create Proposal/Budget/Tasks" fan-out works.
+  See `runtime-engine.ts` reaction dispatch and `runtime-engine.test.ts`.
+- **Approvals were in-memory only, with a role-as-userId hack** — Multi-stage
+  approvals could not persist across requests (state lived in a private
+  in-process `Map`), and stage policies were evaluated with the approver's userId
+  doubling as their role, so real RBAC policies could not be expressed. Both are
+  fixed (see Added).
+
+### Added
+
+- **`RuntimeOptions.approvalStore`** — a durable `ApprovalStore` adapter
+  (`load`/`save`/`list`/`expire`) used as the backing store for pending approval
+  requests when provided, falling back to the in-process Map otherwise. An
+  approval created by one engine instance is now visible and approvable by a
+  freshly-constructed engine bound to the same store (the normal
+  stateless-per-request pattern). Ships first-party `MemoryApprovalStore`
+  (`@angriff36/manifest/approval/memory`) and `PostgresApprovalStore`
+  (`@angriff36/manifest/approval/postgres`), mirroring the audit/outbox adapter
+  families. Contract exported as `ApprovalStore` from the package root.
+- **Real approver role context for `approveStage`** — `approveStage(…, approver)`
+  now accepts `{ id, role?, roles?, … }` in addition to the legacy `string`. The
+  object is exposed to the stage policy as `user.*`, so policies like
+  `user.role == "manager"` evaluate against the approver's actual role rather
+  than their id. Passing a string keeps the prior (userId-doubles-as-role)
+  behavior, so existing callers are unaffected.
+
+### Behavior changes (non-breaking, worth noting)
+
+- `SagaStepResult.status` gained the value `compensation_failed`. Consumers that
+  exhaustively switch on saga step status should add a case; a failed
+  compensation that previously surfaced (incorrectly) as `compensated` now
+  surfaces as `compensation_failed`.
+
 ## [2.0.6] - 2026-06-02
 
 ### Fixed

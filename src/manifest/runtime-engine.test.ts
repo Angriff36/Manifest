@@ -1610,6 +1610,69 @@ on CounterIncremented run Counter.increment
         instanceId: 'counter-1',
       })).rejects.toThrow('Reaction depth limit');
     });
+
+    // ─── BUG 2: a reaction targeting a `create` command must persist a new
+    // instance via the auto-create path, instead of mutating a non-existent
+    // instance and silently doing nothing. ───────────────────────────────
+    it('should persist a new instance when a reaction targets a create command', async () => {
+      const createReactionSource = `
+entity Ticket {
+  property required id: string
+  property status: string = "new"
+
+  command close() {
+    mutate status = "resolved"
+    emit TicketResolved
+  }
+}
+
+entity Receipt {
+  property required id: string
+  property ticketId: string = ""
+  property status: string = "draft"
+
+  command create(ticketId: string) {
+    mutate ticketId = ticketId
+    mutate status = "issued"
+  }
+}
+
+store Ticket in memory
+store Receipt in memory
+
+event TicketResolved: "ticket.resolved" {
+  ticketId: string
+}
+
+on TicketResolved run Receipt.create
+  resolve payload._subject.id
+  params {
+    ticketId: payload._subject.id
+  }
+`;
+      const ir = await compileToIR(createReactionSource);
+      const runtime = new RuntimeEngine(ir, {}, {
+        now: () => 1000000000000,
+        generateId: () => 'gen-receipt',
+      });
+
+      await runtime.createInstance('Ticket', { id: 'ticket-1', status: 'new' });
+
+      // No Receipt exists yet.
+      expect(await runtime.getInstance('Receipt', 'ticket-1')).toBeUndefined();
+
+      const result = await runtime.runCommand('close', {}, {
+        entityName: 'Ticket',
+        instanceId: 'ticket-1',
+      });
+      expect(result.success).toBe(true);
+
+      // The reaction must have CREATED a Receipt (id resolved from the event subject).
+      const receipt = await runtime.getInstance('Receipt', 'ticket-1');
+      expect(receipt).toBeDefined();
+      expect(receipt!.ticketId).toBe('ticket-1');
+      expect(receipt!.status).toBe('issued');
+    });
   });
 
   describe('encrypted modifier', () => {
