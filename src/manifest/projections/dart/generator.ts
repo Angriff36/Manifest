@@ -20,7 +20,6 @@
 import type {
   IR,
   IREntity,
-  IRValue,
   IRCommand,
   IRType,
   IREnum,
@@ -98,22 +97,6 @@ function irTypeToDart(type: IRType, diagnostics: ProjectionDiagnostic[]): string
   }
 
   return base;
-}
-
-/** Serialize an IRValue to a Dart literal string. */
-function _irValueToDartLiteral(value: IRValue): string {
-  switch (value.kind) {
-    case 'string': return `'${value.value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-    case 'number': return String(value.value);
-    case 'boolean': return String(value.value);
-    case 'null': return 'null';
-    case 'array': return `[${value.elements.map(_irValueToDartLiteral).join(', ')}]`;
-    case 'object': {
-      const entries = Object.entries(value.properties)
-        .map(([k, v]) => `'${k}': ${_irValueToDartLiteral(v)}`);
-      return `{ ${entries.join(', ')} }`;
-    }
-  }
 }
 
 /** Convert snake_case or camelCase to PascalCase. */

@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.3] - 2026-06-02
+
+### Fixed
+
+- **Dart projection** — Removed unused `_irValueToDartLiteral` function and `IRValue` import causing TS6133/TS6196 typecheck failure
+
 ## [2.0.2] - 2026-06-02
 
 ### Fixed
