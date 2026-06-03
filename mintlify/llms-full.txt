@@ -3060,6 +3060,16 @@ projections:
           createdAt: created_at
           updatedAt: updated_at
 
+      # Automatic identifier casing (opt-in). Emits @map/@@map for any name
+      # not already in the target case, so you don't hand-write the mappings
+      # above for every field. Explicit tableMappings/columnMappings still win.
+      naming: snake_case          # shorthand: snake_case columns + pluralized snake_case tables
+      # Object form:
+      # naming:
+      #   table: snake_case        # snake_case | camelCase | PascalCase | preserve
+      #   column: snake_case       # snake_case | camelCase | preserve
+      #   pluralizeTables: true    # Widget → widgets (default true)
+
       # Per-entity, per-property decimal precision/scale.
       # Applies to any property whose resolved scalar is Decimal.
       precision:
@@ -3112,6 +3122,39 @@ projections:
       # Default: DATABASE_URL. Only relevant when `provider` is set.
       urlEnvVar: POSTGRES_CONNECTION_STRING
 ```
+
+## Automatic casing (the `naming` convention)
+
+By default the projection emits IR names verbatim — to render camelCase IR identifiers as `snake_case` database names you'd hand-write a `columnMappings` entry per field. The `naming` option automates that:
+
+```yaml
+projections:
+  prisma:
+    options:
+      naming: snake_case
+```
+
+`createdAt` emits `@map("created_at")`, `Widget` emits `@@map("widgets")`. The shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }`; the object form tunes each axis independently.
+
+**The convention only ever adds `@map`/`@@map`.** The Prisma *model name* and *field identifiers* stay as the IR name, so relation `fields`/`references`, `@@id`, `@@unique`, and `@@index` are unaffected — only the physical database name changes, and a `@map`/`@@map` is emitted only when the physical name actually differs (so `id` stays bare):
+
+```prisma
+model UserAccount {
+  id          String   @id
+  createdAt   DateTime @map("created_at")
+  displayName String   @map("display_name")
+
+  @@map("user_accounts")
+}
+```
+
+Resolution order per name:
+
+1. explicit `tableMappings` / `columnMappings` (always win — also the escape hatch for irregular plurals the built-in pluralizer gets wrong)
+2. the `naming` convention
+3. the IR name verbatim
+
+A global `naming` can also be set once at the top level of `manifest.config.yaml` and is inherited by the Prisma projection; a per-projection `projections.prisma.options.naming` overrides the global default.
 
 ## `prisma.config.ts` companion
 
@@ -4741,6 +4784,23 @@ You can always override a config value for a single run without modifying the fi
   ```yaml
   output: ir/
   ```
+</ParamField>
+
+<ParamField path="naming" type="string | object">
+  Global identifier-casing convention inherited by projections that map IR names to physical database names (currently the Prisma projection). Opt-in; omit to emit IR names verbatim. A per-projection `projections.<name>.options.naming` overrides this default.
+
+  The string shorthand `snake_case` expands to `{ table: snake_case, column: snake_case, pluralizeTables: true }` — e.g. `createdAt` → `@map("created_at")`, `Widget` → `@@map("widgets")`. The object form tunes each axis (`table`: `snake_case` | `camelCase` | `PascalCase` | `preserve`; `column`: `snake_case` | `camelCase` | `preserve`; `pluralizeTables`: boolean, default `true`).
+
+  ```yaml
+  naming: snake_case
+  # or:
+  naming:
+    table: snake_case
+    column: snake_case
+    pluralizeTables: true
+  ```
+
+  Only `@map`/`@@map` attributes are added — Prisma model names and field identifiers stay as the IR name, so relations and indexes are unaffected. Explicit `tableMappings`/`columnMappings` always win and are the escape hatch for irregular plurals.
 </ParamField>
 
 <ParamField path="prismaSchema" type="string">
