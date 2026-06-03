@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.4] - 2026-06-02
+
+### Fixed
+
+- **`replace()` builtin** — Use function-based replacement to avoid `$$` special pattern interpretation in `String.replace()`. `replace("hello", "l", "$$")` now correctly returns `"he$$$$o"` instead of `"he$o"`.
+
 ## [2.0.3] - 2026-06-02
 
 ### Fixed

@@ -1148,7 +1148,7 @@ export class RuntimeEngine {
       startsWith: (s: unknown, prefix: unknown) => typeof s === 'string' ? s.startsWith(prefix as string) : false,
       endsWith: (s: unknown, suffix: unknown) => typeof s === 'string' ? s.endsWith(suffix as string) : false,
       replace: (s: unknown, search: unknown, replacement: unknown) =>
-        typeof s === 'string' ? s.replace(new RegExp((search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement as string) : s,
+        typeof s === 'string' ? s.replace(new RegExp((search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), () => replacement as string) : s,
       toUpperCase: (s: unknown) => typeof s === 'string' ? s.toUpperCase() : s,
       toLowerCase: (s: unknown) => typeof s === 'string' ? s.toLowerCase() : s,
       length: (v: unknown) => {
