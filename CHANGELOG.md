@@ -4,6 +4,38 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.2.0] - 2026-06-03
+
+A new opt-in identifier-casing convention for the Prisma projection, plus the
+public typed config surface (`@angriff36/manifest/config`). No breaking changes —
+the `naming` option is default-off, so existing projections emit identical
+output.
+
+### Added
+
+- **Prisma auto-casing `naming` convention** — Standardize database identifier
+  casing without hand-writing a `columnMappings`/`tableMappings` entry per field.
+  Set `naming: 'snake_case'` (shorthand for
+  `{ table: 'snake_case', column: 'snake_case', pluralizeTables: true }`) or the
+  object form on the Prisma projection. `createdAt` emits `@map("created_at")`,
+  `Widget` emits `@@map("widgets")`. The convention **only adds `@map`/`@@map`** —
+  Prisma model names and field identifiers stay the IR name, so relation
+  `fields`/`references`, `@@id`, `@@unique`, and `@@index` are unaffected, and a
+  map is emitted only when the physical name differs. Resolution order: explicit
+  `tableMappings`/`columnMappings` win → convention → IR name verbatim. See
+  `src/manifest/projections/prisma/options.ts` and the new deterministic util
+  `src/manifest/projections/shared/naming.ts` (snake/camel/pascal + pluralizer,
+  no new dependency).
+- **Global `naming` default with per-projection override** — A top-level
+  `naming` in `manifest.config.yaml` is inherited by projections that map IR
+  names to physical names; a per-projection `projections.<name>.options.naming`
+  overrides it. Merge contract: `resolveProjectionOptions()` in
+  `src/manifest/config.ts`. Both JSON config schemas accept `naming`, and
+  `manifest config validate` enforces the allowed case values.
+- **`@angriff36/manifest/config` package export** — Public typed config surface
+  (`defineConfig`, `ManifestRuntimeConfig`, `ManifestBuildConfig`) for authoring
+  a `manifest.config.ts` with editor autocomplete and compile-time checking.
+
 ## [2.1.0] - 2026-06-02
 
 Three runtime defects that made advertised orchestration features silently fail
