@@ -54,3 +54,79 @@ The store module performs no filesystem access; persistence is handled by the CL
 </Note>
 
 Semver tags must match `major.minor.patch` exactly — prerelease and build-metadata suffixes are not parsed. `autoIncrementSemver` resolves a major bump only from breaking changes and otherwise treats any change as a minor bump, so it does not distinguish deprecations from compatible additions in the resulting version number. Version references resolve against the in-index entries; an unknown reference returns `undefined`.
+
+## IR compression and binary serialization
+
+For large IR payloads, Manifest supports compressing IR JSON to a binary format that reduces storage size and transfer time. The compression is lossless — the decompressed IR is byte-identical to the original.
+
+```bash
+# Compress an IR file
+manifest versions compress ir/app.ir.json --output app.ir.bin
+
+# Decompress back to JSON
+manifest versions decompress app.ir.bin --output ir/app.ir.json
+```
+
+### Programmatic API
+
+```typescript
+import { compressIR, decompressIR } from "@angriff36/manifest/compression";
+
+// Compress
+const compressed = compressIR(irJson);
+// Buffer — typically 60-80% smaller than the JSON string
+
+// Decompress
+const original = decompressIR(compressed);
+// Identical to the original IR JSON
+```
+
+<Note>
+IR compression uses standard deflate/inflate. It is deterministic — the same IR always produces the same compressed output. This makes it safe for content-addressed storage and caching.
+</Note>
+
+## IR entity relationship graph visualizer
+
+The graph visualizer generates visual representations of the entity relationship structure from compiled IR. It produces Mermaid diagrams or DOT (Graphviz) format.
+
+```bash
+# Generate an ER diagram as Mermaid
+manifest diagram ir/app.ir.json --type er --output diagrams/
+
+# Generate as DOT format
+manifest diagram ir/app.ir.json --type er --format dot --output diagrams/
+```
+
+The visualizer produces:
+
+| Diagram type | Content |
+|-------------|---------|
+| `er` | Entity boxes with properties, relationships as labeled edges |
+| `state` | State transition diagrams for entities with state fields |
+| `sequence` | Command execution sequences showing guard → action → emit flow |
+
+The graph is derived entirely from the IR — no source file access is needed.
+
+## Automated changelog generation from IR diffs
+
+The `generateChangelog` function (exposed via the CLI as `manifest changelog`) builds a structured changelog entry between two IR versions by running the diff engine, breaking-change classifier, and migration generator:
+
+```bash
+# Generate a Markdown changelog between two version tags
+manifest versions changelog 1.0.0 2.0.0 --output CHANGELOG.md
+
+# Generate between two IR files
+manifest changelog --old-ir v1.ir.json --new-ir v2.ir.json --output CHANGELOG.md
+```
+
+The changelog includes:
+
+1. **Version header** — from/to version numbers and tags
+2. **Breaking changes** — classified by element (entity, property, command) with impact
+3. **Compatible additions** — new entities, new optional properties, new commands
+4. **Deprecations** — changed computed expressions, loosened constraints
+5. **Migration steps** — SQL and Prisma migration actions
+
+<Note>
+The changelog is generated from IR structural comparison, not from Git history. This means it captures semantic changes that a text diff would miss (e.g., renaming a property that produces identical JSON structure but different semantics).
+</Note>

@@ -1,0 +1,136 @@
+---
+title: "Redis store adapter"
+sidebarTitle: "Redis"
+description: "Persist Manifest entity state in Redis with hash-based storage, TTL management, pub/sub event propagation, and a Redis Streams outbox for durable event delivery."
+---
+
+The Redis store adapter persists Manifest entity state in Redis using the `Store<T>` interface. Use it when you need high-throughput, low-latency entity storage with built-in TTL management and native pub/sub for event propagation. The adapter uses the `ioredis` library and supports Redis Cluster for horizontal scaling.
+
+## Configuration
+
+`RedisStore` is exported from `@angriff36/manifest/stores` (Node.js only). It requires the `ioredis` package as an optional peer dependency, loaded via dynamic import.
+
+```typescript
+import { RedisStore } from '@angriff36/manifest/stores';
+
+const store = new RedisStore<User>({
+  url: 'redis://localhost:6379',
+  keyPrefix: 'manifest:',
+  defaultTTL: 3600, // 1 hour in seconds
+});
+```
+
+The store declares itself in Manifest source as:
+
+```manifest
+entity Session {
+  property required id: string
+  property userId: string
+  property data: string
+}
+
+store Session in redis
+```
+
+## Key naming conventions
+
+Entities are stored as Redis hashes. The key pattern follows the convention `manifest:<EntityName>` for the hash key, with each entity instance stored as a field within that hash using the entity ID as the field name. The value is a JSON-serialized string of the entity instance.
+
+The `keyPrefix` option (default `manifest:`) controls the namespace prefix. With the default prefix, an entity `User` with ID `user-123` is stored at hash key `manifest:User`, field `user-123`.
+
+## Hash-based entity storage
+
+`RedisStore` implements the full `Store<T>` interface using Redis hash commands:
+
+- `getAll()` calls `HGETALL` on the entity hash and deserializes each field value.
+- `getById(id)` calls `HGET` on the entity hash with the entity ID as the field.
+- `create(data)` calls `HSET` to store the serialized entity. On conflict, the existing field is overwritten.
+- `update(id, data)` calls `HGET` to read, merges the partial data, then `HSET` to write back.
+- `delete(id)` calls `HDEL` on the entity hash.
+- `clear()` calls `DEL` on the entity hash key.
+
+## TTL management
+
+RedisStore supports automatic entity expiration through Redis TTL:
+
+```typescript
+// Set TTL at store construction (applies to all entities)
+const store = new RedisStore({ url: 'redis://localhost:6379', defaultTTL: 3600 });
+
+// Manage TTL at runtime
+await store.setTTL('User', 7200);    // Set 2-hour TTL on User hash
+const ttl = await store.getTTL('User'); // Get remaining TTL in seconds
+```
+
+TTL can be set at the hash level (entire entity collection) or removed entirely. When `defaultTTL` is configured, newly created entity hashes receive the TTL automatically.
+
+## Pub/Sub event propagation
+
+RedisStore includes pub/sub methods for event propagation:
+
+```typescript
+// Publish an event to a Redis channel
+await store.publishEvent('OrderCreated', { orderId: 'order-123', total: 99.99 });
+
+// Subscribe to events with automatic cleanup
+const unsubscribe = await store.subscribe('OrderCreated', (event) => {
+  console.log('Received event:', event);
+});
+
+// Later: clean up the subscription
+await unsubscribe();
+```
+
+Pub/sub uses a separate Redis connection because connections in SUBSCRIBE mode cannot perform other commands. The `subscribe()` method returns an unsubscribe function for clean listener management.
+
+## RedisOutboxStore
+
+The Redis outbox store implements the `OutboxStore` interface for durable event delivery using Redis Streams. It uses `XADD` for enqueue, `XREADGROUP` with consumer groups for parallel delivery with automatic load balancing, and `XACK` for delivery confirmation.
+
+```typescript
+import { RedisOutboxStore } from '@angriff36/manifest/outbox/redis';
+
+const outboxStore = new RedisOutboxStore({
+  url: 'redis://localhost:6379',
+  streamName: 'manifest:outbox',
+  consumerGroup: 'delivery-workers',
+});
+```
+
+The `RedisOutboxStore` implements `enqueue()`, `claim()`, `markDelivered()`, and `markFailed()`, plus utility methods `releaseStaleClaims()`, `getLength()`, `getPendingInfo()`, and `trim()`.
+
+## Wiring in Redis
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+import { RedisStore } from '@angriff36/manifest/stores';
+import { RedisOutboxStore } from '@angriff36/manifest/outbox/redis';
+
+const runtime = new RuntimeEngine(ir, {
+  userId: session.userId,
+  tenantId: session.tenantId,
+  storeProvider: (entityName) => {
+    if (entityName === 'Session') {
+      return new RedisStore({ url: process.env.REDIS_URL, defaultTTL: 3600 });
+    }
+    return undefined;
+  },
+  outboxStore: new RedisOutboxStore({
+    url: process.env.REDIS_URL,
+    streamName: 'manifest:outbox',
+  }),
+});
+```
+
+## Import paths
+
+| What | Import path |
+|------|-------------|
+| `RedisStore` class and `RedisConfig` | `@angriff36/manifest/stores` |
+| `RedisOutboxStore` | `@angriff36/manifest/outbox/redis` |
+
+## Notes & limitations
+
+<Note>
+The `ioredis` package is an optional peer dependency loaded via dynamic import. If it is not installed, the constructor throws: "RedisStore requires 'ioredis' to be installed. Run: npm install ioredis". For production use, consider connection pooling for high throughput, Redis Cluster for scaling, TLS for secure connections (`rediss://` URL scheme), and pipeline operations for bulk operations.
+</Note>

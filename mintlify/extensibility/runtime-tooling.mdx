@@ -1,0 +1,183 @@
+---
+title: "Runtime tooling: REPL, time-travel debugger, profiler"
+description: "Interactive developer tools for inspecting and debugging Manifest programs — an interactive REPL, a time-travel debugger for stepping through command execution, and a performance profiler."
+sidebarTitle: "Runtime tooling"
+---
+
+Manifest ships with three interactive developer tools for inspecting, debugging, and profiling runtime execution. All three are designed for development and testing — they are not intended for production use.
+
+## Runtime REPL
+
+The interactive REPL (`manifest repl`) provides a command-line interface for loading IR, creating instances, running commands, and inspecting state — all without writing test code.
+
+### Starting the REPL
+
+```bash
+# Start with a compiled IR
+manifest repl ir/app.ir.json
+
+# Start with a source file (compiled on the fly)
+manifest repl src/app.manifest
+```
+
+### Available commands
+
+| Command | Description |
+|---------|-------------|
+| `load <path>` | Load IR or source file |
+| `create <Entity> <json>` | Create an entity instance |
+| `run <Entity>.<command> <json>` | Execute a command |
+| `get <Entity> <id>` | Retrieve an instance |
+| `list <Entity>` | List all instances of an entity |
+| `eval <expression>` | Evaluate an expression in context |
+| `events` | Show the event log |
+| `reset` | Clear all state |
+| `help` | Show available commands |
+| `exit` | Exit the REPL |
+
+### Usage example
+
+```
+manifest> load ir/app.ir.json
+Loaded IR with 3 entities: Order, LineItem, Product
+
+manifest> create Order { "id": "order-1", "status": "pending" }
+Created Order(order-1)
+
+manifest> run Order.addItem { "amount": 29.99 }
+→ CommandResult { success: true, emittedEvents: [OrderUpdated] }
+
+manifest> get Order order-1
+{ id: "order-1", status: "pending", total: 29.99 }
+
+manifest> events
+[0] OrderUpdated { orderId: "order-1", total: 29.99 }
+```
+
+<Note>
+The REPL uses an in-memory store by default. State is lost when you exit. For persistent debugging, consider the snapshot testing infrastructure instead.
+</Note>
+
+## Time-travel debugger
+
+The time-travel debugger records every state mutation during command execution and lets you step forward and backward through the execution timeline. It wraps `RuntimeEngine` and captures a snapshot before and after each action.
+
+### Enabling time-travel
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { TimeTravelDebugger } from "@angriff36/manifest/debug";
+
+const runtime = new RuntimeEngine(ir, { /* options */ });
+const debugger_ = new TimeTravelDebugger(runtime);
+
+// Run a command — debugger captures the full timeline
+const result = await debugger_.runCommand("Order", "complete", {
+  instanceId: "order-1",
+});
+
+// Inspect the timeline
+const timeline = debugger_.getTimeline();
+// [
+//   { step: 0, action: 'before-policy', state: { ... } },
+//   { step: 1, action: 'before-guard', state: { ... } },
+//   { step: 2, action: 'before-action', state: { ... } },
+//   { step: 3, action: 'after-mutate', state: { status: 'completed' } },
+//   { step: 4, action: 'after-emit', state: { ... } },
+// ]
+```
+
+### Stepping through execution
+
+```typescript
+// Navigate to a specific step
+const stateAtStep2 = debugger_.getStateAt(2);
+
+// Step forward
+debugger_.stepForward();
+
+// Step backward
+debugger_.stepBack();
+
+// Get the diff between two steps
+const diff = debugger_.diff(0, 3);
+// { status: { from: 'pending', to: 'completed' }, total: { from: 0, to: 29.99 } }
+```
+
+### Timeline entries
+
+Each timeline entry contains:
+
+| Field | Description |
+|-------|-------------|
+| `step` | Zero-based step index |
+| `action` | Label for the execution phase (e.g., `before-guard`, `after-mutate`) |
+| `state` | Complete entity state snapshot at this point |
+| `timestamp` | Millisecond timestamp when the step was captured |
+
+<Warning>
+Time-travel captures full entity state at each step. For entities with large data or high-frequency command execution, this can consume significant memory. Use it in development and testing only.
+</Warning>
+
+## Performance profiler
+
+The runtime profiler measures execution time for each phase of command execution, helping you identify slow guards, expensive computed properties, or bottlenecked actions.
+
+### Running the profiler
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { RuntimeProfiler } from "@angriff36/manifest/profiler";
+
+const runtime = new RuntimeEngine(ir, { /* options */ });
+const profiler = new RuntimeProfiler(runtime);
+
+// Run a command — profiler records timing
+const result = await profiler.runCommand("Order", "complete", {
+  instanceId: "order-1",
+});
+
+// Get the profile report
+const report = profiler.getReport();
+```
+
+### Profile report shape
+
+```typescript
+interface ProfileReport {
+  commandName: string;
+  entityName: string;
+  totalMs: number;
+  phases: {
+    policy: number;      // ms spent evaluating policies
+    constraints: number; // ms spent evaluating constraints
+    guards: number;      // ms spent evaluating guards
+    actions: number;     // ms spent executing actions
+    emits: number;       // ms spent emitting events
+  };
+  computedEvaluations: {
+    name: string;
+    durationMs: number;
+  }[];
+}
+```
+
+### Usage example
+
+```typescript
+console.log(`Total: ${report.totalMs.toFixed(2)}ms`);
+console.log(`  Policies:    ${report.phases.policy.toFixed(2)}ms`);
+console.log(`  Constraints: ${report.phases.constraints.toFixed(2)}ms`);
+console.log(`  Guards:      ${report.phases.guards.toFixed(2)}ms`);
+console.log(`  Actions:     ${report.phases.actions.toFixed(2)}ms`);
+console.log(`  Emits:       ${report.phases.emits.toFixed(2)}ms`);
+
+// Identify slow computed properties
+report.computedEvaluations
+  .filter(e => e.durationMs > 1)
+  .forEach(e => console.log(`  Slow computed: ${e.name} (${e.durationMs.toFixed(2)}ms)`));
+```
+
+<Note>
+The profiler wraps the runtime engine and adds instrumentation overhead. Absolute timing values are useful for relative comparison between phases, not as production benchmarks. For production performance testing, use load testing fixtures without the profiler wrapper.
+</Note>

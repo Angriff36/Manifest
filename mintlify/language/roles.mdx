@@ -1,0 +1,259 @@
+---
+title: "Roles: hierarchy and permission inheritance"
+description: "Define role hierarchies with extends, allow/deny permissions, and transitive inheritance. Deny rules are absolute and always win over allow."
+sidebarTitle: "Roles"
+---
+
+Roles define named permission sets with single-parent inheritance. A role that extends a parent inherits all its permissions transitively. Use roles with the [policy](/language/guards-policies) system to control command authorization based on the user's assigned role.
+
+## Declaring a role
+
+Use the `role` keyword at the program or module level with a block body of `allow` and `deny` declarations:
+
+```manifest
+role User {
+  allow read
+}
+
+role Manager extends User {
+  allow write
+  allow execute
+}
+
+role Admin extends Manager {
+  allow delete
+  allow override
+  deny impersonate
+}
+```
+
+Each `allow` or `deny` line names an action (or optionally a target) that the role permits or forbids. The `extends` keyword establishes a single-parent inheritance chain.
+
+## Permission inheritance
+
+Roles inherit permissions transitively through the `extends` chain. The compiler walks the chain from root to leaf, unioning all `allow` permissions along the way:
+
+| Role | Inherited from | Effective permissions |
+|------|----------------|----------------------|
+| `User` | (none) | read |
+| `Manager` (extends User) | User | read, write, execute |
+| `Admin` (extends Manager) | Manager, User | read, write, execute, delete, override |
+
+The `effectivePermissions` map is precomputed at compile time by the IR compiler's `resolveRoleGraph()` method. The runtime evaluates these directly via O(1) lookups — no chain traversal happens at execution time.
+
+### Compile-time validation
+
+The compiler validates the role graph and produces error diagnostics for:
+
+- **Duplicate role names**: Each role name must be unique within the program or module.
+- **Unknown parent**: A role that extends a name not declared as a role produces a compile error.
+- **Circular inheritance**: If the `extends` chain forms a cycle (A extends B extends A), the compiler detects it via DFS coloring and produces an error diagnostic listing the cycle path.
+
+## Deny-is-absolute semantics
+
+If any role in the inheritance chain denies an action, the denial takes precedence over all `allow` rules regardless of where they appear:
+
+```manifest
+role Support extends User {
+  allow write
+  allow execute
+  deny delete       // Support CANNOT delete, even if a parent allows it
+}
+```
+
+Deny rules are applied after the full inheritance union is computed. This means:
+
+1. Walk the inheritance chain and union all `allow` permissions.
+2. Walk the inheritance chain and subtract all `deny` permissions.
+3. The result is the `effectivePermissions` map.
+
+A `deny` at any level is absolute. There is no mechanism to override a deny with a subsequent allow. This is by design — it prevents privilege escalation through role chain manipulation.
+
+<Warning>
+Deny is not a suggestion; it is a hard rule. If `User` denies `impersonate`, then `Admin extends User` cannot re-allow `impersonate`. The deny from `User` will always win. Structure your role hierarchy so that denials only appear at the appropriate level.
+</Warning>
+
+## Unknown roles default to deny
+
+If a user's role does not match any declared role, the runtime returns `false` for all permission checks. There are no permissive defaults — an unrecognized role has no permissions. This is consistent with Manifest's default-deny posture. See [Guards and policies](/language/guards-policies) for the broader authorization model.
+
+## Using roles in policies
+
+Reference roles in policy expressions via the `user.role` binding and the built-in permission functions:
+
+```manifest
+entity Document {
+  default policy RequireAuth execute: user.id != null "Authentication required"
+
+  command approve() {
+    policy execute: roleAllows(user.role, "approve") or user.role == "admin"
+    mutate status = "approved"
+    emit DocumentApproved
+  }
+
+  command delete() {
+    policy execute: hasPermission(user, "delete")
+    mutate status = "deleted"
+    emit DocumentDeleted
+  }
+}
+```
+
+## Runtime builtins
+
+Two built-in functions are registered on the runtime engine when roles are present in the IR:
+
+| Function | Signature | Returns |
+|----------|-----------|---------|
+| `hasPermission` | `hasPermission(user, permission)` | `true` if the user's effective permissions include the named permission |
+| `roleAllows` | `roleAllows(roleName, action)` | `true` if the named role's effective permissions allow the action |
+
+Both functions perform O(1) lookups against the precomputed `effectivePermissions` map. The `roleIndex` is built at engine initialization time from the IR's `roles` array.
+
+### `hasPermission(user, permission)`
+
+Checks whether the given user object's role grants the specified permission. Returns `false` if the user has no role, or if the role is not declared in the IR.
+
+```typescript
+// Inside a guard or policy expression:
+guard hasPermission(user, "delete")
+```
+
+### `roleAllows(roleName, action)`
+
+Checks whether a named role allows a specific action, without requiring a user object. Useful for checking whether a role would permit something before assigning it to a user.
+
+```typescript
+// Inside a policy expression:
+policy execute: roleAllows(user.role, "execute") or user.role == "admin"
+```
+
+## Context-sensitive `role` keyword
+
+The `role` keyword is context-sensitive, not a globally reserved keyword. It is emitted as an identifier rather than a reserved token, so existing programs that use `role` as a property name continue to parse correctly:
+
+```manifest
+entity UserProfile {
+  property role: string = "user"           // property named "role"
+
+  command setRole(newRole: string) {
+    mutate role = newRole                   // mutate "role" property
+  }
+}
+```
+
+The parser only treats `role` as a declaration keyword at the top level of a program or module (when followed by an identifier and a block). Inside entity blocks, `role` is an ordinary identifier.
+
+<Note>
+The `role` keyword is only treated as a role declaration at the top level of a program or module. Inside entity blocks, `role` is an ordinary identifier. This prevents the keyword from breaking existing code that uses `role` as a property name.
+</Note>
+
+## IR representation
+
+Roles are stored in the IR as an optional `roles` array on the root `IR` object (and on `IRModule` for module-scoped roles). Each `IRRole` contains:
+
+```typescript
+interface IRRolePermission {
+  kind: "allow" | "deny";
+  action: string;
+  target?: string;
+}
+
+interface IRRole {
+  name: string;
+  extends?: string;
+  permissions: IRRolePermission[];
+  effectivePermissions: Record<string, boolean>;
+  module?: string;
+}
+```
+
+The `effectivePermissions` field is the precomputed result of inheritance resolution. The runtime reads this field directly and never re-computes it.
+
+## Complete example
+
+```manifest
+role User {
+  allow read
+}
+
+role Manager extends User {
+  allow write
+  allow execute
+}
+
+role Admin extends Manager {
+  allow delete
+  allow override
+  deny impersonate
+}
+
+entity Document {
+  property required id: string
+  property title: string = ""
+  property status: string = "draft"
+
+  default policy RequireAuth execute: user.id != null "Authentication required"
+
+  command view() {
+    policy execute: hasPermission(user, "read")
+    emit DocumentViewed
+  }
+
+  command edit(newTitle: string) {
+    policy execute: hasPermission(user, "write")
+    mutate title = newTitle
+    emit DocumentEdited
+  }
+
+  command approve() {
+    policy execute: roleAllows(user.role, "execute")
+    guard self.status == "draft"
+    mutate status = "approved"
+    emit DocumentApproved
+  }
+
+  command delete() {
+    policy execute: hasPermission(user, "delete")
+    mutate status = "deleted"
+    emit DocumentDeleted
+  }
+}
+```
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+// Admin user
+const adminRuntime = new RuntimeEngine(ir, {
+  user: { id: "admin-1", role: "Admin" },
+});
+
+const result = await adminRuntime.runCommand("Document", "delete", {
+  instanceId: "doc-42",
+});
+console.log(result.success); // true
+
+// Manager user
+const mgrRuntime = new RuntimeEngine(ir, {
+  user: { id: "mgr-1", role: "Manager" },
+});
+
+const mgrResult = await mgrRuntime.runCommand("Document", "delete", {
+  instanceId: "doc-42",
+});
+console.log(mgrResult.success); // false (Manager has no "delete" permission)
+
+// Unknown role
+const unknownRuntime = new RuntimeEngine(ir, {
+  user: { id: "guest-1", role: "Guest" },
+});
+
+const unknownResult = await unknownRuntime.runCommand("Document", "view", {
+  instanceId: "doc-42",
+});
+console.log(unknownResult.success); // false (unknown role defaults to deny)
+```
+
+See [Guards and policies](/language/guards-policies) for the full policy system, [Commands](/language/commands) for the execution pipeline, and [Approvals](/language/approvals) for multi-stage approval workflows that integrate with role-based policies.

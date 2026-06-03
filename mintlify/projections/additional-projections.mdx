@@ -1,0 +1,148 @@
+---
+title: "Additional projections"
+sidebarTitle: "More projections"
+description: "Kysely, Terraform, materialized views, analytics, Elasticsearch, Storybook, and Python Client SDK projections for specialized infrastructure and tooling targets."
+---
+
+Beyond the primary framework and ORM projections, Manifest ships several specialized projections for infrastructure, analytics, search, and developer tooling targets. Each follows the same `ProjectionTarget` interface and deterministic output contract.
+
+### Kysely
+
+The Kysely projection generates TypeScript type definitions for the [Kysely](https://kysely.dev) type-safe SQL query builder. It produces per-table TypeScript interfaces (e.g., `TaskTable`), a `Database` interface mapping table names to those interfaces, and a `createDb()` factory function for creating configured `Kysely<Database>` instances.
+
+The projection is registered under the name `kysely` and emits one surface: `kysely.schema` (content type `typescript`, default output `schema.ts`).
+
+**Key characteristics:**
+
+- IR types map to Kysely/TypeScript types with `Generated<T>` for ID columns and columns with `defaultValue`, and `ColumnType<SelectType, InsertType, UpdateType>` for Date/datetime columns.
+- `belongsTo`/`ref` relationships auto-generate FK columns (skipped if an FK property already exists). `hasMany`/`hasOne` are expressed through Kysely's relation API, not as columns.
+- Bare `number` produces a `KYSELY_AMBIGUOUS_NUMBER` diagnostic and the column is skipped, requiring an explicit `int`/`bigint`/`float`/`decimal`/`money` type.
+- Skips non-SQL store targets (`memory`, `localStorage`, `mongodb`, `dynamodb`, `eventSourced`).
+- Supports `dialect` (`postgresql`, `mysql`, `sqlite`), `tableMappings`, `columnMappings`, `typeMappings`, and `emitFactory` options.
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('kysely');
+const result = projection.generate(ir, {
+  surface: 'kysely.schema',
+  options: { dialect: 'postgresql' },
+});
+```
+
+### Terraform
+
+The Terraform projection generates HCL resource definitions from Manifest IR for database tables, storage buckets, and pub/sub topics. It supports three cloud providers: **AWS** (emits `aws_db_instance`, `aws_s3_bucket`, `aws_sns_topic`), **GCP** (emits `google_sql_database_instance`, `google_storage_bucket`, `google_pubsub_topic`), and **Supabase** (emits `supabase_project` with documented table schemas).
+
+The projection is registered under the name `terraform` and emits one surface: `terraform.main` (content type `hcl`). It supports both single-file (`main.tf`) and multi-file (`database.tf`, `storage.tf`, `messaging.tf`) output modes.
+
+**Key characteristics:**
+
+- Walks `ir.stores` to find entities with persistent store targets (`postgres`, `supabase`) for database resources.
+- Walks `ir.events` to emit pub/sub topic definitions.
+- Accepts `storageBuckets` in options for S3/GCS bucket definitions.
+- Skips non-persistent targets (`memory`, `localStorage`, `durable`) with diagnostic codes.
+- Emits proper HCL with primary keys, unique constraints, `NOT NULL`, and encryption settings.
+
+```ts
+const projection = getProjection('terraform');
+const result = projection.generate(ir, {
+  surface: 'terraform.main',
+  options: { provider: 'aws', outputMode: 'multi-file' },
+});
+```
+
+### Materialized View SQL
+
+The materialized views projection generates PostgreSQL `CREATE MATERIALIZED VIEW` DDL from Manifest IR entities. It supports three refresh strategies: **on-demand** (emits `REFRESH MATERIALIZED VIEW`), **scheduled** (emits `SELECT cron.schedule(...)` for pg_cron), and **trigger-based** (emits `CREATE TRIGGER ... AFTER UPDATE OF col ... EXECUTE FUNCTION`).
+
+The projection is registered under the name `materialized-views` and emits one surface: `materialized-views.ddl` (content type `sql`).
+
+**Key characteristics:**
+
+- Includes an expression-to-SQL translator that converts `IRExpression` trees to PostgreSQL: literals, identifiers, binary operations (`===` maps to `=`), function calls (`SUM`, `COUNT`), and conditionals (`CASE WHEN`).
+- Supports schema-qualified view names and `CREATE [UNIQUE] INDEX` statements (btree, hash, gin, gist).
+- All relational concepts (view names, column aliases, refresh strategies, index definitions) enter via projection options, never into the IR.
+- Deterministic output for a given IR + options pair.
+
+```ts
+const projection = getProjection('materialized-views');
+const result = projection.generate(ir, {
+  surface: 'materialized-views.ddl',
+  options: {
+    views: [{
+      name: 'order_summary',
+      source: 'Order',
+      strategy: 'scheduled',
+      schedule: { cron: '0 * * * *' },
+      columns: [{ expression: 'SUM(total)', alias: 'revenue' }],
+    }],
+  },
+});
+```
+
+### Analytics Event Schema
+
+The analytics projection generates typed event schemas from Manifest IR for Segment, Amplitude, Mixpanel, or Snowplow. It produces three surfaces:
+
+- `analytics.tracking-plan` — A JSON tracking plan document following the Segment Tracking Plan spec format, with events derived from command emits and standalone event declarations.
+- `analytics.events` — A TypeScript module with typed property interfaces per event, `AnalyticsEvents` constants, `AnalyticsEventMap` type mapping, and provider-specific `track()` functions.
+- `analytics.handlers` — TypeScript command handler stubs that inject typed `track()` calls after command execution.
+
+The projection is registered under the name `analytics` and supports the `provider` option (`'segment'` | `'amplitude'` | `'mixpanel'` | `'snowplow'`, default `'segment'`). Events are deduplicated by name across command emits and standalone declarations. All output is deterministic with sorted iteration.
+
+```ts
+const projection = getProjection('analytics');
+const result = projection.generate(ir, {
+  surface: 'analytics.tracking-plan',
+  options: { provider: 'segment' },
+});
+```
+
+### Elasticsearch / OpenSearch
+
+The Elasticsearch projection generates index mappings, templates, ingest pipelines, an outbox-driven indexer worker, and a typed search client from Manifest IR entities stored in Elasticsearch. It emits five surfaces:
+
+- `elasticsearch.mapping` — Per-entity ES index mappings with proper field types, settings, and analyzers.
+- `elasticsearch.indexTemplate` — Composable index templates with index patterns and priority.
+- `elasticsearch.ingestPipeline` — Ingest pipeline processor configurations.
+- `elasticsearch.indexer` — TypeScript worker that consumes outbox entries and bulk-indexes entity state changes with retry logic and exponential backoff.
+- `elasticsearch.client` — TypeScript search query builders with `multi_match` full-text search and typed document interfaces.
+
+The projection is registered under the name `elasticsearch`. It maps Manifest types to ES field types (string to `keyword`/`text`, int to `integer`, float to `scaled_float`, etc.). Bare `number` produces an `ELASTICSEARCH_AMBIGUOUS_NUMBER` diagnostic. Computed properties are excluded from index mappings by default. Multi-tenant support automatically adds `tenantId` as a required `keyword` field when tenant context is configured.
+
+```ts
+const projection = getProjection('elasticsearch');
+const mapping = projection.generate(ir, { surface: 'elasticsearch.mapping' });
+const indexer = projection.generate(ir, { surface: 'elasticsearch.indexer' });
+```
+
+### Storybook
+
+The Storybook projection generates Component Story Format (CSF3) stories from Manifest IR entities and commands. It emits three surfaces:
+
+- `storybook.entity` — Default stories for each entity with all properties mapped to Storybook controls (text, number, boolean, date, select for enums). Computed properties are rendered as `control: false`. Private properties are excluded.
+- `storybook.command` — Interaction stories with `GuardsPass` and `GuardFails` scenarios using play functions. Guard expressions are analyzed heuristically to produce meaningful pass/fail args.
+- `storybook.all` — Combined entity and command stories in a single artifact.
+
+The projection is registered under the name `storybook`. It supports `componentImportPattern` (with `{Entity}` and `{Command}` placeholders), `titlePrefix`, `includeGuardScenarios`, and `includeConstraintStories` options. Constraint violation stories are generated for entities with constraints.
+
+```ts
+const projection = getProjection('storybook');
+const stories = projection.generate(ir, {
+  surface: 'storybook.all',
+  options: { titlePrefix: 'Manifest/' },
+});
+```
+
+### Python Client SDK
+
+The Python Client SDK is delivered through the `pydantic.client` surface of the [Pydantic projection](/projections/python-pydantic). It generates a `ManifestClient` class with `httpx.AsyncClient` integration, entity query methods (`list_<entity>s`, `get_<entity>`), typed command invocation methods, optional bearer token auth, and module-level convenience functions. The generated code targets Python 3.10+.
+
+```ts
+const projection = getProjection('pydantic');
+const client = projection.generate(ir, {
+  surface: 'pydantic.client',
+  options: { clientBaseUrl: 'https://api.example.com', emitConvenienceFunctions: true },
+});
+```

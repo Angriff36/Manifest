@@ -1,0 +1,184 @@
+---
+title: "Modules: multi-file projects and imports"
+description: "Organize Manifest programs across multiple files using use declarations and import statements, with cycle detection, topological sort, and IR merging."
+sidebarTitle: "Modules"
+---
+
+Manifest supports multi-file projects through `use` declarations and `import` statements. The module resolver discovers all referenced files, detects cycles, sorts them topologically, and merges the compiled IR into a single deterministic output. This lets you split large programs into focused files without sacrificing whole-program validation.
+
+## Use declarations
+
+The `use` keyword includes another `.manifest` file. Use declarations must appear at the top of the file, before any entity, event, or store declarations:
+
+```manifest
+// app.manifest
+use "./shared/types.manifest"
+use "./domains/order.manifest"
+use "./domains/product.manifest"
+```
+
+The resolver walks `use` declarations recursively to discover the full file graph. A `use` path must be relative and end in `.manifest` — absolute paths and extensions other than `.manifest` produce a parse error.
+
+## Import statements
+
+For selective imports, use the `import` syntax to bring specific symbols into scope:
+
+```manifest
+import { Status, Priority } from "./shared/types.manifest"
+
+entity Article {
+  property required title: string
+  property status: Status = draft
+  property priority: Priority = medium
+}
+```
+
+Import statements support aliasing:
+
+```manifest
+import { User as Customer } from "./shared/user.manifest"
+
+entity Order {
+  property required buyer: Customer
+}
+```
+
+The resolver validates import specifiers against the source file's exported symbols (entities, enums, and value objects). Importing a symbol that does not exist, or importing a symbol of the wrong kind, produces a compile error diagnostic.
+
+## Compilation pipeline
+
+<Steps>
+  <Step title="Resolution">
+    Walk all `use` and `import` declarations starting from the entry file. Build a complete dependency graph using BFS discovery.
+  </Step>
+  <Step title="Cycle detection">
+    Detect circular imports (A imports B imports A) using DFS with grey/black coloring. Circular dependencies produce a compile error diagnostic listing the cycle path.
+  </Step>
+  <Step title="Topological sort">
+    Kahn's algorithm determines the compilation order — dependencies compile before dependents. Ties are broken alphabetically for deterministic output.
+  </Step>
+  <Step title="Per-file compilation">
+    Each file is parsed and compiled to IR independently, producing one IR per file.
+  </Step>
+  <Step title="Cross-file validation">
+    The merged IR is validated for cross-file reference integrity: entity types referenced in properties must exist, enum members used as defaults must be declared, and event names referenced in `emit` must be defined somewhere in the project.
+  </Step>
+  <Step title="IR merging">
+    All per-file IRs are merged into a single output with sorted arrays for determinism. A `sources` array in the IR provenance tracks which files contributed to the merged output.
+  </Step>
+</Steps>
+
+## CLI flags
+
+Use the `--merge` and `--entry` flags to compile multi-file projects:
+
+```bash
+# Compile a multi-file project with merging
+manifest compile --merge --entry src/app.manifest
+
+# Compile with explicit output path
+manifest compile --merge --entry src/app.manifest --output ir/
+
+# Let the compiler auto-detect entry files (files not referenced by any other)
+manifest compile --merge src/
+```
+
+| Flag | Description |
+|------|-------------|
+| `--merge` | Enable multi-file compilation and merge all discovered files into a single IR output |
+| `--entry <path>` | Specify the entry point for module resolution. When omitted, the compiler auto-detects root files. |
+
+## Namespace isolation
+
+Each module's entities, events, and enums are namespaced by the module's file path. Two files can define entities with the same name without collision:
+
+```
+shared/types.manifest  ->  Status enum  ->  shared/types.Status
+domains/order.manifest ->  Order entity ->  domains/order.Order
+domains/product.manifest -> Order entity -> domains/product.Order
+```
+
+When using `import { X }` syntax, the imported symbol is available without the module prefix in the importing file. The `use` syntax makes all declarations available but with the module prefix for disambiguation.
+
+<Note>
+Cross-file validation catches ambiguous references when two modules export the same symbol name. Use the module prefix or an import alias to disambiguate.
+</Note>
+
+## Cross-file validation
+
+After merging, the compiler validates cross-file references and produces error diagnostics with file paths and line numbers:
+
+- Entity types referenced in properties must exist in the merged IR
+- Enum members used as default values must be declared in an imported or used file
+- Event names referenced in `emit` actions must be declared somewhere in the project
+- Store declarations must reference entities that exist in the merged IR
+
+Invalid cross-file references produce compile error diagnostics rather than runtime failures.
+
+## ResolverHost abstraction
+
+The module resolver uses a `ResolverHost` abstraction for file system access. In production, this reads from disk. In tests, you can provide an in-memory host to test resolution without touching the file system:
+
+```typescript
+import { ModuleResolver } from "@angriff36/manifest/module-resolver";
+
+const resolver = new ModuleResolver({
+  readFile(path) {
+    // Return file contents from an in-memory map
+    return mockFiles.get(path);
+  }
+});
+```
+
+This makes the resolver testable in isolation and allows the multi-compiler to work in environments without direct file system access.
+
+## Complete example
+
+A multi-file project with shared types, domain entities, and an entry point:
+
+```manifest
+// shared/types.manifest
+enum Status { draft, submitted, approved, rejected }
+enum Priority { low, medium, high }
+```
+
+```manifest
+// domains/order.manifest
+use "../shared/types.manifest"
+
+entity Order {
+  property required id: string
+  property status: Status = draft
+  property priority: Priority = medium
+  property amount: number = 0
+
+  command submit() {
+    guard self.status == draft
+    mutate status = submitted
+    emit OrderSubmitted
+  }
+}
+
+event OrderSubmitted: "order.submitted" {
+  orderId: string
+}
+
+store Order in memory
+```
+
+```manifest
+// app.manifest
+use "./domains/order.manifest"
+
+// Additional top-level declarations can go here
+```
+
+Compile the project:
+
+```bash
+manifest compile --merge --entry src/app.manifest --output project.ir.json
+```
+
+The resulting `project.ir.json` contains all entities, events, enums, and stores from every discovered file, merged into a single deterministic IR with provenance tracking.
+
+See [Entities](/language/entities) for entity declarations, [Events](/language/events) for event schemas, and [CLI overview](/cli/overview) for the full set of compile options.

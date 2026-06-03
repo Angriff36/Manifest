@@ -206,3 +206,61 @@ When an authorized constraint override is applied, the runtime synthesizes and e
 ```
 
 This event appears in `CommandResult.emittedEvents` alongside any command-declared events.
+
+## Webhook inbound triggers
+
+Webhooks declare inbound HTTP endpoints that trigger entity commands when an external system sends a request. The runtime verifies the webhook signature, transforms the payload, and dispatches the command.
+
+```manifest
+entity Order {
+  property required id: string
+  property status: string = "pending"
+  property providerRef: string = ""
+
+  webhook paymentCallback
+    method POST
+    url "/webhooks/payment"
+    signature "hmac-sha256" header "X-Signature"
+    command handlePayment
+
+  command handlePayment(providerRef: string, status: string) {
+    guard status == "completed"
+    mutate providerRef = providerRef
+    mutate status = "paid"
+    emit PaymentReceived
+  }
+}
+```
+
+### Webhook configuration
+
+| Field | Description |
+|-------|-------------|
+| `method` | HTTP method (typically `POST`) |
+| `url` | Endpoint path for the generated route |
+| `signature` | Verification method and header name (e.g., `hmac-sha256` with `X-Signature` header) |
+| `command` | Entity command to invoke when the webhook fires |
+| `idempotency` | Optional idempotency key field from the payload for deduplication |
+
+<Note>
+Webhook signature verification happens before the command is dispatched. If the signature is invalid, the request is rejected with a `401` response and no command runs. This prevents untrusted callers from triggering commands.
+</Note>
+
+## Event sourcing store
+
+The `event-sourced` store target persists entity state as an append-only event log rather than overwriting entity records. Each command produces events that are appended to the log, and entity state is reconstructed by replaying events from the beginning.
+
+```manifest
+store Order in event-sourced
+```
+
+The event-sourced store supports:
+
+- **Append-only writes** — events are never modified or deleted
+- **Snapshotting** — periodic snapshots avoid replaying the full log
+- **Replay** — entity state is reconstructed by replaying events
+- **Projections** — read models can be built by subscribing to the event stream
+
+<Warning>
+Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically regardless of whether the backing store is memory, postgres, or event-sourced. The difference is how state is persisted and recovered.
+</Warning>

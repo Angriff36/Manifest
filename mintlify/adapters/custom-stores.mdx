@@ -138,6 +138,10 @@ The runtime ships with first-party support for the following targets:
 | `postgres` | Server-side only. Uses `pg`. Import from `@angriff36/manifest/stores`. |
 | `supabase` | Server-side only. Requires the optional `@supabase/supabase-js` peer dependency. Import from `@angriff36/manifest/stores`. |
 | `localStorage` | Browser only. |
+| `dynamodb` | AWS DynamoDB. Single-table design with composite keys. See [DynamoDB adapter](/adapters/dynamodb). |
+| `redis` | Redis hash-based storage with pub/sub events. See [Redis adapter](/adapters/redis). |
+| `turso` | Turso / libSQL edge database. See [Turso adapter](/adapters/turso). |
+| `event-sourced` | Append-only event log with snapshotting and replay. See [Event-sourced store](/adapters/event-sourced-store). |
 
 ## Unsupported targets throw — there is no silent fallback
 

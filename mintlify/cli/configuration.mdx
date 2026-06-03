@@ -420,3 +420,73 @@ projections:
 <Tip>
 After editing `manifest.config.yaml`, run `manifest build` with no flags to confirm the CLI picks up your changes. The build summary printed at the end shows the resolved `ir-output` and `code-output` paths.
 </Tip>
+
+## Environment variable mapping
+
+Store connection strings and sensitive configuration can be injected via environment variables instead of hardcoding them in the config file. The CLI supports `env()` expressions in string-valued fields:
+
+```yaml
+projections:
+  nextjs:
+    options:
+      databaseImportPath: "@/lib/database"
+      runtimeImportPath: "@/lib/manifest-runtime"
+
+stores:
+  postgres:
+    url: env(DATABASE_URL)
+    schema: env(DATABASE_SCHEMA, "public")
+  redis:
+    url: env(REDIS_URL)
+  dynamodb:
+    region: env(AWS_REGION, "us-east-1")
+    table: env(DYNAMO_TABLE)
+```
+
+### `env()` syntax
+
+| Expression | Behavior |
+|------------|----------|
+| `env(VAR_NAME)` | Read `VAR_NAME` from the environment. Throws if unset. |
+| `env(VAR_NAME, "default")` | Read `VAR_NAME` from the environment. Falls back to `"default"` if unset. |
+
+Environment variable resolution happens at config load time, before any command executes. This means:
+
+- Missing required variables cause the CLI to exit with a clear error message naming the missing variable.
+- Defaults are string values — no type coercion is performed.
+- `env()` can only appear in string-valued config fields.
+
+## Multi-environment configuration
+
+For projects that deploy to multiple environments (development, staging, production), use config overlays:
+
+```yaml
+# manifest.config.yaml
+src: modules/**/*.manifest
+output: ir/
+
+stores:
+  postgres:
+    url: env(DATABASE_URL)
+
+---
+
+# manifest.config.staging.yaml (overlay)
+stores:
+  postgres:
+    url: env(STAGING_DATABASE_URL)
+```
+
+The CLI selects the overlay based on the `MANIFEST_ENV` environment variable:
+
+```bash
+# Use base config
+manifest build
+
+# Use staging overlay
+MANIFEST_ENV=staging manifest build
+```
+
+<Note>
+Overlays are merged shallowly — an overlay's `stores.postgres` replaces the base `stores.postgres` entirely. For deep merging, provide the full structure in the overlay.
+</Note>

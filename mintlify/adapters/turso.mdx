@@ -1,0 +1,72 @@
+---
+title: "Turso / libSQL store adapter"
+description: "Persist entity state in Turso's edge-optimized libSQL database with automatic schema generation and low-latency reads."
+sidebarTitle: "Turso"
+---
+
+The Turso adapter persists entity state in a [Turso](https://turso.tech/) edge database using libSQL. It is designed for low-latency reads at the edge, making it a good fit for globally distributed applications.
+
+## Configuration
+
+```typescript
+import { TursoStore } from "@angriff36/manifest/stores";
+
+const store = new TursoStore({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+```
+
+### Options
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `url` | Yes | Turso database URL (e.g., `libsql://my-db-xxxx.turso.io`) |
+| `authToken` | Yes | Turso authentication token |
+| `schemaPrefix` | No | Prefix for generated table names (default: none) |
+
+## Wiring into the runtime
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { TursoStore } from "@angriff36/manifest/stores";
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "user-1" },
+  storeProvider: (entityName) => {
+    return new TursoStore({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+  },
+});
+```
+
+## Schema generation
+
+The Turso adapter generates libSQL-compatible schema from your entity definitions:
+
+```sql
+CREATE TABLE IF NOT EXISTS manifest_Order (
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL DEFAULT 'pending',
+  total REAL NOT NULL DEFAULT 0
+);
+```
+
+Run schema generation via the CLI:
+
+```bash
+manifest generate ir/ --projection turso --output schema/
+```
+
+## Edge deployment
+
+- Turso databases are replicated to edge locations for low-latency reads
+- Writes go to the primary and propagate to replicas
+- For high write throughput, consider embedded replicas for read-heavy patterns
+- Connection pooling is handled by `@libsql/client`
+
+<Note>
+The Turso adapter requires `@libsql/client` as a peer dependency: `npm install @libsql/client`.
+</Note>

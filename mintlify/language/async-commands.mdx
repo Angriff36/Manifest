@@ -1,0 +1,240 @@
+---
+title: "Async commands: background execution with job queues"
+description: "Defer command action execution to a background worker queue with the async keyword. Policies, constraints, and guards are validated synchronously before enqueuing."
+sidebarTitle: "Async commands"
+---
+
+Async commands defer action execution to a background worker queue. The `async` keyword prefix tells the runtime to validate the command synchronously (policies, constraints, guards) and then enqueue it for later execution rather than running actions immediately. The caller receives a job ID and a `pending` status without waiting for the work to complete.
+
+## Declaring an async command
+
+Add the `async` keyword before `command`:
+
+```manifest
+entity Order {
+  property required id: string
+  property status: string = "pending"
+  property processedAt: number = 0
+
+  async command processOrder(amount: number) {
+    guard amount > 0
+    mutate status = "processing"
+    mutate processedAt = now()
+    emit OrderProcessing
+  }
+}
+```
+
+The `async` modifier is available at program-level, module-level, and entity-level command declarations.
+
+## How async commands execute
+
+<Steps>
+  <Step title="Synchronous validation">
+    The runtime evaluates policies, constraints, and guards synchronously — exactly as it would for a non-async command. If any check fails, the command fails immediately with the normal `policyDenial`, `constraintOutcomes`, or `guardFailure` result. No job is enqueued.
+  </Step>
+  <Step title="Enqueue job">
+    If validation passes, the runtime creates a `JobRecord` and enqueues it via the configured `JobQueue` adapter.
+  </Step>
+  <Step title="Return immediately">
+    The caller receives a result with `{ jobId, status: 'pending', enqueuedAt }`. Actions have not yet executed.
+  </Step>
+  <Step title="Worker executes">
+    When the job is drained (via `drainJobs()` or a production queue consumer), the runtime re-enters the command with `context.source === 'job'`, bypassing the async branch and executing all actions normally.
+  </Step>
+</Steps>
+
+<Note>
+Fail-fast validation is the key design decision: policies, constraints, and guards are checked synchronously so that invalid commands are rejected immediately. Only valid commands are enqueued. This means callers get instant feedback on authorization and precondition failures without waiting for a background worker.
+</Note>
+
+## Return value
+
+An async command returns a different shape than a synchronous command. Instead of the normal `CommandResult`, the caller receives:
+
+```typescript
+{
+  success: true,
+  jobId: "job-abc123",
+  status: "pending",
+  enqueuedAt: 1748131200000
+}
+```
+
+The `jobId` can be used to track the job's status and correlate with the synthesized completion/failure events.
+
+## Auto-synthesized events
+
+The compiler automatically creates two events for each async command:
+
+| Event | When emitted |
+|-------|-------------|
+| `{CommandName}Completed` | After the job executes successfully |
+| `{CommandName}Failed` | If the job execution fails |
+
+```manifest
+// You don't declare these — the compiler creates them:
+// event ProcessOrderCompleted: "order.processOrder.completed" { jobId: string; result: object }
+// event ProcessOrderFailed: "order.processOrder.failed" { jobId: string; error: string }
+```
+
+These synthesized events are appended to the IR's `events` array at compile time. They follow the naming convention `{commandName}Completed` and `{commandName}Failed`.
+
+<Warning>
+If you declare an event with the same name as a synthesized event, the compiler produces an error diagnostic. Rename your event to avoid the collision.
+</Warning>
+
+## JobQueue adapter
+
+Configure a job queue in `RuntimeOptions` to enable async command execution:
+
+```typescript
+import { RuntimeEngine, MemoryJobQueue } from "@angriff36/manifest";
+
+const jobQueue = new MemoryJobQueue();
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "system", role: "worker" },
+  jobQueue,
+});
+```
+
+The `JobQueue` interface defines three methods:
+
+```typescript
+interface JobQueue {
+  enqueue(record: JobRecord): Promise<string>;
+  drainPending(): Promise<JobRecord[]>;
+  updateStatus(jobId: string, status: string): Promise<void>;
+}
+```
+
+A `JobRecord` carries:
+
+```typescript
+interface JobRecord {
+  jobId: string;
+  commandName: string;
+  entityName: string;
+  instanceId?: string;
+  input: Record<string, unknown>;
+  correlationId?: string;
+  causationId?: string;
+  enqueuedAt: number;
+  status: "pending" | "running" | "completed" | "failed";
+}
+```
+
+<Warning>
+`MemoryJobQueue` is for testing and development only. It stores jobs in memory and they are lost on process restart. Production deployments should provide a durable implementation backed by Redis, SQS, Google Cloud Tasks, or similar infrastructure. If no `jobQueue` is configured and an async command is invoked, the runtime returns a `MISSING_JOB_QUEUE` error result.
+</Warning>
+
+## Deterministic testing with drainJobs()
+
+The `drainJobs()` method processes pending jobs in FIFO order, making async commands fully testable without real message queues:
+
+```typescript
+import { RuntimeEngine, MemoryJobQueue } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+const jobQueue = new MemoryJobQueue();
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "system", role: "worker" },
+  jobQueue,
+});
+
+// Seed an order instance
+runtime.createInstance("Order", { id: "order-1", status: "pending" });
+
+// Invoke the async command
+const result = await runtime.runCommand("Order", "processOrder", {
+  instanceId: "order-1",
+  amount: 50,
+});
+
+console.log(result.success);  // true
+console.log(result.status);   // "pending"
+console.log(result.jobId);    // "job-abc123"
+
+// The instance has NOT changed yet
+const before = runtime.getInstance("Order", "order-1");
+console.log(before.status);   // "pending"
+
+// Drain the job queue — executes the enqueued command
+await runtime.drainJobs();
+
+// Now the instance reflects the async command's mutations
+const after = runtime.getInstance("Order", "order-1");
+console.log(after.status);        // "processing"
+console.log(after.processedAt);   // <timestamp>
+```
+
+`drainJobs()` is the primary testing surface for async commands. It processes all pending jobs in order, emitting synthesized completion/failure events as appropriate.
+
+## Re-entry guard
+
+When a job is drained, the runtime re-enters the command with `context.source === 'job'`. The async branch detects this and executes actions normally instead of enqueuing again. This prevents infinite enqueue loops:
+
+1. First call (`context.source` is not `'job'`) -- validate and enqueue.
+2. Second call during drain (`context.source === 'job'`) -- skip the async branch, execute actions.
+
+You can also use `context.source` in your own guard expressions if you need to enforce different behavior for job-initiated versus user-initiated calls.
+
+## Complete example
+
+```manifest
+entity Order {
+  property required id: string
+  property amount: number = 0
+  property status: string = "pending"
+  property processedAt: number = 0
+
+  command submit(amount: number) {
+    guard amount > 0
+    mutate amount = amount
+    mutate status = "submitted"
+    emit OrderSubmitted
+  }
+
+  async command processOrder() {
+    guard self.status == "submitted"
+    mutate status = "processing"
+    mutate processedAt = now()
+    emit OrderProcessing
+  }
+}
+```
+
+```typescript
+import { RuntimeEngine, MemoryJobQueue } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+const jobQueue = new MemoryJobQueue();
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "system", role: "worker" },
+  jobQueue,
+});
+
+// Submit the order synchronously
+runtime.createInstance("Order", { id: "order-42", status: "pending" });
+await runtime.runCommand("Order", "submit", {
+  instanceId: "order-42",
+  amount: 250,
+});
+
+// Process the order asynchronously
+const result = await runtime.runCommand("Order", "processOrder", {
+  instanceId: "order-42",
+});
+
+console.log(result.status); // "pending"
+console.log(result.jobId);  // defined
+
+// Execute the background job
+await runtime.drainJobs();
+
+const order = runtime.getInstance("Order", "order-42");
+console.log(order.status); // "processing"
+```
+
+See [Commands](/language/commands) for the synchronous execution pipeline, [Events](/language/events) for event declaration syntax, and [Reactions](/language/reactions) for declarative event-driven command dispatch that can chain with async commands.

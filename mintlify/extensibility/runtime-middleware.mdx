@@ -1,0 +1,239 @@
+---
+title: "Runtime middleware pipeline"
+description: "Compose cross-cutting concerns — logging, auth enrichment, short-circuiting — into the command execution lifecycle via deterministic, ordered middleware hooks."
+sidebarTitle: "Runtime Middleware"
+---
+
+The runtime middleware pipeline inserts composable hooks into the command execution lifecycle. Middleware runs at four deterministic points: before policies, before guards, before actions, and after events. Each hook receives a `MiddlewareContext` and can either enrich the evaluation context, inspect intermediate state, or short-circuit execution with a custom result.
+
+Middleware is optional and fully backward compatible. If you do not configure any middleware, the runtime behaves exactly as before.
+
+## Middleware hooks
+
+Each middleware declares which lifecycle hooks it participates in via a `hooks` array. The runtime invokes the handler once per matching hook during command execution.
+
+| Hook | When it runs | Typical use |
+|------|-------------|-------------|
+| `before-policy` | After evaluation context is built, before policy checks | Inject identity, enrich `context.*` |
+| `before-guard` | After policies and constraints pass, before guards | Audit the incoming state, enforce domain invariants |
+| `before-action` | After guards pass, before actions execute | Validate action preconditions, request-scoped logging |
+| `after-emit` | After all events are emitted and reactions cascade | Event auditing, metric collection, post-hoc analysis |
+
+Hooks execute in a deterministic order that matches the command lifecycle documented in [Commands](/language/commands):
+
+1. Build evaluation context
+2. **`before-policy`** middleware
+3. Evaluate policies
+4. Evaluate command constraints
+5. **`before-guard`** middleware
+6. Evaluate guards
+7. **`before-action`** middleware
+8. Execute actions
+9. Emit declared events
+10. **`after-emit`** middleware
+11. Return `CommandResult`
+
+## The `MiddlewareContext` object
+
+Every middleware handler receives a `MiddlewareContext` with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `command` | `string` | Name of the command being executed |
+| `entityName` | `string` | Entity the command belongs to |
+| `instanceId` | `string \| undefined` | Target instance ID, if provided |
+| `hook` | `MiddlewareHook` | Which lifecycle hook triggered this call |
+| `input` | `Record<string, unknown>` | Command parameters and runtime options |
+| `evalContext` | `Record<string, unknown>` | Current evaluation context (`self`, `user`, `context.*`) |
+| `runtimeContext` | `RuntimeContext` | The full runtime context object |
+| `emittedEvents` | `EmittedEvent[]` | Events emitted so far (populated only at `after-emit`) |
+
+## The `MiddlewareResult` object
+
+A middleware handler returns a `MiddlewareResult` to control what happens next:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `shortCircuit` | `boolean` | If `true`, halt execution and return the provided `result` |
+| `result` | `CommandResult` | The result to return when short-circuiting |
+| `contextPatch` | `Record<string, unknown>` | Key-value pairs merged into the evaluation context |
+
+### Context patching
+
+Use `contextPatch` to inject values into the evaluation context that guard and action expressions can reference. This is how you enrich `context.*` with external data without modifying the IR.
+
+```typescript
+const tenantMiddleware: Middleware = {
+  hooks: ['before-policy'],
+  async handler(ctx) {
+    const tenant = await fetchTenant(ctx.runtimeContext.tenantId);
+    return {
+      contextPatch: {
+        'context.tenantPlan': tenant.plan,
+        'context.tenantRegion': tenant.region,
+      },
+    };
+  },
+};
+```
+
+### Short-circuiting
+
+Return `{ shortCircuit: true, result }` to halt the command pipeline immediately. No later middleware, policies, guards, or actions run. The provided `CommandResult` is returned to the caller as-is.
+
+```typescript
+const maintenanceMiddleware: Middleware = {
+  hooks: ['before-policy'],
+  async handler(ctx) {
+    if (await isInMaintenanceMode(ctx.entityName)) {
+      return {
+        shortCircuit: true,
+        result: {
+          success: false,
+          error: 'SERVICE_UNAVAILABLE',
+          emittedEvents: [],
+        },
+      };
+    }
+    return {};
+  },
+};
+```
+
+## Registration and ordering
+
+Middleware is configured via the `middleware` field on `RuntimeOptions`. Middleware runs in the order it appears in the array. If two middleware both handle the same hook, the first-registered middleware runs first.
+
+```typescript
+import { RuntimeEngine, Middleware } from '@angriff36/manifest';
+import { ir } from './compiled.ir.json';
+
+const loggingMiddleware: Middleware = {
+  hooks: ['before-policy', 'after-emit'],
+  async handler(ctx) {
+    if (ctx.hook === 'before-policy') {
+      console.log(`[START] ${ctx.entityName}.${ctx.command}`, ctx.input);
+    } else {
+      console.log(`[END] ${ctx.entityName}.${ctx.command}`, {
+        events: ctx.emittedEvents.length,
+      });
+    }
+    return {};
+  },
+};
+
+const runtime = new RuntimeEngine(ir, {
+  middleware: [loggingMiddleware],
+});
+```
+
+<Note>
+The ordering guarantee is strict: middleware at index 0 always runs before middleware at index 1 for the same hook. This makes the pipeline deterministic and testable.
+</Note>
+
+## Example: logging middleware
+
+A simple middleware that logs command start and end with timing:
+
+```typescript
+const timedLogging: Middleware = {
+  hooks: ['before-policy', 'after-emit'],
+  async handler(ctx) {
+    if (ctx.hook === 'before-policy') {
+      ctx.input.__startTime = Date.now();
+      return {};
+    }
+    const duration = Date.now() - (ctx.input.__startTime as number);
+    console.log(JSON.stringify({
+      entity: ctx.entityName,
+      command: ctx.command,
+      instanceId: ctx.instanceId,
+      durationMs: duration,
+      eventsEmitted: ctx.emittedEvents.length,
+    }));
+    return {};
+  },
+};
+```
+
+## Example: auth enrichment middleware
+
+Inject caller identity and role data into the evaluation context so that guard expressions can reference them:
+
+```typescript
+const authEnrichment: Middleware = {
+  hooks: ['before-policy'],
+  async handler(ctx) {
+    const userId = ctx.runtimeContext.actorId;
+    if (!userId) return {};
+
+    const user = await lookupUser(userId);
+    return {
+      contextPatch: {
+        'context.userRole': user.role,
+        'context.userDepartment': user.department,
+        'context.isUserActive': user.active,
+      },
+    };
+  },
+};
+```
+
+## Example: conditional short-circuit
+
+Block all mutations on entities that are in an archived state:
+
+```typescript
+const archiveGuard: Middleware = {
+  hooks: ['before-guard'],
+  async handler(ctx) {
+    if (!ctx.instanceId) return {};
+    const instance = ctx.evalContext.self;
+    if (instance?.archived === true) {
+      return {
+        shortCircuit: true,
+        result: {
+          success: false,
+          error: 'ENTITY_ARCHIVED',
+          emittedEvents: [],
+        },
+      };
+    }
+    return {};
+  },
+};
+```
+
+## Type reference
+
+```typescript
+type MiddlewareHook =
+  | 'before-policy'
+  | 'before-guard'
+  | 'before-action'
+  | 'after-emit';
+
+interface MiddlewareContext {
+  command: string;
+  evalContext: Record<string, unknown>;
+  runtimeContext: RuntimeContext;
+  entityName: string;
+  instanceId?: string;
+  hook: MiddlewareHook;
+  input: Record<string, unknown>;
+  emittedEvents: EmittedEvent[];
+}
+
+interface MiddlewareResult {
+  shortCircuit?: boolean;
+  result?: CommandResult;
+  contextPatch?: Record<string, unknown>;
+}
+
+interface Middleware {
+  hooks: MiddlewareHook[];
+  handler: (ctx: MiddlewareContext) => Promise<MiddlewareResult>;
+}
+```
+
+All middleware types are exported from `@angriff36/manifest` and are available for library consumers.

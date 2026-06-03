@@ -1,0 +1,126 @@
+---
+title: "DynamoDB store adapter"
+sidebarTitle: "DynamoDB"
+description: "Persist Manifest entity state in DynamoDB with single-table design, composite keys, optimistic locking, and a transactional outbox — plus CloudFormation, CDK, and Terraform infrastructure projections."
+---
+
+The DynamoDB store adapter persists Manifest entity state in AWS DynamoDB using the `Store<T>` interface. Use it when your deployment target is AWS and you need a fully managed, low-latency key-value store. The adapter supports single-table design patterns, composite primary keys, optimistic locking, and a dedicated transactional outbox store for durable event delivery.
+
+## Configuration
+
+`DynamoDBStore` is exported from `@angriff36/manifest/stores` (Node.js only). It requires the `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages as optional peer dependencies, loaded via dynamic import.
+
+```typescript
+import { DynamoDBStore } from '@angriff36/manifest/stores';
+
+const store = new DynamoDBStore<Order>({
+  tableName: 'manifest-orders',
+  region: 'us-east-1',
+  partitionKeyName: 'pk',
+  sortKeyName: 'sk',
+  entityPrefix: 'Order',  // single-table design prefix
+});
+```
+
+The store declares itself in Manifest source as:
+
+```manifest
+entity Order {
+  property required id: string
+  property total: decimal
+  property status: string
+}
+
+store Order in dynamodb
+```
+
+## Single-table design
+
+DynamoDBStore supports the single-table design pattern through the `entityPrefix` option. When configured, all entities share a single DynamoDB table and are distinguished by their partition key prefix. The `buildDynamoDBKey()` helper constructs composite keys:
+
+```typescript
+import { buildDynamoDBKey } from '@angriff36/manifest/stores';
+
+// Composite key: "ORDER#123" / "ORDER#123#DETAIL"
+const key = buildDynamoDBKey('Order', 'order-123', { prefix: 'ORDER' });
+```
+
+When `entityPrefix` is set, the store uses `ConditionExpression` for atomic create (`attribute_not_exists`) and update (`attribute_exists` with version check) operations. Single-table design is auto-detected when `config.singleTable === true` in any store declaration.
+
+## Composite key handling
+
+The store maps Manifest entity IDs to DynamoDB composite primary keys. Partition and sort key names are configurable via `partitionKeyName` (default `pk`) and `sortKeyName` (default `sk`). Entity instances are serialized as JSON strings and stored as DynamoDB attribute values.
+
+## Optimistic locking
+
+DynamoDBStore implements optimistic locking via a `version` field. On `update`, the store includes a `ConditionExpression` that checks the current version matches the expected value. If another writer has modified the instance between the read and write, the condition fails and the store returns `undefined`, which the runtime engine interprets as a concurrency conflict.
+
+## DynamoDBOutboxStore
+
+The DynamoDB outbox store implements the `OutboxStore` interface for transactional event delivery. It uses DynamoDB's `TransactWriteItems` for atomic batch enqueue (up to 100 actions), conditional `UpdateItem` for safe concurrent claim (no row locks needed), and `markDelivered`/`markFailed` for state transitions.
+
+```typescript
+import { DynamoDBOutboxStore } from '@angriff36/manifest/outbox/dynamodb';
+
+const outboxStore = new DynamoDBOutboxStore({
+  tableName: 'manifest-outbox',
+  region: 'us-east-1',
+});
+```
+
+The outbox table is compatible with DynamoDB Streams for push-based dispatch. The outbox table always gets `NEW_AND_OLD_IMAGES` stream specification, while data tables get `KEYS_ONLY` unless event reactions need full context.
+
+## Infrastructure projections
+
+The DynamoDB adapter includes a dedicated projection that generates infrastructure definitions from Manifest IR. The `DynamoDBProjection` is registered under the name `dynamodb` and emits three surfaces:
+
+- `dynamodb.cloudformation` — CloudFormation YAML template with table definitions, key schema, attribute definitions, billing mode, and stream specification.
+- `dynamodb.cdk` — AWS CDK TypeScript code with `dynamodb.Table` constructs.
+- `dynamodb.terraform` — Terraform HCL with `aws_dynamodb_table` resources.
+
+All three surfaces support per-entity and single-table designs, and always emit an outbox table.
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('dynamodb');
+const cfn = projection.generate(ir, { surface: 'dynamodb.cloudformation' });
+```
+
+## Wiring in DynamoDB
+
+```typescript
+import { RuntimeEngine } from '@angriff36/manifest';
+import { DynamoDBStore } from '@angriff36/manifest/stores';
+import { DynamoDBOutboxStore } from '@angriff36/manifest/outbox/dynamodb';
+
+const runtime = new RuntimeEngine(ir, {
+  userId: session.userId,
+  tenantId: session.tenantId,
+  storeProvider: (entityName) => {
+    if (entityName === 'Order') {
+      return new DynamoDBStore({ tableName: 'manifest-data', region: 'us-east-1' });
+    }
+    return undefined;
+  },
+  outboxStore: new DynamoDBOutboxStore({
+    tableName: 'manifest-outbox',
+    region: 'us-east-1',
+  }),
+});
+```
+
+## Import paths
+
+| What | Import path |
+|------|-------------|
+| `DynamoDBStore` class | `@angriff36/manifest/stores` |
+| `buildDynamoDBKey` helper | `@angriff36/manifest/stores` |
+| `DynamoDBOutboxStore` | `@angriff36/manifest/outbox/dynamodb` |
+| `DynamoDBProjection` | `@angriff36/manifest/projections` |
+
+## Notes & limitations
+
+<Note>
+The `@aws-sdk/client-dynamodb` and `@aws-sdk/lib-dynamodb` packages are optional peer dependencies loaded via dynamic import. If they are not installed, the constructor throws a clear error: "DynamoDBStore requires '@aws-sdk/client-dynamodb' and '@aws-sdk/lib-dynamodb' to be installed." The `clear()` method uses Scan + BatchWrite in groups of 25 (DynamoDB batch limit).
+</Note>

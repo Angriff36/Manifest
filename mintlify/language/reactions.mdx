@@ -1,0 +1,225 @@
+---
+title: "Reactions: declarative event-driven command dispatch"
+description: "Automatically dispatch commands when events are emitted using on Event run Command syntax, with resolve expressions, parameter mappings, and cascade protection."
+sidebarTitle: "Reactions"
+---
+
+Reactions connect events to commands declaratively. When an event is emitted, the runtime evaluates matching reactions in declaration order and dispatches the target command with resolved parameters. This creates reactive workflows without manual event wiring.
+
+## Declaring a reaction
+
+Use the `on` keyword followed by an event name, `run`, and a target command reference:
+
+```manifest
+event OrderSubmitted: "order.submitted" {
+  orderId: string
+  amount: number
+}
+
+entity OrderProcessor {
+  property required id: string
+  property status: string = "idle"
+
+  command processOrder(orderId: string, amount: number) {
+    guard amount > 0
+    mutate status = "processing"
+    emit OrderProcessing
+  }
+}
+
+on OrderSubmitted run OrderProcessor.processOrder
+  resolve self.id == "processor-1"
+  params {
+    orderId: event.orderId
+    amount: event.amount
+  }
+```
+
+The `resolve` expression finds the target entity instance. The `params` block maps values from the event payload into the command's parameters. Both are optional — a reaction can omit `resolve` to target a specific instance and omit `params` to call a zero-argument command.
+
+## Resolve expressions
+
+The `resolve` block determines which entity instance receives the dispatched command. The expression is evaluated against each instance of the target entity:
+
+```manifest
+on TaskAssigned run Notification.sendAssigned
+  resolve self.userId == event.assigneeId
+  params {
+    taskId: event.taskId
+  }
+```
+
+The runtime iterates instances of `Notification` and evaluates the `resolve` expression against each one. The first matching instance becomes the target. If no instance matches, the reaction is skipped silently — no error is raised.
+
+Omit `resolve` when the command does not require a specific instance or when the target is known by convention:
+
+```manifest
+on OrderSubmitted run OrderProcessor.processOrder
+  params {
+    orderId: event.orderId
+    amount: event.amount
+  }
+```
+
+## Parameter mappings
+
+The `params` block maps event payload fields to command parameters. Each entry is an expression evaluated in the event's enriched context:
+
+```manifest
+params {
+  orderId: event.orderId       // Direct field reference
+  total: event.amount * 1.1    // Expression with arithmetic
+  currency: "USD"              // Literal value
+}
+```
+
+Inside a `params` block, `event.*` references the event payload fields. The expression language supports the full set of operators: arithmetic, comparison, logical, conditional, and function calls.
+
+## Reaction scopes
+
+Reactions can be declared at three levels:
+
+| Scope | Location | Behavior |
+|-------|----------|----------|
+| Program | Top-level in `.manifest` file | Global — fires for any matching event |
+| Module | Inside a `module` block | Scoped to the module |
+| Entity | Inside an `entity` block | Targets the entity's own commands |
+
+```manifest
+// Program-level reaction -- fires globally
+on OrderSubmitted run OrderProcessor.processOrder
+  resolve self.id == "processor-1"
+
+// Entity-level reaction -- fires within the entity's context
+entity Order {
+  property required id: string
+  property status: string = "pending"
+
+  command reprocess() {
+    mutate status = "pending"
+    emit OrderReprocessed
+  }
+
+  on OrderFailed run self.reprocess
+    params {
+      orderId: event.orderId
+    }
+}
+```
+
+Reactions at all three scopes are collected into the IR's `reactions` array. Module-scoped reactions carry a `module` field; entity-scoped reactions carry an `entity` field. The runtime evaluates all matching reactions regardless of scope.
+
+## Cascading reactions and depth limit
+
+When a reaction's target command emits its own events, those events can trigger further reactions. This creates cascading reaction chains:
+
+```
+OrderSubmitted
+  -> OrderProcessor.processOrder
+    -> OrderProcessing
+      -> Warehouse.prepareShipment
+```
+
+The runtime enforces a maximum reaction depth (`MAX_REACTION_DEPTH = 10`). If a chain exceeds this limit, the runtime throws a `ManifestReactionDepthError` and stops processing further reactions. This prevents infinite loops from circular reaction chains.
+
+<Warning>
+Design your reaction chains to terminate naturally. If event A triggers command B which emits event C which triggers command D which emits event A, the runtime will halt after 10 iterations with a `ManifestReactionDepthError`. This is a safety net, not a design pattern — circular reaction chains indicate a modeling problem.
+</Warning>
+
+## correlationId and causationId propagation
+
+Reactions propagate workflow metadata through the chain:
+
+- **`correlationId`** stays the same across the entire workflow. It is set on the initial event and carried through every subsequent reaction.
+- **`causationId`** is set to the triggering event's emit ID on each reaction. This changes with each hop, creating a causal chain.
+
+This enables cross-reaction tracing for debugging distributed workflows. See [Events](/language/events) for how `correlationId` and `causationId` are attached to emitted events.
+
+## Deterministic ordering
+
+Reactions execute in declaration order. If multiple reactions match the same event, they are dispatched in the order they appear in the source file. This guarantees deterministic behavior: given identical IR, identical runtime context, and identical input, the reaction chain always produces the same result.
+
+The runtime evaluates matching reactions synchronously within the same command execution turn — reactions do not queue asynchronously. This means the full reaction chain completes before the original `CommandResult` is returned to the caller.
+
+## Complete example
+
+```manifest
+event OrderSubmitted: "order.submitted" {
+  orderId: string
+  amount: number
+  customerId: string
+}
+
+event InvoiceCreated: "invoice.created" {
+  invoiceId: string
+  orderId: string
+  total: number
+}
+
+entity Invoice {
+  property required id: string
+  property orderId: string = ""
+  property total: number = 0
+  property status: string = "draft"
+
+  command createFromOrder(orderId: string, total: number) {
+    guard total > 0
+    mutate orderId = orderId
+    mutate total = total
+    mutate status = "issued"
+    emit InvoiceCreated
+  }
+}
+
+entity Shipping {
+  property required id: string
+  property orderId: string = ""
+  property status: string = "pending"
+
+  command prepareShipment(orderId: string) {
+    mutate orderId = orderId
+    mutate status = "preparing"
+    emit ShipmentPrepared
+  }
+}
+
+// Reaction chain: OrderSubmitted -> create invoice
+on OrderSubmitted run Invoice.createFromOrder
+  resolve self.id == "invoice-auto"
+  params {
+    orderId: event.orderId
+    total: event.amount
+  }
+
+// Reaction chain: InvoiceCreated -> prepare shipment
+on InvoiceCreated run Shipping.prepareShipment
+  resolve self.id == "shipping-auto"
+  params {
+    orderId: event.orderId
+  }
+```
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "system", role: "worker" },
+});
+
+// Seed instances
+runtime.createInstance("Invoice", { id: "invoice-auto" });
+runtime.createInstance("Shipping", { id: "shipping-auto" });
+
+// Emitting OrderSubmitted triggers the reaction chain
+const result = await runtime.runCommand("Order", "submit", {
+  instanceId: "order-001",
+  amount: 250,
+});
+
+// The reaction chain fires automatically:
+// OrderSubmitted -> Invoice.createFromOrder -> InvoiceCreated -> Shipping.prepareShipment
+console.log(result.emittedEvents.length); // Events from all reactions
+```
+
+See [Events](/language/events) for declaring event schemas and [Commands](/language/commands) for the command execution pipeline. For async reactions that defer execution to a background queue, see [Async commands](/language/async-commands).

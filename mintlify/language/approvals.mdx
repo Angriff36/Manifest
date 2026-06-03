@@ -1,0 +1,326 @@
+---
+title: "Approvals: multi-stage approval workflows"
+description: "Gate command execution behind multi-stage approval chains. Each stage has its own policy expression and required count. Commands block until all applicable stages are granted."
+sidebarTitle: "Approvals"
+---
+
+An approval declaration attaches a multi-stage approval gate to a command. When the runtime reaches the approval step, it checks whether every applicable stage has been granted. If any stage is still pending, the command blocks and returns an `approvalRequired` result instead of executing actions.
+
+## Declaring an approval
+
+Approvals live inside an entity block. Each approval references a command by name and declares one or more stages:
+
+```manifest
+entity PurchaseOrder {
+  property required id: string
+  property amount: number = 0
+  property status: string = "draft"
+
+  command submit() {
+    guard self.status == "draft"
+    mutate status = "pending_approval"
+    emit OrderSubmitted
+  }
+
+  approval submitApproval {
+    command: submit
+    stages {
+      manager {
+        policy: user.role == "manager" or user.role == "admin"
+        required: 1
+      }
+      director {
+        policy: user.role == "director" or user.role == "admin"
+        required: 1
+        when: self.amount > 10000
+      }
+    }
+    timeout: 72
+    on_timeout: cancel
+    emit ApprovalRequested
+    emit ApprovalGranted
+  }
+}
+```
+
+### Stage fields
+
+Each stage inside the `stages` block has three fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `policy` | Yes | Boolean expression evaluated against the approver's user context. If the expression is falsey, the approval is rejected. |
+| `required` | Yes | Number of distinct approvals needed for this stage. Typically `1`. |
+| `when` | No | Boolean expression evaluated against the entity instance. If falsey, the stage is skipped entirely. |
+
+## Execution gate order
+
+The approval gate sits between guards and actions in the command execution pipeline. See [Commands](/language/commands) for the full pipeline description.
+
+<Steps>
+  <Step title="Evaluate policies">
+    Check every applicable policy. If any policy denies, execution stops immediately with a `policyDenial` result.
+  </Step>
+  <Step title="Evaluate constraints">
+    Evaluate any `block` constraints declared inside the command. If any fail without an authorized override, execution stops with `constraintOutcomes` in the result.
+  </Step>
+  <Step title="Evaluate guards">
+    Evaluate each guard expression in declaration order. Execution halts on the first falsey result and returns a `guardFailure` with the failing guard's index and expression.
+  </Step>
+  <Step title="Check approval gate">
+    Find matching approval declarations for the command. Evaluate each stage's `when` condition to determine which stages apply. If any applicable stage is not fully granted, block with `approvalRequired` instead of executing actions.
+  </Step>
+  <Step title="Execute actions">
+    Run each action (`mutate`, `emit`, `compute`, `publish`, `persist`, `effect`) in declaration order.
+  </Step>
+  <Step title="Return CommandResult">
+    Return the `CommandResult` with `success: true` and all emitted events.
+  </Step>
+</Steps>
+
+<Note>
+The approval gate is strictly opt-in. Commands without a matching approval declaration execute identically to before — the gate is never evaluated. The `approvals` field is optional on the IR entity and is omitted entirely when empty.
+</Note>
+
+## Conditional stages with `when`
+
+Use the `when` expression on a stage to make it conditional. The expression is evaluated against the current entity instance at the time the command runs. When the condition is falsey, the stage is excluded from the approval chain for that invocation.
+
+In the PurchaseOrder example above, the `director` stage only activates when `self.amount > 10000`. Orders under $10,000 need only the `manager` stage:
+
+```manifest
+stages {
+  manager {
+    policy: user.role == "manager" or user.role == "admin"
+    required: 1
+  }
+  director {
+    policy: user.role == "director" or user.role == "admin"
+    required: 1
+    when: self.amount > 10000
+  }
+}
+```
+
+This enables a single approval declaration to handle different business rules depending on the entity's state — for example, requiring an additional director sign-off only for high-value orders.
+
+## ApprovalRequiredInfo in CommandResult
+
+When a command is blocked by the approval gate, the `CommandResult` includes an `approvalRequired` field describing the current state:
+
+```typescript
+interface ApprovalRequiredInfo {
+  approvalName: string;
+  pendingStages: string[];
+  grantedStages: string[];
+  skippedStages: string[];
+}
+```
+
+```typescript
+const result = await runtime.runCommand("PurchaseOrder", "submit", {
+  instanceId: "po-001",
+  amount: 15000,
+});
+
+// result.success === false
+// result.approvalRequired === {
+//   approvalName: "submitApproval",
+//   pendingStages: ["manager", "director"],
+//   grantedStages: [],
+//   skippedStages: []
+// }
+```
+
+Callers inspect `result.approvalRequired` to determine which stages still need approval and which have already been granted. This is the same structure returned by `getApprovalRequest()`.
+
+## Runtime API
+
+The runtime engine exposes four methods for managing the approval lifecycle, plus a query method.
+
+### `requestApproval(entity, instanceId, approvalName)`
+
+Creates a pending approval request. Returns the `ApprovalRequestState` with all applicable stages set to `pending`.
+
+```typescript
+const state = runtime.requestApproval(
+  "PurchaseOrder",
+  "order-123",
+  "submitApproval"
+);
+```
+
+### `approveStage(entity, instanceId, approvalName, stage, userId)`
+
+Evaluates the stage's policy expression against the current runtime user context. If the policy passes, the stage is marked as granted. If all applicable stages are granted, subsequent command invocations proceed past the approval gate.
+
+```typescript
+const result = runtime.approveStage(
+  "PurchaseOrder",
+  "order-123",
+  "submitApproval",
+  "manager",
+  "user-mgr-001"
+);
+```
+
+<Warning>
+`approveStage` evaluates the stage policy expression against the approver's user context — not the original requester's context. If the policy is falsey, the approval is rejected with an error. This means the approver must satisfy the policy they are approving, which prevents privilege escalation through the approval API.
+</Warning>
+
+### `denyApproval(entity, instanceId, approvalName, deniedBy, reason?)`
+
+Marks the approval request as denied. Subsequent command invocations create a new pending request rather than reusing the denied one.
+
+```typescript
+runtime.denyApproval(
+  "PurchaseOrder",
+  "order-123",
+  "submitApproval",
+  "user-mgr-001",
+  "Amount exceeds quarterly budget"
+);
+```
+
+### `expireApprovals(now?)`
+
+Expires all pending approval requests whose timeout has elapsed. Timeout is declared in hours via `timeout:` in the approval block and converted to milliseconds internally.
+
+```typescript
+runtime.expireApprovals();
+```
+
+<Note>
+`expireApprovals()` must be called explicitly — for example, from a cron job or scheduled task. The runtime does not automatically expire approvals on a timer.
+</Note>
+
+### `getApprovalRequest(entity, instanceId, approvalName)`
+
+Returns the current `ApprovalRequestState` for inspection. This is useful for UI flows that need to display which stages have been granted or are still pending.
+
+```typescript
+const state = runtime.getApprovalRequest(
+  "PurchaseOrder",
+  "order-123",
+  "submitApproval"
+);
+```
+
+## Timeout behavior
+
+When an approval declaration includes a `timeout` (specified in hours), the `on_timeout` field determines what happens when the approval window expires:
+
+| `on_timeout` value | Behavior |
+|--------------------|----------|
+| `cancel` | The command is treated as if it was denied. The next invocation creates a fresh request. |
+| (omitted) | The approval remains pending indefinitely until explicitly granted, denied, or expired. |
+
+Denied and expired approvals are reset on the next command attempt — the runtime creates a new pending request rather than reusing the terminal state. This means a denied approval does not permanently block the command; it only blocks the current attempt.
+
+## Lifecycle events
+
+Approval declarations can include `emit` entries for lifecycle transitions:
+
+```manifest
+approval submitApproval {
+  command: submit
+  stages { /* ... */ }
+  timeout: 72
+  on_timeout: cancel
+  emit ApprovalRequested
+  emit ApprovalGranted
+}
+```
+
+These events fire at the corresponding lifecycle transitions (request created, fully granted), giving external systems a way to react to approval state changes without polling. See [Events](/language/events) for declaring event schemas.
+
+## Compile-time validation
+
+The IR compiler validates approval declarations and produces error diagnostics for:
+
+- **Non-existent command reference**: The `command:` field must name a command that exists on the same entity.
+- **Empty stages**: An approval must declare at least one stage.
+- **Duplicate stage names**: Each stage name within an approval must be unique.
+
+These checks run at compile time, so invalid approvals surface as build errors rather than runtime failures.
+
+## Complete example
+
+```manifest
+entity PurchaseOrder {
+  property required id: string
+  property amount: number = 0
+  property status: string = "draft"
+  property approvedBy: string = ""
+
+  command submit() {
+    guard self.status == "draft"
+    mutate status = "pending_approval"
+    emit OrderSubmitted
+  }
+
+  command finalize() {
+    guard self.status == "pending_approval"
+    mutate status = "approved"
+    mutate approvedBy = user.id
+    emit OrderFinalized
+  }
+
+  approval submitApproval {
+    command: submit
+    stages {
+      manager {
+        policy: user.role == "manager" or user.role == "admin"
+        required: 1
+      }
+      director {
+        policy: user.role == "director" or user.role == "admin"
+        required: 1
+        when: self.amount > 10000
+      }
+    }
+    timeout: 72
+    on_timeout: cancel
+    emit ApprovalRequested
+    emit ApprovalGranted
+  }
+}
+```
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { ir } from "./compiled.ir.json";
+
+const runtime = new RuntimeEngine(ir, {
+  user: { id: "requester-1", role: "employee" },
+});
+
+// Submit the order -- blocks at the approval gate
+const result = await runtime.runCommand("PurchaseOrder", "submit", {
+  instanceId: "po-001",
+  amount: 15000,
+});
+
+console.log(result.success);          // false
+console.log(result.approvalRequired); // { pendingStages: ["manager", "director"] }
+
+// Manager approves the first stage
+runtime.approveStage(
+  "PurchaseOrder", "po-001", "submitApproval", "manager", "user-mgr-1"
+);
+
+// Director approves the second stage (required because amount > 10000)
+runtime.approveStage(
+  "PurchaseOrder", "po-001", "submitApproval", "director", "user-dir-1"
+);
+
+// Re-submit -- now passes the approval gate
+const final = await runtime.runCommand("PurchaseOrder", "submit", {
+  instanceId: "po-001",
+  amount: 15000,
+});
+
+console.log(final.success); // true
+```
+
+See [Commands](/language/commands) for the full execution pipeline, [Guards and policies](/language/guards-policies) for the gates that precede approvals, [Events](/language/events) for declaring event schemas used in approval lifecycle notifications, and [Roles](/language/roles) for role-based authorization in policy expressions.

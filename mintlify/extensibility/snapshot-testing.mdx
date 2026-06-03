@@ -41,3 +41,68 @@ The fixture is a single representative IR, not exhaustive coverage of every lang
 </Note>
 
 The hardcoded projection count (13) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.
+
+## Command and guard coverage reporter
+
+The coverage reporter correlates compiled IR with conformance and unit test evidence to produce a coverage report. It answers the question: "Which commands, guards, policies, and constraints have test coverage?"
+
+### Usage
+
+```bash
+# Report coverage for a compiled IR
+manifest coverage --ir ir/app.ir.json
+
+# Fail CI if coverage drops below a threshold
+manifest coverage --ir ir/app.ir.json --min-coverage 80 --strict
+
+# JSON output for CI integration
+manifest coverage --ir ir/app.ir.json --format json
+```
+
+### Coverage categories
+
+| Category | What it checks |
+|----------|---------------|
+| Commands | Each declared command has at least one test case |
+| Guards | Each guard expression is exercised (true and false paths) |
+| Policies | Each policy rule has a test that evaluates it |
+| Constraints | Each constraint expression is tested for pass and fail |
+
+### Programmatic API
+
+```typescript
+import { CoverageReporter } from "@angriff36/manifest/coverage";
+
+const reporter = new CoverageReporter(ir, { root: "." });
+const report = reporter.compute();
+
+console.log(`Commands: ${report.commands.covered}/${report.commands.total}`);
+console.log(`Guards: ${report.guards.covered}/${report.guards.total}`);
+console.log(`Overall: ${report.percentage}%`);
+```
+
+## Property-based testing
+
+Property-based testing generates random valid inputs and verifies that runtime invariants hold across all generated cases. Manifest uses [fast-check](https://github.com/dubzzz/fast-check) under the hood to produce deterministic random IR programs and runtime contexts.
+
+### Invariants tested
+
+| Invariant | Description |
+|-----------|-------------|
+| Determinism | Identical IR + identical context + identical input → identical result |
+| Guard safety | Guards never throw — they return true or false |
+| Constraint monotonicity | Raising constraint severity never makes a previously valid program invalid |
+| Policy isolation | Policy denial always prevents command execution, regardless of input |
+| State consistency | After a successful command, all computed properties are consistent with the new state |
+
+### Usage
+
+The property-based tests run as part of the normal test suite:
+
+```bash
+pnpm test -- --grep "property-based"
+```
+
+<Note>
+Property-based tests use a fixed random seed by default for reproducibility. When a test fails, the seed is printed so you can reproduce the exact failing case. To run with a different seed, set the `FC_SEED` environment variable.
+</Note>

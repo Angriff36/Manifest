@@ -20,6 +20,18 @@ For the command-line interface, see `../reference/cli.md`. For code-generation t
 | Computed | Computed-property caching | [computed-property-caching.md](computed-property-caching.md) |
 | Entities | Automatic timestamp fields | [timestamp-fields.md](timestamp-fields.md) |
 | Entities | Tenant isolation | [tenant-isolation.md](tenant-isolation.md) |
+| Entities | Entity inheritance & generics | [entity-inheritance.md](entity-inheritance.md) |
+| Workflows | Approval workflows | [approval-workflows.md](approval-workflows.md) |
+| Workflows | Async commands | [async-commands.md](async-commands.md) |
+| Workflows | Event reactions & subscriptions | [event-reactions.md](event-reactions.md) |
+| Workflows | Modules & imports | [modules-and-imports.md](modules-and-imports.md) |
+| Workflows | Role hierarchy | [role-hierarchy.md](role-hierarchy.md) |
+| Workflows | Saga orchestration | [saga-workflow.md](saga-workflow.md) |
+| Workflows | Scheduled commands | [scheduled-commands.md](scheduled-commands.md) |
+| Runtime | Runtime middleware | [runtime-middleware.md](runtime-middleware.md) |
+| Runtime | Federation (multi-service) | [federation.md](federation.md) |
+| Runtime | Real-time subscriptions | [realtime-subscriptions.md](realtime-subscriptions.md) |
+| Security | Encryption, masking, rate limiting, retry | [security-features.md](security-features.md) |
 | Extensibility | Plugin API (stores, builtins, projections) | [plugin-api.md](plugin-api.md) |
 | AI surfaces | AI agent SDK | [agent-sdk.md](agent-sdk.md) |
 | AI surfaces | MCP server | [mcp-server.md](mcp-server.md) |

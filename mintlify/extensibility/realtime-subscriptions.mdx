@@ -1,0 +1,172 @@
+---
+title: "Real-time entity subscriptions"
+description: "Subscribe to entity state changes over SSE with auto-reconnecting React hooks generated from the realtime entity modifier."
+sidebarTitle: "Realtime Subscriptions"
+---
+
+The `realtime` entity modifier marks an entity for live state updates. When you declare `realtime` inside an entity block, the Manifest projection layer generates SSE (Server-Sent Events) subscription endpoints and React hooks that keep client-side state in sync with server-side mutations.
+
+## Declaring a realtime entity
+
+Place the `realtime` keyword inside an entity block:
+
+```manifest
+entity Task {
+  realtime
+
+  property required title: string
+  property status: string = "pending"
+  property assigneeId: string = ""
+
+  command complete() {
+    guard self.assigneeId == user.id or user.role == "admin"
+    mutate status = "completed"
+    emit TaskCompleted
+  }
+}
+```
+
+The `realtime` modifier compiles to a `realtime: true` boolean on the entity's IR representation. Projections that support real-time features (currently the Next.js projection) inspect this flag and generate the necessary subscription infrastructure.
+
+## SSE subscription endpoints
+
+For each entity marked `realtime`, the Next.js projection generates an SSE endpoint at:
+
+```
+GET /api/{entity}/realtime
+```
+
+Clients connect to this endpoint and receive a stream of events whenever an instance of that entity is created, updated, or deleted. Each SSE event carries a payload with:
+
+- `type` -- the event type (`created`, `updated`, `deleted`)
+- `entity` -- the entity name
+- `instanceId` -- the affected instance
+- `data` -- the current state of the instance after the mutation
+
+The SSE connection stays open until the client disconnects or the server closes it.
+
+## React hooks
+
+The Next.js projection generates a `use{Entity}Realtime` hook for each realtime entity. The hook manages the SSE connection lifecycle and returns the current set of entity instances.
+
+```typescript
+import { useTaskRealtime } from '@/api/tasks/realtime';
+
+function TaskList() {
+  const { instances, connected, error } = useTaskRealtime();
+
+  if (!connected) return <div>Connecting...</div>;
+  if (error) return <div>Connection lost. Reconnecting...</div>;
+
+  return (
+    <ul>
+      {instances.map((task) => (
+        <li key={task.id}>
+          {task.title} — {task.status}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Hook return value
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `instances` | `T[]` | Current array of entity instances, updated in real time |
+| `connected` | `boolean` | Whether the SSE connection is currently active |
+| `error` | `Error \| null` | The most recent connection error, if any |
+
+### Hook options
+
+The generated hook accepts an optional configuration object:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `reconnectDelay` | `number` | `3000` | Milliseconds to wait before reconnecting after a disconnect |
+| `onEvent` | `(event: SSEEvent) => void` | -- | Callback fired for every SSE event received |
+| `filter` | `(instance: T) => boolean` | -- | Predicate to filter which instances appear in state |
+
+## Auto-reconnect behavior
+
+When the SSE connection drops (network interruption, server restart, etc.), the hook automatically attempts to reconnect after the configured `reconnectDelay`. During reconnection:
+
+- `connected` returns `false`
+- `instances` retains the last known state
+- `error` contains the disconnect reason
+
+Once reconnected, the hook fetches a fresh snapshot of all entity instances and resumes streaming. This ensures the client eventually converges on the correct state even after an extended disconnection.
+
+## Entity-level subscription filtering
+
+Pass a `filter` function to the hook to narrow which instances appear in your component's state. Filtering is client-side and does not affect the SSE stream itself.
+
+```typescript
+const { instances: myTasks } = useTaskRealtime({
+  filter: (task) => task.assigneeId === currentUserId,
+});
+```
+
+<Tip>
+Filter functions run on every received event. Keep them cheap (property comparisons, not array scans) to avoid blocking renders.
+</Tip>
+
+## Example: live task list
+
+A complete example showing a task board that updates in real time as team members complete tasks:
+
+```typescript
+'use client';
+
+import { useTaskRealtime } from '@/api/tasks/realtime';
+
+export default function TaskBoard({ userId }: { userId: string }) {
+  const { instances: tasks, connected } = useTaskRealtime();
+
+  const pending = tasks.filter((t) => t.status === 'pending');
+  const completed = tasks.filter((t) => t.status === 'completed');
+
+  return (
+    <div>
+      <header>
+        <h1>Task Board</h1>
+        {!connected && <span className="badge">Reconnecting...</span>}
+      </header>
+      <div className="columns">
+        <section>
+          <h2>Pending ({pending.length})</h2>
+          {pending.map((t) => (
+            <TaskCard key={t.id} task={t} />
+          ))}
+        </section>
+        <section>
+          <h2>Completed ({completed.length})</h2>
+          {completed.map((t) => (
+            <TaskCard key={t.id} task={t} />
+          ))}
+        </section>
+      </div>
+    </div>
+  );
+}
+```
+
+## IR representation
+
+The `realtime` modifier adds a boolean field to the entity IR:
+
+```json
+{
+  "name": "Task",
+  "realtime": true,
+  "properties": [...],
+  "commands": [...]
+}
+```
+
+Projections inspect `entity.realtime === true` to decide whether to generate subscription endpoints and hooks. Entities without the modifier produce no real-time artifacts.
+
+<Note>
+The `realtime` modifier is a declaration only. The actual SSE transport and event routing are implemented by the projection target (e.g., the Next.js API route handler). The runtime engine itself is transport-agnostic.
+</Note>

@@ -228,6 +228,102 @@ if (!result.success) {
 console.log("Events:", result.emittedEvents);
 ```
 
+## Retry policies
+
+Commands can declare retry policies for transient failures with configurable backoff strategies. When a command fails (guard failure excluded — guards fail fast), the runtime retries according to the declared policy.
+
+```manifest
+entity Notification {
+  command sendEmail(to: string, body: string) {
+    retry {
+      maxAttempts: 3
+      backoff: exponential
+      initialDelay: 1000
+      maxDelay: 10000
+      jitter: true
+    }
+    // command body
+  }
+}
+```
+
+### Retry configuration
+
+| Field | Description |
+|-------|-------------|
+| `maxAttempts` | Maximum number of retry attempts |
+| `backoff` | Strategy: `fixed`, `exponential`, or `linear` |
+| `initialDelay` | First retry delay in milliseconds |
+| `maxDelay` | Cap on retry delay |
+| `jitter` | Add random jitter to prevent thundering herd (default: `false`) |
+
+### Backoff strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| `fixed` | Constant delay between retries (e.g., 1000ms, 1000ms, 1000ms) |
+| `exponential` | Doubles each time (e.g., 1000ms, 2000ms, 4000ms) |
+| `linear` | Increases by initialDelay each time (e.g., 1000ms, 2000ms, 3000ms) |
+
+### Retry events
+
+The runtime emits events for each retry attempt and when retries are exhausted:
+
+| Event | When emitted |
+|-------|-------------|
+| `{Command}RetryAttempted` | Each retry attempt, with attempt number |
+| `{Command}RetryExhausted` | All retries failed, with total attempts |
+
+<Note>
+Retry policies only apply to action execution failures. Guard failures, policy denials, and constraint blocks are never retried — they represent intentional business rule enforcement, not transient errors.
+</Note>
+
+## Rate limiting
+
+Rate limiting policies constrain how frequently a command can be invoked per user, tenant, or globally. When the limit is exceeded, the command returns a `rateLimitExceeded` result.
+
+```manifest
+entity ApiKey {
+  property required id: string
+
+  command makeRequest() {
+    rateLimit {
+      window: 60000
+      maxRequests: 100
+      scope: user.id
+    }
+    // command body
+  }
+}
+```
+
+### Rate limit configuration
+
+| Field | Description |
+|-------|-------------|
+| `window` | Time window in milliseconds |
+| `maxRequests` | Maximum allowed requests within the window |
+| `scope` | `user.id`, `tenant.id`, or `global` |
+| `strategy` | `fixed` or `sliding` window (default: `fixed`) |
+
+When the rate limit is exceeded, the `CommandResult` includes:
+
+```typescript
+{
+  success: false,
+  rateLimitExceeded: {
+    scope: "user.id",
+    limit: 100,
+    remaining: 0,
+    retryAfterMs: 45000
+  }
+}
+```
+
+<Warning>
+Rate limiting is enforced by the runtime engine before command execution begins. It is not a network-level rate limiter — it operates within the Manifest runtime context. For HTTP-level rate limiting, configure your API gateway or middleware.
+</Warning>
+
 <Note>
 The `instanceId` is passed inside the options object to `runCommand`, not as a command parameter. Command parameters are the named values declared in the command signature.
 </Note>

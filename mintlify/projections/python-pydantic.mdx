@@ -1,0 +1,149 @@
+---
+title: "Python Pydantic model projection"
+sidebarTitle: "Pydantic"
+description: "Generate Pydantic v2 BaseModel classes with validators, computed fields, and an async httpx client SDK from Manifest IR — targeting Python 3.10+."
+---
+
+The Pydantic projection generates Python Pydantic v2 model classes from compiled Manifest IR. Use it when you are building a Python backend, data pipeline, or client library and want Manifest entities represented as typed Pydantic models with validation, serialization, and optional async client methods. The projection follows the same compile-time, app-agnostic contract as the [Drizzle projection](/projections/drizzle) but targets Python conventions.
+
+The projection is registered under the name `pydantic` and lives at `src/manifest/projections/pydantic/generator.ts`.
+
+## What it generates
+
+The projection exposes four surfaces.
+
+`pydantic.entity` emits a Pydantic `BaseModel` class for a single entity. Each property becomes a typed field, constraints are mapped to `@field_validator` decorators, computed properties are emitted as `@computed_field` with `@property` decorators, and optional properties use `| None = None` syntax.
+
+`pydantic.command` emits a `BaseModel` class for command parameters with typed fields matching the command's input schema.
+
+`pydantic.models` emits all entity models, command models, and enum classes in a single Python module with a `__all__` export list.
+
+`pydantic.client` emits a complete async client SDK: a `ManifestClient` class with `async with` context manager support, `httpx.AsyncClient` integration with optional bearer token auth, entity query methods (`list_<entity>s`, `get_<entity>`), typed command invocation methods, and module-level convenience functions.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('pydantic');
+
+// Generate a single entity model
+const entity = projection.generate(ir, {
+  surface: 'pydantic.entity',
+  entity: 'Order',
+});
+
+// Generate all models in one file
+const models = projection.generate(ir, { surface: 'pydantic.models' });
+
+// Generate the async client SDK
+const client = projection.generate(ir, {
+  surface: 'pydantic.client',
+  options: { clientBaseUrl: 'https://api.example.com' },
+});
+```
+
+Through the CLI:
+
+```bash
+manifest generate ir/widget.ir.json --projection pydantic --surface pydantic.models --output src/models.py
+```
+
+## Type mapping
+
+The projection maps Manifest IR types to Python types:
+
+| Manifest type | Python type |
+|---------------|-------------|
+| `string` | `str` |
+| `int` / `integer` | `int` |
+| `number` / `float` | `float` |
+| `boolean` / `bool` | `bool` |
+| `datetime` | `datetime` |
+| `uuid` | `UUID` |
+| `decimal` | `Decimal` |
+| `email` | `EmailStr` |
+| `array<T>` | `list[T]` |
+| `map<V>` | `dict[str, V]` |
+
+Optional properties use Python 3.10+ union syntax (`str | None = None`). Enum types generate a `str`-based enum class with string values.
+
+## Constraint validators
+
+Manifest constraints are mapped to Pydantic `@field_validator` decorators:
+
+- Numeric range constraints (`min`, `max`) become validators with `if value < min or value > max: raise ValueError(...)`.
+- String length constraints (`minLength`, `maxLength`) become validators with `if len(value) < min or len(value) > max: raise ValueError(...)`.
+- Pattern / regex constraints become validators with `if not re.match(pattern, value): raise ValueError(...)`.
+
+Constraint severity levels from the IR are preserved as validator metadata but do not alter the validation behavior — all constraints produce `ValueError` on failure, matching Pydantic's validation model.
+
+## Options
+
+`PydanticProjectionOptions` accepts `customImports` (additional import statements), `emitJsonSchema` (default `false` — adds `model_json_schema()` export), `emitComputedFields` (default `true` — includes `@computed_field` properties), `clientBaseUrl` (default `'http://localhost:3000'`), `clientClassName` (default `'ManifestClient'`), and `emitConvenienceFunctions` (default `true` — generates module-level async functions that create an implicit client).
+
+## Generated code example
+
+For an entity `Order` with properties `id`, `total`, `status`, and a constraint on `total`:
+
+```python
+from __future__ import annotations
+from pydantic import BaseModel, field_validator
+from decimal import Decimal
+from typing import Optional
+
+
+class Order(BaseModel):
+    id: str
+    total: Decimal
+    status: str
+    notes: str | None = None
+
+    @field_validator("total")
+    @classmethod
+    def validate_total(cls, v: Decimal) -> Decimal:
+        if v < 0:
+            raise ValueError("total must be >= 0")
+        return v
+
+    class Config:
+        from_attributes = True
+```
+
+The `pydantic.client` surface generates an async client:
+
+```python
+import httpx
+
+class ManifestClient:
+    def __init__(self, base_url: str = "http://localhost:3000", api_key: str | None = None):
+        self._client = httpx.AsyncClient(
+            base_url=base_url,
+            headers={"Authorization": f"Bearer {api_key}"} if api_key else {},
+        )
+
+    async def list_orders(self) -> list[Order]:
+        response = await self._client.get("/api/Order/list")
+        response.raise_for_status()
+        return [Order(**item) for item in response.json()]
+
+    async def get_order(self, id: str) -> Order:
+        response = await self._client.get(f"/api/Order/{id}")
+        response.raise_for_status()
+        return Order(**response.json())
+
+    async def close(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> ManifestClient:
+        return self
+
+    async def __aexit__(self, *args) -> None:
+        await self.close()
+```
+
+## Notes & limitations
+
+<Note>
+Generated code targets Python 3.10+ and uses modern union syntax (`str | None`) rather than `Optional[str]`. The `httpx` package is required for the `pydantic.client` surface and is not included as a dependency of Manifest. Enum classes inherit from `str` for JSON serialization compatibility. Computed properties are generated with `@computed_field` and `@property` decorators; their values are placeholders that must be computed by the Manifest runtime on the server side.
+</Note>

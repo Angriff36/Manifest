@@ -1,0 +1,94 @@
+---
+title: "SvelteKit server routes projection"
+sidebarTitle: "SvelteKit"
+description: "Generate SvelteKit +server.ts route handlers, +page.server.ts load functions, and typed API surfaces from Manifest IR — with Lucia, Auth.js, or custom auth integration."
+---
+
+The SvelteKit projection generates server routes and load functions from compiled Manifest IR that follow SvelteKit conventions. Use it when you are building a SvelteKit application and want Manifest entities wired into your server-side routes, form actions, and page data. The projection mirrors the [Next.js projection's](/integration/nextjs) read/write split but targets SvelteKit's `+server.ts` and `+page.server.ts` file conventions.
+
+The projection is registered under the name `sveltekit` and lives at `src/manifest/projections/sveltekit/generator.ts`.
+
+## What it generates
+
+The projection exposes five surfaces.
+
+`sveltekit.server` emits a `+server.ts` file with `GET` and `POST` `RequestHandler` exports. The `GET` handler lists entity instances (with optional auth checks, tenant filtering, and soft-delete filtering). The `POST` handler dispatches a command through the Manifest runtime via `runtime.runCommand`.
+
+`sveltekit.load` emits a `+page.server.ts` file with a `load: PageServerLoad` function and an `actions: Actions` export. The `load` function fetches entity data for page rendering. Form actions decode `event.request.formData()`, extract `instanceId` from form fields, and invoke commands. SvelteKit's `./$types` provides type-safe `PageData`.
+
+`sveltekit.command` emits a per-command `+server.ts` route under `commands/[command]/+server.ts`. This is a legacy alias for the command-specific route pattern.
+
+`sveltekit.types` emits entity and command type interfaces plus `ManifestActionResult` and `ManifestDiagnostic` utility interfaces. Computed properties are emitted as `readonly` fields.
+
+`sveltekit.client` emits a `$lib/manifest-client.ts` module with an `invokeManifestCommand()` helper function for client-side command invocation.
+
+## Usage
+
+```ts
+import { getProjection } from '@angriff36/manifest/projections';
+
+const projection = getProjection('sveltekit');
+
+// Generate server route handlers
+const server = projection.generate(ir, { surface: 'sveltekit.server' });
+
+// Generate page load functions and form actions
+const load = projection.generate(ir, { surface: 'sveltekit.load' });
+
+// Generate type definitions
+const types = projection.generate(ir, { surface: 'sveltekit.types' });
+
+// Generate the client helper
+const client = projection.generate(ir, { surface: 'sveltekit.client' });
+```
+
+Through the CLI:
+
+```bash
+manifest generate ir/widget.ir.json --projection sveltekit --surface sveltekit.types --output src/lib/manifest-types.ts
+```
+
+## Auth integration
+
+The projection supports four auth providers, configured via the `authProvider` option:
+
+- **`lucia`** (default) — Reads `event.locals.session` for the current user session, following the Lucia auth convention.
+- **`auth-js`** — Uses `getServerSession(event)` from NextAuth/SvelteKit integration.
+- **`custom`** — Imports a `requireUser(event)` function from the configured `authImportPath`.
+- **`none`** — No auth checks in generated code.
+
+Tenant filtering is activated via the `includeTenantContext` option. When enabled, read queries include a `tenantId` predicate. Soft-delete filtering adds `deletedAt: null` to read queries when `includeSoftDeleteFilter` is enabled.
+
+## Generated file structure
+
+For an entity named `Task` with an `updateStatus` command:
+
+```
+src/routes/
+  tasks/
+    +server.ts         # sveltekit.server — GET /tasks, POST /tasks
+    +page.server.ts    # sveltekit.load — load + actions
+    commands/
+      update-status/
+        +server.ts     # sveltekit.command — POST /tasks/update-status
+src/lib/
+  manifest-client.ts   # sveltekit.client — invokeManifestCommand()
+src/lib/
+  manifest-types.ts    # sveltekit.types — interfaces
+```
+
+## Type mapping
+
+The projection maps Manifest IR types to TypeScript using `irTypeToTs`: `string` to `string`; `number`/`integer`/`int` to `number`; `boolean`/`bool` to `boolean`; `date`/`datetime`/`uuid`/`email`/`url`/`uri`/`decimal` to `string`; `any` to `unknown`; `object` to `Record<string, unknown>`. Generic `array<T>` becomes `T[]` and `map<V>` becomes `Record<string, V>`. Nullable types append ` | null`.
+
+## Options
+
+`SvelteKitProjectionOptions` accepts `authProvider` (`'lucia'` | `'auth-js'` | `'custom'` | `'none'`, default `'lucia'`), `authImportPath`, `runtimeImportPath` (default `./lib/manifest-runtime`), `runtimeFactoryName` (default `createManifestRuntime`), `basePath` (default `/api`), `includeTenantContext` (default `true`), `tenantIdProperty` (default `tenantId`), `includeSoftDeleteFilter` (default `false`), `publicReads` (default `false`), `validationImportPath` (default unset), `databaseImportPath` (for direct database reads), `dispatcherImportPath`, and `includeComments` (default `true`).
+
+## Notes & limitations
+
+<Note>
+All writes flow through `runtime.runCommand()`, preserving guard, policy, and constraint enforcement. Reads may bypass the runtime via direct Prisma-style `database.<entity>.findMany()` calls when the `databaseImportPath` option is configured, which improves read performance at the cost of bypassing Manifest-level read policies.
+</Note>
+
+Form actions decode `event.request.formData()` and extract `instanceId` from form fields. The `+page.server.ts` returns typed `data` through SvelteKit's generated `./$types`, providing full type safety from server to client. The output is deterministic: the same IR and options always produce the same generated code.

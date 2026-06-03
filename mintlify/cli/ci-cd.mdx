@@ -1,0 +1,237 @@
+---
+title: "CI/CD: GitHub Actions and breaking change detection"
+description: "Generate GitHub Actions workflows, detect breaking changes between IR versions, and integrate Manifest validation into your CI pipeline."
+sidebarTitle: "CI/CD"
+---
+
+Manifest provides CI/CD tooling for automated validation, breaking change detection, and regression testing in continuous integration pipelines. Use the workflow generator to bootstrap a GitHub Actions pipeline, and the breaking change detector to gate pull requests on incompatible IR changes.
+
+## GitHub Actions workflow generator
+
+Generate a complete GitHub Actions workflow file with a single command:
+
+```bash
+manifest init --ci github
+```
+
+This creates `.github/workflows/manifest-ci.yml` with two jobs:
+
+**PR validation** (runs on every pull request):
+- `manifest validate` — validates IR JSON against the IR schema
+- `manifest scan` — scans the codebase for governance violations
+- `npm test` — runs the full test suite
+
+**Conformance regen** (runs on pushes to `main`):
+- Auto-regenerates conformance fixtures
+- Commits updated fixtures if they have changed
+- Uses `[skip ci]` in the commit message to avoid infinite workflow loops
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--ci <provider>` | (required) | CI provider to generate for. Currently supports `github`. |
+| `--node-versions <versions>` | `18,20,22` | Comma-separated Node.js versions for matrix builds |
+| `--force` | `false` | Overwrite existing workflow file |
+
+```bash
+# Customize Node.js versions for the matrix build
+manifest init --ci github --node-versions 18,20
+
+# Overwrite an existing workflow file
+manifest init --ci github --force
+```
+
+<Note>
+The command is invoked as `manifest init --ci github` — it is a flag on the existing `init` command, not a separate subcommand. It does not run the interactive setup; it only generates the workflow file.
+</Note>
+
+### Generated workflow structure
+
+```yaml
+name: Manifest CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npx manifest validate
+      - run: npx manifest scan
+      - run: npm test
+
+  conformance-regen:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npm run conformance:regen
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regen conformance fixtures [skip ci]"
+```
+
+## Breaking change detector
+
+Classify changes between two IR versions as `compatible`, `deprecated`, or `breaking`:
+
+```bash
+manifest diff breaking old.ir.json new.ir.json
+```
+
+The detector is a pure function (`classifyBreakingChanges`) that compares two IR JSON files and produces a report of every change, classified by severity with consumer impact annotations.
+
+### Classification rules
+
+| Element | Change | Severity |
+|---------|--------|----------|
+| Entity added | `entity-added` | compatible |
+| Entity removed | `entity-removed` | **breaking** |
+| Property added (optional/default) | `property-added` | compatible |
+| Property added (no details) | `property-added` | **breaking** (conservative) |
+| Property removed | `property-removed` | **breaking** |
+| Property type changed | `property-type-changed` | **breaking** |
+| Property made optional | `property-made-optional` | compatible |
+| Property made required | `property-made-required` | **breaking** |
+| Computed expression changed | `computed-expression-changed` | deprecated |
+| Computed property removed | `computed-removed` | **breaking** |
+| Relationship removed | `relationship-removed` | **breaking** |
+| Relationship kind changed | `relationship-kind-changed` | **breaking** |
+| Constraint removed | `constraint-removed` | deprecated |
+| Constraint severity raised | `constraint-severity-raised` | compatible |
+| Command removed | `command-removed` | **breaking** |
+| Command parameter added | `command-param-added` | **breaking** |
+| Command parameter removed | `command-param-removed` | **breaking** |
+| Command guards changed | `command-guards-changed` | deprecated |
+| Command returns changed | `command-returns-changed` | **breaking** |
+| Policy removed | `policy-removed` | **breaking** |
+| Policy expression changed | `policy-expression-changed` | deprecated |
+| Store removed | `store-removed` | **breaking** |
+| Store target changed | `store-target-changed` | **breaking** |
+| Event removed | `event-removed` | **breaking** |
+| Event channel changed | `event-channel-changed` | **breaking** |
+| Module added | `module-added` | compatible |
+| Module removed | `module-removed` | **breaking** |
+
+The conservative default for `property-added` (no details) is `breaking` because adding a required property without a default value breaks existing consumers. Properties added as optional or with defaults are classified as `compatible`.
+
+### Output format
+
+By default, the detector outputs a human-readable report with color-coded severity indicators:
+
+```
+BREAKING  entities.Order.properties.discount (property-removed)
+  Impact: commands, routes, projections
+
+DEPRECATED entities.Task.computed.dueDate (computed-expression-changed)
+  Impact: projections
+```
+
+### CI mode
+
+Use `--ci` to gate pipelines on unacknowledged breaking changes:
+
+```bash
+manifest diff breaking old.ir.json new.ir.json --ci
+```
+
+In CI mode, the command exits non-zero when there are breaking changes not listed in the acknowledgments file. This makes it suitable as a PR gate: if the PR introduces breaking changes, the CI job fails until the changes are acknowledged or the IR is updated to be compatible.
+
+### Acknowledgments file
+
+Create an acknowledgments file to track breaking changes that have been reviewed and accepted:
+
+```json
+{
+  "acknowledged": [
+    {
+      "path": "entities.Order.properties.discount",
+      "category": "property-removed",
+      "reason": "Discount feature removed in v2, all consumers updated"
+    },
+    {
+      "path": "entities.Task.commands.estimate.command-removed",
+      "category": "command-removed",
+      "reason": "Replaced by async estimateV2 command"
+    }
+  ]
+}
+```
+
+Reference it with `--ack`:
+
+```bash
+manifest diff breaking old.ir.json new.ir.json --ack acknowledgments.json --ci
+```
+
+Acknowledged breaking changes are filtered from the report. Only unacknowledged breaking changes cause a non-zero exit in CI mode.
+
+### Options
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output structured JSON instead of human-readable text |
+| `--ack <path>` | Path to acknowledgments file for filtering |
+| `--ci` | Exit non-zero on unacknowledged breaking changes |
+| `-o, --output <path>` | Write output to a file instead of stdout |
+
+## Complete PR pipeline example
+
+A complete GitHub Actions workflow combining validation, testing, and breaking change detection:
+
+```yaml
+name: Manifest CI
+on: [pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npx manifest validate
+      - run: npx manifest scan --strict
+      - run: npm test
+
+  breaking-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Compare IR against main branch
+        run: |
+          git stash
+          git checkout origin/main -- ir/
+          cp -r ir/ old-ir/
+          git stash pop || true
+          git checkout - -- ir/
+          npx manifest diff breaking old-ir/ ir/ --ci --ack acknowledgments.json
+```
+
+This pipeline runs validation and tests across three Node.js versions, then checks for breaking changes against the main branch. The `--ci` flag ensures the job fails if the PR introduces unacknowledged breaking changes.
+
+See [CLI overview](/cli/overview) for the full set of CLI commands, [Governance and audit](/cli/governance) for `manifest scan` and `enforce-surface`, and [Configuration](/cli/configuration) for storing default flags in `manifest.config.yaml`.

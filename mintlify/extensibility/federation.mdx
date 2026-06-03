@@ -1,0 +1,217 @@
+---
+title: "Federated multi-service runtime"
+description: "Connect multiple Manifest runtimes into a federated mesh where services discover each other's entity schemas, invoke cross-service commands, and propagate identity through policy bridge headers."
+sidebarTitle: "Federation"
+---
+
+The federation layer enables multiple Manifest runtime instances -- typically running as separate microservices -- to discover each other's entity schemas, invoke commands across service boundaries, and enforce policy-based authorization end-to-end. Federation is transport-agnostic: the default implementation uses HTTP with `fetch`, but the `FederationTransport` interface supports gRPC, message queues, or any custom protocol.
+
+## Service descriptors
+
+Each runtime instance publishes a `ServiceDescriptor` that declares which entities and commands it exposes to the federation mesh. Descriptors are built from compiled IR by the `buildDescriptor` function.
+
+```typescript
+import { buildDescriptor } from '@angriff36/manifest/federation';
+import { ir } from './compiled.ir.json';
+
+const descriptor = buildDescriptor(ir, {
+  serviceName: 'inventory-service',
+  baseUrl: 'https://inventory.internal',
+  version: '1.2.0',
+});
+```
+
+### ServiceDescriptor schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `serviceName` | `string` | Unique name for this service in the mesh |
+| `baseUrl` | `string` | Root URL for reaching this service |
+| `version` | `string` | Service version for compatibility checks |
+| `entities` | `ExposedEntity[]` | Entities this service exposes, with their commands |
+| `healthEndpoint` | `string` | URL for health check probes |
+
+The `buildDescriptor` function is pure: identical IR input always produces the same descriptor output, supporting deterministic builds and reproducible deployments.
+
+## Service registry
+
+The `FederationRegistry` is a central discovery layer. Services register their descriptors with the registry, which then provides command lookup, health tracking, and reachable-service filtering.
+
+```typescript
+import { FederationRegistry } from '@angriff36/manifest/federation';
+
+const registry = new FederationRegistry();
+
+// Register each service
+registry.register(inventoryDescriptor);
+registry.register(orderDescriptor);
+
+// Look up which service handles a given command
+const target = registry.findCommand('InventoryItem', 'reserve');
+// => { serviceName: 'inventory-service', baseUrl: 'https://inventory.internal', ... }
+```
+
+### Health checks
+
+When configured with `healthCheckIntervalMs`, the registry periodically probes each service's health endpoint. Services that fail their health check are marked unreachable and excluded from command lookup until they recover. Health checks use a separate timeout to avoid blocking federation calls.
+
+## Federation client
+
+The `FederationClient` invokes commands on remote services. It resolves the target service via the registry, constructs a `FederationRequest`, and dispatches it through the configured transport.
+
+```typescript
+import { FederationClient } from '@angriff36/manifest/federation';
+
+const client = new FederationClient(registry, {
+  transport: fetchTransport,        // default: globalThis.fetch
+  timeout: 5000,                    // request timeout in ms
+  retryOnIdempotent: true,          // retry idempotent commands on transient failure
+  maxRetries: 2,
+});
+
+const result = await client.invoke('InventoryItem', 'reserve', {
+  instanceId: 'item-sku-123',
+  quantity: 5,
+});
+```
+
+### Idempotency heuristics
+
+The client uses command-level idempotency heuristics to decide whether a failed request is safe to retry:
+
+| Command contains only | Idempotent? |
+|-----------------------|-------------|
+| `mutate`, `persist` | Yes -- safe to retry |
+| `emit`, `effect`, `publish` | No -- may have side effects |
+
+Commands with `emit`, `effect`, or `publish` actions are conservatively marked non-idempotent. Only commands whose actions are limited to `mutate` and `persist` are retried on transient failure.
+
+### Transport interface
+
+The default transport uses `globalThis.fetch`. Replace it for testing or alternative protocols by implementing the `FederationTransport` interface:
+
+```typescript
+interface FederationTransport {
+  send(request: FederationRequest): Promise<FederationResponse>;
+}
+```
+
+## Policy bridge
+
+The policy bridge propagates caller identity across service boundaries so that policy expressions on the receiving service can evaluate correctly. Identity is encoded as HTTP headers with the `X-Manifest-*` prefix:
+
+| Header | Source | Reconstructed as |
+|--------|--------|-----------------|
+| `X-Manifest-Actor` | `context.actorId` or `user.id` | `context.actorId` |
+| `X-Manifest-Tenant` | `context.tenantId` | `context.tenantId` |
+| `X-Manifest-Org` | `context.orgId` | `context.orgId` |
+| `X-Manifest-Roles` | `user.role` | `user.role` |
+| `X-Request-Id` | `context.requestId` | `context.requestId` |
+| `X-Correlation-Id` | Generated per invocation | `context.correlationId` |
+
+The sending side injects these headers into the outgoing request. The receiving side extracts them and reconstructs a `RuntimeContext` so that policy expressions like `user.role == "admin"` evaluate correctly on the downstream service.
+
+```typescript
+import { injectPolicyHeaders, extractRuntimeContext } from '@angriff36/manifest/federation';
+
+// Sending side
+const headers = injectPolicyHeaders(runtimeContext);
+
+// Receiving side (in your API route handler)
+const reconstructed = extractRuntimeContext(request.headers);
+```
+
+<Warning>
+The policy bridge carries identity but not authorization decisions. Each service evaluates its own policies against the reconstructed context. A policy that denies access on service B will deny the federated call even if service A authorized it.
+</Warning>
+
+## HTTP adapter generation
+
+The federation module includes a code generator that produces typed HTTP client classes for calling remote services. Each exposed command becomes a typed method on the generated client.
+
+```typescript
+import { generateHttpAdapter } from '@angriff36/manifest/federation';
+
+const code = generateHttpAdapter(inventoryDescriptor, {
+  className: 'InventoryClient',
+  importPath: '@repo/inventory-client',
+});
+```
+
+The generated adapter includes:
+
+- One async method per exposed command
+- Typed request and response objects derived from the IR
+- Automatic `X-Manifest-*` header injection
+- Configurable base URL and timeout
+
+## Example: Order service calling Inventory service
+
+A common pattern is an order service that checks inventory availability before confirming an order:
+
+```typescript
+import { FederationRegistry, FederationClient, buildDescriptor } from '@angriff36/manifest/federation';
+import { orderIr } from './ir/order.ir.json';
+import { inventoryDescriptor } from './inventory-descriptor';
+
+// 1. Set up the registry
+const registry = new FederationRegistry();
+registry.register(inventoryDescriptor);
+
+// 2. Create the federation client
+const federation = new FederationClient(registry, {
+  timeout: 3000,
+  retryOnIdempotent: true,
+});
+
+// 3. In the order service's "place" command middleware or action,
+//    call the inventory service to reserve stock
+async function placeOrder(orderId: string, sku: string, qty: number) {
+  // Check inventory availability
+  const check = await federation.invoke('InventoryItem', 'checkAvailability', {
+    instanceId: sku,
+    quantity: qty,
+  });
+
+  if (!check.success) {
+    return { success: false, error: 'INSUFFICIENT_INVENTORY' };
+  }
+
+  // Reserve stock
+  const reserve = await federation.invoke('InventoryItem', 'reserve', {
+    instanceId: sku,
+    quantity: qty,
+  });
+
+  if (!reserve.success) {
+    return { success: false, error: 'RESERVATION_FAILED' };
+  }
+
+  // Proceed with order creation on the local runtime
+  return localRuntime.runCommand('Order', 'create', {
+    instanceId: orderId,
+    sku,
+    quantity: qty,
+  });
+}
+```
+
+## Importing federation
+
+The federation module is available as a subpath export:
+
+```typescript
+// All federation types and functions
+import {
+  FederationRegistry,
+  FederationClient,
+  buildDescriptor,
+  generateHttpAdapter,
+  injectPolicyHeaders,
+  extractRuntimeContext,
+} from '@angriff36/manifest/federation';
+```
+
+<Note>
+The federation module is transport-agnostic by design. The default HTTP transport works out of the box with any Manifest service exposed via the generated Next.js or Express routes. For message-queue or gRPC-based deployments, implement the `FederationTransport` interface.
+</Note>

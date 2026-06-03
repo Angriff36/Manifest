@@ -212,3 +212,21 @@ policy canApproveLargeAmounts override:
 ```
 
 If the override policy passes, the constraint outcome is marked `overridden: true` and the runtime emits a synthetic `OverrideApplied` event. Attempts to override a constraint that is not marked `overrideable` are always rejected.
+
+## Default-deny enforcement
+
+When the scanner detects a command with no policy coverage (neither explicit nor inherited from entity defaults), it emits a warning. In strict environments, this warning can be promoted to an error:
+
+```bash
+manifest scan --strict
+```
+
+The `--strict` flag causes the scanner to exit non-zero when any command lacks policy coverage. This enforces a default-deny posture: every command must explicitly declare who is authorized to run it, or inherit a default policy from its entity.
+
+<Warning>
+A command with no policies is **not blocked** by the runtime — it executes normally. The default-deny enforcement is a static analysis check (via `manifest scan`), not a runtime gate. To enforce it in CI, add `manifest scan --strict` to your pipeline.
+</Warning>
+
+## Roles and permission inheritance
+
+For fine-grained authorization based on role hierarchies (e.g., Admin → Manager → User with inherited permissions), see [Roles and permissions](/language/roles). Roles integrate with policies through the `user.role` binding and the `hasPermission()` / `roleAllows()` builtins.

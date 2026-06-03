@@ -96,3 +96,25 @@ manifest build --code-output apps/staging/app/api/
 <Tip>
 The CLI also accepts `manifest.config.yml`, `.manifestrc.yaml`, and `.manifestrc.yml` as config file names, checked in that order after `manifest.config.yaml`.
 </Tip>
+
+## Quick-start with npx
+
+If you don't have Manifest installed yet, you can bootstrap a new project in one command using npx:
+
+```bash
+# Interactive project scaffolding
+npx @angriff36/manifest init
+
+# Non-interactive with template
+npx @angriff36/manifest init --template nextjs --output my-app
+```
+
+Available templates:
+
+| Template | What you get |
+|----------|-------------|
+| `nextjs` | Next.js App Router project with Manifest routes, Prisma, and Clerk auth |
+| `minimal` | Single `.manifest` file with `manifest.config.yaml` and a `package.json` |
+| `express` | Express server with Manifest runtime and REST routes |
+
+The init command creates the project directory, writes a `manifest.config.yaml`, and optionally runs `manifest build` to generate initial output.

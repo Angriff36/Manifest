@@ -179,3 +179,33 @@ Both forms normalize to an `array` type carrying a `generic` element type in the
 <Note>
 The `.length` and `.contains(...)` helpers are expression-level operations rather than dedicated array constraint primitives. The two constraints above are independently evaluated rather than short-circuited, so both can register failures. Array properties are scalar-valued collections and are deliberately separate from `hasMany` relationships, which model entity collections.
 </Note>
+
+## Maps / Records
+
+The `map<K, V>` type declares a key-value dictionary property where all keys are of type `K` and all values are of type `V`. Use it for dynamic metadata, localization tables, or configuration objects.
+
+```manifest
+entity Product {
+  property required id: string
+  property name: string
+  property metadata: map<string, string> = {}
+  property translations: map<string, string> = {}
+  property featureFlags: map<string, boolean> = {}
+}
+
+store Product in memory
+```
+
+The `map<K, V>` syntax and the alternative `record<K, V>` syntax are equivalent — both normalize to the same IR type. Key types are restricted to `string` and `number`. Value types can be any scalar type.
+
+Access map values in expressions using member access:
+
+```manifest
+constraint hasEnglishName: self.translations["en"] != ""
+
+computed flagEnabled: self.featureFlags["beta-feature"] == true
+```
+
+<Note>
+Map properties are persisted as JSON objects in projections (e.g., Prisma `Json` column, Drizzle `jsonb`). The runtime does not enforce key or value types beyond what JavaScript provides — type safety is a projection concern.
+</Note>

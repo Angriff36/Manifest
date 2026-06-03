@@ -1,0 +1,99 @@
+---
+title: "Event-sourced store and read models"
+description: "Persist entity state as an append-only event log with snapshotting and replay, and build denormalized read models that react to event streams."
+sidebarTitle: "Event sourcing"
+---
+
+The event-sourced store persists entity state as an append-only event log rather than overwriting entity records. Each command produces events appended to the log, and entity state is reconstructed by replaying events. Read models provide denormalized views built from the event stream.
+
+## Event-sourced store
+
+### Declaration
+
+```manifest
+store Order in event-sourced
+```
+
+### How it works
+
+<Steps>
+  <Step title="Append events">When a command completes, emitted events are appended to the entity's event log. The log is append-only — events are never modified or deleted.</Step>
+  <Step title="Snapshot periodically">To avoid replaying the full log on every read, the store creates periodic snapshots of the current entity state.</Step>
+  <Step title="Replay on load">When loading an entity instance, the store reads the latest snapshot and replays any events after the snapshot.</Step>
+  <Step title="Reconstruct state">The replayed events produce the current entity state, identical to what a non-event-sourced store would return.</Step>
+</Steps>
+
+### Configuration
+
+```typescript
+import { EventSourcedStore } from "@angriff36/manifest/stores";
+
+const store = new EventSourcedStore({
+  snapshotInterval: 100,
+  maxReplayEvents: 1000,
+});
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `snapshotInterval` | `100` | Number of events between automatic snapshots |
+| `maxReplayEvents` | `1000` | Max events to replay before requiring a snapshot |
+
+<Note>
+Event sourcing is a storage strategy, not a runtime behavior change. Commands execute identically regardless of the backing store. The difference is how state is persisted and recovered.
+</Note>
+
+## Read models
+
+Read models are denormalized views built by subscribing to event streams. They provide optimized query surfaces separate from the source entities.
+
+### Declaration
+
+```manifest
+readmodel OrderSummary {
+  source: Order
+  properties {
+    orderId: string from event.orderId
+    customerName: string from event.customerName
+    totalAmount: number from event.total
+    status: string from event.status
+  }
+  on OrderCreated   => insert
+  on OrderUpdated   => update
+  on OrderCompleted => update
+}
+```
+
+### How read models work
+
+1. **Subscribe**: The read model subscribes to events from its source entity
+2. **Insert**: On a creation event, a new read model record is inserted
+3. **Update**: On mutation events, the existing record is updated
+4. **Delete**: On deletion events, the record is removed
+
+### Querying read models
+
+```typescript
+const summaries = runtime.queryReadModel("OrderSummary", {
+  filter: { status: "completed" },
+  orderBy: "lastUpdatedAt",
+  limit: 50,
+});
+```
+
+### CQRS pattern
+
+Event-sourced stores and read models together form the CQRS pattern:
+
+- **Write side**: Entity commands produce events, stored in the event-sourced store
+- **Read side**: Read models consume events and build optimized query surfaces
+- **Consistency**: Eventually consistent — read models may lag behind the event log
+
+<Warning>
+Read models are eventually consistent. Immediately after a command completes, the read model may not yet reflect the change. For strongly consistent reads, query the source entity directly.
+</Warning>
+
+## Conformance fixtures
+
+- `83-event-sourced.manifest` — event-sourced store declaration and snapshot configuration
+- `86-readmodel.manifest` — read model declaration with event subscriptions

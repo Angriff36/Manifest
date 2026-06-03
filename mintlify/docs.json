@@ -34,12 +34,19 @@
               "language/commands",
               "language/guards-policies",
               "language/events",
+              "language/approvals",
+              "language/reactions",
+              "language/async-commands",
               "language/stores",
               "language/computed-properties",
               "language/computed-caching",
               "language/types",
               "language/constraints",
               "language/expressions",
+              "language/roles",
+              "language/modules",
+              "language/advanced-entities",
+              "language/workflows",
               "language/feature-flags",
               "language/timestamps",
               "language/tenancy"
@@ -51,6 +58,10 @@
               "integration/nextjs",
               "integration/prisma",
               "projections/drizzle",
+              "projections/remix",
+              "projections/sveltekit",
+              "projections/flutter",
+              "projections/python-pydantic",
               "projections/openapi",
               "projections/graphql",
               "projections/zod",
@@ -59,7 +70,8 @@
               "projections/express",
               "projections/hono",
               "projections/mermaid",
-              "projections/llm-context"
+              "projections/llm-context",
+              "projections/additional-projections"
             ]
           },
           {
@@ -68,7 +80,15 @@
           },
           {
             "group": "Adapters",
-            "pages": ["adapters/custom-stores", "adapters/audit-sink", "adapters/outbox"]
+            "pages": [
+              "adapters/custom-stores",
+              "adapters/dynamodb",
+              "adapters/redis",
+              "adapters/turso",
+              "adapters/event-sourced-store",
+              "adapters/audit-sink",
+              "adapters/outbox"
+            ]
           },
           {
             "group": "Extensibility",
@@ -76,13 +96,26 @@
               "extensibility/plugin-api",
               "extensibility/agent-sdk",
               "extensibility/mcp-server",
+              "extensibility/runtime-middleware",
+              "extensibility/federation",
+              "extensibility/realtime-subscriptions",
+              "extensibility/runtime-tooling",
+              "extensibility/ai-tooling",
               "extensibility/ir-version-control",
               "extensibility/snapshot-testing"
             ]
           },
           {
             "group": "CLI",
-            "pages": ["cli/overview", "cli/commands", "cli/governance", "cli/configuration"]
+            "pages": [
+              "cli/overview",
+              "cli/commands",
+              "cli/dev-tools",
+              "cli/ci-cd",
+              "cli/testing",
+              "cli/governance",
+              "cli/configuration"
+            ]
           },
           {
             "group": "Help",

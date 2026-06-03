@@ -1,0 +1,232 @@
+---
+title: "Developer tools: formatter, watch mode, VS Code, and LSP"
+description: "Keep Manifest source consistent with manifest fmt, rebuild on save with manifest watch, and get rich editing support through the VS Code extension and Language Server Protocol."
+sidebarTitle: "Dev Tools"
+---
+
+Manifest ships a set of developer tools that keep source files consistent, rebuild generated code on every save, and provide rich editing support in your IDE.
+
+## `manifest fmt`
+
+`manifest fmt` normalizes `.manifest` source files using deterministic whitespace rules. It converts CRLF to LF, tabs to two spaces, strips trailing whitespace and trailing blank lines, and ensures a final newline.
+
+```bash
+# Format files in place
+manifest fmt src/
+
+# Check formatting without writing (exit 1 if any file needs changes)
+manifest fmt src/ --check
+
+# Format with a custom glob
+manifest fmt --glob "modules/**/*.manifest"
+```
+
+### Options
+
+<ParamField path="--check" type="boolean" default="false">
+  CI mode. Report files that would change without writing them. Exits non-zero when any file needs formatting.
+</ParamField>
+
+<ParamField path="--write" type="boolean">
+  Write formatted output in place. This is the default when `--check` is not set.
+</ParamField>
+
+<ParamField path="-g, --glob" type="string">
+  Custom glob pattern when `source` is a directory.
+</ParamField>
+
+### What the formatter does
+
+The formatter applies the following transformations deterministically:
+
+- CRLF line endings are normalized to LF
+- Tab characters are replaced with two spaces
+- Trailing whitespace on each line is removed
+- Trailing blank lines at the end of the file are removed
+- The file ends with exactly one newline character
+- Empty files produce a single newline
+
+The formatter is intentionally minimal. It normalizes whitespace only. It does not reorder properties, normalize brace style, or restructure code.
+
+### Idempotency
+
+Running `manifest fmt` on an already-formatted file produces no diff. This makes it safe to run in a pre-commit hook or CI pipeline without introducing spurious changes.
+
+### CI integration
+
+Use `--check` in CI to enforce formatting standards without modifying files:
+
+```bash
+# In your CI pipeline
+manifest fmt src/ --check
+```
+
+The command exits non-zero when any file would change, giving you an actionable signal.
+
+## `manifest watch`
+
+`manifest watch` monitors `.manifest` files for changes and triggers an incremental compile-and-generate cycle on every save. It uses Node.js `fs.watch` with recursive mode for efficient file system monitoring (with `watchFile` polling fallback for older platforms).
+
+```bash
+# Watch a directory and rebuild on change
+manifest watch src/
+
+# Watch with JSON change events for downstream tooling
+manifest watch src/ --events
+
+# Watch with a custom debounce
+manifest watch src/ --debounce 500
+```
+
+### Options
+
+`watch` accepts all the same flags as [`manifest build`](/cli/commands) (`-p`, `-s`, `--ir-output`, `--code-output`, `-g`, and the import-path flags) plus:
+
+<ParamField path="--debounce" type="number" default="300">
+  Debounce delay in milliseconds. Rapid file changes within this window are coalesced into a single rebuild.
+</ParamField>
+
+<ParamField path="--events" type="boolean" default="false">
+  Emit structured JSON change events to stdout. Useful for piping into other build tools.
+</ParamField>
+
+<ParamField path="--clear" type="boolean" default="false">
+  Clear the terminal on each rebuild.
+</ParamField>
+
+### Structured events
+
+When `--events` is set, `manifest watch` prints one JSON object per line to stdout:
+
+```json
+{"type":"ready","timestamp":1717312000000,"files":12,"irOutput":"ir/","codeOutput":"generated/"}
+{"type":"change","timestamp":1717312010000,"file":"src/orders.manifest"}
+{"type":"build:start","timestamp":1717312010100}
+{"type":"build:success","timestamp":1717312010800,"filesCompiled":1,"filesGenerated":3}
+{"type":"build:error","timestamp":1717312010800,"error":"Parse error at line 42: unexpected token"}
+```
+
+These events are machine-readable, making it straightforward to pipe the output into other tools or build orchestrators.
+
+### Graceful shutdown
+
+The watcher traps `SIGINT` and `SIGTERM` and shuts down cleanly. Build errors do not terminate the watcher; the process continues monitoring and will rebuild on the next change.
+
+## VS Code extension
+
+The Manifest VS Code extension provides syntax highlighting, autocomplete, hover documentation, go-to-definition, and real-time diagnostics. It is available as a bundled extension with an embedded LSP server -- no separate install needed.
+
+### Installation
+
+Build and install the extension from source:
+
+```bash
+# Build the root library first
+pnpm run build:lib
+
+# Build and package the extension
+cd packages/vscode-extension
+pnpm run build
+pnpm run package
+```
+
+This produces a `.vsix` file you can install via the VS Code Extensions view ("Install from VSIX...") or via the command line:
+
+```bash
+code --install-extension manifest-lang-*.vsix
+```
+
+For development, use the Extension Development Host:
+
+```bash
+code --extensionDevelopmentPath=packages/vscode-extension
+```
+
+### Features
+
+**Syntax highlighting.** A TextMate grammar covers all Manifest keywords: entity declarations, property modifiers, control flow constructs, type names, operators, constants, relationship keywords, access control terms, store targets, and severity levels.
+
+**Code snippets.** Fifteen snippets for common patterns: `entity`, `property`, `command`, `policy`, `constraint`, `computed`, `hasMany`, `belongsTo`, `store`, `event`, `module`, `enum`, `guard`, `mutate`, and `emit`.
+
+**Language configuration.** Comment toggling (`//` and `/* */`), bracket matching, auto-closing pairs, and indentation rules.
+
+**Diagnostics.** Real-time error and warning squiggles from the Manifest compiler, debounced at 200ms to avoid noisy feedback during typing. Positions are converted from the Manifest compiler's 1-based coordinates to the LSP protocol's 0-based coordinates.
+
+**Document symbols.** The Outline view shows entities (with nested properties, commands, relationships, policies, and constraints), modules, enums, stores, and events.
+
+**Hover.** Formatted markdown information for entities (property and command counts), properties (type and modifiers), commands (parameters and guard count), computed properties, policies, constraints, enums, and keywords.
+
+**Autocomplete.** All keywords, type names, entity and enum names from the parsed AST, and context variables (`self`, `user`, `context`).
+
+**Go-to-definition.** Intra-file resolution for entity, enum, and module references.
+
+## Language Server Protocol
+
+The Manifest LSP server provides IDE-agnostic language support. It lives in `packages/lsp-server/` and reuses the existing Manifest compiler pipeline (Lexer, Parser, IR Compiler) to produce the artifacts that each LSP feature consumes.
+
+### Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Diagnostics** | Compilation errors and warnings with 200ms publish debounce |
+| **Completion** | Context-aware keyword, type, and symbol completion using brace-depth tracking |
+| **Hover** | Markdown-formatted documentation for entities, properties, commands, and keywords |
+| **Go-to-definition** | Jump to entity, enum, and module declarations |
+| **Document symbols** | Hierarchical outline of all declarations in a file |
+
+### Architecture
+
+The LSP server consists of these modules:
+
+- **compiler-bridge.ts** -- Orchestrates the full compilation pipeline and returns tokens, AST, and IR for feature consumption
+- **position-utils.ts** -- Handles the Manifest lexer's end-position convention (token position is one column past the last character) with conversion utilities between 1-based and 0-based coordinates
+- **document-store.ts** -- Manages open document state and invalidation
+- **Features** -- Each feature (diagnostics, completion, hover, definition, document-symbols) is a set of pure functions that take compiled artifacts and return LSP protocol objects
+
+The server communicates over stdio and is launched by the editor client. Each feature is stateless: no shared mutable state exists between requests.
+
+### Connecting a custom editor
+
+The LSP server binary is `packages/lsp-server/bin/manifest-lsp.js`. Configure your editor to launch it as a language server over stdio:
+
+```json
+{
+  "languageserver": {
+    "manifest": {
+      "command": "node",
+      "args": ["path/to/packages/lsp-server/bin/manifest-lsp.js", "--stdio"],
+      "filetypes": ["manifest"],
+      "rootPatterns": ["manifest.config.yaml", "manifest.config.yml"]
+    }
+  }
+}
+```
+
+<Tip>
+The LSP server bundles the Manifest compiler, so no separate compile step is needed. It reads `.manifest` files directly from disk and compiles them on every document change.
+</Tip>
+
+## Typical workflow
+
+A common development workflow combines all four tools:
+
+1. **Format** your source before committing:
+   ```bash
+   manifest fmt src/ --check
+   ```
+
+2. **Watch** for changes during development:
+   ```bash
+   manifest watch src/ --events
+   ```
+
+3. **Edit** in VS Code with real-time diagnostics, completion, and hover.
+
+4. **Commit** with confidence that formatting and generated code are in sync.
+
+```bash
+# Full workflow in a Makefile or package.json script
+fmt: manifest fmt src/ --write
+dev: manifest watch src/ --events
+ci: manifest fmt src/ --check && manifest build
+```

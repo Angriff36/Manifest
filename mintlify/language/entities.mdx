@@ -46,12 +46,17 @@ Every property has a type. Supported types are `string`, `number`, `boolean`, an
 
 Place modifiers between the `property` keyword and the name:
 
-| Modifier   | Meaning |
-|------------|---------|
-| `required` | The caller must supply a value (or a `defaultValue` must exist). |
-| `optional` | Explicitly marks the property as not required. Equivalent to the default behavior. |
-| `readonly` | Prevents mutation after creation (enforced by convention; scanner warns on violation). |
-| `unique`   | Signals to adapters that values must be unique within the entity collection. |
+| Modifier     | Meaning |
+|--------------|---------|
+| `required`   | The caller must supply a value (or a `defaultValue` must exist). |
+| `optional`   | Explicitly marks the property as not required. Equivalent to the default behavior. |
+| `readonly`   | Prevents mutation after creation (enforced by convention; scanner warns on violation). |
+| `unique`     | Signals to adapters that values must be unique within the entity collection. |
+| `encrypted`  | Declares the property for field-level encryption. The runtime encrypts at store-write boundaries and decrypts on read. Requires an `EncryptionProvider` in runtime options. |
+| `masked`     | Applies dynamic data masking to the property value on read. Supports strategies: `redact`, `partial`, `tokenize`, `email`, `phone`, `ssn`, `creditCard`. An optional `unmaskPolicy` expression can bypass masking for authorized users. |
+| `searchable` | Declares the property for full-text search indexing (string-only). Adds a `search(text, query)` built-in with AND-semantics whole-word matching. Projections emit platform-specific full-text indexes (e.g., Prisma `@@fulltext`, Drizzle GIN tsvector). |
+| `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes. |
+| `indexed`    | Signals to adapters that the property should be indexed for faster lookups. Projections emit platform-specific index declarations. |
 
 ```manifest
 entity User {
@@ -354,3 +359,43 @@ entity Task {
 ```
 
 Both `complete` and `reassign` inherit `RequireAuth` because neither declares an explicit policy. See [Guards and Policies](/language/guards-policies) for the full inheritance rules.
+
+## Cross-entity constraints
+
+Constraints can reference properties on related entities through relationship traversal. The runtime resolves the relationship chain and evaluates the constraint against the related instance's properties.
+
+```manifest
+entity Customer {
+  property required id: string
+  property status: string = "active"
+}
+
+entity Order {
+  property required id: string
+  property required customerId: string
+  property amount: number = 0
+
+  belongsTo customer: Customer with customerId
+
+  constraint customerActive: self.customer.status == "active"
+    "Customer must be active to place orders"
+}
+```
+
+The runtime enriches resolved relationship instances with `_entity` metadata, enabling arbitrary-depth chaining (e.g., `self.order.customer.address.city`). When a relationship resolves to `null` (missing or nonexistent target), any member access on it evaluates to `null`, which typically causes the constraint to fail.
+
+<Note>
+Cross-entity constraints work because the runtime resolves relationships synchronously from the current store context. No parser or IR compiler changes are needed -- the existing infrastructure handles nested member access syntax and compilation.
+</Note>
+
+## Pagination
+
+Entity collections support built-in pagination for list queries. When querying entity instances, you can control the result set size and navigate through pages:
+
+- **Limit** -- maximum number of instances to return per page
+- **Offset** -- number of instances to skip before returning results
+- **Cursor** -- opaque token identifying the position in the result set (preferred for large collections)
+
+Pagination parameters are passed to the runtime or projection endpoint. The Next.js projection generates list routes that accept `?limit=N&offset=M` or `?cursor=token` query parameters and return a paginated response with the instances and a `nextCursor` or `hasMore` indicator.
+
+Pagination operates after tenant filtering and masking, ensuring that row counts and cursors reflect only the data the caller is authorized to see.
