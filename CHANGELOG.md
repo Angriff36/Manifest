@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.5] - 2026-06-02
+
+### Fixed
+
+- **Publish pipeline** — Simplified `prepublishOnly` to remove WASM build (requires `asc` not available in CI) and unpublished MCP/LSP server builds
+
 ## [2.0.4] - 2026-06-02
 
 ### Fixed

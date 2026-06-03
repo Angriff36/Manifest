@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -205,7 +205,7 @@
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
     "wasm:build": "asc assembly/index.ts --target release --outFile src/manifest/wasm/manifest-runtime.wasm --optimize --runtime stub --exportRuntime",
     "wasm:build:debug": "asc assembly/index.ts --target debug --outFile src/manifest/wasm/manifest-runtime-debug.wasm",
-    "prepublishOnly": "pnpm run build:lib && pnpm run wasm:build && pnpm --filter @manifest/cli run build && pnpm --filter @manifest/mcp-server run build && pnpm --filter @manifest/lsp-server run build"
+    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
