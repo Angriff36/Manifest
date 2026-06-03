@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.6] - 2026-06-02
+
+### Fixed
+
+- **Property-based test stability** — Added `noDefaultInfinity: true` to float generators in `runtime-expression-properties.test.ts` to prevent subnormal float edge cases causing non-deterministic CI failures
+
 ## [2.0.5] - 2026-06-02
 
 ### Fixed

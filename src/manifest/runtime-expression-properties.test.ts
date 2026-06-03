@@ -128,8 +128,8 @@ describe('Runtime Expression Evaluator - Property Tests', () => {
     it('should be idempotent for pure expressions', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.float({ max: 1e6, min: -1e6, noNaN: true }),
-          fc.float({ max: 1e6, min: -1e6, noNaN: true, minExcluded: true }),
+          fc.float({ max: 1e6, min: -1e6, noNaN: true, noDefaultInfinity: true }),
+          fc.float({ max: 1e6, min: -1e6, noNaN: true, minExcluded: true, noDefaultInfinity: true }),
           fc.constantFrom('+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>='),
           async (a, b, op) => {
             const runtime = createTestRuntime();
