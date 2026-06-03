@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.2] - 2026-06-02
+
+### Fixed
+
+- **CLI build errors** — Fixed TypeScript errors in `gen-tests.ts`, `load-test.ts`, `profile.ts`, and `validate-ai.ts` that blocked the release pipeline
+- **Dart projection** — Removed unused `@ts-expect-error` directive causing TS2578
+
 ## [2.0.0] - 2026-06-02
 
 76 new features across 5 themed groups. This is the largest Manifest release to date, adding 16 new projection targets, 4 store adapters, entity inheritance/generics, distributed workflow primitives, a full AI integration surface, and comprehensive developer tooling.
