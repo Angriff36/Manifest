@@ -258,6 +258,128 @@ describe('IRCompiler', () => {
     });
   });
 
+  describe('Property Masking IR', () => {
+    it('should compile masked strategy into maskStrategy', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(email) contact: string
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const prop = result.ir?.entities[0].properties[0];
+      expect(prop?.modifiers).toContain('masked');
+      expect(prop?.maskStrategy).toEqual({ type: 'email' });
+    });
+
+    it('should default bare masked to redact (invariant: masked ⇔ maskStrategy)', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked notes: string
+          property plain: string
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const props = result.ir?.entities[0].properties ?? [];
+      expect(props[0].modifiers).toContain('masked');
+      expect(props[0].maskStrategy).toEqual({ type: 'redact' });
+      // Invariant: no masked modifier ⇒ no maskStrategy
+      expect(props[1].modifiers).not.toContain('masked');
+      expect(props[1].maskStrategy).toBeUndefined();
+    });
+
+    it('should compile partial strategy with flat params', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(partial, 0, 4) ssn: string
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const prop = result.ir?.entities[0].properties[0];
+      expect(prop?.maskStrategy).toEqual({ type: 'partial', params: [0, 4] });
+    });
+
+    it('should compile unmask when via the expression pipeline', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(email) contact: string unmask when user.role == "admin"
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const prop = result.ir?.entities[0].properties[0];
+      expect(prop?.maskStrategy?.type).toBe('email');
+      expect(prop?.maskStrategy?.unmaskWhen).toEqual({
+        kind: 'binary',
+        operator: '==',
+        left: { kind: 'member', object: { kind: 'identifier', name: 'user' }, property: 'role' },
+        right: { kind: 'literal', value: { kind: 'string', value: 'admin' } },
+      });
+    });
+
+    it('should error on unknown masking strategy', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(tokenize) ssn: string
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics.some(d =>
+        d.severity === 'error' && d.message.includes("Unknown masking strategy 'tokenize'")
+      )).toBe(true);
+    });
+
+    it('should error on wrong arity for partial', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(partial, 2) ssn: string
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics.some(d =>
+        d.severity === 'error' && d.message.includes("'partial' requires exactly 2 parameters")
+      )).toBe(true);
+    });
+
+    it('should error on params given to a parameterless strategy', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(email, 3) contact: string
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics.some(d =>
+        d.severity === 'error' && d.message.includes("'email' takes no parameters")
+      )).toBe(true);
+    });
+
+    it('should error on negative or non-integer partial params', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity User {
+          property masked(partial, 1.5, 4) ssn: string
+        }
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics.some(d =>
+        d.severity === 'error' && d.message.includes('non-negative integers')
+      )).toBe(true);
+    });
+  });
+
   describe('Constraint Transformation', () => {
     it('should transform constraint with block severity', async () => {
       const compiler = new IRCompiler();

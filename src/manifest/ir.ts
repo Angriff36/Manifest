@@ -152,9 +152,24 @@ export interface IRProperty {
   type: IRType;
   defaultValue?: IRValue;
   modifiers: PropertyModifier[];
+  /**
+   * Read-time masking strategy. Invariant: present ⇔ 'masked' ∈ modifiers.
+   * Bare `masked` compiles to { type: 'redact' }.
+   */
+  maskStrategy?: IRMaskStrategy;
 }
 
-export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional' | 'searchable' | 'encrypted';
+export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional' | 'searchable' | 'encrypted' | 'masked';
+
+export type MaskStrategyType = 'redact' | 'partial' | 'email' | 'phone' | 'last4';
+
+export interface IRMaskStrategy {
+  type: MaskStrategyType;
+  /** Strategy parameters; for `partial`: [keepStart, keepEnd] */
+  params?: number[];
+  /** When truthy at read time, the real value is returned; falsy/error ⇒ masked */
+  unmaskWhen?: IRExpression;
+}
 
 export interface IRComputedPropertyCache {
   strategy: 'request' | 'session' | 'ttl';

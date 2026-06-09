@@ -45,6 +45,8 @@ import {
   IRDiagnostic,
   CompileToIRResult,
   PropertyModifier,
+  IRMaskStrategy,
+  MaskStrategyType,
   IRProvenance,
   IRTransition,
   IRForeignKey,
@@ -677,11 +679,62 @@ export class IRCompiler {
   }
 
   private transformProperty(p: PropertyNode): IRProperty {
-    return {
+    const prop: IRProperty = {
       name: p.name,
       type: this.transformType(p.dataType),
       defaultValue: p.defaultValue ? this.transformExprToValue(p.defaultValue) : undefined,
       modifiers: p.modifiers as PropertyModifier[],
+    };
+    // Invariant: 'masked' ∈ modifiers ⇔ maskStrategy present (bare masked ⇒ redact)
+    if (p.modifiers.includes('masked')) {
+      prop.maskStrategy = this.transformMaskStrategy(p);
+    }
+    return prop;
+  }
+
+  private static readonly MASK_STRATEGY_ARITY: Record<MaskStrategyType, number> = {
+    redact: 0,
+    partial: 2,
+    email: 0,
+    phone: 0,
+    last4: 0,
+  };
+
+  private transformMaskStrategy(p: PropertyNode): IRMaskStrategy {
+    const declared = p.maskStrategy ?? { type: 'redact' };
+    const known = Object.keys(IRCompiler.MASK_STRATEGY_ARITY);
+    if (!known.includes(declared.type)) {
+      this.emitDiagnostic(
+        'error',
+        `Property '${p.name}': Unknown masking strategy '${declared.type}'. Known strategies: ${known.join(', ')}.`
+      );
+      return { type: 'redact', ...(p.unmaskWhen ? { unmaskWhen: this.transformExpression(p.unmaskWhen) } : {}) };
+    }
+    const type = declared.type as MaskStrategyType;
+    const params = declared.params ?? [];
+    const arity = IRCompiler.MASK_STRATEGY_ARITY[type];
+    if (params.length !== arity) {
+      if (arity === 0) {
+        this.emitDiagnostic(
+          'error',
+          `Property '${p.name}': masking strategy '${type}' takes no parameters (got ${params.length}).`
+        );
+      } else {
+        this.emitDiagnostic(
+          'error',
+          `Property '${p.name}': masking strategy '${type}' requires exactly ${arity} parameters (got ${params.length}).`
+        );
+      }
+    } else if (params.some(n => !Number.isInteger(n) || n < 0)) {
+      this.emitDiagnostic(
+        'error',
+        `Property '${p.name}': masking strategy '${type}' parameters must be non-negative integers (got ${params.join(', ')}).`
+      );
+    }
+    return {
+      type,
+      ...(params.length > 0 ? { params } : {}),
+      ...(p.unmaskWhen ? { unmaskWhen: this.transformExpression(p.unmaskWhen) } : {}),
     };
   }
 

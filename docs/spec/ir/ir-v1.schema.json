@@ -518,9 +518,40 @@
               "readonly",
               "optional",
               "searchable",
-              "encrypted"
+              "encrypted",
+              "masked"
             ]
           }
+        },
+        "maskStrategy": {
+          "$ref": "#/definitions/IRMaskStrategy"
+        }
+      }
+    },
+    "IRMaskStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "redact",
+            "partial",
+            "email",
+            "phone",
+            "last4"
+          ]
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "unmaskWhen": {
+          "$ref": "#/definitions/IRExpression"
         }
       }
     },
