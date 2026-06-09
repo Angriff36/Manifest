@@ -15,10 +15,12 @@ import {
   IRApproval,
   IRRole,
   IRSaga,
+  IRProperty,
   JobQueue,
   JobRecord,
 } from './ir';
 import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
+import { applyMaskStrategy } from './masking.js';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -1094,7 +1096,7 @@ export class RuntimeEngine {
         if (!targetId) {
           result = null;
         } else {
-          result = await this.getInstance(rel.targetEntity, targetId) ?? null;
+          result = await this.getInstanceRaw(rel.targetEntity, targetId) ?? null;
         }
         break;
       }
@@ -1117,12 +1119,12 @@ export class RuntimeEngine {
         if (inverseRel) {
           // Use the inverse relationship's foreign key
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
-          const allTargets = await this.getAllInstances(rel.targetEntity);
+          const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
           result = allTargets.find(t => t[fkProperty] === sourceId) ?? null;
         } else {
           // Fallback: assume the foreign key is named after the source entity
           const assumedFk = `${entityName.toLowerCase()}Id`;
-          const allTargets = await this.getAllInstances(rel.targetEntity);
+          const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
           result = allTargets.find(t => t[assumedFk] === sourceId) ?? null;
         }
         break;
@@ -1144,12 +1146,12 @@ export class RuntimeEngine {
 
         if (inverseRel) {
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
-          const allTargets = await this.getAllInstances(rel.targetEntity);
+          const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
           result = allTargets.filter(t => t[fkProperty] === sourceId);
         } else {
           // Fallback: assume the foreign key is named after the source entity
           const assumedFk = `${entityName.toLowerCase()}Id`;
-          const allTargets = await this.getAllInstances(rel.targetEntity);
+          const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
           result = allTargets.filter(t => t[assumedFk] === sourceId);
         }
         break;
@@ -1614,7 +1616,22 @@ export class RuntimeEngine {
     return undefined;
   }
 
+  /**
+   * Public read surface: tenant filter → decrypt → mask (read-projection only).
+   * Execution paths (guards, actions, policies, computed properties, relationship
+   * resolution) use getAllInstancesRaw and always see real values.
+   */
   async getAllInstances(entityName: string): Promise<EntityInstance[]> {
+    const all = await this.getAllInstancesRaw(entityName);
+    const masked: EntityInstance[] = [];
+    for (const inst of all) {
+      masked.push(await this.applyMasking(entityName, inst));
+    }
+    return masked;
+  }
+
+  /** Internal read path: tenant filter + decryption, NO masking. */
+  private async getAllInstancesRaw(entityName: string): Promise<EntityInstance[]> {
     const store = this.stores.get(entityName);
     if (!store) return [];
     let all = await store.getAll();
@@ -1633,7 +1650,17 @@ export class RuntimeEngine {
     return decrypted;
   }
 
+  /**
+   * Public read surface: tenant filter → decrypt → mask (read-projection only).
+   * Execution paths use getInstanceRaw and always see real values.
+   */
   async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> {
+    const inst = await this.getInstanceRaw(entityName, id);
+    return inst ? await this.applyMasking(entityName, inst) : inst;
+  }
+
+  /** Internal read path: tenant filter + decryption, NO masking. */
+  private async getInstanceRaw(entityName: string, id: string): Promise<EntityInstance | undefined> {
     const store = this.stores.get(entityName);
     if (!store) return undefined;
     const inst = await store.getById(id);
@@ -1645,6 +1672,76 @@ export class RuntimeEngine {
     }
     // Decrypt encrypted fields after store read
     return inst ? await this.decryptProperties(entityName, inst) : undefined;
+  }
+
+  // ── Property masking (docs/spec/semantics.md, "Property Masking") ───
+
+  /** Cache of properties carrying maskStrategy, per entity (IR is immutable at runtime). */
+  private maskedPropertiesCache = new Map<string, IRProperty[]>();
+  private maskedProperties(entityName: string): IRProperty[] {
+    let cached = this.maskedPropertiesCache.get(entityName);
+    if (cached) return cached;
+    const entity = this.getEntity(entityName);
+    cached = entity ? entity.properties.filter(p => p.maskStrategy !== undefined) : [];
+    this.maskedPropertiesCache.set(entityName, cached);
+    return cached;
+  }
+
+  /**
+   * Apply read-time masking to an instance (after decryption and tenant filtering).
+   * - `private` wins over `masked`: the property is excluded entirely.
+   * - `null`/`undefined` pass through unmasked.
+   * - `unmaskWhen` falsy or throwing ⇒ value stays masked (secure by default).
+   *   An evaluation error additionally surfaces a diagnostic; it never changes
+   *   the masked outcome (diagnostics explain, never compensate).
+   */
+  private async applyMasking(entityName: string, instance: EntityInstance): Promise<EntityInstance> {
+    const maskedProps = this.maskedProperties(entityName);
+    if (maskedProps.length === 0) return instance;
+
+    const out = { ...instance };
+    for (const prop of maskedProps) {
+      if (prop.modifiers.includes('private')) {
+        delete out[prop.name];
+        continue;
+      }
+      const value = out[prop.name];
+      if (value === null || value === undefined) continue;
+
+      const strategy = prop.maskStrategy!;
+      if (strategy.unmaskWhen) {
+        const ownsEvalBudget = this.initEvalBudget();
+        try {
+          // self.* binds the raw instance (real values); user.*/context.* from runtime context
+          const evalContext = this.buildEvalContext({}, instance, entityName);
+          const allowed = await this.evaluateExpression(strategy.unmaskWhen, evalContext);
+          if (allowed) continue; // truthy ⇒ real value returned
+        } catch (error) {
+          // Secure by default: an error keeps the value masked. Surface a diagnostic
+          // carrying the expression and resolved values; never alter the outcome.
+          let resolved: unknown[] = [];
+          try {
+            const evalContext = this.buildEvalContext({}, instance, entityName);
+            resolved = await this.resolveExpressionValues(strategy.unmaskWhen, evalContext);
+          } catch {
+            // resolution itself failed — report without resolved values
+          }
+          console.warn(
+            `[Manifest Runtime] unmaskWhen evaluation error for '${entityName}.${prop.name}' (value stays masked):`,
+            {
+              expression: this.formatExpression(strategy.unmaskWhen),
+              resolved,
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
+        } finally {
+          if (ownsEvalBudget) this.clearEvalBudget();
+        }
+      }
+
+      out[prop.name] = applyMaskStrategy(strategy, value);
+    }
+    return out;
   }
 
   /**
@@ -2461,7 +2558,7 @@ export class RuntimeEngine {
     }
 
     const instance = options.instanceId && options.entityName
-      ? await this.getInstance(options.entityName, options.instanceId)
+      ? await this.getInstanceRaw(options.entityName, options.instanceId)
       : undefined;
 
     const evalContext = this.buildEvalContext(input, instance, options.entityName);
@@ -2681,7 +2778,7 @@ export class RuntimeEngine {
     }
 
     const instance = options.instanceId && options.entityName
-      ? await this.getInstance(options.entityName, options.instanceId)
+      ? await this.getInstanceRaw(options.entityName, options.instanceId)
       : autoCreatePreparedData as EntityInstance | undefined;
 
     const evalContext = this.buildEvalContext(autoCreateEvalInput ?? input, instance, options.entityName);
@@ -2845,7 +2942,7 @@ export class RuntimeEngine {
       }
 
       if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
-        const currentInstance = await this.getInstance(options.entityName, options.instanceId);
+        const currentInstance = await this.getInstanceRaw(options.entityName, options.instanceId);
         // Enrich re-fetched instance with _entity for relationship resolution
         const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
         // Refresh both self/this bindings and spread instance properties into evalContext
@@ -2858,7 +2955,7 @@ export class RuntimeEngine {
     }
 
     if (autoCreatedInstance && options.entityName) {
-      const currentInstance = await this.getInstance(options.entityName, autoCreatedInstance.id);
+      const currentInstance = await this.getInstanceRaw(options.entityName, autoCreatedInstance.id);
       autoCreatedInstance = currentInstance ?? autoCreatedInstance;
       result = autoCreatedInstance;
     }
@@ -3672,7 +3769,7 @@ export class RuntimeEngine {
     const computed = entity.computedProperties.find(c => c.name === propertyName);
     if (!computed) return undefined;
 
-    const instance = await this.getInstance(entityName, instanceId);
+    const instance = await this.getInstanceRaw(entityName, instanceId);
     if (!instance) return undefined;
 
     const cacheKey = `${entityName}:${instanceId}:${propertyName}`;
@@ -4254,7 +4351,7 @@ export class RuntimeEngine {
     }
 
     // Evaluate which stages are required using a minimal context
-    const instance = await this.getInstance(entityName, instanceId);
+    const instance = await this.getInstanceRaw(entityName, instanceId);
     const evalContext = this.buildEvalContext({}, instance, entityName);
 
     const requiredStages: string[] = [];
@@ -4330,7 +4427,7 @@ export class RuntimeEngine {
         ? { id: approver, role: approver }
         : { ...approver };
 
-    const instance = await this.getInstance(entityName, instanceId);
+    const instance = await this.getInstanceRaw(entityName, instanceId);
     const evalContext = this.buildEvalContext({}, instance, entityName);
     Object.assign(evalContext, { user: userContext });
 
