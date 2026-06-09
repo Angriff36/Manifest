@@ -102,6 +102,14 @@ Evidence: conformance fixture `64-aggregate-computed-properties.manifest`.
 ### Date (UTC, timestamp in ms)
 
 - `year(ts)`, `month(ts)` (1–12), `day(ts)`, `hours(ts)`, `minutes(ts)`, `seconds(ts)`
+- `dateOf(ts)` — `"YYYY-MM-DD"` (UTC) for epoch-ms `ts`; non-finite input or a timestamp outside the representable Date range (±8,640,000,000,000,000 ms) returns `null`
+- `timeOf(ts)` — `"HH:MM:SS"` (UTC) for epoch-ms `ts`; non-finite input or a timestamp outside the representable Date range returns `null`
+- `datetimeOf(dateStr, timeStr?)` — epoch ms UTC from `"YYYY-MM-DD"` (+ optional `"HH:MM:SS"`, default midnight). Malformed or non-calendar input returns `null` (never NaN)
+- `addDuration(ts, d)` — `ts + d` (both numbers, ms); non-finite input (non-number, NaN, or Infinity) returns `null`
+- `durationBetween(a, b)` — `b - a` (ms); non-finite input returns `null`
+- `durationDays(n)`, `durationHours(n)`, `durationMinutes(n)`, `durationSeconds(n)` — ms constructors; non-finite input returns `null`
+
+All date builtins are pure and UTC-only.
 
 ### Feature Flags
 

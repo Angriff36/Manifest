@@ -158,6 +158,21 @@ not authoritative for Manifest semantics.
   - `overriddenBy`: User ID who authorized the override (if applicable)
   - `resolved`: Array of `{expression, value}` pairs for debugging
 
+## Date/Time Types
+
+Four primitive type names with fixed runtime representations:
+
+| Type | Representation |
+|---|---|
+| `datetime` | finite number, epoch milliseconds UTC, within ±8,640,000,000,000,000 (the representable Date range) |
+| `duration` | finite number, milliseconds (may be negative) |
+| `date` | string `"YYYY-MM-DD"`, must be a valid calendar date (leap years honored; `"2026-02-30"` invalid) |
+| `time` | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` (no `24:00:00`, no leap seconds) |
+
+**Write-time validation.** On create and update mutations in the reference runtime, properties of these four types are validated after guards, alongside entity constraints. A malformed value produces a blocking constraint outcome with code `E_TYPE_DATE`, `E_TYPE_TIME`, `E_TYPE_DATETIME`, or `E_TYPE_DURATION`, carrying the property name and offending value. `null`/`undefined` always passes this validation (nullability is enforced separately). Validation applies only to these four type names — no behavior change for any existing program.
+
+**Generated defaults.** Code generators emit `""` as the default for non-nullable `date`/`time` properties — an intentionally invalid sentinel; the reference runtime's write-time validation blocks it (generated standalone code performs no date/time validation itself). Generated defaults for `datetime`/`duration` are `0` — a *valid* value (epoch / zero duration), not a sentinel. Deterministic "today" defaults are impossible by design.
+
 ## Stores
 - Stores define persistence targets for entities.
 - A runtime MUST support at least `memory` stores.
