@@ -18,6 +18,7 @@ import {
   JobQueue,
   JobRecord,
 } from './ir';
+import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -1376,6 +1377,22 @@ export class RuntimeEngine {
       minutes: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCMinutes() : ts,
       seconds: (ts: unknown) => typeof ts === 'number' ? new Date(ts).getUTCSeconds() : ts,
 
+      // Date/time primitive builtins (pure, UTC-only).
+      // Convention note: the legacy `year`..`seconds` builtins above pass non-number
+      // input through unchanged; these newer builtins return null on invalid input
+      // (non-number, NaN, or Infinity).
+      dateOf: (ts: unknown) => dateOf(ts),
+      timeOf: (ts: unknown) => timeOf(ts),
+      datetimeOf: (d: unknown, t?: unknown) => datetimeOf(d, t),
+      addDuration: (ts: unknown, d: unknown) =>
+        typeof ts === 'number' && Number.isFinite(ts) && typeof d === 'number' && Number.isFinite(d) ? ts + d : null,
+      durationBetween: (a: unknown, b: unknown) =>
+        typeof a === 'number' && Number.isFinite(a) && typeof b === 'number' && Number.isFinite(b) ? b - a : null,
+      durationDays: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 86400000 : null,
+      durationHours: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 3600000 : null,
+      durationMinutes: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 60000 : null,
+      durationSeconds: (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? n * 1000 : null,
+
       // Feature flag builtin
       flag: (name: unknown) => {
         if (typeof name !== 'string') return false;
@@ -1743,12 +1760,60 @@ export class RuntimeEngine {
     return this.persistPreparedCreate(entityName, entity, mergedData);
   }
 
+  /** Date/time primitive write-time validation (docs/spec/semantics.md, Date/Time Types). */
+  private validateDateTimeTypes(
+    entity: IREntity,
+    data: Record<string, unknown>
+  ): ConstraintOutcome[] {
+    const outcomes: ConstraintOutcome[] = [];
+    for (const prop of entity.properties) {
+      const t = prop.type?.name;
+      if (t !== 'date' && t !== 'time' && t !== 'datetime' && t !== 'duration') continue;
+      if (!(prop.name in data)) continue;
+      const value = data[prop.name];
+      if (value === null || value === undefined) continue;
+      let ok = true;
+      let code = '';
+      if (t === 'date') {
+        ok = isValidDateString(value);
+        code = 'E_TYPE_DATE';
+      } else if (t === 'time') {
+        ok = isValidTimeString(value);
+        code = 'E_TYPE_TIME';
+      } else if (t === 'datetime') {
+        // Must be within the representable Date range (±8,640,000,000,000,000 ms).
+        ok = typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 8.64e15;
+        code = 'E_TYPE_DATETIME';
+      } else {
+        ok = typeof value === 'number' && Number.isFinite(value);
+        code = 'E_TYPE_DURATION';
+      }
+      if (!ok) {
+        const shown = typeof value === 'number' ? String(value) : JSON.stringify(value) ?? String(value);
+        const message = `Property "${prop.name}" expects ${t}; got ${shown}`;
+        outcomes.push({
+          code,
+          constraintName: prop.name,
+          severity: 'block',
+          passed: false,
+          formatted: message,
+          message,
+          details: { property: prop.name, expectedType: t, value },
+        });
+      }
+    }
+    return outcomes;
+  }
+
   private async persistPreparedCreate(
     entityName: string,
     entity: IREntity,
     mergedData: Record<string, unknown>
   ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
-    const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+    const constraintOutcomes = [
+      ...this.validateDateTimeTypes(entity, mergedData),
+      ...await this.validateConstraints(entity, mergedData),
+    ];
     if (!this.reportConstraintOutcomes(constraintOutcomes)) {
       return { constraintOutcomes };
     }
@@ -1841,8 +1906,13 @@ export class RuntimeEngine {
         }
       }
 
-      // Validate entity constraints
-      const constraintOutcomes = await this.validateConstraints(entity, mergedData);
+      // Validate entity constraints.
+      // Date/time type validation runs against the patch only, so previously
+      // stored values are not re-validated on unrelated updates.
+      const constraintOutcomes = [
+        ...this.validateDateTimeTypes(entity, data),
+        ...await this.validateConstraints(entity, mergedData),
+      ];
 
       // Only block on severity='block' constraints that failed
       const blockingFailures = constraintOutcomes.filter(
