@@ -1,0 +1,28 @@
+// Conformance: property masking — masked modifier strategies, unmask when,
+// private-wins, null passthrough (docs/spec/semantics.md, "Property Masking").
+// IR locks the compiler invariant: 'masked' ∈ modifiers ⇔ maskStrategy present
+// (bare masked ⇒ redact), with unmaskWhen compiled via the expression pipeline.
+// Runtime cases exercise the masked read path through CommandTestCase
+// expectedInstanceState (the harness reads it back via getInstance).
+// CreateTestCase asserts the createInstance result stays UNMASKED — masking is
+// scoped to getInstance/getAllInstances, not to command/create results.
+// Regression: `property masked: string` stays a valid plain property NAME.
+
+entity Patient {
+  property required id: string
+  property masked(partial, 0, 4) ssn: string
+  property masked(email) contact: string unmask when user.role == "admin"
+  property masked(phone) phone: string
+  property masked(last4) card: string
+  property masked notes: string
+  property masked(redact) diagnosis: string?
+  property private masked(email) shadowEmail: string
+  property masked: string
+  property name: string
+
+  command touch() {
+    mutate name = "touched"
+  }
+}
+
+store Patient in memory

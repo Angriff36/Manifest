@@ -1,0 +1,201 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "5c6bd61d711f7d3dcb2fb03a5e5e7542e135583f41c488e0bdc2c110fc996adc",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Patient",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "ssn",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "partial",
+            "params": [
+              0,
+              4
+            ]
+          }
+        },
+        {
+          "name": "contact",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "email",
+            "unmaskWhen": {
+              "kind": "binary",
+              "operator": "==",
+              "left": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "user"
+                },
+                "property": "role"
+              },
+              "right": {
+                "kind": "literal",
+                "value": {
+                  "kind": "string",
+                  "value": "admin"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "phone",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "phone"
+          }
+        },
+        {
+          "name": "card",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "last4"
+          }
+        },
+        {
+          "name": "notes",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "redact"
+          }
+        },
+        {
+          "name": "diagnosis",
+          "type": {
+            "name": "string",
+            "nullable": true
+          },
+          "modifiers": [
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "redact"
+          }
+        },
+        {
+          "name": "shadowEmail",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "private",
+            "masked"
+          ],
+          "maskStrategy": {
+            "type": "email"
+          }
+        },
+        {
+          "name": "masked",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "touch"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Patient",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "touch",
+      "entity": "Patient",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "touched"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

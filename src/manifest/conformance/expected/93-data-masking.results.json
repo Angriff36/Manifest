@@ -1,0 +1,169 @@
+{
+  "testCases": [
+    {
+      "name": "createInstance result is unmasked (masking is scoped to getInstance/getAllInstances)",
+      "createInstance": {
+        "entity": "Patient",
+        "data": {
+          "id": "p1",
+          "ssn": "123-45-6789",
+          "contact": "alice@example.com",
+          "phone": "555-867-5309",
+          "card": "4111111111111111",
+          "notes": "sensitive notes",
+          "diagnosis": null,
+          "shadowEmail": "shadow@example.com",
+          "masked": "plain-value",
+          "name": "Alice"
+        }
+      },
+      "expectedInstance": {
+        "id": "p1",
+        "ssn": "123-45-6789",
+        "contact": "alice@example.com",
+        "phone": "555-867-5309",
+        "card": "4111111111111111",
+        "notes": "sensitive notes",
+        "diagnosis": null,
+        "shadowEmail": "shadow@example.com",
+        "masked": "plain-value",
+        "name": "Alice"
+      }
+    },
+    {
+      "name": "reads mask every strategy with no user in context; private wins; null passes through",
+      "setup": {
+        "createInstance": {
+          "entity": "Patient",
+          "data": {
+            "id": "p1",
+            "ssn": "123-45-6789",
+            "contact": "alice@example.com",
+            "phone": "555-867-5309",
+            "card": "4111111111111111",
+            "notes": "sensitive notes",
+            "diagnosis": null,
+            "shadowEmail": "shadow@example.com",
+            "masked": "plain-value",
+            "name": "Alice"
+          }
+        }
+      },
+      "command": {
+        "name": "touch",
+        "entityName": "Patient",
+        "instanceId": "p1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "p1",
+        "ssn": "*******6789",
+        "contact": "a***@example.com",
+        "phone": "***-***-5309",
+        "card": "****1111",
+        "notes": "***",
+        "diagnosis": null,
+        "masked": "plain-value",
+        "name": "touched"
+      }
+    },
+    {
+      "name": "unmask when user.role == admin returns the real value; other masks unaffected",
+      "context": {
+        "user": {
+          "id": "admin-1",
+          "role": "admin"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Patient",
+          "data": {
+            "id": "p1",
+            "ssn": "123-45-6789",
+            "contact": "alice@example.com",
+            "phone": "555-867-5309",
+            "card": "4111111111111111",
+            "notes": "sensitive notes",
+            "diagnosis": null,
+            "shadowEmail": "shadow@example.com",
+            "masked": "plain-value",
+            "name": "Alice"
+          }
+        }
+      },
+      "command": {
+        "name": "touch",
+        "entityName": "Patient",
+        "instanceId": "p1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "p1",
+        "ssn": "*******6789",
+        "contact": "alice@example.com",
+        "phone": "***-***-5309",
+        "card": "****1111",
+        "notes": "***",
+        "diagnosis": null,
+        "masked": "plain-value",
+        "name": "touched"
+      }
+    },
+    {
+      "name": "unmask when stays masked for a non-admin user (secure by default)",
+      "context": {
+        "user": {
+          "id": "viewer-1",
+          "role": "viewer"
+        }
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Patient",
+          "data": {
+            "id": "p1",
+            "ssn": "123-45-6789",
+            "contact": "alice@example.com",
+            "phone": "555-867-5309",
+            "card": "4111111111111111",
+            "notes": "sensitive notes",
+            "diagnosis": null,
+            "shadowEmail": "shadow@example.com",
+            "masked": "plain-value",
+            "name": "Alice"
+          }
+        }
+      },
+      "command": {
+        "name": "touch",
+        "entityName": "Patient",
+        "instanceId": "p1",
+        "input": {}
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "p1",
+        "ssn": "*******6789",
+        "contact": "a***@example.com",
+        "phone": "***-***-5309",
+        "card": "****1111",
+        "notes": "***",
+        "diagnosis": null,
+        "masked": "plain-value",
+        "name": "touched"
+      }
+    }
+  ]
+}
