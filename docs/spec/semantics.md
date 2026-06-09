@@ -173,6 +173,52 @@ Four primitive type names with fixed runtime representations:
 
 **Generated defaults.** Code generators emit `""` as the default for non-nullable `date`/`time` properties — an intentionally invalid sentinel; the reference runtime's write-time validation blocks it (generated standalone code performs no date/time validation itself). Generated defaults for `datetime`/`duration` are `0` — a *valid* value (epoch / zero duration), not a sentinel. Deterministic "today" defaults are impossible by design.
 
+## Property Masking
+
+Properties MAY carry the `masked` modifier, which transforms sensitive values **at read time**. The strategy is explicit in source; modifiers precede the property name:
+
+```manifest
+property masked(partial, 0, 4) ssn: string
+property masked(email) contact: string unmask when user.role == "admin"
+property masked notes: string            // bare = redact
+```
+
+### Strategies
+
+The masked output is always a string; the input value is converted with `String(value)` before masking. `null`/`undefined` values pass through unmasked (nothing to leak).
+
+| Strategy | Transform |
+|---|---|
+| `redact` (default for bare `masked`) | `"***"` |
+| `partial(keepStart, keepEnd)` | keep first `keepStart` and last `keepEnd` characters; every middle character replaced by `*`. If `keepStart + keepEnd >= length`, the entire string is replaced by `*` per character. Written flat: `masked(partial, 0, 4)`. |
+| `email` | first character of the local part + `***@` + everything after the first `@`. If the string contains no `@` or the `@` is the first character, the value is fully redacted to `"***"`. |
+| `phone` | `***-***-` + last 4 digits of the digit-only form. If the value contains fewer than 4 digits, it is fully redacted to `"***"`. |
+| `last4` | `****` + last 4 characters. If the string has 4 or fewer characters, the result is `"****"`. |
+
+Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"alice@example.com"` → `"a***@example.com"`; `phone` on `"555-867-5309"` → `"***-***-5309"`; `last4` on `"4111111111111111"` → `"****1111"`.
+
+### Compile-time rules
+
+- `masked` is a contextual identifier, NOT a reserved word: `property masked: string` remains a valid plain property declaration (one-token lookahead — if the token after `masked` is `:`, it is the property name).
+- Unknown strategy or wrong parameter arity is a compile error. `partial` requires exactly two non-negative integer parameters; `redact`, `email`, `phone`, and `last4` take none.
+- An `unmask when <expr>` clause MAY appear at the end of the property declaration; it is a compile error without the `masked` modifier.
+- **IR invariant**: `'masked' ∈ modifiers` ⇔ `maskStrategy` present on the IRProperty. Bare `masked` compiles to `maskStrategy: { type: "redact" }`.
+
+### Runtime semantics
+
+- Masking is applied in `getInstance` / `getAllInstances`, **after** `encrypted` decryption (masking operates on plaintext) and after tenant filtering, before returning data.
+- If a property is both `private` and `masked`, `private` wins: the property is excluded entirely from `getInstance` / `getAllInstances` results.
+- `unmaskWhen` bindings are the spec-guaranteed bindings only: `self.*` / `this.*` (the instance being read, real values) and `user.*` / `context.*` from the engine's runtime context. With no user in context, `user.*` resolves undefined → falsy → masked.
+- **Secure by default; diagnostics explain, never compensate**: if `unmaskWhen` evaluates falsy, the value stays masked. If `unmaskWhen` *throws*, the value stays masked AND the runtime surfaces a diagnostic carrying the expression and resolved values — the diagnostic never changes the masked outcome.
+- Masking is a read-projection transform only: guards, constraints, computed properties, relationship resolution in expressions, and command actions always see real values. Identical IR + identical runtime context still produce identical execution results.
+
+### Scope boundaries (v2.3.0 limitations, not guarantees)
+
+1. Generated Next.js read routes query the store directly and bypass the engine — they are NOT masked in this release (follow-up feature).
+2. Computed properties derived from masked properties return computed-from-real values unmasked (`emailCopy: email` bypasses masking). Mark the computed property's source data appropriately; do not assume derivation preserves masking.
+3. Event payloads contain whatever commands explicitly emit — author's responsibility.
+4. Write-back hazard: the runtime does not detect a masked placeholder (e.g. `"***"`) being round-tripped into an update. Clients must not write masked reads back.
+
 ## Stores
 - Stores define persistence targets for entities.
 - A runtime MUST support at least `memory` stores.
