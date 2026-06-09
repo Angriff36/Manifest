@@ -292,5 +292,8 @@ export const RESERVED_BUILTIN_NAMES: ReadonlySet<string> = new Set([
   'abs', 'round', 'floor', 'ceil', 'min', 'max', 'between',
   'sum', 'avg', 'min_of', 'max_of', 'count_of', 'filter', 'map',
   'year', 'month', 'day', 'hours', 'minutes', 'seconds',
+  'dateOf', 'timeOf', 'datetimeOf', 'addDuration', 'durationBetween',
+  'durationDays', 'durationHours', 'durationMinutes', 'durationSeconds',
   'flag',
+  'hasPermission', 'roleAllows',
 ]);

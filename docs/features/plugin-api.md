@@ -60,7 +60,7 @@ Extension-point interfaces (from `plugin-api.ts`):
 - `CliCommandPlugin`: `{ name: string; register(program: CliProgramLike): void }`.
 - `ManifestPlugin`: `{ manifest, projections?, storeAdapters?, auditSinks?, builtins?, cliCommands?, onLoad? }`.
 
-Constants: `PLUGIN_API_VERSION = '1'`. `BUILTIN_STORE_TARGETS` = `memory`, `localStorage`, `postgres`, `supabase`, `durable`, `mongodb`. `RESERVED_BUILTIN_NAMES` = `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`, `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`, `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `flag`.
+Constants: `PLUGIN_API_VERSION = '1'`. `BUILTIN_STORE_TARGETS` = `memory`, `localStorage`, `postgres`, `supabase`, `durable`, `mongodb`. `RESERVED_BUILTIN_NAMES` = `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`, `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`, `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`, `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `flag`, `hasPermission`, `roleAllows`.
 
 ## Notes & limitations
 

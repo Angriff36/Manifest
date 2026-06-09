@@ -22,8 +22,8 @@ describe('plugin-api', () => {
   });
 
   describe('RESERVED_BUILTIN_NAMES', () => {
-    it('contains all 36 builtins', () => {
-      expect(RESERVED_BUILTIN_NAMES.size).toBe(36);
+    it('contains all 47 builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.size).toBe(47);
     });
 
     it('includes core builtins', () => {
@@ -72,8 +72,25 @@ describe('plugin-api', () => {
       expect(RESERVED_BUILTIN_NAMES.has('seconds')).toBe(true);
     });
 
+    it('includes date/time primitive builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.has('dateOf')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('timeOf')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('datetimeOf')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('addDuration')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('durationBetween')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('durationDays')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('durationHours')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('durationMinutes')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('durationSeconds')).toBe(true);
+    });
+
     it('includes feature flag builtin', () => {
       expect(RESERVED_BUILTIN_NAMES.has('flag')).toBe(true);
+    });
+
+    it('includes role hierarchy builtins', () => {
+      expect(RESERVED_BUILTIN_NAMES.has('hasPermission')).toBe(true);
+      expect(RESERVED_BUILTIN_NAMES.has('roleAllows')).toBe(true);
     });
 
     it('is a frozen set (immutable)', () => {
