@@ -36,7 +36,7 @@ import {
   numericRangeToZodChain,
   lengthConstraintToZodChain,
   patternConstraintToZodChain,
-} from '../../constraint-analysis';
+} from '../../constraint-analysis.js';
 
 // ============================================================================
 // Type mapping
@@ -57,6 +57,8 @@ const TYPE_MAP: Record<string, string> = {
   bigint: 'z.bigint()',
   date: 'z.coerce.date()',
   datetime: 'z.coerce.date()',
+  time: 'z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d$/)',
+  duration: 'z.number()',
   uuid: 'z.string().uuid()',
   email: 'z.string().email()',
   url: 'z.string().url()',

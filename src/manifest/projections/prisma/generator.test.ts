@@ -2152,3 +2152,28 @@ describe('PrismaProjection — naming convention (auto casing)', () => {
     expect(withoutOption).not.toMatch(/@@map/);
   });
 });
+
+describe('PrismaProjection — date/time primitive types', () => {
+  it('maps time → DateTime and duration → Float', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Gadget', {
+        properties: [
+          { name: 'openAt', type: { name: 'time', nullable: false }, modifiers: ['required'] },
+          { name: 'span', type: { name: 'duration', nullable: false }, modifiers: ['required'] },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Gadget'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+
+    expect(result.artifacts).toHaveLength(1);
+    const code = result.artifacts[0].code;
+    expect(code).toMatch(/^\s+openAt DateTime$/m);
+    expect(code).toMatch(/^\s+span Float$/m);
+
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs).toHaveLength(0);
+  });
+});

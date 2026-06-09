@@ -782,4 +782,29 @@ describe('ZodProjection', () => {
       expect(firstCode(result1)).toBe(firstCode(result2));
     });
   });
+
+  // ========================================================================
+  // Date/time primitive types
+  // ========================================================================
+
+  describe('date/time primitive types', () => {
+    it('maps time → z.string().regex(...) and duration → z.number()', () => {
+      const ir = makeMinimalIR({
+        entities: [bareEntity('Gadget', [
+          { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'openAt', type: { name: 'time', nullable: false }, modifiers: ['required'] },
+          { name: 'span', type: { name: 'duration', nullable: false }, modifiers: ['required'] },
+        ])],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity' });
+      const code = firstCode(result);
+
+      expect(code).toContain('openAt: z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d$/),');
+      expect(code).toContain('span: z.number(),');
+
+      const warnings = result.diagnostics.filter(d => d.code === 'ZOD_UNKNOWN_TYPE');
+      expect(warnings).toHaveLength(0);
+    });
+  });
 });

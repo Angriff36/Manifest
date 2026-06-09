@@ -45,6 +45,8 @@ export const DEFAULT_TYPE_MAPPING: Readonly<Record<string, string>> = Object.fre
   // Temporal.
   date: 'DateTime',
   datetime: 'DateTime',
+  time: 'DateTime',
+  duration: 'Float',
 
   // Structured.
   json: 'Json',

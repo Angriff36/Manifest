@@ -537,7 +537,7 @@ export class StandaloneGenerator {
   }
 
   private tsType(t: { name: string; generic?: { name: string; nullable: boolean }; nullable: boolean }): string {
-    const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'unknown', void: 'void', list: 'Array', map: 'Map' };
+    const m: Record<string, string> = { string: 'string', number: 'number', boolean: 'boolean', any: 'unknown', void: 'void', list: 'Array', map: 'Map', date: 'string', time: 'string', datetime: 'number', duration: 'number' };
     let r = m[t.name] || t.name;
     if (t.generic) r += `<${this.tsType(t.generic)}>`;
     if (t.nullable) r += ' | null';
@@ -546,7 +546,7 @@ export class StandaloneGenerator {
 
   private defVal(t: { name: string; nullable: boolean }): string {
     if (t.nullable) return 'null';
-    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', any: 'null' };
+    const d: Record<string, string> = { string: '""', number: '0', boolean: 'false', list: '[]', map: 'new Map()', any: 'null', date: '""', time: '""', datetime: '0', duration: '0' };
     return d[t.name] || 'null';
   }
 

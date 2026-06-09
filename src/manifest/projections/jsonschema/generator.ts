@@ -28,7 +28,7 @@ import type {
   ProjectionDiagnostic,
   ProjectionArtifact,
 } from '../interface';
-import { analyzeConstraints } from '../../constraint-analysis';
+import { analyzeConstraints } from '../../constraint-analysis.js';
 import type { JsonSchemaProjectionOptions } from './types';
 
 // ============================================================================
@@ -146,6 +146,8 @@ function irTypeToJsonSchema(
     bool:     { type: 'boolean' },
     date:     { type: 'string', format: 'date' },
     datetime: { type: 'string', format: 'date-time' },
+    time:     { type: 'string', format: 'time' },
+    duration: { type: 'number' },
     uuid:     { type: 'string', format: 'uuid' },
     email:    { type: 'string', format: 'email' },
     url:      { type: 'string', format: 'uri' },
