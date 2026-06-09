@@ -108,6 +108,16 @@ export interface PropertyNode extends ASTNode {
   dataType: TypeNode;
   defaultValue?: ExpressionNode;
   modifiers: string[];
+  /** Masking strategy from `masked(strategy, ...params)`; absent for bare `masked` (defaults to redact at IR level) */
+  maskStrategy?: PropertyMaskStrategyNode;
+  /** Expression from the `unmask when <expr>` clause */
+  unmaskWhen?: ExpressionNode;
+}
+
+export interface PropertyMaskStrategyNode {
+  /** Strategy name as written in source; validated by the IR compiler */
+  type: string;
+  params?: number[];
 }
 
 export interface ComputedPropertyCache {

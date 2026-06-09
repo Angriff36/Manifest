@@ -6,7 +6,7 @@ import {
   CommandNode, ParameterNode, PolicyNode, StoreNode, OutboxEventNode, ModuleNode,
   ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
   ValueObjectNode, TenantNode, ReactionNode, ReactionParamMapping, ApprovalNode, ApprovalStageNode,
-  UseNode, RoleNode, RolePermissionNode, SagaNode, SagaStepNode,
+  UseNode, RoleNode, RolePermissionNode, SagaNode, SagaStepNode, PropertyMaskStrategyNode,
   WebhookNode, WebhookSignatureNode, WebhookParamMapping
 } from './types';
 
@@ -371,15 +371,85 @@ export class Parser {
   private parseProperty(): PropertyNode {
     this.consume('KEYWORD', 'property');
     const modifiers: string[] = [];
-    while (['required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'searchable', 'encrypted'].includes(this.current()?.value || '')) {
-      modifiers.push(this.advance().value);
+    let maskStrategy: PropertyMaskStrategyNode | undefined;
+    for (;;) {
+      const cur = this.current();
+      if (cur && ['required', 'unique', 'indexed', 'private', 'readonly', 'optional', 'searchable', 'encrypted'].includes(cur.value || '')) {
+        modifiers.push(this.advance().value);
+        continue;
+      }
+      // Contextual `masked` modifier (not a reserved word). One-token lookahead:
+      // if the next token is ':', `masked` is the property NAME (`property masked: string`).
+      if (cur && cur.type === 'IDENTIFIER' && cur.value === 'masked') {
+        const next = this.tokens[this.pos + 1];
+        if (next && next.type === 'OPERATOR' && next.value === ':') break;
+        this.advance(); // consume 'masked'
+        modifiers.push('masked');
+        if (this.check('PUNCTUATION', '(')) maskStrategy = this.parseMaskStrategyArgs();
+        continue;
+      }
+      break;
     }
     const name = this.consumeIdentifier().value;
     this.consume('OPERATOR', ':');
     const dataType = this.parseType();
     let defaultValue: ExpressionNode | undefined;
     if (this.check('OPERATOR', '=')) { this.advance(); defaultValue = this.parseExpr(); }
-    return { type: 'Property', name, dataType, defaultValue, modifiers };
+    // Optional `unmask when <expr>` clause; compile error without the masked modifier.
+    let unmaskWhen: ExpressionNode | undefined;
+    if (this.check('IDENTIFIER', 'unmask')) {
+      const unmaskPos = this.current()?.position;
+      this.advance(); // consume 'unmask'
+      this.consume('KEYWORD', 'when');
+      unmaskWhen = this.parseExpr();
+      if (!modifiers.includes('masked')) {
+        this.errors.push({
+          message: `'unmask when' requires the 'masked' modifier on property '${name}'`,
+          position: unmaskPos,
+          severity: 'error'
+        });
+        unmaskWhen = undefined;
+      }
+    }
+    return {
+      type: 'Property', name, dataType, defaultValue, modifiers,
+      ...(maskStrategy ? { maskStrategy } : {}),
+      ...(unmaskWhen ? { unmaskWhen } : {}),
+    };
+  }
+
+  /** Parses the parenthesized arg list of `masked(strategy, ...numericParams)`. */
+  private parseMaskStrategyArgs(): PropertyMaskStrategyNode {
+    this.consume('PUNCTUATION', '(');
+    let type = 'redact';
+    const strategyTok = this.current();
+    if (strategyTok && (strategyTok.type === 'IDENTIFIER' || strategyTok.type === 'KEYWORD')) {
+      type = this.advance().value;
+    } else {
+      this.errors.push({
+        message: "Expected a masking strategy name after 'masked('",
+        position: strategyTok?.position,
+        severity: 'error'
+      });
+    }
+    const params: number[] = [];
+    while (this.check('PUNCTUATION', ',')) {
+      this.advance(); // consume ','
+      this.skipNL();
+      const tok = this.current();
+      if (tok && tok.type === 'NUMBER') {
+        params.push(parseFloat(this.advance().value));
+      } else {
+        this.errors.push({
+          message: `Masking strategy parameters must be numeric literals, got '${tok?.value ?? 'EOF'}'`,
+          position: tok?.position,
+          severity: 'error'
+        });
+        if (tok && tok.type !== 'PUNCTUATION') this.advance();
+      }
+    }
+    this.consume('PUNCTUATION', ')');
+    return params.length > 0 ? { type, params } : { type };
   }
 
   private parseTransition(): TransitionNode {

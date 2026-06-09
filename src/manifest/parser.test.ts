@@ -220,6 +220,115 @@ entity Post {
     });
   });
 
+  describe('Property Masking Parsing', () => {
+    it('should parse masked modifier with strategy', () => {
+      const source = `
+entity User {
+  property masked(email) contact: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.name).toBe('contact');
+      expect(prop.modifiers).toContain('masked');
+      expect(prop.maskStrategy).toEqual({ type: 'email' });
+      expect(prop.unmaskWhen).toBeUndefined();
+    });
+
+    it('should parse bare masked modifier (no strategy args)', () => {
+      const source = `
+entity User {
+  property masked notes: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.name).toBe('notes');
+      expect(prop.modifiers).toContain('masked');
+      expect(prop.maskStrategy).toBeUndefined();
+    });
+
+    it('should parse masked with flat numeric params', () => {
+      const source = `
+entity User {
+  property masked(partial, 0, 4) ssn: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.name).toBe('ssn');
+      expect(prop.modifiers).toContain('masked');
+      expect(prop.maskStrategy).toEqual({ type: 'partial', params: [0, 4] });
+    });
+
+    it('should parse unmask when clause', () => {
+      const source = `
+entity User {
+  property masked(email) contact: string unmask when user.role == "admin"
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.modifiers).toContain('masked');
+      expect(prop.unmaskWhen).toBeDefined();
+      expect((prop.unmaskWhen as BinaryOpNode).operator).toBe('==');
+    });
+
+    it('should parse masked alongside other modifiers and defaults', () => {
+      const source = `
+entity User {
+  property required masked notes: string = "n/a" unmask when user.role == "admin"
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.modifiers).toEqual(['required', 'masked']);
+      expect(prop.defaultValue).toEqual({ type: 'Literal', value: 'n/a', dataType: 'string' });
+      expect(prop.unmaskWhen).toBeDefined();
+    });
+
+    it('regression: property named masked still parses as plain property', () => {
+      const source = `
+entity User {
+  property masked: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const prop = result.program.entities[0].properties[0];
+      expect(prop.name).toBe('masked');
+      expect(prop.modifiers).toEqual([]);
+      expect(prop.maskStrategy).toBeUndefined();
+    });
+
+    it('should error on unmask when without masked modifier', () => {
+      const source = `
+entity User {
+  property contact: string unmask when user.role == "admin"
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain("'unmask when' requires the 'masked' modifier");
+    });
+
+    it('should error on non-numeric strategy parameter', () => {
+      const source = `
+entity User {
+  property masked(partial, x, 4) ssn: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0].message).toContain('Masking strategy parameters must be numeric literals');
+    });
+  });
+
   describe('Constraint Parsing', () => {
     it('should parse inline constraint', () => {
       const source = `
