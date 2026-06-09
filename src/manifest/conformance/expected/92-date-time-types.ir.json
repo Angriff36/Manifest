@@ -1,0 +1,242 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "42c4fb825ec0b9be8abdb630be0e603e104a711594684e09df3e9e69dc6651f8",
+    "compilerVersion": "1.0.0",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [
+    {
+      "name": "Scheduling",
+      "entities": [
+        "Meeting"
+      ],
+      "enums": [],
+      "commands": [
+        "schedule"
+      ],
+      "stores": [
+        "Meeting"
+      ],
+      "events": [
+        "MeetingScheduled"
+      ],
+      "policies": []
+    }
+  ],
+  "values": [],
+  "entities": [
+    {
+      "name": "Meeting",
+      "module": "Scheduling",
+      "properties": [
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "day",
+          "type": {
+            "name": "date",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "startsAt",
+          "type": {
+            "name": "time",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "due",
+          "type": {
+            "name": "datetime",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "length",
+          "type": {
+            "name": "duration",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "date",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "time",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "dayLabel",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "dateOf"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "due"
+              }
+            ]
+          },
+          "dependencies": [
+            "dateOf",
+            "due"
+          ]
+        },
+        {
+          "name": "endsAt",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "addDuration"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "due"
+              },
+              {
+                "kind": "identifier",
+                "name": "length"
+              }
+            ]
+          },
+          "dependencies": [
+            "addDuration",
+            "due",
+            "length"
+          ]
+        }
+      ],
+      "relationships": [],
+      "commands": [
+        "schedule"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Meeting",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "MeetingScheduled",
+      "channel": "scheduling.meeting.scheduled",
+      "payload": {
+        "name": "unknown",
+        "nullable": false
+      }
+    }
+  ],
+  "commands": [
+    {
+      "name": "schedule",
+      "module": "Scheduling",
+      "entity": "Meeting",
+      "parameters": [
+        {
+          "name": "newDue",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">=",
+          "left": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "durationBetween"
+            },
+            "args": [
+              {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "due"
+              },
+              {
+                "kind": "identifier",
+                "name": "newDue"
+              }
+            ]
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "due",
+          "expression": {
+            "kind": "identifier",
+            "name": "newDue"
+          }
+        }
+      ],
+      "emits": [
+        "MeetingScheduled"
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

@@ -1,0 +1,29 @@
+// Conformance: date/time primitive types - representations, builtins, write-time validation.
+// Regression: "date" and "time" remain valid property NAMES (not reserved words).
+// The "length" property name deliberately shadow-tests against the builtin namespace:
+// only call callees resolve to builtins, so addDuration(due, length) reads the property.
+
+module Scheduling {
+  entity Meeting {
+    property required title: string
+    property day: date
+    property startsAt: time
+    property due: datetime
+    property length: duration
+    property date: string
+    property time: number
+
+    computed dayLabel: string = dateOf(due)
+    computed endsAt: number = addDuration(due, length)
+
+    command schedule(newDue: number) {
+      guard durationBetween(self.due, newDue) >= 0
+      mutate due = newDue
+      emit MeetingScheduled
+    }
+  }
+
+  store Meeting in memory
+
+  event MeetingScheduled: "scheduling.meeting.scheduled"
+}

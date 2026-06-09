@@ -1,0 +1,124 @@
+{
+  "testCases": [
+    {
+      "name": "create accepts valid date/time/datetime/duration values plus date/time-named properties",
+      "createInstance": {
+        "entity": "Meeting",
+        "data": {
+          "id": "meeting-1",
+          "title": "Standup",
+          "day": "2026-06-09",
+          "startsAt": "09:30:00",
+          "due": 1000000000000,
+          "length": 3600000,
+          "date": "name regression",
+          "time": 42
+        }
+      },
+      "expectedInstance": {
+        "id": "meeting-1",
+        "title": "Standup",
+        "day": "2026-06-09",
+        "startsAt": "09:30:00",
+        "due": 1000000000000,
+        "length": 3600000,
+        "date": "name regression",
+        "time": 42
+      }
+    },
+    {
+      "name": "dayLabel computes dateOf(due) as YYYY-MM-DD string",
+      "setup": {
+        "createInstance": {
+          "entity": "Meeting",
+          "data": {
+            "id": "meeting-2",
+            "title": "Planning",
+            "day": "2026-06-09",
+            "startsAt": "09:30:00",
+            "due": 1000000000000,
+            "length": 3600000,
+            "date": "name regression",
+            "time": 42
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Meeting",
+        "instanceId": "meeting-2",
+        "property": "dayLabel"
+      },
+      "expectedValue": "2001-09-09"
+    },
+    {
+      "name": "endsAt computes addDuration(due, length) as epoch milliseconds",
+      "setup": {
+        "createInstance": {
+          "entity": "Meeting",
+          "data": {
+            "id": "meeting-3",
+            "title": "Retro",
+            "day": "2026-06-09",
+            "startsAt": "09:30:00",
+            "due": 1000000000000,
+            "length": 3600000,
+            "date": "name regression",
+            "time": 42
+          }
+        }
+      },
+      "computedProperty": {
+        "entity": "Meeting",
+        "instanceId": "meeting-3",
+        "property": "endsAt"
+      },
+      "expectedValue": 1000003600000
+    },
+    {
+      "name": "schedule mutates due when durationBetween guard passes",
+      "setup": {
+        "createInstance": {
+          "entity": "Meeting",
+          "data": {
+            "id": "meeting-4",
+            "title": "Sync",
+            "day": "2026-06-09",
+            "startsAt": "09:30:00",
+            "due": 1000000000000,
+            "length": 3600000,
+            "date": "name regression",
+            "time": 42
+          }
+        }
+      },
+      "command": {
+        "name": "schedule",
+        "entityName": "Meeting",
+        "instanceId": "meeting-4",
+        "input": { "newDue": 1000003600000 }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": 1000003600000,
+        "emittedEvents": [
+          {
+            "name": "MeetingScheduled",
+            "channel": "scheduling.meeting.scheduled",
+            "payload": { "newDue": 1000003600000, "result": 1000003600000 },
+            "timestamp": 1000000000000
+          }
+        ]
+      },
+      "expectedInstanceState": {
+        "id": "meeting-4",
+        "title": "Sync",
+        "day": "2026-06-09",
+        "startsAt": "09:30:00",
+        "due": 1000003600000,
+        "length": 3600000,
+        "date": "name regression",
+        "time": 42
+      }
+    }
+  ]
+}
