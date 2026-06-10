@@ -4155,6 +4155,22 @@ export class RuntimeEngine {
     };
   }
 
+  /**
+   * Subscribe to events for a single entity (docs/spec/semantics.md,
+   * "Realtime Entities"). Convenience over onEvent: the listener receives
+   * only events whose `subject.entity === entityName`. Events WITHOUT a
+   * subject entity are NOT delivered — use onEvent for the unfiltered
+   * firehose. Returns an unsubscribe function. Exists regardless of any
+   * entity's `realtime` flag (the flag is a projection hint only).
+   */
+  subscribe(entityName: string, listener: EventListener): () => void {
+    return this.onEvent((event) => {
+      if (event.subject?.entity === entityName) {
+        listener(event);
+      }
+    });
+  }
+
   private notifyListeners(event: EmittedEvent): void {
     for (const listener of this.eventListeners) {
       try {
