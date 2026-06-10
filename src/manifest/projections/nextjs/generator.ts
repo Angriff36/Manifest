@@ -164,6 +164,24 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
   };
 }
 
+/**
+ * Import path for the generated shared-runtime accessor module
+ * (nextjs.sharedRuntime surface, emitted at src/lib/manifest-shared-runtime.ts).
+ * Realtime SSE requires command execution and subscriptions to share ONE
+ * engine instance, so this is a fixed convention rather than an option.
+ */
+const SHARED_RUNTIME_IMPORT_PATH = '@/lib/manifest-shared-runtime';
+
+/**
+ * True when any entity in the IR is flagged `realtime`. Realtime is a
+ * projection hint only (docs/spec/semantics.md, "Realtime Entities"): when
+ * present, SSE surfaces are emitted and inline command surfaces switch to
+ * the shared singleton engine so subscriptions can observe command events.
+ */
+function hasRealtimeEntities(ir: IR): boolean {
+  return ir.entities.some(e => e.realtime === true);
+}
+
 function toLowerCamelCase(value: string): string {
   if (!value) return value;
   return value[0].toLowerCase() + value.slice(1);
@@ -420,7 +438,7 @@ function generateEntityTypes(entity: IREntity): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -546,7 +564,7 @@ export class NextJsProjection implements ProjectionTarget {
             }],
           };
         }
-        const dispatcherResult = this._dispatcher(options);
+        const dispatcherResult = this._dispatcher(ir, options);
         if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
         }
@@ -561,6 +579,67 @@ export class NextJsProjection implements ProjectionTarget {
             code: dispatcherResult.code,
           }],
           diagnostics: dispatcherResult.diagnostics,
+        };
+      }
+
+      case 'nextjs.subscribe': {
+        if (!request.entity) {
+          return {
+            artifacts: [],
+            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.subscribe" requires entity' }],
+          };
+        }
+        const subscribeOpts = normalizeOptions(options);
+        const subscribeResult = this._subscribe(ir, request.entity, options);
+        if (subscribeResult.diagnostics.some(d => d.severity === 'error') || !subscribeResult.code) {
+          return { artifacts: [], diagnostics: subscribeResult.diagnostics };
+        }
+        return {
+          artifacts: [{
+            id: `nextjs.subscribe:${request.entity}`,
+            pathHint: `${subscribeOpts.appDir}/${toEntitySegment(request.entity)}/subscribe/route.ts`,
+            contentType: 'typescript',
+            code: subscribeResult.code,
+          }],
+          diagnostics: subscribeResult.diagnostics,
+        };
+      }
+
+      case 'nextjs.subscriptionHook': {
+        if (!request.entity) {
+          return {
+            artifacts: [],
+            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.subscriptionHook" requires entity' }],
+          };
+        }
+        const hookResult = this._subscriptionHook(ir, request.entity);
+        if (hookResult.diagnostics.some(d => d.severity === 'error') || !hookResult.code) {
+          return { artifacts: [], diagnostics: hookResult.diagnostics };
+        }
+        return {
+          artifacts: [{
+            id: `nextjs.subscriptionHook:${request.entity}`,
+            pathHint: `src/hooks/use${request.entity}Subscription.ts`,
+            contentType: 'typescript',
+            code: hookResult.code,
+          }],
+          diagnostics: hookResult.diagnostics,
+        };
+      }
+
+      case 'nextjs.sharedRuntime': {
+        const sharedResult = this._sharedRuntime(ir, options);
+        if (!sharedResult.code) {
+          return { artifacts: [], diagnostics: sharedResult.diagnostics };
+        }
+        return {
+          artifacts: [{
+            id: 'nextjs.sharedRuntime',
+            pathHint: 'src/lib/manifest-shared-runtime.ts',
+            contentType: 'typescript',
+            code: sharedResult.code,
+          }],
+          diagnostics: sharedResult.diagnostics,
         };
       }
 
@@ -705,7 +784,7 @@ export class NextJsProjection implements ProjectionTarget {
       return { code: '', diagnostics };
     }
 
-    const code = this._generatePostCommandHandler(entity, command, opts);
+    const code = this._generatePostCommandHandler(entity, command, opts, hasRealtimeEntities(ir));
     return { code, diagnostics };
   }
 
@@ -716,10 +795,16 @@ export class NextJsProjection implements ProjectionTarget {
   private _generatePostCommandHandler(
     entity: IREntity,
     command: IRCommand,
-    options: NormalizedNextJsOptions
+    options: NormalizedNextJsOptions,
+    useSharedRuntime: boolean
   ): string {
     const { responseImportPath, runtimeImportPath, dispatcher } = options;
     const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
+    // Realtime SSE requires command execution and subscriptions to share ONE
+    // engine; inline mode switches to the generated shared-runtime accessor.
+    // externalExecutor mode is unaffected — the executor owns runtime
+    // construction (and should use getSharedRuntime() itself).
+    const useShared = useSharedRuntime && !useExternalExecutor;
 
     const lines: string[] = [];
 
@@ -740,6 +825,8 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
     if (useExternalExecutor) {
       lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+    } else if (useShared) {
+      lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
     } else {
       lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     }
@@ -796,7 +883,12 @@ export class NextJsProjection implements ProjectionTarget {
       const tenantCtx = options.includeTenantFilter
         ? `{ user: { id: userId, ${options.tenantIdProperty}: ${options.tenantIdProperty} } }`
         : `{ user: { id: userId, ${options.tenantIdProperty}: "__no_tenant__" } }`;
-      lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
+      if (useShared) {
+        lines.push('    const runtime = await getSharedRuntime();');
+        lines.push(`    runtime.replaceContext(${tenantCtx});`);
+      } else {
+        lines.push(`    const runtime = await createManifestRuntime(${tenantCtx});`);
+      }
       lines.push(`    const result = await runtime.runCommand("${command.name}", body, {`);
       lines.push(`      entityName: "${entity.name}",`);
       if (dispatcher.deriveInstanceId) {
@@ -840,16 +932,20 @@ export class NextJsProjection implements ProjectionTarget {
    * mutations; downstream integrations may add aliases or CI gates.
    */
   private _dispatcher(
+    ir: IR,
     options?: NextJsProjectionOptions
   ): CodeResult {
     const opts = normalizeOptions(options);
-    const code = this._generateDispatcherHandler(opts);
+    const code = this._generateDispatcherHandler(opts, hasRealtimeEntities(ir));
     return { code, diagnostics: [] };
   }
 
-  private _generateDispatcherHandler(options: NormalizedNextJsOptions): string {
+  private _generateDispatcherHandler(options: NormalizedNextJsOptions, useSharedRuntime: boolean): string {
     const { responseImportPath, runtimeImportPath, dispatcher } = options;
     const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
+    // Realtime SSE requires command execution and subscriptions to share ONE
+    // engine; inline mode switches to the generated shared-runtime accessor.
+    const useShared = useSharedRuntime && !useExternalExecutor;
     const lines: string[] = [];
 
     lines.push('// Auto-generated canonical Manifest dispatcher.');
@@ -868,6 +964,8 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
     if (useExternalExecutor) {
       lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+    } else if (useShared) {
+      lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
     } else {
       lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     }
@@ -937,11 +1035,16 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push('      },');
       lines.push('    });');
     } else {
-      // inline mode: construct the runtime per request and call runCommand.
-      // Typed RuntimeContext: tenantId/orgId/actorId/requestId/source.
-      // Legacy `user` shorthand preserved for downstream callers still
-      // reading it; new code MUST prefer actorId.
-      lines.push('    const runtime = await createManifestRuntime({');
+      // inline mode: construct (or reuse the shared singleton) runtime and
+      // call runCommand. Typed RuntimeContext: tenantId/orgId/actorId/
+      // requestId/source. Legacy `user` shorthand preserved for downstream
+      // callers still reading it; new code MUST prefer actorId.
+      if (useShared) {
+        lines.push('    const runtime = await getSharedRuntime();');
+        lines.push('    runtime.replaceContext({');
+      } else {
+        lines.push('    const runtime = await createManifestRuntime({');
+      }
       if (options.includeTenantFilter) {
         lines.push(`      tenantId: ${tenantValueExpr},`);
         lines.push(`      orgId: ${tenantValueExpr},`);
@@ -984,6 +1087,253 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
 
     return lines.join('\n');
+  }
+
+  /**
+   * Generate the SSE subscription route for a realtime entity.
+   * GET <appDir>/<entity>/subscribe/route.ts — streams runtime events whose
+   * subject.entity matches, over the shared singleton engine.
+   */
+  private _subscribe(
+    ir: IR,
+    entityName: string,
+    options?: NextJsProjectionOptions
+  ): CodeResult {
+    const diagnostics: ProjectionDiagnostic[] = [];
+    const opts = normalizeOptions(options);
+
+    const entity = ir.entities.find(e => e.name === entityName);
+    if (!entity) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'ENTITY_NOT_FOUND',
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        entity: entityName,
+      });
+      return { code: '', diagnostics };
+    }
+    if (entity.realtime !== true) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'REALTIME_NOT_ENABLED',
+        message: `Entity "${entityName}" is not flagged \`realtime\` — skipping SSE subscription route.`,
+        entity: entityName,
+      });
+      return { code: '', diagnostics };
+    }
+
+    const lines: string[] = [];
+    lines.push(`// Auto-generated SSE subscription route for ${entity.name}.`);
+    lines.push('// Generated from Manifest IR - DO NOT EDIT');
+    lines.push('//');
+    lines.push(`// Streams runtime events for realtime entity "${entity.name}" over`);
+    lines.push('// Server-Sent Events. Uses the shared singleton engine so command');
+    lines.push('// routes and subscriptions observe the same event stream.');
+    lines.push('// Requires a long-lived, single-instance deployment');
+    lines.push('// (docs/spec/semantics.md § "Realtime Entities").');
+    lines.push('');
+    lines.push('import type { NextRequest } from "next/server";');
+    lines.push(generateImport('{ manifestErrorResponse }', opts.responseImportPath));
+    lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
+    const authImport = generateAuthImport(opts);
+    if (authImport) lines.push(authImport);
+    lines.push('');
+    lines.push('export async function GET(request: NextRequest) {');
+    lines.push('  try {');
+    lines.push(generateAuthBody(opts));
+    lines.push('');
+    lines.push('    const runtime = await getSharedRuntime();');
+    lines.push('    const encoder = new TextEncoder();');
+    lines.push('');
+    lines.push('    const stream = new ReadableStream({');
+    lines.push('      start(controller) {');
+    lines.push(`        const unsubscribe = runtime.subscribe("${entity.name}", (event) => {`);
+    lines.push('          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`));');
+    lines.push('        });');
+    lines.push('        const close = () => {');
+    lines.push('          unsubscribe();');
+    lines.push('          try {');
+    lines.push('            controller.close();');
+    lines.push('          } catch {');
+    lines.push('            // stream already closed');
+    lines.push('          }');
+    lines.push('        };');
+    lines.push('        request.signal.addEventListener("abort", close);');
+    lines.push('      },');
+    lines.push('    });');
+    lines.push('');
+    lines.push('    return new Response(stream, {');
+    lines.push('      headers: {');
+    lines.push('        "Content-Type": "text/event-stream",');
+    lines.push('        "Cache-Control": "no-cache, no-transform",');
+    lines.push('        Connection: "keep-alive",');
+    lines.push('      },');
+    lines.push('    });');
+    for (const errLine of emitRuntimeErrorReturn(
+      opts.unauthorizedStatus,
+      `Error subscribing to ${entity.name}:`,
+    )) {
+      lines.push(errLine);
+    }
+    lines.push('}');
+    lines.push('');
+
+    return { code: lines.join('\n'), diagnostics };
+  }
+
+  /**
+   * Generate a typed client-side EventSource hook for a realtime entity,
+   * with exponential-backoff reconnect.
+   */
+  private _subscriptionHook(ir: IR, entityName: string): CodeResult {
+    const diagnostics: ProjectionDiagnostic[] = [];
+
+    const entity = ir.entities.find(e => e.name === entityName);
+    if (!entity) {
+      diagnostics.push({
+        severity: 'error',
+        code: 'ENTITY_NOT_FOUND',
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        entity: entityName,
+      });
+      return { code: '', diagnostics };
+    }
+    if (entity.realtime !== true) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'REALTIME_NOT_ENABLED',
+        message: `Entity "${entityName}" is not flagged \`realtime\` — skipping subscription hook.`,
+        entity: entityName,
+      });
+      return { code: '', diagnostics };
+    }
+
+    const name = entity.name;
+    const subscribePath = `/api/${toEntitySegment(name)}/subscribe`;
+    const code = `"use client";
+
+// Auto-generated subscription hook for ${name}.
+// Generated from Manifest IR - DO NOT EDIT
+//
+// Subscribes to ${subscribePath} (SSE) with typed payloads and
+// exponential-backoff reconnect.
+
+import { useEffect, useRef, useState } from "react";
+
+/** Event payload delivered for ${name} subscriptions. */
+export interface ${name}SubscriptionEvent {
+  name: string;
+  channel: string;
+  payload: unknown;
+  timestamp: number;
+  subject?: { entity?: string; command?: string; instanceId?: string };
+}
+
+export interface Use${name}SubscriptionOptions {
+  /** Called for every event observed for ${name}. */
+  onEvent?: (event: ${name}SubscriptionEvent) => void;
+  /** Initial reconnect delay in ms (doubles per attempt). Default 1000. */
+  initialRetryDelayMs?: number;
+  /** Reconnect delay ceiling in ms. Default 30000. */
+  maxRetryDelayMs?: number;
+}
+
+export function use${name}Subscription(options: Use${name}SubscriptionOptions = {}) {
+  const { onEvent, initialRetryDelayMs = 1000, maxRetryDelayMs = 30000 } = options;
+  const [connected, setConnected] = useState(false);
+  const [lastEvent, setLastEvent] = useState<${name}SubscriptionEvent | null>(null);
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    let source: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = initialRetryDelayMs;
+    let disposed = false;
+
+    const connect = () => {
+      if (disposed) return;
+      source = new EventSource("${subscribePath}");
+      source.onopen = () => {
+        setConnected(true);
+        retryDelay = initialRetryDelayMs;
+      };
+      source.onmessage = (message) => {
+        const event = JSON.parse(message.data) as ${name}SubscriptionEvent;
+        setLastEvent(event);
+        onEventRef.current?.(event);
+      };
+      source.onerror = () => {
+        setConnected(false);
+        source?.close();
+        source = null;
+        if (disposed) return;
+        retryTimer = setTimeout(connect, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, maxRetryDelayMs);
+      };
+    };
+
+    connect();
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      source?.close();
+    };
+  }, [initialRetryDelayMs, maxRetryDelayMs]);
+
+  return { connected, lastEvent };
+}
+`;
+    return { code, diagnostics };
+  }
+
+  /**
+   * Generate the module-scoped singleton runtime accessor. Emitted only when
+   * the IR contains at least one realtime entity — SSE routes and command
+   * routes must share ONE engine instance for subscriptions to observe
+   * command events (the event stream is per-engine and in-memory).
+   */
+  private _sharedRuntime(ir: IR, options?: NextJsProjectionOptions): CodeResult {
+    const diagnostics: ProjectionDiagnostic[] = [];
+    if (!hasRealtimeEntities(ir)) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'REALTIME_NOT_ENABLED',
+        message: 'No entity is flagged `realtime` — skipping shared runtime accessor.',
+      });
+      return { code: '', diagnostics };
+    }
+
+    const opts = normalizeOptions(options);
+    const code = `// Auto-generated shared Manifest runtime accessor.
+// Generated from Manifest IR - DO NOT EDIT
+//
+// Realtime SSE requires command execution and subscriptions to observe the
+// SAME engine instance: the event stream is per-engine and in-memory. This
+// module memoizes ONE runtime per server process.
+//
+// Deployment constraint: requires a long-lived, single-instance Node server.
+// Serverless / multi-instance fan-out needs an external event bus (out of
+// scope). See docs/spec/semantics.md § "Realtime Entities".
+
+import { createManifestRuntime } from "${opts.runtimeImportPath}";
+
+type SharedRuntime = Awaited<ReturnType<typeof createManifestRuntime>>;
+
+let sharedRuntimePromise: Promise<SharedRuntime> | null = null;
+
+/**
+ * Returns the module-scoped singleton runtime. Request handlers MUST set
+ * per-request context via runtime.replaceContext() before runCommand.
+ */
+export function getSharedRuntime(): Promise<SharedRuntime> {
+  if (!sharedRuntimePromise) {
+    sharedRuntimePromise = createManifestRuntime({});
+  }
+  return sharedRuntimePromise;
+}
+`;
+    return { code, diagnostics };
   }
 
   /**

@@ -846,6 +846,188 @@ describe('NextJsProjection', () => {
     });
   });
 
+  describe('realtime SSE surfaces', () => {
+    const realtimeSource = `
+      entity Order {
+        property id: string
+        property status: string = "draft"
+        realtime
+
+        command submit() {
+          mutate status = "submitted"
+          emit OrderSubmitted
+        }
+      }
+
+      entity Plain {
+        property id: string
+      }
+
+      store Order in memory
+      store Plain in memory
+
+      event OrderSubmitted: "order.submitted" {
+        id: string
+      }
+    `;
+
+    async function realtimeIR() {
+      const result = await compileToIR(realtimeSource);
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.ir).not.toBeNull();
+      return result.ir!;
+    }
+
+    it('nextjs.subscribe emits an SSE route for a realtime entity', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.subscribe', entity: 'Order' });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0].id).toBe('nextjs.subscribe:Order');
+      expect(result.artifacts[0].pathHint).toContain('order/subscribe/route.ts');
+
+      const code = result.artifacts[0].code;
+      // SSE transport contract
+      expect(code).toContain('text/event-stream');
+      expect(code).toContain('ReadableStream');
+      expect(code).toContain('no-cache, no-transform');
+      // Shared engine wiring: SSE must use the module-scoped singleton
+      expect(code).toContain('getSharedRuntime');
+      expect(code).toContain('runtime.subscribe("Order"');
+      // Cleanup: unsubscribe on client disconnect
+      expect(code).toContain('unsubscribe()');
+      expect(code).toContain('request.signal.addEventListener');
+      // Auth check (default provider) still applies
+      expect(code).toContain('Unauthorized');
+    });
+
+    it('nextjs.subscribe emits nothing for a non-realtime entity', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.subscribe', entity: 'Plain' });
+
+      expect(result.artifacts).toHaveLength(0);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].severity).toBe('info');
+      expect(result.diagnostics[0].code).toBe('REALTIME_NOT_ENABLED');
+    });
+
+    it('nextjs.subscribe errors without an entity', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.subscribe' });
+      expect(result.artifacts).toHaveLength(0);
+      expect(result.diagnostics[0].code).toBe('MISSING_ENTITY');
+    });
+
+    it('nextjs.subscriptionHook emits a typed EventSource hook with backoff', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.subscriptionHook', entity: 'Order' });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0].id).toBe('nextjs.subscriptionHook:Order');
+      expect(result.artifacts[0].pathHint).toBe('src/hooks/useOrderSubscription.ts');
+
+      const code = result.artifacts[0].code;
+      expect(code).toContain('"use client"');
+      expect(code).toContain('export function useOrderSubscription');
+      expect(code).toContain('new EventSource');
+      expect(code).toContain('/api/order/subscribe');
+      // Typed event payloads
+      expect(code).toContain('OrderSubscriptionEvent');
+      // Reconnect with exponential backoff
+      expect(code).toContain('initialRetryDelayMs');
+      expect(code).toContain('maxRetryDelayMs');
+      expect(code).toContain('Math.min(retryDelay * 2, maxRetryDelayMs)');
+    });
+
+    it('nextjs.subscriptionHook emits nothing for a non-realtime entity', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.subscriptionHook', entity: 'Plain' });
+      expect(result.artifacts).toHaveLength(0);
+      expect(result.diagnostics[0].code).toBe('REALTIME_NOT_ENABLED');
+    });
+
+    it('nextjs.sharedRuntime emits the module-scoped singleton accessor when any entity is realtime', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.sharedRuntime' });
+
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.artifacts[0].id).toBe('nextjs.sharedRuntime');
+      expect(result.artifacts[0].pathHint).toBe('src/lib/manifest-shared-runtime.ts');
+
+      const code = result.artifacts[0].code;
+      expect(code).toContain('export function getSharedRuntime');
+      expect(code).toContain('createManifestRuntime');
+      // Module-scoped memoization (singleton)
+      expect(code).toContain('let sharedRuntimePromise');
+      // Documented single-instance constraint
+      expect(code).toContain('single-instance');
+    });
+
+    it('nextjs.sharedRuntime emits nothing when no entity is realtime', async () => {
+      const result = await compileToIR(`
+        entity Plain {
+          property id: string
+        }
+      `);
+      const sharedResult = projection.generate(result.ir!, { surface: 'nextjs.sharedRuntime' });
+      expect(sharedResult.artifacts).toHaveLength(0);
+      expect(sharedResult.diagnostics).toHaveLength(1);
+      expect(sharedResult.diagnostics[0].severity).toBe('info');
+      expect(sharedResult.diagnostics[0].code).toBe('REALTIME_NOT_ENABLED');
+    });
+
+    it('dispatcher uses the shared runtime when realtime entities exist (inline mode)', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.dispatcher' });
+
+      const code = firstCode(result);
+      expect(code).toContain('getSharedRuntime');
+      expect(code).toContain('await getSharedRuntime()');
+      expect(code).toContain('runtime.replaceContext(');
+      expect(code).not.toContain('createManifestRuntime(');
+    });
+
+    it('dispatcher is unchanged when no entity is realtime', async () => {
+      const result = await compileToIR(`
+        entity Plain {
+          property id: string
+        }
+      `);
+      const dispatcherResult = projection.generate(result.ir!, { surface: 'nextjs.dispatcher' });
+
+      const code = firstCode(dispatcherResult);
+      expect(code).toContain('createManifestRuntime(');
+      expect(code).not.toContain('getSharedRuntime');
+    });
+
+    it('concrete command route uses the shared runtime when realtime entities exist (inline mode)', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, {
+        surface: 'nextjs.command',
+        entity: 'Order',
+        command: 'submit',
+        options: { concreteCommandRoutes: { enabled: true } },
+      });
+
+      const code = firstCode(result);
+      expect(code).toContain('await getSharedRuntime()');
+      expect(code).toContain('runtime.replaceContext(');
+      expect(code).not.toContain('createManifestRuntime(');
+    });
+
+    it('externalExecutor mode is unaffected by realtime entities', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, {
+        surface: 'nextjs.dispatcher',
+        options: { dispatcher: { executionMode: 'externalExecutor' } },
+      });
+
+      const code = firstCode(result);
+      expect(code).toContain('executeManifestCommand');
+      expect(code).not.toContain('getSharedRuntime');
+    });
+  });
+
   describe('projection metadata', () => {
     it('has correct name, description, and surfaces', () => {
       expect(projection.name).toBe('nextjs');
@@ -853,6 +1035,9 @@ describe('NextJsProjection', () => {
       expect(projection.surfaces).toContain('nextjs.route');
       expect(projection.surfaces).toContain('nextjs.detail');
       expect(projection.surfaces).toContain('nextjs.command');
+      expect(projection.surfaces).toContain('nextjs.subscribe');
+      expect(projection.surfaces).toContain('nextjs.subscriptionHook');
+      expect(projection.surfaces).toContain('nextjs.sharedRuntime');
       expect(projection.surfaces).toContain('ts.types');
       expect(projection.surfaces).toContain('ts.client');
     });
