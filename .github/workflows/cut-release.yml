@@ -1,0 +1,136 @@
+name: Cut Release
+
+# One-button release. Run from the Actions tab or:
+#   gh workflow run cut-release.yml -f version=minor    (or patch / major / explicit e.g. 2.4.0)
+#
+# Does the ENTIRE release chain in order, gated so nothing is pushed unless
+# everything passes:
+#   1. bump package.json version
+#   2. ensure a CHANGELOG.md section exists (stub from commit subjects if missing)
+#   3. build + typecheck + full test suite  ← gates BEFORE any push
+#   4. commit "[release] vX.Y.Z", tag vX.Y.Z, push main + tag
+#   5. publish @angriff36/manifest to GitHub Packages
+#   6. create the GitHub Release with changelog notes
+#
+# Note: the tag is pushed with GITHUB_TOKEN, which intentionally does NOT
+# trigger release.yml (GitHub suppresses workflow-from-workflow triggers),
+# so this workflow performs publish + release itself. release.yml remains
+# the path for manually pushed tags.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Explicit version (e.g. 2.4.0) or bump type: patch | minor | major'
+        required: true
+        default: 'minor'
+
+concurrency:
+  group: cut-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js (with GitHub Packages registry)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@angriff36'
+          cache: 'pnpm'
+
+      - name: Resolve and bump version
+        id: ver
+        run: |
+          NEW_VERSION=$(npm version "${{ inputs.version }}" --no-git-tag-version)
+          VER="${NEW_VERSION#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then
+            echo "::error::Tag v$VER already exists — refusing to re-release."
+            exit 1
+          fi
+          echo "Cutting release v$VER"
+
+      - name: Ensure CHANGELOG section
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$LAST_TAG" ]; then
+            git log "$LAST_TAG"..HEAD --no-merges --pretty='- %s' > /tmp/commits.txt
+          else
+            : > /tmp/commits.txt
+          fi
+          node tools/release/ensure-changelog-section.mjs "${{ steps.ver.outputs.version }}" /tmp/commits.txt
+
+      - name: Install root dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install packages/cli dependencies (frozen lockfile)
+        working-directory: packages/cli
+        run: pnpm install --frozen-lockfile
+
+      - name: Build root library
+        run: pnpm run build:lib
+
+      - name: Build CLI dist
+        working-directory: packages/cli
+        run: pnpm build
+
+      - name: TypeScript type check
+        run: pnpm run typecheck
+
+      - name: Run test suite
+        run: pnpm test -- --run
+
+      - name: Commit, tag, and push
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json CHANGELOG.md
+          git commit -m "[release] v$VER"
+          git tag -a "v$VER" -m "v$VER"
+          git push origin main
+          git push origin "v$VER"
+
+      - name: Publish to GitHub Packages
+        run: |
+          set +e
+          out="$(pnpm publish --no-git-checks 2>&1)"
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 0 ]; then
+            if printf '%s' "$out" | grep -qiE 'cannot publish over|E(PUBLISH)?CONFLICT|409 Conflict|code E409'; then
+              echo "::notice::Version already published — treating as success (idempotent re-run)."
+              exit 0
+            fi
+            exit "$code"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          node tools/release/extract-changelog-section.mjs "$VER" > release-notes.md
+          echo "" >> release-notes.md
+          echo "---" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "Install: \`npm install @angriff36/manifest@$VER\` (GitHub Packages registry)." >> release-notes.md
+          gh release create "v$VER" --title "v$VER" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

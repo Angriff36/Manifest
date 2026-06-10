@@ -21,22 +21,28 @@ pnpm run bench              # Run benchmarks
 
 **Critical**: `pnpm test` must remain green. No exceptions.
 
-## Release Procedure (agents keep botching this — follow exactly)
+## Release Procedure — use the one-button workflow
 
-A release is **not done** when the version-bump commit lands on main. The
-`v*` tag is the publish trigger; without it, nothing ships. v2.3.0 sat
-unpublished for a day because an agent stopped after the commit.
+**Do not release by hand.** Run the `cut-release` workflow and verify it
+goes green:
 
-1. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md` (release notes
-   are extracted from it by `tools/release/extract-changelog-section.mjs`)
-2. Bump `version` in root `package.json`; commit `[release] vX.Y.Z (...)`
-   and push main
-3. **Tag and push the tag** — this is the step agents drop:
-   `git tag -a vX.Y.Z -m "..." <release-commit> && git push origin vX.Y.Z`
-4. Verify the `Release` workflow run is green AND the `publish` job's
-   "Publish to GitHub Packages" step succeeded
-   (`gh run list --workflow release.yml`). A red run can still have
-   published — check the job, not just the run conclusion.
+```bash
+gh workflow run cut-release.yml -f version=minor   # or patch / major / explicit e.g. 2.4.0
+gh run watch --repo Angriff36/Manifest             # wait for green
+```
+
+It does the entire chain in order, gated so nothing is pushed unless
+build + typecheck + the full test suite pass: bumps `package.json`, ensures
+a `CHANGELOG.md` section (stub from commit subjects if none was written —
+write a real one beforehand for quality notes), commits `[release] vX.Y.Z`,
+tags, pushes main + tag, publishes `@angriff36/manifest` to GitHub
+Packages, and creates the GitHub Release.
+
+**A release is done only when the `cut-release` run is green.** Manual
+fallback (only if the workflow itself is broken): CHANGELOG section →
+version bump commit → `git tag -a vX.Y.Z && git push origin vX.Y.Z` (the
+tag triggers `release.yml`; this is the step agents historically dropped) →
+verify the publish job succeeded, not just the run color.
 
 Do not move/force-push a tag after the publish job has run.
 
