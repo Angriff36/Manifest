@@ -340,6 +340,45 @@ program
   });
 
 /**
+ * manifest generate-tests [source]
+ *
+ * LLM-driven conformance fixture generation: analyzes existing fixtures
+ * and emits new .manifest sources + expected IR covering edge cases,
+ * boundary conditions, and adversarial inputs. Generated fixtures are
+ * compiled and validated before being written.
+ */
+program
+  .command('generate-tests')
+  .alias('gen-tests')
+  .description('Generate conformance test fixtures via LLM analysis of existing fixtures')
+  .argument('[source]', 'Source .manifest file, directory, or glob to analyze')
+  .option('--feature <description>', 'Feature description to focus generation on')
+  .option('--category <type>', 'Test category: edge-cases, boundary, adversarial, coverage', 'edge-cases')
+  .option('--count <n>', 'Number of fixtures to generate', (v) => parseInt(v, 10), 3)
+  .option('--output <path>', 'Output directory for fixtures (default: conformance fixtures dir)')
+  .option('--api-key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY env var)')
+  .option('--model <model>', 'Claude model to use')
+  .option('--temperature <n>', 'Generation temperature (0-1)', (v) => parseFloat(v))
+  .option('--max-retries <n>', 'Max retry attempts for validation failures', (v) => parseInt(v, 10))
+  .option('--dry-run', 'Preview generated fixtures without writing files', false)
+  .option('--verbose', 'Show detailed iteration logs', false)
+  .action(async (source, options = {}) => {
+    const { genTestsCommand } = await import('./commands/gen-tests.js');
+    await genTestsCommand(source, {
+      feature: options.feature,
+      category: options.category,
+      count: options.count,
+      output: options.output,
+      apiKey: options.apiKey,
+      model: options.model,
+      temperature: options.temperature,
+      maxRetries: options.maxRetries,
+      dryRun: options.dryRun,
+      verbose: options.verbose,
+    });
+  });
+
+/**
  * manifest docs [source]
  *
  * Generate static documentation site from IR.
