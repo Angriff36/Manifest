@@ -20,6 +20,7 @@ import {
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   READ_ROUTES_DEFAULTS,
 } from './defaults.js';
+import { resolveTableName, type NamingConventionInput } from '../shared/naming.js';
 
 /**
  * Re-export the canonical defaults so consumers of
@@ -123,6 +124,9 @@ interface NormalizedNextJsOptions {
     sharedRuntimeFile: string;
   };
   sharedRuntimeImportPath: string;
+  naming?: NamingConventionInput;
+  accessorNames: Record<string, string>;
+  routeSegments: Record<string, string>;
 }
 
 /**
@@ -185,6 +189,9 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     readRoutes,
     paths,
     sharedRuntimeImportPath,
+    naming: options?.naming,
+    accessorNames: options?.accessorNames ?? {},
+    routeSegments: options?.routeSegments ?? {},
   };
 }
 
@@ -220,6 +227,31 @@ function toKebabCase(value: string): string {
 
 function toEntitySegment(value: string): string {
   return value.toLowerCase();
+}
+
+/**
+ * Database accessor name for an entity (`database.<accessor>` in generated
+ * read routes). Resolution: explicit `accessorNames` override → `naming`
+ * convention (table-name resolution, e.g. snake_case plural for Kysely/raw
+ * SQL clients) → camelCased entity name (Prisma delegate convention).
+ *
+ * Response field names and local variables deliberately do NOT use this —
+ * the HTTP API contract stays camelCase regardless of physical DB naming.
+ */
+function resolveDbAccessor(entityName: string, options: NormalizedNextJsOptions): string {
+  const explicit = options.accessorNames[entityName];
+  if (explicit) return explicit;
+  if (options.naming) return resolveTableName(entityName, options.naming);
+  return toLowerCamelCase(entityName);
+}
+
+/**
+ * URL path segment for an entity in generated route pathHints and client
+ * fetch paths. Resolution: explicit `routeSegments` override → lowercased
+ * entity name (legacy behavior).
+ */
+function resolveRouteSegment(entityName: string, options: NormalizedNextJsOptions): string {
+  return options.routeSegments[entityName] ?? toEntitySegment(entityName);
 }
 
 /**
@@ -384,8 +416,8 @@ function generatePrismaQuery(
   entity: IREntity,
   options: NormalizedNextJsOptions
 ): string {
-  const delegateName = toLowerCamelCase(entity.name);
-  const variableName = `${delegateName}s`;
+  const accessorName = resolveDbAccessor(entity.name, options);
+  const variableName = `${toLowerCamelCase(entity.name)}s`;
   const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
 
   const whereConditions: string[] = [];
@@ -409,7 +441,7 @@ function generatePrismaQuery(
   // otherwise fall back to the always-present id so the query stays valid.
   const orderByField = entityHasProperty(entity, 'createdAt') ? 'createdAt' : 'id';
 
-  return `const ${variableName} = await database.${delegateName}.findMany({
+  return `const ${variableName} = await database.${accessorName}.findMany({
     ${whereClause}
     orderBy: {
       ${orderByField}: "desc",
@@ -494,7 +526,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: `nextjs.route:${request.entity}`,
-            pathHint: `${opts.appDir}/${toEntitySegment(request.entity)}/list/route.ts`,
+            pathHint: `${opts.appDir}/${resolveRouteSegment(request.entity, opts)}/list/route.ts`,
             contentType: 'typescript',
             code: result.code,
           }],
@@ -528,7 +560,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: `nextjs.detail:${request.entity}`,
-            pathHint: `${detailOpts.appDir}/${toEntitySegment(request.entity)}/[id]/route.ts`,
+            pathHint: `${detailOpts.appDir}/${resolveRouteSegment(request.entity, detailOpts)}/[id]/route.ts`,
             contentType: 'typescript',
             code: detailResult.code,
           }],
@@ -568,7 +600,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: `nextjs.command:${request.entity}.${request.command}`,
-            pathHint: `${commandOpts.appDir}/${toEntitySegment(request.entity)}/${toKebabCase(request.command)}/route.ts`,
+            pathHint: `${commandOpts.appDir}/${resolveRouteSegment(request.entity, commandOpts)}/${toKebabCase(request.command)}/route.ts`,
             contentType: 'typescript',
             code: commandResult.code,
           }],
@@ -621,7 +653,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: `nextjs.subscribe:${request.entity}`,
-            pathHint: `${subscribeOpts.appDir}/${toEntitySegment(request.entity)}/subscribe/route.ts`,
+            pathHint: `${subscribeOpts.appDir}/${resolveRouteSegment(request.entity, subscribeOpts)}/subscribe/route.ts`,
             contentType: 'typescript',
             code: subscribeResult.code,
           }],
@@ -637,7 +669,7 @@ export class NextJsProjection implements ProjectionTarget {
           };
         }
         const opts = normalizeOptions(options);
-        const hookResult = this._subscriptionHook(ir, request.entity);
+        const hookResult = this._subscriptionHook(ir, request.entity, opts);
         if (hookResult.diagnostics.some(d => d.severity === 'error') || !hookResult.code) {
           return { artifacts: [], diagnostics: hookResult.diagnostics };
         }
@@ -685,7 +717,7 @@ export class NextJsProjection implements ProjectionTarget {
 
       case 'ts.client': {
         const opts = normalizeOptions(options);
-        const result = this._client(ir);
+        const result = this._client(ir, opts);
         return {
           artifacts: [{
             id: 'ts.client',
@@ -743,7 +775,7 @@ export class NextJsProjection implements ProjectionTarget {
     return { code: lines.join('\n'), diagnostics: [] };
   }
 
-  private _client(ir: IR): CodeResult {
+  private _client(ir: IR, options: NormalizedNextJsOptions): CodeResult {
     const lines: string[] = [];
 
     lines.push('// Auto-generated client SDK from Manifest IR');
@@ -751,7 +783,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
 
     for (const entity of ir.entities) {
-      const lowerEntity = entity.name.toLowerCase();
+      const lowerEntity = resolveRouteSegment(entity.name, options);
       const delegateName = toLowerCamelCase(entity.name);
 
       // List (findMany) function
@@ -1213,7 +1245,7 @@ export class NextJsProjection implements ProjectionTarget {
    * Generate a typed client-side EventSource hook for a realtime entity,
    * with exponential-backoff reconnect.
    */
-  private _subscriptionHook(ir: IR, entityName: string): CodeResult {
+  private _subscriptionHook(ir: IR, entityName: string, options: NormalizedNextJsOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
 
     const entity = ir.entities.find(e => e.name === entityName);
@@ -1237,7 +1269,7 @@ export class NextJsProjection implements ProjectionTarget {
     }
 
     const name = entity.name;
-    const subscribePath = `/api/${toEntitySegment(name)}/subscribe`;
+    const subscribePath = `/api/${resolveRouteSegment(name, options)}/subscribe`;
     const code = `"use client";
 
 // Auto-generated subscription hook for ${name}.
@@ -1455,6 +1487,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
   private _generateDetailRoute(entity: IREntity, options: NormalizedNextJsOptions): string {
     const { databaseImportPath, responseImportPath } = options;
     const delegateName = toLowerCamelCase(entity.name);
+    const accessorName = resolveDbAccessor(entity.name, options);
 
     const lines: string[] = [];
 
@@ -1509,7 +1542,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
 
     if (options.readRoutes.directDbReads) {
       lines.push(`    // Using ${prismaMethod} — ${isMultiField ? 'multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+' : 'single id is a unique constraint'}.`);
-      lines.push(`    const ${delegateName} = await database.${delegateName}.${prismaMethod}({`);
+      lines.push(`    const ${delegateName} = await database.${accessorName}.${prismaMethod}({`);
       lines.push(`      ${whereClause}`);
       lines.push('    });');
     } else {

@@ -1041,6 +1041,121 @@ describe('NextJsProjection', () => {
     });
   });
 
+  describe('naming and route overrides', () => {
+    const orderLineSource = `
+      entity OrderLine {
+        property id: string
+        property quantity: number
+        property createdAt: datetime
+      }
+    `;
+
+    it('accessorNames override changes database delegate but keeps camelCase response keys', async () => {
+      const result = await compileToIR(orderLineSource);
+      expect(result.ir).not.toBeNull();
+
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'OrderLine',
+        options: { accessorNames: { OrderLine: 'order_lines' } },
+      });
+      const routeCode = firstCode(routeResult);
+      expect(routeCode).toContain('database.order_lines.findMany');
+      expect(routeCode).not.toContain('database.orderLine.findMany');
+      expect(routeCode).toContain('manifestSuccessResponse({ orderLines })');
+
+      const detailResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'OrderLine',
+        options: { accessorNames: { OrderLine: 'order_lines' } },
+      });
+      const detailCode = firstCode(detailResult);
+      expect(detailCode).toContain('database.order_lines.findUnique');
+      expect(detailCode).toContain('manifestSuccessResponse({ orderLine })');
+    });
+
+    it('routeSegments override changes pathHints and client fetch paths consistently', async () => {
+      const result = await compileToIR(orderLineSource);
+      expect(result.ir).not.toBeNull();
+
+      const options = { routeSegments: { OrderLine: 'order-lines' } };
+
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'OrderLine',
+        options,
+      });
+      expect(routeResult.artifacts[0].pathHint).toContain('order-lines/list/route.ts');
+
+      const detailResult = projection.generate(result.ir!, {
+        surface: 'nextjs.detail',
+        entity: 'OrderLine',
+        options,
+      });
+      expect(detailResult.artifacts[0].pathHint).toContain('order-lines/[id]/route.ts');
+
+      const clientResult = projection.generate(result.ir!, {
+        surface: 'ts.client',
+        options,
+      });
+      const clientCode = firstCode(clientResult);
+      expect(clientCode).toContain('fetch(`/api/order-lines/list`)');
+      expect(clientCode).toContain('fetch(`/api/order-lines/${encodeURIComponent(id)}`)');
+      expect(clientCode).toContain('return data.orderLines;');
+      expect(clientCode).toContain('return data.orderLine;');
+    });
+
+    it("naming: 'snake_case' maps database accessor via resolveTableName", async () => {
+      const result = await compileToIR(orderLineSource);
+      expect(result.ir).not.toBeNull();
+
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'OrderLine',
+        options: { naming: 'snake_case' },
+      });
+      const code = firstCode(routeResult);
+      expect(code).toContain('database.order_lines.findMany');
+      expect(code).toContain('manifestSuccessResponse({ orderLines })');
+    });
+
+    it('explicit accessorNames takes precedence over naming convention', async () => {
+      const result = await compileToIR(orderLineSource);
+      expect(result.ir).not.toBeNull();
+
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'OrderLine',
+        options: {
+          naming: 'snake_case',
+          accessorNames: { OrderLine: 'custom_accessor' },
+        },
+      });
+      const code = firstCode(routeResult);
+      expect(code).toContain('database.custom_accessor.findMany');
+      expect(code).not.toContain('database.order_lines.findMany');
+    });
+
+    it('defaults unchanged when no naming or override options are set', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+          property createdAt: datetime
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const routeResult = projection.generate(result.ir!, {
+        surface: 'nextjs.route',
+        entity: 'Recipe',
+      });
+      const code = firstCode(routeResult);
+      expect(code).toContain('database.recipe.findMany');
+      expect(routeResult.artifacts[0].pathHint).toContain('recipe/list/route.ts');
+    });
+  });
+
   describe('projection metadata', () => {
     it('has correct name, description, and surfaces', () => {
       expect(projection.name).toBe('nextjs');

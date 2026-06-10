@@ -6,6 +6,7 @@
  */
 
 import type { IR } from '../ir';
+import type { NamingConventionInput } from './shared/naming';
 
 export interface ProjectionRequest {
   /**
@@ -265,6 +266,33 @@ export interface NextJsProjectionOptions {
     /** pathHint for nextjs.sharedRuntime. Default: `${generatedDir}/lib/manifest-shared-runtime.ts` */
     sharedRuntimeFile?: string;
   };
+
+  /**
+   * Naming convention for database accessor names (`database.<accessor>` in
+   * generated read routes). Same shape as the Prisma projection's `naming`
+   * option: `'snake_case'` shorthand or `{ table, column, pluralizeTables }`.
+   * Applies `resolveTableName` to the entity name — use this when the
+   * database client exposes physical table names (Kysely, raw SQL) rather
+   * than Prisma's model-derived delegates. Response field names and local
+   * variables are NOT affected (they remain the camelCased entity name —
+   * the API contract is independent of physical DB naming).
+   */
+  naming?: NamingConventionInput;
+
+  /**
+   * Explicit per-entity database accessor overrides. Takes precedence over
+   * `naming`. e.g. `{ OrderLine: 'order_lines' }` →
+   * `database.order_lines.findMany(...)`.
+   */
+  accessorNames?: Record<string, string>;
+
+  /**
+   * Explicit per-entity URL path segment overrides for generated routes and
+   * the client SDK's fetch paths. Takes precedence over the default
+   * lowercased entity name. e.g. `{ OrderLine: 'order-lines' }` →
+   * `app/api/order-lines/list/route.ts` + `fetch('/api/order-lines/list')`.
+   */
+  routeSegments?: Record<string, string>;
 }
 
 /**

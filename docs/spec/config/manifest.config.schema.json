@@ -280,7 +280,21 @@
         },
         "dispatcher": { "$ref": "#/definitions/DispatcherOptions" },
         "concreteCommandRoutes": { "$ref": "#/definitions/ConcreteCommandRoutesOptions" },
-        "readRoutes": { "$ref": "#/definitions/ReadRoutesOptions" }
+        "readRoutes": { "$ref": "#/definitions/ReadRoutesOptions" },
+        "naming": {
+          "$ref": "#/definitions/NamingConvention",
+          "description": "Naming convention for database accessor names (database.<accessor> in generated read routes). Applies table-name resolution to the entity name — use when the database client exposes physical table names (Kysely, raw SQL) instead of Prisma model delegates. Response field names stay camelCase (the API contract is independent of physical DB naming). Explicit accessorNames entries override it."
+        },
+        "accessorNames": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Explicit per-entity database accessor overrides, e.g. { \"OrderLine\": \"order_lines\" } → database.order_lines.findMany(...). Takes precedence over 'naming'."
+        },
+        "routeSegments": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Explicit per-entity URL path segment overrides for generated routes and client fetch paths, e.g. { \"OrderLine\": \"order-lines\" } → app/api/order-lines/list/route.ts. Default: lowercased entity name."
+        }
       }
     },
     "DispatcherOptions": {

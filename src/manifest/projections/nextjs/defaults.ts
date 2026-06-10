@@ -46,7 +46,15 @@ export const NEXTJS_DEFAULTS = {
   unauthorizedStatus: 401,
 } as const satisfies Required<Omit<
   NextJsProjectionOptions,
-  'tenantProvider' | 'dispatcher' | 'concreteCommandRoutes' | 'readRoutes' | 'generatedDir' | 'paths'
+  | 'tenantProvider'
+  | 'dispatcher'
+  | 'concreteCommandRoutes'
+  | 'readRoutes'
+  | 'generatedDir'
+  | 'paths'
+  | 'naming'
+  | 'accessorNames'
+  | 'routeSegments'
 >>;
 
 /**
