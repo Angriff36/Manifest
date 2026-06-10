@@ -1897,4 +1897,155 @@ describe('IRCompiler', () => {
       expect(result.ir?.version).toBe('1.0');
     });
   });
+
+  describe('Entity Inheritance', () => {
+    it('should compile entity with parent', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Base {
+          property id: string
+        }
+        entity User extends Base {
+          property name: string
+        }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const userEntity = result.ir?.entities.find(e => e.name === 'User');
+      expect(userEntity?.parent).toBe('Base');
+    });
+
+    it('should compile entity with mixins', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Timestamped {
+          property createdAt: datetime
+          property updatedAt: datetime
+        }
+        entity Audited {
+          property createdBy: string
+        }
+        entity Document mixin Timestamped, Audited {
+          property title: string
+        }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const docEntity = result.ir?.entities.find(e => e.name === 'Document');
+      expect(docEntity?.mixins).toContain('Timestamped');
+      expect(docEntity?.mixins).toContain('Audited');
+    });
+  });
+
+  describe('Retry and Rate Limit', () => {
+    it('should compile command with retry policy', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Task {
+          command submit() {
+            retry {
+              maxAttempts: 3
+              backoff: exponential
+              delay: 1000
+              jitter: true
+              retryOn: "TIMEOUT"
+            }
+            mutate description = "submitted"
+          }
+        }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      const submitCmd = result.ir?.commands.find(c => c.name === 'submit');
+      expect(submitCmd?.retry).toBeDefined();
+      expect(submitCmd?.retry?.maxAttempts).toBe(3);
+      expect(submitCmd?.retry?.backoff).toBe('exponential');
+      expect(submitCmd?.retry?.delayMs).toBe(1000);
+      expect(submitCmd?.retry?.retryOn).toEqual(['TIMEOUT']);
+    });
+
+    it('should compile policy with rate limit', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        policy readTask read: context.role == "admin" rateLimit { maxRequests: 100 windowMs: 60000 scope: user }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      const policy = result.ir?.policies.find(p => p.name === 'readTask');
+      expect(policy?.rateLimit).toBeDefined();
+      expect(policy?.rateLimit?.maxRequests).toBe(100);
+      expect(policy?.rateLimit?.scope).toBe('user');
+    });
+
+    it('should compile command with rate limit', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        command process(data: string) {
+          rateLimit { maxRequests: 10 windowMs: 3600000 scope: tenant }
+          mutate data = data
+        }
+      `);
+
+      expect(result.ir).not.toBeNull();
+      const cmd = result.ir?.commands.find(c => c.name === 'process');
+      expect(cmd?.rateLimit).toBeDefined();
+      expect(cmd?.rateLimit?.maxRequests).toBe(10);
+      expect(cmd?.rateLimit?.scope).toBe('tenant');
+    });
+  });
+
+  describe('Scheduled Commands', () => {
+    it('should compile cron schedule', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule dailyReport cron "0 9 * * 1" run Report.generate
+      `);
+
+      expect(result.ir).not.toBeNull();
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.ir?.schedules).toHaveLength(1);
+      const schedule = result.ir?.schedules?.[0];
+      expect(schedule?.name).toBe('dailyReport');
+      expect(schedule?.trigger.kind).toBe('cron');
+      expect(schedule?.trigger.cron).toBe('0 9 * * 1');
+    });
+
+    it('should compile interval schedule', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule pollStatus interval "5m" run Task.checkStatus
+      `);
+
+      expect(result.ir).not.toBeNull();
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const schedule = result.ir?.schedules?.[0];
+      expect(schedule?.trigger.kind).toBe('interval');
+      expect(schedule?.trigger.durationMs).toBe(5 * 60 * 1000);
+    });
+
+    it('should validate cron expressions', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule invalidCron cron "invalid" run Task.check
+      `);
+
+      const errors = result.diagnostics.filter(d => d.severity === 'error');
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].message).toContain('Invalid cron expression');
+    });
+
+    it('should compile schedule with parameters', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule weeklyNotification cron "0 10 * * 3" run Notification.send(type: "weekly")
+      `);
+
+      expect(result.ir).not.toBeNull();
+      const schedule = result.ir?.schedules?.[0];
+      expect(schedule?.params).toBeDefined();
+      expect(schedule?.params?.length).toBeGreaterThan(0);
+    });
+  });
 });

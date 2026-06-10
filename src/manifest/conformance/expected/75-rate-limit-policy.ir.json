@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "a5b940a693fd0a64f352ed97c2049c6a7a675ed5deed988bfa2880d8434d2a77",
-    "compilerVersion": "1.0.0",
+    "irHash": "15e73f29416316fe73cfa78d2fc479aec0b0143c1b5dfef02a77de04763feb10",
+    "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
@@ -32,7 +32,9 @@
       ],
       "computedProperties": [],
       "relationships": [],
-      "commands": [],
+      "commands": [
+        "create"
+      ],
       "constraints": [],
       "policies": []
     }
@@ -42,18 +44,10 @@
   "events": [],
   "commands": [
     {
-      "name": "create",
+      "name": "updateContent",
       "parameters": [
         {
-          "name": "docTitle",
-          "type": {
-            "name": "string",
-            "nullable": false
-          },
-          "required": true
-        },
-        {
-          "name": "docContent",
+          "name": "newContent",
           "type": {
             "name": "string",
             "nullable": false
@@ -67,10 +61,19 @@
       "emits": []
     },
     {
-      "name": "updateContent",
+      "name": "create",
+      "entity": "Document",
       "parameters": [
         {
-          "name": "newContent",
+          "name": "docTitle",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "docContent",
           "type": {
             "name": "string",
             "nullable": false
@@ -142,6 +145,5 @@
       }
     }
   ],
-  "reactions": [],
-  "schedules": []
+  "reactions": []
 }

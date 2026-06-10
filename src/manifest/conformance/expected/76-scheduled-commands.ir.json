@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "e641763d2d3248732615c2348d531bfc8e9de519f69d4e61acca1e077ebfc2e8",
+    "irHash": "20dd408b787c5c8e00bc1eee41619cea71ecd6146b8c9b6c5661613338e3db8e",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -166,5 +166,61 @@
     }
   ],
   "policies": [],
-  "reactions": []
+  "reactions": [],
+  "schedules": [
+    {
+      "name": "dailyBackup",
+      "commandName": "backupData",
+      "trigger": {
+        "kind": "cron",
+        "cron": "0 0 * * *"
+      }
+    },
+    {
+      "name": "frequentCleanup",
+      "commandName": "cleanupOldData",
+      "trigger": {
+        "kind": "interval",
+        "durationMs": 300000
+      }
+    },
+    {
+      "name": "weeklyReport",
+      "commandName": "generateReport",
+      "trigger": {
+        "kind": "every",
+        "durationMs": 604800000
+      }
+    },
+    {
+      "name": "morningDigest",
+      "commandName": "sendDigest",
+      "trigger": {
+        "kind": "cron",
+        "cron": "0 9 * * *"
+      },
+      "params": [
+        {
+          "name": "date",
+          "expression": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "now"
+            },
+            "args": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "archiveOldOrders",
+      "entityName": "Order",
+      "commandName": "archive",
+      "trigger": {
+        "kind": "cron",
+        "cron": "0 2 * * *"
+      }
+    }
+  ]
 }

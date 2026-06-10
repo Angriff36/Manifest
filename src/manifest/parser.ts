@@ -7,7 +7,7 @@ import {
   ComputedPropertyNode, RelationshipNode, TransitionNode, RefAction, EnumNode, EnumValueNode,
   ValueObjectNode, TenantNode, ReactionNode, ReactionParamMapping, ApprovalNode, ApprovalStageNode,
   UseNode, RoleNode, RolePermissionNode, SagaNode, SagaStepNode, PropertyMaskStrategyNode,
-  WebhookNode, WebhookSignatureNode, WebhookParamMapping
+  WebhookNode, WebhookSignatureNode, WebhookParamMapping, RetryPolicyNode, RateLimitNode, ScheduleNode
 } from './types';
 
 export class Parser {
@@ -23,7 +23,7 @@ export class Parser {
     const program: ManifestProgram = {
       uses: [], modules: [], entities: [], enums: [], values: [], commands: [], flows: [], effects: [],
       exposures: [], compositions: [], policies: [], stores: [], events: [], reactions: [], sagas: [], roles: [],
-      webhooks: []
+      webhooks: [], schedules: []
     };
 
     // Parse use declarations (must appear before any other declarations)
@@ -81,6 +81,7 @@ export class Parser {
         else if (this.check('KEYWORD', 'saga')) program.sagas.push(this.parseSaga());
         else if (this.check('IDENTIFIER', 'role')) program.roles.push(this.parseRole());
         else if (this.check('KEYWORD', 'webhook')) program.webhooks.push(this.parseWebhook());
+        else if (this.check('IDENTIFIER', 'schedule')) program.schedules!.push(this.parseSchedule());
         else this.advance();
       } catch (e) {
         this.errors.push({ message: e instanceof Error ? e.message : 'Parse error', position: this.current()?.position, severity: 'error' });
@@ -112,7 +113,7 @@ export class Parser {
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
-    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [], reactions: ReactionNode[] = [], sagas: SagaNode[] = [], roles: RoleNode[] = [], webhooks: WebhookNode[] = [];
+    const entities: EntityNode[] = [], enums: EnumNode[] = [], commands: CommandNode[] = [], policies: PolicyNode[] = [], stores: StoreNode[] = [], events: OutboxEventNode[] = [], reactions: ReactionNode[] = [], sagas: SagaNode[] = [], roles: RoleNode[] = [], webhooks: WebhookNode[] = [], schedules: ScheduleNode[] = [];
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -136,16 +137,37 @@ export class Parser {
       else if (this.check('KEYWORD', 'saga')) sagas.push(this.parseSaga());
       else if (this.check('IDENTIFIER', 'role')) roles.push(this.parseRole());
       else if (this.check('KEYWORD', 'webhook')) webhooks.push(this.parseWebhook());
+      else if (this.check('IDENTIFIER', 'schedule')) schedules.push(this.parseSchedule());
       else this.advance();
       this.skipNL();
     }
     this.consume('PUNCTUATION', '}');
-    return { type: 'Module', name, entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks };
+    return { type: 'Module', name, entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks, ...(schedules.length > 0 ? { schedules } : {}) };
   }
 
   private parseEntity(): EntityNode {
     this.consume('KEYWORD', 'entity');
     const name = this.consumeIdentifier().value;
+    
+    // Parse optional `extends Parent`
+    let parent: string | undefined;
+    if (this.check('KEYWORD', 'extends')) {
+      this.advance(); // consume 'extends'
+      parent = this.consumeIdentifier().value;
+    }
+    
+    // Parse optional `mixin A, B`
+    let mixins: string[] | undefined;
+    if (this.check('IDENTIFIER', 'mixin')) {
+      this.advance(); // consume 'mixin'
+      mixins = [];
+      mixins.push(this.consumeIdentifier().value);
+      while (this.check('PUNCTUATION', ',')) {
+        this.advance(); // consume ','
+        mixins.push(this.consumeIdentifier().value);
+      }
+    }
+    
     this.consume('PUNCTUATION', '{');
     this.skipNL();
 
@@ -159,6 +181,7 @@ export class Parser {
     let versionAtProperty: string | undefined;
     let timestamps: boolean | undefined;
     let realtime: boolean | undefined;
+    let policyRefs: string[] | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -185,6 +208,24 @@ export class Parser {
       else if (this.check('KEYWORD', 'command')) commands.push(this.parseCommand());
       else if (this.check('KEYWORD', 'constraint')) constraints.push(this.parseConstraint());
       else if (this.check('KEYWORD', 'policy')) policies.push(this.parsePolicy(false));
+      // Parse contextual `policies { Name, ... }` block for policy references
+      else if (this.check('IDENTIFIER', 'policies') && this.tokens[this.pos + 1]?.value === '{') {
+        this.advance(); // consume 'policies'
+        this.consume('PUNCTUATION', '{');
+        this.skipNL();
+        policyRefs = [];
+        while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+          this.skipNL();
+          if (this.check('PUNCTUATION', '}')) break;
+          policyRefs.push(this.consumeIdentifier().value);
+          if (this.check('PUNCTUATION', ',')) {
+            this.advance();
+          }
+          this.skipNL();
+        }
+        this.consume('PUNCTUATION', '}');
+        this.skipNL();
+      }
       else if (this.check('KEYWORD', 'default')) {
         // Default policy syntax: "default policy execute: ..."
         this.advance(); // consume 'default'
@@ -276,6 +317,9 @@ export class Parser {
     return {
       type: 'Entity', name, properties, computedProperties, relationships, behaviors,
       commands, constraints, policies, transitions, approvals, reactions, store,
+      ...(parent ? { parent } : {}),
+      ...(mixins ? { mixins } : {}),
+      ...(policyRefs ? { policyRefs } : {}),
       ...(key ? { key } : {}),
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
       versionProperty, versionAtProperty,
@@ -769,6 +813,8 @@ export class Parser {
     let returns: TypeNode | undefined;
     if (this.check('KEYWORD', 'returns')) { this.advance(); returns = this.parseType(); }
 
+    let retry: RetryPolicyNode | undefined;
+    let rateLimit: RateLimitNode | undefined;
     const guards: ExpressionNode[] = [], constraints: ConstraintNode[] = [], actions: ActionNode[] = [], emits: string[] = [];
 
     if (this.check('PUNCTUATION', '{')) {
@@ -776,7 +822,15 @@ export class Parser {
       while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
         this.skipNL();
         if (this.check('PUNCTUATION', '}')) break;
-        if (this.check('KEYWORD', 'guard') || this.check('KEYWORD', 'when')) { this.advance(); guards.push(this.parseExpr()); }
+        // Parse retry block
+        if (this.check('IDENTIFIER', 'retry') && this.tokens[this.pos + 1]?.value === '{') {
+          retry = this.parseRetryBlock();
+        }
+        // Parse rateLimit block
+        else if (this.check('IDENTIFIER', 'rateLimit') && this.tokens[this.pos + 1]?.value === '{') {
+          rateLimit = this.parseRateLimitBlock();
+        }
+        else if (this.check('KEYWORD', 'guard') || this.check('KEYWORD', 'when')) { this.advance(); guards.push(this.parseExpr()); }
         else if (this.check('KEYWORD', 'constraint')) { constraints.push(this.parseConstraint()); }
         else if (this.check('KEYWORD', 'emit')) { this.advance(); emits.push(this.consumeIdentifier().value); }
         else actions.push(this.parseAction());
@@ -792,6 +846,8 @@ export class Parser {
       type: 'Command',
       name,
       parameters,
+      ...(retry ? { retry } : {}),
+      ...(rateLimit ? { rateLimit } : {}),
       guards: guards.length ? guards : undefined,
       constraints: constraints.length ? constraints : undefined,
       actions,
@@ -810,8 +866,15 @@ export class Parser {
     this.consume('OPERATOR', ':');
     this.skipNL();
     const expression = this.parseExpr();
+    
+    // Parse optional rateLimit block after expression
+    let rateLimit: RateLimitNode | undefined;
+    if (this.check('IDENTIFIER', 'rateLimit') && this.tokens[this.pos + 1]?.value === '{') {
+      rateLimit = this.parseRateLimitBlock();
+    }
+    
     const message = this.check('STRING') ? this.advance().value : undefined;
-    return { type: 'Policy', name, action, expression, message, isDefault };
+    return { type: 'Policy', name, action, expression, ...(rateLimit ? { rateLimit } : {}), message, isDefault };
   }
 
   private parseRole(): RoleNode {
@@ -1680,6 +1743,196 @@ export class Parser {
       return this.advance();
     }
     throw new Error(`Expected identifier, got ${token?.value || 'EOF'}`);
+  }
+
+  private parseRetryBlock(): RetryPolicyNode {
+    this.advance(); // consume 'retry'
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+    
+    let maxAttempts: number | undefined;
+    let backoff: 'fixed' | 'exponential' | 'linear' | undefined;
+    let delay: number | undefined;
+    let delayMs: number | undefined;
+    let jitter: boolean | number | undefined;
+    const retryOn: string[] = [];
+    
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+      
+      const field = this.consumeIdentifier().value;
+      this.consume('OPERATOR', ':');
+      
+      if (field === 'maxAttempts') {
+        maxAttempts = Number(this.advance().value);
+      } else if (field === 'backoff') {
+        backoff = this.consumeIdentifierOrKeyword().value as 'fixed' | 'exponential' | 'linear';
+      } else if (field === 'delay') {
+        delay = Number(this.advance().value);
+      } else if (field === 'delayMs') {
+        delayMs = Number(this.advance().value);
+      } else if (field === 'jitter') {
+        if (this.check('KEYWORD', 'true') || this.check('KEYWORD', 'false')) {
+          jitter = this.advance().value === 'true';
+        } else {
+          jitter = Number(this.advance().value);
+        }
+      } else if (field === 'retryOn') {
+        retryOn.push(this.check('STRING') ? this.advance().value : this.consumeIdentifierOrKeyword().value);
+      }
+      
+      if (this.check('PUNCTUATION', ',')) {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    
+    this.consume('PUNCTUATION', '}');
+    this.skipNL();
+    
+    return {
+      type: 'RetryPolicy',
+      ...(maxAttempts !== undefined ? { maxAttempts } : {}),
+      ...(backoff ? { backoff } : {}),
+      ...(delay !== undefined ? { delay } : {}),
+      ...(delayMs !== undefined ? { delayMs } : {}),
+      ...(jitter !== undefined ? { jitter } : {}),
+      ...(retryOn.length > 0 ? { retryOn } : {})
+    };
+  }
+
+  private parseSchedule(): ScheduleNode {
+    this.advance(); // consume 'schedule'
+    const name = this.consumeIdentifier().value;
+    
+    let scheduleType: 'cron' | 'interval' | 'every' = 'cron';
+    let cronExpression: string | undefined;
+    let value: number | undefined;
+    let unit: string | undefined;
+    
+    // Parse schedule type: cron <expr> | interval <num> <unit> | every <num> <unit>
+    let intervalDuration: string | undefined;
+    if (this.check('IDENTIFIER', 'cron')) {
+      this.advance(); // consume 'cron'
+      scheduleType = 'cron';
+      cronExpression = this.consume('STRING').value;
+    } else if (this.check('IDENTIFIER', 'interval')) {
+      this.advance(); // consume 'interval'
+      scheduleType = 'interval';
+      if (this.check('STRING')) {
+        intervalDuration = this.advance().value;
+      } else {
+        value = Number(this.advance().value);
+        unit = this.consumeIdentifierOrKeyword().value;
+      }
+    } else if (this.check('IDENTIFIER', 'every')) {
+      this.advance(); // consume 'every'
+      scheduleType = 'every';
+      value = Number(this.advance().value);
+      unit = this.consumeIdentifierOrKeyword().value;
+    } else {
+      throw new Error('Expected cron, interval, or every in schedule declaration');
+    }
+    
+    this.skipNL();
+    if (this.check('KEYWORD', 'run') || this.check('IDENTIFIER', 'run')) {
+      this.advance();
+    } else {
+      throw new Error("Expected 'run' in schedule declaration");
+    }
+    this.skipNL();
+    
+    // Parse optional Entity.commandName
+    let targetEntity: string | undefined;
+    let targetCommand: string;
+    const firstIdent = this.consumeIdentifier().value;
+    if (this.check('OPERATOR', '.')) {
+      this.advance(); // consume '.'
+      targetEntity = firstIdent;
+      targetCommand = this.consumeIdentifier().value;
+    } else {
+      targetCommand = firstIdent;
+    }
+    
+    // Parse optional parameters: (paramName: value, ...)
+    let parameters: Record<string, ExpressionNode> | undefined;
+    if (this.check('PUNCTUATION', '(')) {
+      this.advance(); // consume '('
+      this.skipNL();
+      parameters = {};
+      while (!this.check('PUNCTUATION', ')') && !this.isEnd()) {
+        this.skipNL();
+        if (this.check('PUNCTUATION', ')')) break;
+        const paramName = this.consumeIdentifier().value;
+        this.consume('OPERATOR', ':');
+        const paramValue = this.parseExpr();
+        parameters[paramName] = paramValue;
+        if (this.check('PUNCTUATION', ',')) {
+          this.advance();
+        }
+        this.skipNL();
+      }
+      this.consume('PUNCTUATION', ')');
+    }
+    
+    return {
+      type: 'Schedule',
+      name,
+      scheduleType,
+      ...(cronExpression ? { cronExpression } : {}),
+      ...(intervalDuration ? { intervalDuration } : {}),
+      ...(value !== undefined ? { value } : {}),
+      ...(unit ? { unit } : {}),
+      ...(targetEntity ? { targetEntity } : {}),
+      targetCommand,
+      ...(parameters ? { parameters } : {})
+    };
+  }
+
+  private parseRateLimitBlock(): RateLimitNode {
+    this.advance(); // consume 'rateLimit'
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+    
+    let maxRequests: number | undefined;
+    let windowMs: number | undefined;
+    let scope: 'user' | 'tenant' | 'global' | undefined;
+    let burstAllowance: number | undefined;
+    
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+      
+      const field = this.consumeIdentifier().value;
+      this.consume('OPERATOR', ':');
+      
+      if (field === 'maxRequests') {
+        maxRequests = Number(this.advance().value);
+      } else if (field === 'windowMs') {
+        windowMs = Number(this.advance().value);
+      } else if (field === 'scope') {
+        scope = this.consumeIdentifierOrKeyword().value as 'user' | 'tenant' | 'global';
+      } else if (field === 'burstAllowance') {
+        burstAllowance = Number(this.advance().value);
+      }
+      
+      if (this.check('PUNCTUATION', ',')) {
+        this.advance();
+      }
+      this.skipNL();
+    }
+    
+    this.consume('PUNCTUATION', '}');
+    this.skipNL();
+    
+    return {
+      type: 'RateLimit',
+      ...(maxRequests !== undefined ? { maxRequests } : {}),
+      ...(windowMs !== undefined ? { windowMs } : {}),
+      ...(scope ? { scope } : {}),
+      ...(burstAllowance !== undefined ? { burstAllowance } : {})
+    };
   }
 
   private advance() { if (!this.isEnd()) this.pos++; return this.tokens[this.pos - 1]; }

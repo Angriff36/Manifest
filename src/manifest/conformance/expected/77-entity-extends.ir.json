@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "3e54044c1d7aae314755cabe663ae95c63b00abb1c654f2936fd7306d61f386e",
-    "compilerVersion": "1.0.0",
+    "irHash": "f7aba9ef06c91b3716595326b343f097ca868b6f27a89ed20114bb75ffd8f9ea",
+    "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
@@ -301,6 +301,30 @@
     {
       "name": "AdminOnly",
       "entity": "BaseEntity",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "==",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "user"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "admin"
+          }
+        }
+      }
+    },
+    {
+      "name": "AdminOnly",
+      "entity": "ChildEntity",
       "action": "execute",
       "expression": {
         "kind": "binary",

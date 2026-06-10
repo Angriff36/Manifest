@@ -16,6 +16,7 @@ export type CommandOutcome =
   | 'success'
   | 'guard_denied'
   | 'policy_denied'
+  | 'rate_limit_denied'
   | 'constraint_failed'
   | 'concurrency_conflict'
   | 'missing_tenant_context'

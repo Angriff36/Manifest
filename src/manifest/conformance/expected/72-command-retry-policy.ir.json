@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "52c3f99d734582c0ff384782b9cda0e869b3f4895b72174a607e20cea806c2e1",
+    "irHash": "eac6f8052d43d81331534de91936e76d8ec520efa1f536fc97f39e82c87f339c",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -88,79 +88,17 @@
         }
       ],
       "constraints": [],
+      "retry": {
+        "maxAttempts": 3,
+        "backoff": "exponential",
+        "delayMs": 1000,
+        "jitter": true,
+        "retryOn": [
+          "CONCURRENCY_CONFLICT",
+          "TIMEOUT"
+        ]
+      },
       "actions": [
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "identifier",
-            "name": "retry"
-          }
-        },
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "object",
-            "properties": [
-              {
-                "key": "maxAttempts",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 3
-                  }
-                }
-              },
-              {
-                "key": "backoff",
-                "value": {
-                  "kind": "identifier",
-                  "name": "exponential"
-                }
-              },
-              {
-                "key": "delay",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 1000
-                  }
-                }
-              },
-              {
-                "key": "jitter",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "boolean",
-                    "value": true
-                  }
-                }
-              },
-              {
-                "key": "retryOn",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "string",
-                    "value": "CONCURRENCY_CONFLICT"
-                  }
-                }
-              },
-              {
-                "key": "retryOn",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "string",
-                    "value": "TIMEOUT"
-                  }
-                }
-              }
-            ]
-          }
-        },
         {
           "kind": "mutate",
           "target": "status",
@@ -226,69 +164,16 @@
         }
       ],
       "constraints": [],
+      "retry": {
+        "maxAttempts": 5,
+        "backoff": "linear",
+        "delayMs": 500,
+        "jitter": false,
+        "retryOn": [
+          "CONCURRENCY_CONFLICT"
+        ]
+      },
       "actions": [
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "identifier",
-            "name": "retry"
-          }
-        },
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "object",
-            "properties": [
-              {
-                "key": "maxAttempts",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 5
-                  }
-                }
-              },
-              {
-                "key": "backoff",
-                "value": {
-                  "kind": "identifier",
-                  "name": "linear"
-                }
-              },
-              {
-                "key": "delay",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 500
-                  }
-                }
-              },
-              {
-                "key": "jitter",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "boolean",
-                    "value": false
-                  }
-                }
-              },
-              {
-                "key": "retryOn",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "string",
-                    "value": "CONCURRENCY_CONFLICT"
-                  }
-                }
-              }
-            ]
-          }
-        },
         {
           "kind": "mutate",
           "target": "status",
@@ -331,69 +216,16 @@
         }
       ],
       "constraints": [],
+      "retry": {
+        "maxAttempts": 3,
+        "backoff": "fixed",
+        "delayMs": 2000,
+        "jitter": false,
+        "retryOn": [
+          "TIMEOUT"
+        ]
+      },
       "actions": [
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "identifier",
-            "name": "retry"
-          }
-        },
-        {
-          "kind": "compute",
-          "expression": {
-            "kind": "object",
-            "properties": [
-              {
-                "key": "maxAttempts",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 3
-                  }
-                }
-              },
-              {
-                "key": "backoff",
-                "value": {
-                  "kind": "identifier",
-                  "name": "fixed"
-                }
-              },
-              {
-                "key": "delay",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "number",
-                    "value": 2000
-                  }
-                }
-              },
-              {
-                "key": "jitter",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "boolean",
-                    "value": false
-                  }
-                }
-              },
-              {
-                "key": "retryOn",
-                "value": {
-                  "kind": "literal",
-                  "value": {
-                    "kind": "string",
-                    "value": "TIMEOUT"
-                  }
-                }
-              }
-            ]
-          }
-        },
         {
           "kind": "mutate",
           "target": "status",

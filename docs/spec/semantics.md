@@ -309,12 +309,16 @@ In this example:
 - Commands take parameters, optional guards, actions, emits, and optional return type.
 - On execution, a runtime MUST:
   1) Build an evaluation context containing `self`, `this`, input parameters, and runtime context.
-  2) Evaluate applicable policies (see Policies). If any fail, execution MUST stop with a denial.
-  3) Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
-  4) Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
-  5) Execute actions in order.
-  6) Emit declared events in order.
-  7) Return a CommandResult with success status, emitted events, and the last action result.
+  2) If the command declares `rateLimit`, evaluate the rate-limit gate for the configured scope (`user`, `tenant`, or `global`). If denied, execution MUST stop with a `rateLimitDenial` on the CommandResult.
+  3) Evaluate applicable policies (see Policies). Policy-level `rateLimit` gates run before each policy expression. If any policy fails (expression or rate limit), execution MUST stop with a denial.
+  4) Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
+  5) Evaluate guards in order; if any guard is falsey, execution MUST stop with a guard failure.
+  6) Execute actions in order.
+  7) Emit declared events in order.
+  8) Return a CommandResult with success status, emitted events, and the last action result.
+- Commands may declare a `retry` policy. When present, the runtime wraps execution and retries only on `CONCURRENCY_CONFLICT` and `TIMEOUT` outcomes (or the explicit `retryOn` list). Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
+- `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`; adapters decide when to invoke schedules — the reference runtime does not include a built-in timer.
+- Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
 ### Command Constraints (vNext)
 - Commands may define a `constraints` array for pre-execution validation.

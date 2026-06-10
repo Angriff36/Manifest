@@ -1,0 +1,81 @@
+{
+  "testCases": [
+    {
+      "name": "User sendNotification requests within limit (first 10)",
+      "context": {
+        "user": { "id": "user-1" },
+        "authenticated": true
+      },
+      "command": {
+        "name": "sendNotification",
+        "input": { "recipient": "alice@example.com", "message": "Hello" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "NotificationSent",
+            "channel": "NotificationSent",
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "Eleventh sendNotification request denied by rate limit",
+      "context": {
+        "user": { "id": "user-1" },
+        "authenticated": true
+      },
+      "command": {
+        "name": "sendNotification",
+        "warmupCount": 10,
+        "input": { "recipient": "bob@example.com", "message": "Blocked" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Rate limit exceeded for scope user:user-1",
+        "rateLimitDenial": {
+          "scope": "user",
+          "scopeKey": "user:user-1",
+          "limit": 10,
+          "windowMs": 1000,
+          "retryAfterMs": 1000
+        },
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Global action within limit (first 100)",
+      "context": {},
+      "command": {
+        "name": "globalAction",
+        "input": { "data": "test" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      }
+    },
+    {
+      "name": "Tenant action within limit (first 50)",
+      "context": {
+        "tenantId": "tenant-1"
+      },
+      "command": {
+        "name": "tenantAction",
+        "input": { "data": "test" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": [
+          {
+            "name": "TenantActionPerformed",
+            "channel": "TenantActionPerformed",
+            "timestamp": 1000000000000
+          }
+        ]
+      }
+    }
+  ]
+}

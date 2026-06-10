@@ -102,6 +102,13 @@
         "$ref": "#/definitions/IRWebhook"
       },
       "description": "Webhook declarations mapping inbound HTTP payloads to Manifest command invocations."
+    },
+    "schedules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/IRSchedule"
+      },
+      "description": "Scheduled command declarations with triggers and parameter bindings."
     }
   },
   "definitions": {
@@ -237,6 +244,13 @@
             "type": "string"
           },
           "description": "Webhook names declared in this module"
+        },
+        "schedules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Schedule names declared in this module"
         }
       }
     },
@@ -304,6 +318,17 @@
         },
         "module": {
           "type": "string"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Parent entity name for inheritance (from `extends` keyword)"
+        },
+        "mixins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Mixin entity names for composition (from `mixin` keyword)"
         },
         "properties": {
           "type": "array",
@@ -851,6 +876,14 @@
           },
           "description": "Policy names for authorization (explicit or inherited from entity defaults)"
         },
+        "retry": {
+          "$ref": "#/definitions/IRRetry",
+          "description": "Retry policy for resilient execution"
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/IRRateLimit",
+          "description": "Rate limit policy for this command"
+        },
         "actions": {
           "type": "array",
           "items": {
@@ -982,6 +1015,10 @@
         },
         "expression": {
           "$ref": "#/definitions/IRExpression"
+        },
+        "rateLimit": {
+          "$ref": "#/definitions/IRRateLimit",
+          "description": "Rate limit policy for this policy"
         },
         "message": {
           "type": "string"
@@ -1759,6 +1796,128 @@
           "type": "array",
           "items": { "$ref": "#/definitions/IRWebhookParam" },
           "description": "Payload transformation expressions: maps command parameter names to payload field expressions"
+        }
+      }
+    },
+    "IRRetry": {
+      "type": "object",
+      "required": ["maxAttempts", "backoff", "delayMs"],
+      "additionalProperties": false,
+      "properties": {
+        "maxAttempts": {
+          "type": "number",
+          "description": "Maximum number of retry attempts"
+        },
+        "backoff": {
+          "type": "string",
+          "enum": ["fixed", "linear", "exponential"],
+          "description": "Backoff strategy for retry delays"
+        },
+        "delayMs": {
+          "type": "number",
+          "description": "Base delay in milliseconds"
+        },
+        "jitter": {
+          "type": "boolean",
+          "description": "Whether to apply jitter to retry delays"
+        },
+        "retryOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Error codes that trigger a retry (e.g. CONCURRENCY_CONFLICT, TIMEOUT)"
+        }
+      }
+    },
+    "IRRateLimit": {
+      "type": "object",
+      "required": ["maxRequests", "windowMs", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "maxRequests": {
+          "type": "number",
+          "description": "Maximum number of requests per window"
+        },
+        "windowMs": {
+          "type": "number",
+          "description": "Time window in milliseconds"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["user", "tenant", "global"],
+          "description": "Scope of rate limiting: user, tenant, or global"
+        },
+        "burstAllowance": {
+          "type": "number",
+          "description": "Burst allowance: additive requests above maxRequests"
+        }
+      }
+    },
+    "IRTrigger": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["cron", "interval", "every"],
+          "description": "Trigger type: cron (expression-based), interval (milliseconds), or every (duration)"
+        },
+        "cron": {
+          "type": "string",
+          "description": "Cron expression (5 fields: minute hour day month dayOfWeek) when kind='cron'"
+        },
+        "durationMs": {
+          "type": "number",
+          "description": "Duration in milliseconds for interval or every triggers"
+        }
+      }
+    },
+    "IRScheduleParam": {
+      "type": "object",
+      "required": ["name", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Parameter name"
+        },
+        "value": {
+          "$ref": "#/definitions/IRValue",
+          "description": "Parameter value"
+        }
+      }
+    },
+    "IRSchedule": {
+      "type": "object",
+      "required": ["name", "commandName", "trigger"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Schedule name (unique within program)"
+        },
+        "module": {
+          "type": "string",
+          "description": "Module name if defined in a module"
+        },
+        "entityName": {
+          "type": "string",
+          "description": "Entity on which the command is invoked (absent for global commands)"
+        },
+        "commandName": {
+          "type": "string",
+          "description": "Command name to invoke"
+        },
+        "trigger": {
+          "$ref": "#/definitions/IRTrigger",
+          "description": "Trigger configuration (cron, interval, or every)"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IRScheduleParam"
+          },
+          "description": "Parameters bound to the scheduled command"
         }
       }
     }

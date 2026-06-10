@@ -2,8 +2,8 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "2421059c91c928d23d13852b8684f05fe14d44e8b445fbc86214151e22202894",
-    "compilerVersion": "1.0.0",
+    "irHash": "fac3740cf66f95ffa925335574617d4deca27a5b747e568c84e62fe789ba8f34",
+    "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
   },
@@ -73,16 +73,15 @@
         }
       ],
       "constraints": [],
-      "actions": [],
-      "emits": [
-        "NotificationSent"
-      ],
       "rateLimit": {
         "maxRequests": 10,
         "windowMs": 1000,
-        "scope": "user",
-        "burstAllowance": 5
-      }
+        "scope": "user"
+      },
+      "actions": [],
+      "emits": [
+        "NotificationSent"
+      ]
     },
     {
       "name": "globalAction",
@@ -98,6 +97,11 @@
       ],
       "guards": [],
       "constraints": [],
+      "rateLimit": {
+        "maxRequests": 100,
+        "windowMs": 60000,
+        "scope": "global"
+      },
       "actions": [
         {
           "kind": "persist",
@@ -107,12 +111,7 @@
           }
         }
       ],
-      "emits": [],
-      "rateLimit": {
-        "maxRequests": 100,
-        "windowMs": 60000,
-        "scope": "global"
-      }
+      "emits": []
     },
     {
       "name": "tenantAction",
@@ -128,18 +127,17 @@
       ],
       "guards": [],
       "constraints": [],
-      "actions": [],
-      "emits": [
-        "TenantActionPerformed"
-      ],
       "rateLimit": {
         "maxRequests": 50,
         "windowMs": 10000,
         "scope": "tenant"
-      }
+      },
+      "actions": [],
+      "emits": [
+        "TenantActionPerformed"
+      ]
     }
   ],
   "policies": [],
-  "reactions": [],
-  "schedules": []
+  "reactions": []
 }

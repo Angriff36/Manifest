@@ -4,6 +4,45 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.0] - 2026-06-10
+
+Language and projection wave: entity composition, scheduled commands, command
+retry, rate limiting, projection registry completeness, and Next.js naming
+overrides. All new syntax is opt-in; execution semantics remain strict
+(rate-limit → policies → constraints → guards → actions → emits).
+
+### Added
+
+- **Entity composition** — `extends` inheritance and `mixin` composition with
+  compile-time merge (properties, relationships, constraints, policies, command
+  names). Precedence: own > later mixin > earlier mixin > parent. Unknown
+  parents and inheritance cycles are compile errors. Conformance fixtures
+  77–81.
+- **Scheduled commands** — `schedule` declarations with `cron`, `interval`, and
+  `every` triggers; IR `schedules` array; runtime `getSchedules()` and
+  `runSchedule(name)` (no built-in timer). Conformance fixture 76.
+- **Command retry** — `retry { }` blocks on commands with `fixed`/`linear`/
+  `exponential` backoff, optional jitter, and `retryOn` error codes. Runtime
+  retries only retryable outcomes (`CONCURRENCY_CONFLICT`, `TIMEOUT` by
+  default). Conformance fixture 72.
+- **Rate limiting** — `rateLimit { }` on commands and policies with
+  `user`/`tenant`/`global` scope and sliding-window enforcement before policy
+  evaluation. Conformance fixtures 74–75.
+- **Next.js projection naming overrides** — `naming`, `accessorNames`, and
+  `routeSegments` options for DB accessor and route segment customization.
+- **Projection registry** — Kysely, DynamoDB, Pydantic, and Dart projections
+  registered in the default registry.
+- **`generate-tests` CLI** — `manifest generate-tests` (alias `gen-tests`)
+  registered in the CLI command table.
+- **`compilerVersion` in IR provenance** — derived from package version and
+  normalized in conformance output.
+
+### Changed
+
+- Next.js projection defaults to minimal output unless explicitly configured.
+- IR schema aligned with `IRRetry.delayMs`, `IRRateLimit.burstAllowance`, and
+  `IRSchedule.entityName`/`commandName` field names.
+
 ## [2.3.1] - 2026-06-10
 
 Republish of 2.3.0. The 2.3.0 version on GitHub Packages is broken — its

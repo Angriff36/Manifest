@@ -3,9 +3,7 @@
   "diagnostics": [
     {
       "severity": "error",
-      "message": "Expected {, got extends",
-      "line": 4,
-      "column": 21
+      "message": "Entity 'Child' extends unknown entity 'NonExistent'"
     }
   ]
 }

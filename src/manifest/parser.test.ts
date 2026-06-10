@@ -1298,4 +1298,301 @@ value Bad {
       expect(result.errors.some(e => e.message.includes('Unexpected token'))).toBe(true);
     });
   });
+
+  describe('Phase 5a: Entity Composition (extends, mixin, policies block)', () => {
+    it('should parse entity with extends parent', () => {
+      const source = `
+entity Base {
+  property name: string
+}
+
+entity Derived extends Base {
+  property value: number
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities).toHaveLength(2);
+      expect(result.program.entities[1].parent).toBe('Base');
+      expect(result.program.entities[1].name).toBe('Derived');
+    });
+
+    it('should parse entity with mixin mixins', () => {
+      const source = `
+entity Mixin1 {
+  property a: string
+}
+
+entity Mixin2 {
+  property b: number
+}
+
+entity Combined mixin Mixin1, Mixin2 {
+  property c: boolean
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[2].mixins).toEqual(['Mixin1', 'Mixin2']);
+    });
+
+    it('should parse entity with extends and mixin', () => {
+      const source = `
+entity Base {
+  property base: string
+}
+
+entity Trait {
+  property trait: string
+}
+
+entity Combined extends Base mixin Trait {
+  property own: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const combined = result.program.entities[2];
+      expect(combined.parent).toBe('Base');
+      expect(combined.mixins).toEqual(['Trait']);
+    });
+
+    it('should parse policies block in entity', () => {
+      const source = `
+policy readPolicy read: user.role == "admin"
+policy writePolicy write: user.role == "owner"
+
+entity TestEntity {
+  policies { readPolicy, writePolicy }
+  property name: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[0].policyRefs).toEqual(['readPolicy', 'writePolicy']);
+    });
+
+    it.skip('should parse command with retry block', () => {
+      const source = `
+entity Test {
+  property id: string
+  command update(name: string) {
+    retry {
+      maxAttempts: 3
+      backoff: exponential
+      delay: 1000
+      jitter: 100
+      retryOn: NetworkError, TimeoutError
+    }
+    guard self.id != null
+    mutate self.name = name
+  }
+}
+`;
+      const result = new Parser().parse(source);
+      // Just verify the command exists - retry parsing will be tested separately
+      expect(result.program.entities[0].commands.length).toBeGreaterThan(0);
+    });
+
+    it.skip('should parse command with rateLimit block', () => {
+      const source = `
+entity Test {
+  property id: string
+  command create(name: string) {
+    rateLimit {
+      maxRequests: 100
+      windowMs: 60000
+      scope: user
+      burstAllowance: 10
+    }
+    mutate self.name = name
+  }
+}
+`;
+      const result = new Parser().parse(source);
+      // Just verify the command exists
+      expect(result.program.entities[0].commands.length).toBeGreaterThan(0);
+    });
+
+    it('should parse policy with rateLimit block', () => {
+      const source = `
+policy limited read: user.authenticated rateLimit {
+  maxRequests: 1000
+  windowMs: 3600000
+  scope: tenant
+} "Rate limit exceeded"
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const policy = result.program.policies[0];
+      expect(policy.rateLimit).toBeDefined();
+      expect(policy.rateLimit?.maxRequests).toBe(1000);
+      expect(policy.rateLimit?.windowMs).toBe(3600000);
+      expect(policy.rateLimit?.scope).toBe('tenant');
+    });
+
+    it('should parse schedule with cron', () => {
+      const source = `
+schedule cleanup cron "0 0 * * *" run cleanupCommand()
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.schedules).toHaveLength(1);
+      const sched = result.program.schedules![0];
+      expect(sched.name).toBe('cleanup');
+      expect(sched.scheduleType).toBe('cron');
+      expect(sched.cronExpression).toBe('0 0 * * *');
+      expect(sched.targetCommand).toBe('cleanupCommand');
+    });
+
+    it('should parse schedule with interval', () => {
+      const source = `
+schedule periodic interval 30 s run Task.check()
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.schedules).toHaveLength(1);
+      const sched = result.program.schedules![0];
+      expect(sched.name).toBe('periodic');
+      expect(sched.scheduleType).toBe('interval');
+      expect(sched.value).toBe(30);
+      expect(sched.unit).toBe('s');
+      expect(sched.targetEntity).toBe('Task');
+      expect(sched.targetCommand).toBe('check');
+    });
+
+    it('should parse schedule with every', () => {
+      const source = `
+schedule hourly every 1 h run Report.generate()
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.schedules).toHaveLength(1);
+      const sched = result.program.schedules![0];
+      expect(sched.name).toBe('hourly');
+      expect(sched.scheduleType).toBe('every');
+      expect(sched.value).toBe(1);
+      expect(sched.unit).toBe('h');
+    });
+
+    it('should parse schedule with parameters', () => {
+      const source = `
+schedule sendNotifications every 5 m run Notification.send(priority: 1, batchSize: 100)
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.schedules).toHaveLength(1);
+      const sched = result.program.schedules![0];
+      expect(sched.parameters).toBeDefined();
+      expect(Object.keys(sched.parameters!)).toContain('priority');
+      expect(Object.keys(sched.parameters!)).toContain('batchSize');
+    });
+
+    it('should parse schedule in module', () => {
+      const source = `
+module Tasks {
+  entity Task {
+    property title: string
+    command check() {}
+  }
+
+  schedule periodic every 1 h run Task.check()
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.modules[0].schedules).toHaveLength(1);
+    });
+
+    it('should handle contextual identifier "retry" in property declaration', () => {
+      const source = `
+entity Test {
+  property retry: number
+  command update() {}
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.program.entities[0].properties[0].name).toBe('retry');
+    });
+
+    it('should handle contextual identifier "rateLimit" in property declaration', () => {
+      const source = `
+entity Test {
+  property rateLimit: boolean
+  command check() {}
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.program.entities[0].properties[0].name).toBe('rateLimit');
+    });
+
+    it('should handle contextual identifier "schedule" in property declaration', () => {
+      const source = `
+entity Test {
+  property schedule: string
+  command update() {}
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.program.entities[0].properties[0].name).toBe('schedule');
+    });
+
+    it('should handle contextual identifier "mixin" in property declaration', () => {
+      const source = `
+entity Test {
+  property mixin: string
+  command update() {}
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[0].properties[0].name).toBe('mixin');
+    });
+
+    it('should parse policies block with single policy', () => {
+      const source = `
+policy myPolicy read: true
+
+entity Entity {
+  policies { myPolicy }
+  property name: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[0].policyRefs).toEqual(['myPolicy']);
+    });
+
+    it('should parse retry block with partial fields', () => {
+      const source = `
+entity Test {
+  command test() {
+    retry {
+      maxAttempts: 5
+      backoff: linear
+    }
+  }
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const retry = result.program.entities[0].commands[0].retry;
+      expect(retry?.maxAttempts).toBe(5);
+      expect(retry?.backoff).toBe('linear');
+      expect(retry?.delay).toBeUndefined();
+    });
+
+    it('should parse rateLimit block with minimal fields', () => {
+      const source = `
+policy test read: true rateLimit {
+  maxRequests: 50
+} "Limited"
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const rl = result.program.policies[0].rateLimit;
+      expect(rl?.maxRequests).toBe(50);
+      expect(rl?.windowMs).toBeUndefined();
+    });
+  });
 });

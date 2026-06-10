@@ -50,6 +50,8 @@ export interface IR {
   sagas?: IRSaga[];
   /** Role hierarchy with permission inheritance. Only emitted when roles are declared. */
   roles?: IRRole[];
+  /** Scheduled command declarations with triggers and parameter bindings. */
+  schedules?: IRSchedule[];
   /** Webhook declarations mapping inbound HTTP payloads to command invocations. */
   webhooks?: IRWebhook[];
 }
@@ -71,6 +73,7 @@ export interface IRModule {
   reactions?: string[];
   sagas?: string[];
   roles?: string[];
+  schedules?: string[];
   webhooks?: string[];
 }
 
@@ -123,6 +126,10 @@ export interface IRApproval {
 export interface IREntity {
   name: string;
   module?: string;
+  /** Parent entity name for inheritance (from `extends` keyword) */
+  parent?: string;
+  /** Mixin entity names for composition (from `mixin` keyword) */
+  mixins?: string[];
   properties: IRProperty[];
   computedProperties: IRComputedProperty[];
   relationships: IRRelationship[];
@@ -223,6 +230,61 @@ export interface IRConstraint {
   overrideable?: boolean;
   /** Policy that authorizes overrides */
   overridePolicyRef?: string;
+}
+
+/** Retry configuration for resilient command execution */
+export interface IRRetry {
+  /** Maximum number of retry attempts (>= 1) */
+  maxAttempts: number;
+  /** Backoff strategy */
+  backoff: 'fixed' | 'linear' | 'exponential';
+  /** Base delay in milliseconds */
+  delayMs: number;
+  /** Whether to apply jitter to retry delays */
+  jitter?: boolean;
+  /** Error codes that trigger a retry (deduped, >= 1 when present) */
+  retryOn?: string[];
+}
+
+/** Rate limit configuration for controlling command/policy execution */
+export interface IRRateLimit {
+  /** Maximum number of requests per window */
+  maxRequests: number;
+  /** Time window in milliseconds */
+  windowMs: number;
+  /** Scope: 'user' | 'tenant' | 'global' */
+  scope: 'user' | 'tenant' | 'global';
+  /** Burst allowance: additive requests above maxRequests */
+  burstAllowance?: number;
+}
+
+/** Individual parameter within a scheduled command invocation */
+export interface IRScheduleParam {
+  name: string;
+  expression: IRExpression;
+}
+
+/** Trigger configuration for scheduled commands (cron or interval-based) */
+export interface IRTrigger {
+  kind: 'cron' | 'interval' | 'every';
+  /** Cron expression (if kind === 'cron'), e.g. "0 9 * * MON" */
+  cron?: string;
+  /** Duration in milliseconds for interval-based triggers */
+  durationMs?: number;
+}
+
+/** Scheduled command declaration with trigger and parameter binding */
+export interface IRSchedule {
+  name: string;
+  module?: string;
+  /** Entity on which the command is invoked (absent for global commands) */
+  entityName?: string;
+  /** Command name to invoke */
+  commandName: string;
+  /** Trigger configuration (cron, interval, or every) */
+  trigger: IRTrigger;
+  /** Parameters bound to the scheduled command */
+  params?: IRScheduleParam[];
 }
 
 /** Built-in store target names. */
@@ -330,6 +392,10 @@ export interface IRCommand {
   constraints?: IRConstraint[];
   /** Policy names for authorization (explicit or inherited from entity defaults) */
   policies?: string[];
+  /** Retry policy for resilient execution */
+  retry?: IRRetry;
+  /** Rate limit policy for this command */
+  rateLimit?: IRRateLimit;
   actions: IRAction[];
   emits: string[];
   returns?: IRType;
@@ -360,6 +426,8 @@ export interface IRPolicy {
   entity?: string;
   action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: IRExpression;
+  /** Rate limit policy for this policy */
+  rateLimit?: IRRateLimit;
   message?: string;
 }
 

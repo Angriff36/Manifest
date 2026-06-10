@@ -67,6 +67,8 @@ interface CommandTestCase {
     entityName?: string;
     instanceId?: string;
     input: Record<string, unknown>;
+    /** Run the command this many times before the asserted invocation (rate-limit warm-up). */
+    warmupCount?: number;
     overrideRequests?: Array<{
       constraintCode: string;
       reason: string;
@@ -307,14 +309,21 @@ describe('Manifest Conformance Tests', () => {
                 }
               }
 
+              const runOpts = {
+                entityName: tc.command.entityName,
+                instanceId: tc.command.instanceId,
+                overrideRequests: tc.command.overrideRequests,
+              };
+
+              const warmup = tc.command.warmupCount ?? 0;
+              for (let i = 0; i < warmup; i++) {
+                await engine.runCommand(tc.command.name, tc.command.input, runOpts);
+              }
+
               const result = await engine.runCommand(
                 tc.command.name,
                 tc.command.input,
-                {
-                  entityName: tc.command.entityName,
-                  instanceId: tc.command.instanceId,
-                  overrideRequests: tc.command.overrideRequests,
-                }
+                runOpts
               );
 
               const normalizedResult = normalizeResult(result);

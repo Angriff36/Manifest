@@ -21,6 +21,14 @@ import {
 } from './ir';
 import { dateOf, timeOf, datetimeOf, isValidDateString, isValidTimeString } from './date-time.js';
 import { applyMaskStrategy } from './masking.js';
+import { RateLimiter } from './runtime-rate-limit.js';
+import {
+  checkRateLimitGate,
+  executeWithRetry,
+  policyHasRateLimit,
+} from './runtime-command-extensions.js';
+import { getSchedulesFromIR } from './runtime-schedule.js';
+import type { IRSchedule } from './ir';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -285,6 +293,10 @@ export interface RuntimeOptions {
    * accessible via `engine.getProfiles()`.
    */
   profiling?: import('./profiling').ProfilingOptions;
+  /** Injectable sleep for deterministic retry backoff in tests/adapters */
+  sleep?: (ms: number) => Promise<void>;
+  /** Deterministic jitter override for retry delays (used when retry.jitter is true) */
+  retryJitter?: (delayMs: number) => number;
 }
 
 // Re-export adapter contract types at the package root so consumers can do
@@ -329,6 +341,21 @@ export interface CommandResult {
   /** Caller-supplied ID of the event/command that caused this command execution */
   causationId?: string;
   emittedEvents: EmittedEvent[];
+  /** Retry metadata when command declares a retry policy */
+  retry?: {
+    attempts: number;
+    exhausted: boolean;
+    lastErrorCode?: string;
+    delaysMs: number[];
+  };
+  /** Rate limit denial when a command or policy rate limiter blocks execution */
+  rateLimitDenial?: {
+    scope: 'user' | 'tenant' | 'global';
+    scopeKey: string;
+    limit: number;
+    windowMs: number;
+    retryAfterMs: number;
+  };
 }
 
 export interface GuardFailure {
@@ -736,6 +763,9 @@ export class RuntimeEngine {
 
   /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
+
+  /** Per-engine sliding-window rate limiter (in-memory; durable store is a follow-up) */
+  private rateLimiter = new RateLimiter();
 
   /**
    * In-process approval request cache, keyed by
@@ -1560,6 +1590,62 @@ export class RuntimeEngine {
     return this.ir.policies;
   }
 
+  /** Return all schedule declarations from the compiled IR. */
+  getSchedules(): IRSchedule[] {
+    return Array.from(getSchedulesFromIR(this.ir).values());
+  }
+
+  /**
+   * Run a named schedule: evaluate bound params and dispatch the target command.
+   * Sets context.source to 'schedule' and context.scheduleName for the invocation.
+   */
+  async runSchedule(
+    scheduleName: string,
+    options: { correlationId?: string; causationId?: string } = {}
+  ): Promise<CommandResult> {
+    const schedule = getSchedulesFromIR(this.ir).get(scheduleName);
+    if (!schedule) {
+      return {
+        success: false,
+        error: `Schedule '${scheduleName}' not found`,
+        emittedEvents: [],
+      };
+    }
+
+    const input: Record<string, unknown> = {};
+    const now = this.getNow();
+    const paramContext = {
+      ...this.buildEvalContext({}, undefined, schedule.entityName),
+      now,
+    };
+
+    if (schedule.params) {
+      for (const param of schedule.params) {
+        input[param.name] = await this.evaluateExpression(param.expression, paramContext);
+      }
+    }
+
+    const prevSource = this.context.source;
+    const prevScheduleName = this.context.scheduleName;
+    this.context.source = 'schedule';
+    this.context.scheduleName = scheduleName;
+
+    try {
+      return await this.runCommand(schedule.commandName, input, {
+        ...(schedule.entityName ? { entityName: schedule.entityName } : {}),
+        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+      });
+    } finally {
+      this.context.source = prevSource;
+      if (prevScheduleName !== undefined) {
+        this.context.scheduleName = prevScheduleName;
+      } else {
+        delete this.context.scheduleName;
+      }
+    }
+  }
+
   getStore(entityName: string): Store | undefined {
     return this.stores.get(entityName);
   }
@@ -2176,8 +2262,16 @@ export class RuntimeEngine {
         return result;
       }
 
-      // Full command execution
-      result = await this._executeCommandInternal(commandName, input, options);
+      // Full command execution (with optional retry wrapper)
+      const runOnce = () => this._executeCommandInternal(commandName, input, options);
+      if (command?.retry) {
+        result = await executeWithRetry(command.retry, runOnce, {
+          sleep: this.options.sleep,
+          retryJitter: this.options.retryJitter,
+        });
+      } else {
+        result = await runOnce();
+      }
 
       // Outbox enqueue: when an OutboxStore is wired in and the command
       // succeeded with one or more emitted events, durably persist the
@@ -2410,6 +2504,7 @@ export class RuntimeEngine {
     if (result.success) return 'success';
     if (result.policyDenial) return 'policy_denied';
     if (result.guardFailure) return 'guard_denied';
+    if (result.rateLimitDenial) return 'rate_limit_denied';
     if (result.concurrencyConflict) return 'concurrency_conflict';
     if (typeof result.error === 'string' && result.error.startsWith('MISSING_TENANT_CONTEXT')) {
       return 'missing_tenant_context';
@@ -2782,6 +2877,27 @@ export class RuntimeEngine {
       : autoCreatePreparedData as EntityInstance | undefined;
 
     const evalContext = this.buildEvalContext(autoCreateEvalInput ?? input, instance, options.entityName);
+
+    if (command.rateLimit) {
+      const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
+      const rl = checkRateLimitGate(
+        this.rateLimiter,
+        command.rateLimit,
+        evalContext,
+        tenantValue,
+        this.getNow(),
+      );
+      if (!rl.allowed) {
+        return {
+          success: false,
+          error: `Rate limit exceeded for scope ${rl.denial.scopeKey}`,
+          rateLimitDenial: rl.denial,
+          ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+          ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+          emittedEvents: [],
+        };
+      }
+    }
 
     // Middleware: before-policy hook
     const beforePolicyResult = await this.runMiddleware('before-policy', command, evalContext, input, options);
@@ -3159,7 +3275,32 @@ export class RuntimeEngine {
       });
     }
 
+    const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
+
     for (const policy of relevantPolicies) {
+      if (policyHasRateLimit(policy) && policy.rateLimit) {
+        const rl = checkRateLimitGate(
+          this.rateLimiter,
+          policy.rateLimit,
+          evalContext,
+          tenantValue,
+          this.getNow(),
+          `policy:${policy.name}`,
+        );
+        if (!rl.allowed) {
+          return {
+            allowed: false,
+            denial: {
+              policyName: policy.name,
+              expression: policy.expression,
+              formatted: this.formatExpression(policy.expression),
+              message: policy.message || `Rate limit exceeded for policy '${policy.name}'`,
+              contextKeys: this.extractContextKeys(policy.expression),
+            },
+          };
+        }
+      }
+
       const result = await this.evaluateExpression(policy.expression, evalContext);
       if (!result) {
         // Extract context keys (not values for security)

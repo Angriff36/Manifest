@@ -1,4 +1,6 @@
 import { Parser } from './parser.js';
+import { expandEntityComposition } from './entity-composition.js';
+import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
 import {
   ManifestProgram,
   EntityNode,
@@ -24,6 +26,9 @@ import {
   RoleNode,
   SagaNode,
   WebhookNode,
+  ScheduleNode,
+  RetryPolicyNode,
+  RateLimitNode,
 } from './types';
 import {
   IR,
@@ -64,6 +69,11 @@ import {
   IRWebhook,
   IRWebhookSignature,
   IRWebhookParam,
+  IRRetry,
+  IRRateLimit,
+  IRSchedule,
+  IRScheduleParam,
+  IRTrigger,
 } from './ir';
 import { globalIRCache, type IRCache } from './ir-cache.js';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
@@ -344,6 +354,11 @@ export class IRCompiler {
   }
 
   private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string): Promise<IR> {
+    // Expand entity composition (extends, mixin, policies)
+    expandEntityComposition(program, (severity, message) => {
+      this.emitDiagnostic(severity, message);
+    });
+
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const values: IRValueObject[] = program.values.map(v => this.transformValueObject(v));
     const entities: IREntity[] = [
@@ -481,6 +496,11 @@ export class IRCompiler {
       ...program.modules.flatMap(m => (m.webhooks || []).map(w => this.transformWebhook(w, m.name))),
     ];
 
+    const schedules: IRSchedule[] = [
+      ...(program.schedules || []).map(s => this.transformSchedule(s)),
+      ...program.modules.flatMap(m => (m.schedules || []).map(s => this.transformSchedule(s))),
+    ];
+
     // Create provenance once (single timestamp) then compute hash and stamp irHash.
     // Provenance is created WITHOUT irHash first so the hash covers the entire IR
     // except the irHash field itself. We reuse the same provenance object (same
@@ -505,6 +525,7 @@ export class IRCompiler {
       reactions,
       ...(sagas.length > 0 ? { sagas } : {}),
       ...(roles.length > 0 ? { roles } : {}),
+      ...(schedules.length > 0 ? { schedules } : {}),
       ...(webhooks.length > 0 ? { webhooks } : {}),
     };
 
@@ -516,7 +537,7 @@ export class IRCompiler {
     };
   }
 
-  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; sagas?: SagaNode[]; roles?: RoleNode[]; webhooks?: WebhookNode[] }): IRModule {
+  private transformModule(m: { name: string; entities: EntityNode[]; enums: EnumNode[]; commands: CommandNode[]; stores: StoreNode[]; events: OutboxEventNode[]; policies: PolicyNode[]; reactions?: ReactionNode[]; sagas?: SagaNode[]; roles?: RoleNode[]; schedules?: ScheduleNode[]; webhooks?: WebhookNode[] }): IRModule {
     return {
       name: m.name,
       entities: m.entities.map(e => e.name),
@@ -534,6 +555,7 @@ export class IRCompiler {
       ...((m.reactions && m.reactions.length > 0) ? { reactions: m.reactions.map(r => `${r.event}→${r.targetEntity}.${r.targetCommand}`) } : {}),
       ...((m.sagas && m.sagas.length > 0) ? { sagas: m.sagas.map(s => s.name) } : {}),
       ...((m.roles && m.roles.length > 0) ? { roles: m.roles.map(r => r.name) } : {}),
+      ...((m.schedules && m.schedules.length > 0) ? { schedules: m.schedules.map(s => s.name) } : {}),
       ...((m.webhooks && m.webhooks.length > 0) ? { webhooks: m.webhooks.map(w => w.name) } : {}),
     };
   }
@@ -587,9 +609,11 @@ export class IRCompiler {
       properties,
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
       relationships: e.relationships.map(r => this.transformRelationship(r)),
-      commands: e.commands.map(c => c.name),
+      commands: [...(e.inheritedCommandNames || []), ...e.commands.map(c => c.name)],
       constraints,
       policies: regularPolicies,
+      ...(e.parent ? { parent: e.parent } : {}),
+      ...(e.mixins ? { mixins: e.mixins } : {}),
       ...(defaultPolicies.length > 0 ? { defaultPolicies } : {}),
       ...(e.key ? { key: e.key } : {}),
       ...(e.alternateKeys && e.alternateKeys.length > 0 ? { alternateKeys: e.alternateKeys } : {}),
@@ -940,6 +964,8 @@ export class IRCompiler {
       guards: (c.guards || []).map(g => this.transformExpression(g)),
       constraints,
       ...(commandPolicies ? { policies: commandPolicies } : {}),
+      ...(c.retry ? { retry: this.transformRetry(c.retry) } : {}),
+      ...(c.rateLimit ? { rateLimit: this.transformRateLimit(c.rateLimit) } : {}),
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
       returns: c.returns ? this.transformType(c.returns) : undefined,
@@ -978,6 +1004,7 @@ export class IRCompiler {
       entity: entityName,
       action: p.action,
       expression: this.transformExpression(p.expression),
+      ...(p.rateLimit ? { rateLimit: this.transformRateLimit(p.rateLimit) } : {}),
       message: p.message,
     };
   }
@@ -1270,6 +1297,121 @@ export class IRCompiler {
     if (dataType === 'number') return { kind: 'number', value: value as number };
     if (dataType === 'boolean') return { kind: 'boolean', value: value as boolean };
     return { kind: 'null' };
+  }
+
+  private transformRetry(r: RetryPolicyNode): IRRetry {
+    const maxAttempts = r.maxAttempts ?? 1;
+    const backoff = r.backoff ?? 'fixed';
+    const delayMs = r.delayMs ?? r.delay ?? 0;
+    const jitter = typeof r.jitter === 'boolean' ? r.jitter : r.jitter !== undefined ? true : undefined;
+    const retryOn = r.retryOn ? [...new Set(r.retryOn)] : undefined;
+
+    if (maxAttempts < 1) {
+      this.emitDiagnostic('error', `Retry maxAttempts must be >= 1, got ${maxAttempts}`);
+    }
+    if (delayMs < 0) {
+      this.emitDiagnostic('error', `Retry delay must be >= 0, got ${delayMs}`);
+    }
+    if (retryOn && retryOn.length < 1) {
+      this.emitDiagnostic('error', 'Retry retryOn must list at least one error code');
+    }
+
+    return {
+      maxAttempts,
+      backoff,
+      delayMs,
+      ...(jitter !== undefined ? { jitter } : {}),
+      ...(retryOn && retryOn.length > 0 ? { retryOn } : {}),
+    };
+  }
+
+  private transformRateLimit(rl: RateLimitNode): IRRateLimit {
+    const maxRequests = rl.maxRequests ?? 100;
+    const windowMs = this.parseWindowDuration(rl.windowMs);
+    const scope = rl.scope ?? 'global';
+    const burst = rl.burstAllowance;
+
+    if (maxRequests < 1) {
+      this.emitDiagnostic('error', `RateLimit maxRequests must be >= 1, got ${maxRequests}`);
+    }
+    if (windowMs < 1) {
+      this.emitDiagnostic('error', `RateLimit window must be >= 1ms`);
+    }
+    if (!['user', 'tenant', 'global'].includes(scope)) {
+      this.emitDiagnostic('error', `RateLimit scope must be 'user', 'tenant', or 'global', got '${scope}'`);
+    }
+
+    return {
+      maxRequests,
+      windowMs,
+      scope,
+      ...(burst !== undefined && burst >= 0 ? { burstAllowance: burst } : {}),
+    };
+  }
+
+  private parseWindowDuration(windowMs: number | string | undefined): number {
+    if (windowMs === undefined) return 60000; // Default 60 seconds
+    if (typeof windowMs === 'number') return windowMs;
+    try {
+      return parseDurationToMs(windowMs);
+    } catch (e) {
+      this.emitDiagnostic('error', `Invalid rateLimit window duration: ${e instanceof Error ? e.message : String(e)}`);
+      return 60000;
+    }
+  }
+
+  private transformSchedule(s: ScheduleNode): IRSchedule {
+    // Validate schedule type
+    if (!['cron', 'interval', 'every'].includes(s.scheduleType)) {
+      this.emitDiagnostic('error', `Invalid schedule type '${s.scheduleType}', must be 'cron', 'interval', or 'every'`);
+    }
+
+    const trigger = this.transformTrigger(s);
+    const params: IRScheduleParam[] = [];
+
+    if (s.parameters) {
+      for (const [name, expr] of Object.entries(s.parameters)) {
+        params.push({ name, expression: this.transformExpression(expr) });
+      }
+    }
+
+    return {
+      name: s.name,
+      ...(s.targetEntity ? { entityName: s.targetEntity } : {}),
+      commandName: s.targetCommand,
+      trigger,
+      ...(params.length > 0 ? { params } : {}),
+    };
+  }
+
+  private transformTrigger(s: ScheduleNode): IRTrigger {
+    if (s.scheduleType === 'cron') {
+      const cronExpr = s.cronExpression;
+      if (!cronExpr) {
+        this.emitDiagnostic('error', `Cron schedule '${s.name}' missing cronExpression`);
+        return { kind: 'cron', cron: '0 0 * * *' };
+      }
+      if (!isValidCronExpression(cronExpr)) {
+        this.emitDiagnostic('error', `Invalid cron expression '${cronExpr}' in schedule '${s.name}' (expected 5 fields: minute hour day month dayOfWeek)`);
+      }
+      return { kind: 'cron', cron: cronExpr };
+    }
+
+    if (s.scheduleType === 'interval' || s.scheduleType === 'every') {
+      try {
+        const durationMs = s.intervalDuration
+          ? parseDurationToMs(s.intervalDuration)
+          : s.value !== undefined
+            ? parseDurationToMs(s.value, s.unit)
+            : (() => { throw new Error('missing duration'); })();
+        return { kind: s.scheduleType as 'interval' | 'every', durationMs };
+      } catch (e) {
+        this.emitDiagnostic('error', `Invalid ${s.scheduleType} duration in schedule '${s.name}': ${e instanceof Error ? e.message : String(e)}`);
+        return { kind: s.scheduleType as 'interval' | 'every', durationMs: 60000 };
+      }
+    }
+
+    return { kind: 'cron', cron: '0 0 * * *' };
   }
 }
 

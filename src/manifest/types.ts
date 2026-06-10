@@ -27,6 +27,7 @@ export interface ModuleNode extends ASTNode {
   sagas: SagaNode[];
   roles: RoleNode[];
   webhooks: WebhookNode[];
+  schedules?: ScheduleNode[];
 }
 
 export interface TransitionNode extends ASTNode {
@@ -79,6 +80,14 @@ export interface EnumNode extends ASTNode {
 export interface EntityNode extends ASTNode {
   type: 'Entity';
   name: string;
+  /** Parent entity name for inheritance (from `extends` keyword) */
+  parent?: string;
+  /** Mixin entity names for composition (from `mixin A, B` keywords) */
+  mixins?: string[];
+  /** Policy names to be merged into this entity's policies (from `policies { ... }` block) */
+  policyRefs?: string[];
+  /** Command names inherited from parent/mixins (set by composition expander) */
+  inheritedCommandNames?: string[];
   properties: PropertyNode[];
   computedProperties: ComputedPropertyNode[];
   relationships: RelationshipNode[];
@@ -159,6 +168,10 @@ export interface CommandNode extends ASTNode {
   guards?: ExpressionNode[];
   /** Command-level constraints (pre-execution validation) */
   constraints?: ConstraintNode[];
+  /** Retry policy for this command */
+  retry?: RetryPolicyNode;
+  /** Rate limit policy for this command */
+  rateLimit?: RateLimitNode;
   actions: ActionNode[];
   emits?: string[];
   returns?: TypeNode;
@@ -179,6 +192,8 @@ export interface PolicyNode extends ASTNode {
   name: string;
   action: 'read' | 'write' | 'delete' | 'execute' | 'all' | 'override';
   expression: ExpressionNode;
+  /** Rate limit policy for this policy */
+  rateLimit?: RateLimitNode;
   message?: string;
   isDefault?: boolean; // True if this is an entity-level default policy (vNext)
 }
@@ -420,6 +435,55 @@ export interface MemberAccessNode extends ASTNode {
   property: string;
 }
 
+export interface RetryPolicyNode extends ASTNode {
+  type: 'RetryPolicy';
+  /** Maximum number of retry attempts (default 3) */
+  maxAttempts?: number;
+  /** Backoff strategy: 'fixed' | 'linear' | 'exponential' (default 'fixed') */
+  backoff?: 'fixed' | 'linear' | 'exponential';
+  /** Initial delay in milliseconds (default 0) */
+  delay?: number;
+  /** Alternative field name for delay */
+  delayMs?: number;
+  /** Whether to apply jitter to backoff delays */
+  jitter?: boolean | number;
+  /** Error conditions to retry on (repeated field, e.g. ["CONCURRENCY_CONFLICT", "TIMEOUT"]) */
+  retryOn?: string[];
+}
+
+export interface RateLimitNode extends ASTNode {
+  type: 'RateLimit';
+  /** Maximum number of requests per window */
+  maxRequests?: number;
+  /** Time window in milliseconds (default 60000) */
+  windowMs?: number;
+  /** Scope: 'user' | 'tenant' | 'global' (default 'global') */
+  scope?: 'user' | 'tenant' | 'global';
+  /** Burst allowance: number of requests allowed above maxRequests in short bursts (default 0) */
+  burstAllowance?: number;
+}
+
+export interface ScheduleNode extends ASTNode {
+  type: 'Schedule';
+  name: string;
+  /** Schedule type: 'cron' | 'interval' | 'every' */
+  scheduleType: 'cron' | 'interval' | 'every';
+  /** Cron expression (if scheduleType === 'cron') */
+  cronExpression?: string;
+  /** Interval or every value (numeric value for interval/every) */
+  value?: number;
+  /** Quoted duration for interval triggers, e.g. "5m" */
+  intervalDuration?: string;
+  /** Unit for interval/every: 'ms' | 's' | 'm' | 'h' | 'd' | 'weeks' */
+  unit?: string;
+  /** Target entity name (optional, for entity.command syntax) */
+  targetEntity?: string;
+  /** Target command name */
+  targetCommand: string;
+  /** Command parameters (object literal) */
+  parameters?: Record<string, ExpressionNode>;
+}
+
 export interface ConditionalNode extends ASTNode {
   type: 'Conditional';
   condition: ExpressionNode;
@@ -501,6 +565,7 @@ export interface ManifestProgram {
   sagas: SagaNode[];
   roles: RoleNode[];
   webhooks: WebhookNode[];
+  schedules?: ScheduleNode[];
   tenant?: TenantNode;
 }
 
