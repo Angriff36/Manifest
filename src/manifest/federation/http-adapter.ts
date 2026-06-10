@@ -19,7 +19,7 @@ import type {
   ExposedCommand,
   TypedClientAdapter,
 } from './types';
-import { buildBridgeHeaders } from './client';
+import { buildBridgeHeaders } from './client.js';
 import type { PolicyBridgeHeaders } from './types';
 
 /**

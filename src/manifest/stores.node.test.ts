@@ -12,19 +12,29 @@ import { RedisOutboxStore } from './outbox/stores/redis';
 import type { EntityInstance } from './stores.node';
 import type { EmittedEvent } from './runtime-engine';
 
-// Check if ioredis is available
-let ioredisAvailable: boolean;
-
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require('ioredis');
-  ioredisAvailable = true;
-} catch {
-  ioredisAvailable = false;
-}
-
 // Test configuration - can be overridden via environment
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+// Gate on an actual reachable Redis server, not just module presence:
+// ioredis may be installed (it is an optional peer of the package) while no
+// server is running, in which case these integration tests must skip.
+const ioredisAvailable = await (async () => {
+  try {
+    const { default: Redis } = await import('ioredis');
+    const probe = new Redis(REDIS_URL, {
+      lazyConnect: true,
+      connectTimeout: 1000,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null,
+    });
+    await probe.connect();
+    await probe.ping();
+    probe.disconnect();
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 describe.runIf(ioredisAvailable)('RedisStore', () => {
   let store: RedisStore<TestEntity>;

@@ -15,8 +15,12 @@ import { pathToFileURL } from 'url';
 // ============================================================================
 // Constants
 // ============================================================================
+// No `$schema` default: Manifest publishes no resolvable schema URL, and
+// `manifest config validate` loads the bundled schema from the package, not a
+// URL. Injecting a dead URL into the effective config would imply validation
+// that does not happen. `$schema` remains an optional user-set field (a local
+// path or editor mapping) on the ManifestConfig type.
 const DEFAULT_CONFIG = {
-    $schema: 'https://manifest.dev/config.schema.json',
     src: '**/*.manifest',
     output: 'ir/',
 };

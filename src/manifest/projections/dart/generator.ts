@@ -37,7 +37,7 @@ import {
   numericRangeToZodChain,
   lengthConstraintToZodChain,
   patternConstraintToZodChain,
-} from '../../constraint-analysis';
+} from '../../constraint-analysis.js';
 
 // ============================================================================
 // Type mapping

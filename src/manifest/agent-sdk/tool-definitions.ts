@@ -10,7 +10,7 @@ import type {
   ToolDefinitionOptions,
   BuiltinToolNames,
 } from './types';
-import { irParametersToJsonSchema } from './json-schema';
+import { irParametersToJsonSchema } from './json-schema.js';
 
 // ------------------------------------------------------------------------------------------------
 // Tool name mangling

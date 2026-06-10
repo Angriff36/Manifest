@@ -12,11 +12,11 @@
  */
 
 import type { IR } from './ir';
-import type { IRDiffReport, MigrationReport } from './ir-diff';
-import { diffIR, generateMigration } from './ir-diff';
-import type { BreakingChangeReport } from './breaking-change';
-import { classifyBreakingChanges } from './breaking-change';
-import { computeIRHash } from './ir-compiler';
+import type { IRDiffReport, MigrationReport } from './ir-diff.js';
+import { diffIR, generateMigration } from './ir-diff.js';
+import type { BreakingChangeReport } from './breaking-change.js';
+import { classifyBreakingChanges } from './breaking-change.js';
+import { computeIRHash } from './ir-compiler.js';
 
 // ============================================================================
 // Public types

@@ -22,7 +22,7 @@ import type {
   ProjectionArtifact,
 } from '../interface';
 import type { HealthCheckProjectionOptions } from './types';
-import { normalizeHealthOptions } from './types';
+import { normalizeHealthOptions } from './types.js';
 
 // ============================================================================
 // Surface identifiers

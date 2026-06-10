@@ -27,9 +27,9 @@ import {
   type AuditSinkPlugin,
   type CliCommandPlugin,
   type CliProgramLike,
-} from './plugin-api';
-import type { AuditSink, AuditRecord } from './audit/audit-sink';
-import { registerProjection } from './projections/registry';
+} from './plugin-api.js';
+import type { AuditSink, AuditRecord } from './audit/audit-sink.js';
+import { registerProjection } from './projections/registry.js';
 
 // ---------------------------------------------------------------------------
 // Plugin Declaration (from config)

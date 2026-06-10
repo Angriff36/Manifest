@@ -37,7 +37,7 @@ import {
   type NumericRange,
   type LengthConstraint,
   type PatternConstraint,
-} from '../../constraint-analysis';
+} from '../../constraint-analysis.js';
 
 // ============================================================================
 // Type mapping

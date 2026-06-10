@@ -10,6 +10,14 @@
       "types": "./dist/manifest/runtime-engine.d.ts",
       "import": "./dist/manifest/runtime-engine.js"
     },
+    "./runtime-engine": {
+      "types": "./dist/manifest/runtime-engine.d.ts",
+      "import": "./dist/manifest/runtime-engine.js"
+    },
+    "./binary-ir": {
+      "types": "./dist/manifest/binary-ir.d.ts",
+      "import": "./dist/manifest/binary-ir.js"
+    },
     "./compiler": {
       "types": "./dist/manifest/compiler.d.ts",
       "import": "./dist/manifest/compiler.js"
@@ -221,45 +229,71 @@
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
     "wasm:build": "asc assembly/index.ts --target release --outFile src/manifest/wasm/manifest-runtime.wasm --optimize --runtime stub --exportRuntime",
     "wasm:build:debug": "asc assembly/index.ts --target debug --outFile src/manifest/wasm/manifest-runtime-debug.wasm",
-    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli run build"
+    "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "@msgpack/msgpack": "^3.0.0",
     "@types/pg": "^8.16.0",
-    "jszip": "^3.10.1",
-    "lucide-react": "^0.344.0",
-    "lz-string": "^1.5.0",
+    "ajv": "^8.18.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "glob": "^10.3.12",
+    "inquirer": "^9.2.0",
+    "jiti": "^2.4.2",
+    "js-yaml": "^4.1.0",
+    "ora": "^8.0.1",
     "pg": "^8.18.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "typescript": "^5.5.3",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
     "zod": "^3.25.0"
   },
   "peerDependencies": {
-    "@supabase/supabase-js": "^2"
+    "@assemblyscript/loader": "^0.27",
+    "@libsql/client": ">=0.14",
+    "@supabase/supabase-js": "^2",
+    "ioredis": "^5",
+    "mongodb": "^6"
   },
   "peerDependenciesMeta": {
+    "@assemblyscript/loader": {
+      "optional": true
+    },
+    "@libsql/client": {
+      "optional": true
+    },
     "@supabase/supabase-js": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "mongodb": {
       "optional": true
     }
   },
   "devDependencies": {
     "@assemblyscript/loader": "^0.27.31",
     "@eslint/js": "^9.9.1",
-    "@msgpack/msgpack": "^3.0.0",
-    "fast-check": "^3.0.0",
     "@types/lz-string": "^1.5.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "assemblyscript": "^0.27.31",
     "autoprefixer": "^10.4.18",
+    "fast-check": "^3.0.0",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.344.0",
+    "lz-string": "^1.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2",
     "vitest": "^4.0.18"

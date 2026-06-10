@@ -22,6 +22,18 @@ export interface ManifestConfig {
         output?: string;
         options?: Record<string, unknown>;
     }>;
+    /**
+     * Optional: Global identifier-casing convention inherited by projections
+     * that map IR names to physical database names (currently Prisma). A
+     * per-projection `projections.<name>.options.naming` overrides it.
+     * String shorthand `'snake_case'` or an object form
+     * `{ table, column, pluralizeTables }`.
+     */
+    naming?: 'snake_case' | {
+        table?: 'snake_case' | 'camelCase' | 'PascalCase' | 'preserve';
+        column?: 'snake_case' | 'camelCase' | 'preserve';
+        pluralizeTables?: boolean;
+    };
     /** Environment variable mapping for store/auth/adapter configuration */
     env?: EnvMapping;
     /** Pre-commit hook settings for manifest install-hooks */

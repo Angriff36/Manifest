@@ -57,15 +57,15 @@ export type {
   TypedClientAdapter,
 } from './types';
 
-export { FederationRegistry } from './registry';
-export type { ExposedCommandRef } from './registry';
+export { FederationRegistry } from './registry.js';
+export type { ExposedCommandRef } from './registry.js';
 
 export {
   FederationClient,
   HttpFederationTransport,
   buildBridgeHeaders,
   isTransientFailure,
-} from './client';
+} from './client.js';
 
 export {
   buildBridgeFromContext,
@@ -73,7 +73,7 @@ export {
   parseBridgeHeaders,
   validateBridgeHeaders,
   ensureCorrelationId,
-} from './policy-bridge';
+} from './policy-bridge.js';
 
-export { buildDescriptor } from './descriptor';
-export { generateHttpAdapter, renderAdapterSource } from './http-adapter';
+export { buildDescriptor } from './descriptor.js';
+export { generateHttpAdapter, renderAdapterSource } from './http-adapter.js';

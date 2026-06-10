@@ -55,10 +55,15 @@ const INIT_QUESTIONS = [
 ];
 /**
  * Create config from answers
+ *
+ * No `$schema` is emitted: Manifest does not publish a resolvable schema URL,
+ * and `manifest config validate` loads the schema bundled with the package
+ * (docs/spec/config/manifest.config.schema.json), not from a URL. For editor
+ * IntelliSense, map the bundled schema in .vscode/settings.json instead — see
+ * docs/spec/config/manifest.config.md.
  */
-function createConfigFromAnswers(answers) {
+export function createConfigFromAnswers(answers) {
     const config = {
-        $schema: 'https://manifest.dev/config.schema.json',
         src: answers.sourcePattern,
         output: answers.outputDir,
     };
@@ -131,7 +136,6 @@ export async function initCommand(options = {}) {
             // Not running in a TTY - use minimal defaults
             console.log(chalk.yellow('Not an interactive terminal - using defaults'));
             const defaultConfig = {
-                $schema: 'https://manifest.dev/config.schema.json',
                 src: '**/*.manifest',
                 output: 'ir/',
             };

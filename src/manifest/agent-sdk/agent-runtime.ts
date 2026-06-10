@@ -12,9 +12,9 @@ import type {
   AgentRuntimeOptions,
   BuiltinToolNames,
 } from './types';
-import { toAnthropicTools, toOpenAITools, toVercelAITools, getBuiltinToolNames } from './tool-definitions';
-import { listEntities, describeEntity, listCommands, describeCommand, formatExpression } from './introspect';
-import { findMatchingCommands } from './intent-mapper';
+import { toAnthropicTools, toOpenAITools, toVercelAITools, getBuiltinToolNames } from './tool-definitions.js';
+import { listEntities, describeEntity, listCommands, describeCommand, formatExpression } from './introspect.js';
+import { findMatchingCommands } from './intent-mapper.js';
 
 // ------------------------------------------------------------------------------------------------
 // AgentRuntime

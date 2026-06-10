@@ -13,7 +13,7 @@
 export type * from './types';
 
 // JSON Schema converter
-export { irTypeToJsonSchema, irParametersToJsonSchema, irValueToJson } from './json-schema';
+export { irTypeToJsonSchema, irParametersToJsonSchema, irValueToJson } from './json-schema.js';
 
 // Introspection
 export {
@@ -25,7 +25,7 @@ export {
   getActionableEntities,
   formatExpression,
   formatIRType,
-} from './introspect';
+} from './introspect.js';
 
 // Tool definitions
 export {
@@ -38,10 +38,10 @@ export {
   mangleToolName,
   parseToolName,
   getBuiltinToolNames,
-} from './tool-definitions';
+} from './tool-definitions.js';
 
 // Intent mapping
-export { findMatchingCommands, tokenize } from './intent-mapper';
+export { findMatchingCommands, tokenize } from './intent-mapper.js';
 
 // AgentRuntime
-export { AgentRuntime } from './agent-runtime';
+export { AgentRuntime } from './agent-runtime.js';
