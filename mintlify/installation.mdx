@@ -7,7 +7,7 @@ description: "Add @angriff36/manifest to any Node.js 18+ project with npm or pnp
 Manifest is published as `@angriff36/manifest` to GitHub Packages. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and a package manager that supports scoped registries (npm or pnpm).
 
 <Note>
-  **Current version:** `1.0.2`. v1.0.0 introduced composite PK/FK, referential actions, and the Prisma projection. v1.0.1–v1.0.2 fixed FK serialization, duplicate `@default` dedup, and CLI output handling.
+  **Current version:** `2.3.0`. This release added date/time primitive types, property masking, realtime entity subscriptions (SSE), and made the package fully self-contained: all CLI, MCP server, and LSP server runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
 </Note>
 
 ## Install the package
@@ -35,6 +35,8 @@ The package ships multiple named entry points. Import only what you need — eac
 | Import path | What it provides |
 |-------------|-----------------|
 | `@angriff36/manifest` | `RuntimeEngine` — the main command execution engine |
+| `@angriff36/manifest/runtime-engine` | Full runtime module: `RuntimeEngine`, stores, event types |
+| `@angriff36/manifest/binary-ir` | Binary IR pack/unpack (MessagePack encoding) |
 | `@angriff36/manifest/compiler` | The high-level `compiler` orchestrator |
 | `@angriff36/manifest/ir-compiler` | `compileToIR` — parse source and produce IR v1 |
 | `@angriff36/manifest/ir` | IR data structure types |
@@ -75,19 +77,34 @@ The package ships declaration files for every export. No `@types/` package is ne
   The package is published as ESM (`"type": "module"`). If your project uses CommonJS, configure your bundler or TypeScript to handle ESM interop, or use a bundler like Vite or esbuild that handles this automatically.
 </Note>
 
-## Optional peer dependency: Supabase
+## Optional peer dependencies
 
-The Supabase adapter is an optional peer dependency. Install it only if you plan to use Supabase as a backing store:
+Store and platform adapters that require external services are declared as **optional peer dependencies**. Install only the ones you use — everything else works without them:
+
+| Package | Needed for |
+|---------|-----------|
+| `@supabase/supabase-js` | Supabase store target |
+| `ioredis` | Redis outbox store |
+| `mongodb` | MongoDB store adapter |
+| `@libsql/client` | Turso store adapter |
+| `@assemblyscript/loader` | WASM compute modules |
 
 ```bash
-npm install @supabase/supabase-js
+# Example: only if you use the Redis outbox
+npm install ioredis
 ```
 
-The package declares `@supabase/supabase-js@^2` as an optional peer. If it is not installed, all non-Supabase store targets continue to work normally.
+If an optional peer is not installed, the corresponding adapter fails with a clear error when used; all other store targets continue to work normally.
 
-## Install the CLI
+## Bundled binaries
 
-The `manifest` CLI ships inside the package under `packages/cli/dist/index.js` and is registered as the `manifest` binary. It is available immediately after installing `@angriff36/manifest`:
+Installing `@angriff36/manifest` registers three binaries, all working out of the box with no extra installs:
+
+| Binary | What it is |
+|--------|-----------|
+| `manifest` | The CLI — compile, generate, validate, scan |
+| `manifest-mcp` | Model Context Protocol server for AI agents |
+| `manifest-lsp` | Language Server Protocol server for editor integration |
 
 ```bash
 # Verify the CLI is available

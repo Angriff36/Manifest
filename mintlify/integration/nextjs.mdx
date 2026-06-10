@@ -323,6 +323,27 @@ try {
 }
 ```
 
+## Realtime subscriptions (SSE)
+
+Entities flagged with the `realtime` modifier unlock three additional surfaces: an SSE subscription route (`nextjs.subscribe`), a typed auto-reconnecting React hook (`nextjs.subscriptionHook`), and a shared singleton runtime accessor (`nextjs.sharedRuntime`) that lets command routes and subscriptions observe the same event stream:
+
+```manifest
+entity Recipe {
+  realtime
+  property required id: string
+  // ...
+}
+```
+
+```typescript
+const projection = new NextJsProjection();
+const sseRoute = projection.generate(ir, { surface: 'nextjs.subscribe', entity: 'Recipe' });
+const hook = projection.generate(ir, { surface: 'nextjs.subscriptionHook', entity: 'Recipe' });
+const shared = projection.generate(ir, { surface: 'nextjs.sharedRuntime' });
+```
+
+When any entity is realtime, generated command routes (inline mode) automatically use the shared runtime via `getSharedRuntime()` instead of constructing one per request, so subscribers see events emitted by commands. This requires a long-lived, single-instance server. See [Realtime Subscriptions](/extensibility/realtime-subscriptions) for the full contract.
+
 ## Common issues
 
 <AccordionGroup>
