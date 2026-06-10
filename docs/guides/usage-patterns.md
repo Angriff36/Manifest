@@ -27,7 +27,7 @@ When using generated route workflows or embedded handlers around them, treat cli
 
 See:
 
-- `C:/Projects/Manifest/docs/patterns/external-projections.md`
+- `C:/Projects/Manifest/docs/guides/usage-patterns.md`
 - `C:/Projects/Manifest/src/manifest/projections/nextjs/README.md`
 
 ### 2) Embedded Runtime
@@ -40,7 +40,7 @@ Use embedded runtime when you need full control over command orchestration, side
 
 See:
 
-- `C:/Projects/Manifest/docs/patterns/embedded-runtime-pattern.md`
+- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`
 
 ## Decision Guide
 

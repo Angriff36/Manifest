@@ -60,7 +60,7 @@ Per [Node.js ESM documentation](https://nodejs.org/api/esm.html), you **can** im
 ```typescript
 // ✅ Allowed - CommonJS re-exported as ESM
 import lodash from 'lodash';
-import { express } from 'express';
+import express from 'express';
 
 // ❌ Not allowed - require() in ESM
 const lodash = require('lodash');

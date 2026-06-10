@@ -14,7 +14,7 @@ Normative semantics are defined in `C:/Projects/Manifest/docs/spec/semantics.md`
 ## Example
 
 ```ts
-import { compileToIR } from '@manifest/ir-compiler';
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
 import { RuntimeEngine } from '@angriff36/manifest';
 
 const { ir } = await compileToIR(source);

@@ -38,9 +38,9 @@ entity Order {
 
 ```typescript
 interface JobQueue {
-  enqueue(record: JobRecord): Promise<string>;
+  enqueue(job: JobRecord): Promise<void>;
   drainPending(): Promise<JobRecord[]>;
-  updateStatus(jobId: string, status: string): Promise<void>;
+  updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
 }
 ```
 

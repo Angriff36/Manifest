@@ -240,7 +240,7 @@ This projection generates **GET routes that use direct Prisma queries**, NOT `ru
 
 3. **Flexibility** - Projections are tooling, not semantics. If you need runtime-level query enforcement, you're defining new execution semantics (requires spec + conformance updates).
 
-See `docs/patterns/external-projections.md` for detailed rationale.
+See `docs/guides/writing-projections.md` for detailed rationale.
 
 ### Writes Must Use Runtime
 

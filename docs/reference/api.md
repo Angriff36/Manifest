@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-06-09
 
 Complete API reference for the Manifest runtime and compiler.
 
@@ -10,7 +10,7 @@ Complete API reference for the Manifest runtime and compiler.
 
 ## Core Exports
 
-### `compileToIR(source: string): Promise<CompileResult>`
+### `compileToIR(source: string, options?): Promise<CompileToIRResult>`
 
 Compiles Manifest source code to IR.
 
@@ -34,12 +34,13 @@ console.log('IR:', ir);
 
 **Parameters:**
 - `source`: Manifest source code
+- `options.useCache` (optional): Enable in-memory IR compilation cache
 
 **Returns:**
 ```typescript
-interface CompileResult {
-  ir?: IR;                              // Compiled IR if successful
-  diagnostics: Diagnostic[];            // Compilation errors/warnings
+interface CompileToIRResult {
+  ir: IR | null;                        // Compiled IR if successful
+  diagnostics: IRDiagnostic[];          // Compilation errors/warnings
 }
 ```
 
@@ -54,20 +55,23 @@ Executes IR and manages runtime state.
 ```typescript
 constructor(
   ir: IR,
-  context: RuntimeContext
+  context?: RuntimeContext,
+  options?: RuntimeOptions
 )
 ```
 
 **Parameters:**
 - `ir`: Compiled IR from `compileToIR()`
-- `context.userId`: User identifier for authorization
+- `context.actorId`: Acting user identifier (prefer over legacy `userId` keys)
 - `context.tenantId`: Tenant identifier for multi-tenancy
-- `context.storeProvider`: Custom store factory (optional)
-- `context.debug`: Enable debug logging (boolean, optional)
+- `context.user`: User object for policy/guard bindings (`user.id`, `user.role`, etc.)
+- `options.storeProvider`: Custom store factory (optional)
+- `options.middleware`: Middleware pipeline (optional)
+- `options.profiling`: Enable execution profiling (optional)
 
-#### `runCommand(entityName: string, commandName: string, input: Record<string, unknown>): Promise<CommandResult>`
+#### `runCommand(commandName: string, input: Record<string, unknown>, options?): Promise<CommandResult>`
 
-Executes a command on an entity.
+Executes a command. Entity-scoped commands require `options.entityName` (and usually `options.instanceId`).
 
 ```typescript
 const result = await runtime.runCommand('create', {
@@ -122,36 +126,23 @@ interface PolicyDenial {
 }
 ```
 
-**For API responses**, use the normalization helper:
-```typescript
-import { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
+**For API responses**, map `CommandResult` fields to your HTTP response in application code. Next.js projections generate `manifestSuccessResponse` / `manifestErrorResponse` helpers.
 
-const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
-const normalized = normalizeCommandResult('Todo', 'create', result);
+#### `onEvent(listener: (event: EmittedEvent) => void): () => void`
 
-// normalized has consistent structure:
-// { success, error?, diagnostics?, data?, events }
-```
-
-#### `query(entityName: string, filter?: QueryFilter): Promise<EntityInstance[]>`
-
-Queries entities from storage (if supported by store).
-
-**Note**: Read operations are application-defined. This method may not be available in all runtimes. See `docs/patterns/external-projections.md` for read strategy.
-
-#### `on(event: string, handler: (event: Event) => void): void`
-
-Registers an event listener.
+Registers a global event listener. Returns an unsubscribe function.
 
 ```typescript
-runtime.on('TodoCompleted', (event) => {
-  console.log('Todo completed:', event.payload.todoId);
+const unsubscribe = runtime.onEvent((event) => {
+  if (event.name === 'TodoCompleted') {
+    console.log('Todo completed:', event.payload);
+  }
 });
 ```
 
-#### `off(event: string, handler: (event: Event) => void): void`
+#### `subscribe(entityName: string, listener: (event: EmittedEvent) => void): () => void`
 
-Removes an event listener.
+Registers an entity-scoped event listener. Returns an unsubscribe function.
 
 ---
 
@@ -163,14 +154,21 @@ Intermediate Representation - compiled Manifest program.
 
 ```typescript
 interface IR {
-  version: string;                      // IR schema version
-  contentHash: string;                  // Hash of source content
-  irHash: string;                       // Hash of IR structure
-  compilerVersion: string;              // Compiler version
-  schemaVersion: string;                // Schema version
-  compiledAt: string;                   // ISO timestamp
-  entities: Entity[];                   // Entity definitions
-  modules?: Module[];                   // Module definitions (optional)
+  version: '1.0';
+  provenance: IRProvenance;             // contentHash, irHash, compilerVersion, etc.
+  tenant?: IRTenant;
+  modules: IRModule[];
+  values: IRValueObject[];
+  entities: IREntity[];
+  enums: IREnum[];
+  stores: IRStore[];
+  events: IREvent[];
+  commands: IRCommand[];
+  policies: IRPolicy[];
+  reactions?: IRReactionRule[];
+  sagas?: IRSaga[];
+  roles?: IRRole[];
+  webhooks?: IRWebhook[];
 }
 ```
 
@@ -237,11 +235,13 @@ interface Command {
 Authorization policy.
 
 ```typescript
-interface Policy {
-  name: string;                         // Policy name
-  scope: 'read' | 'execute' | 'all';    // Policy scope
-  effect: 'allow' | 'deny';             // Allow or deny
-  condition: string;                    // Boolean expression
+interface IRPolicy {
+  name: string;
+  action: 'read' | 'execute' | 'all';
+  expression: IRExpression;
+  entity?: string;
+  module?: string;
+  message?: string;
 }
 ```
 
@@ -250,9 +250,11 @@ interface Policy {
 Guard expression.
 
 ```typescript
-interface Guard {
-  expression: string;                   // Guard expression
-  description?: string;                 // Human-readable description
+// Guards in IR are IRExpression values on IRCommand.guards
+interface IRCommand {
+  name: string;
+  guards?: IRExpression[];
+  // ...
 }
 ```
 
@@ -293,36 +295,30 @@ interface EventEmit {
 }
 ```
 
-### `Event`
+### `EmittedEvent`
 
-Emitted event instance.
+Event emitted during command execution.
 
 ```typescript
-interface Event {
-  id: string;                           // Event ID
+interface EmittedEvent {
   name: string;                         // Event name
   channel: string;                      // Event channel
   payload: Record<string, unknown>;     // Event payload
-  timestamp: string;                    // ISO timestamp
-  metadata?: Record<string, unknown>;
+  timestamp: number;                    // Milliseconds since epoch
+  emitIndex: number;                    // Deterministic emission order index
 }
 ```
 
-### `Diagnostic`
+### `IRDiagnostic`
 
-Error or warning diagnostic.
+Error or warning diagnostic from compilation.
 
 ```typescript
-interface Diagnostic {
+interface IRDiagnostic {
   severity: 'error' | 'warning' | 'info';
-  code: string;                         // Error code
-  message: string;                      // Human-readable message
-  source?: {                            // Source location
-    file?: string;
-    line?: number;
-    column?: number;
-  };
-  details?: Record<string, unknown>;
+  message: string;
+  line?: number;
+  column?: number;
 }
 ```
 
@@ -345,50 +341,18 @@ interface Store<T extends EntityInstance = EntityInstance> {
 }
 ```
 
-### `class MemoryStore<T>`
+### Built-in stores
 
-In-memory store implementation (default).
+`MemoryStore` and `LocalStorageStore` are internal to the runtime. Use the default in-memory stores, or provide a custom `Store` via `storeProvider` in `RuntimeOptions`.
 
-```typescript
-import { MemoryStore } from '@angriff36/manifest';
-
-const store = new MemoryStore<Todo>();
-```
-
-### `class LocalStorageStore<T>`
-
-Browser localStorage store.
+Node.js durable stores are exported from `@angriff36/manifest/stores`:
 
 ```typescript
-import { LocalStorageStore } from '@angriff36/manifest';
+import { PostgresStore, SupabaseStore } from '@angriff36/manifest/stores';
 
-const store = new LocalStorageStore<Todo>('todos');
-```
-
-### `class PostgresStore<T>`
-
-PostgreSQL store (Node.js only).
-
-```typescript
-import { PostgresStore } from '@angriff36/manifest/node';
-
-const store = new PostgresStore<Todo>({
+const store = new PostgresStore({
   connectionString: process.env.DATABASE_URL,
-  tableName: 'todos'
-});
-```
-
-### `class SupabaseStore<T>`
-
-Supabase store (Node.js only).
-
-```typescript
-import { SupabaseStore } from '@angriff36/manifest/node';
-
-const store = new SupabaseStore<Todo>({
-  url: process.env.SUPABASE_URL,
-  key: process.env.SUPABASE_ANON_KEY,
-  tableName: 'todos'
+  tableName: 'todos',
 });
 ```
 
@@ -396,43 +360,24 @@ const store = new SupabaseStore<Todo>({
 
 ## Projection Interface
 
-### `interface ProjectionTarget`
+### `ProjectionTarget`
 
-Projection target for platform-specific code generation.
+Projection targets generate platform-specific code from IR. See `src/manifest/projections/interface.ts`.
 
 ```typescript
 interface ProjectionTarget {
-  readonly name: string;                // Target identifier (e.g., "nextjs")
-  readonly description: string;         // Human-readable description
-
-  generateRoute(
-    ir: IR,
-    entityName: string,
-    options?: Record<string, unknown>
-  ): string;
-
-  generateTypes?(ir: IR): string;
-  generateClient?(ir: IR): string;
+  readonly name: string;
+  readonly description: string;
+  readonly surfaces: ProjectionSurface[];
+  generate(ir: IR, request: ProjectionRequest): ProjectionResult;
 }
 ```
 
-### `registerProjection(projection: ProjectionTarget): void`
+Built-in projections are registered in `@angriff36/manifest/projections`. Use the CLI to generate code:
 
-Register a projection target.
-
-```typescript
-import { registerProjection } from '@angriff36/manifest';
-
-registerProjection(new NextJsProjection());
+```bash
+pnpm exec manifest generate ir/ -p nextjs -s route -o generated/
 ```
-
-### `getProjection(name: string): ProjectionTarget | undefined`
-
-Get a registered projection.
-
-### `listProjections(): ProjectionTarget[]`
-
-List all registered projections.
 
 ---
 
@@ -478,20 +423,10 @@ See: `docs/spec/builtins.md` for complete list.
 
 ## Version Info
 
-### `COMPILER_VERSION`
-
-Current Manifest compiler version.
+Compiler and schema version strings are embedded in IR `provenance` after compilation. Import from internal modules if needed for tooling:
 
 ```typescript
-import { COMPILER_VERSION } from '@angriff36/manifest';
-console.log(COMPILER_VERSION); // "0.3.8"
-```
-
-### `SCHEMA_VERSION`
-
-IR schema version.
-
-```typescript
-import { SCHEMA_VERSION } from '@angriff36/manifest';
-console.log(SCHEMA_VERSION); // "1.0"
+// Not exported from the main package entry — read from compiled IR instead:
+// ir.provenance.compilerVersion
+// ir.provenance.schemaVersion
 ```

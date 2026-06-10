@@ -3,7 +3,7 @@
 Authority: Advisory
 Enforced by: None
 Last updated: 2026-05-20
-Applies to: `@angriff36/manifest@0.5.0+`
+Applies to: `@angriff36/manifest@2.3.0+`
 
 Performance characteristics and optimization strategies for Manifest.
 
@@ -29,7 +29,6 @@ Performance characteristics and optimization strategies for Manifest.
 | Guard evaluation | ~0.01ms/guard | N/A |
 | Constraint check | ~0.02ms/constraint | N/A |
 | Event emission | ~0.05ms/event | ~1-5ms |
-| Query (100 records) | ~1ms | ~10ms |
 
 **Note**: Database stores are I/O bound. Times depend on network, query complexity, and indexes.
 
@@ -42,10 +41,9 @@ Performance characteristics and optimization strategies for Manifest.
 Skip compilation on repeated runs:
 
 ```typescript
-const result = await compile(source, {
-  cache: true,
-  cacheDir: '.manifest-cache'
-});
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+
+const result = await compileToIR(source, { useCache: true });
 ```
 
 **Benefits**:
@@ -59,11 +57,10 @@ Put most likely-to-fail guards first:
 
 ```manifest
 command updateTodo(title: string) {
-  guard title is not empty              // Fast check, likely to fail
-  guard title.length < 100              // Medium check
-  guard userCanEdit(this, user)        // Slow check (database query), unlikely to fail
+  guard title != ""
+  guard title.length < 100
 
-  mutate this.title = title
+  mutate title = title
 }
 ```
 
@@ -74,10 +71,8 @@ command updateTodo(title: string) {
 Use `warn` for non-critical validations:
 
 ```manifest
-constraint PriorityWithinRange {
-  severity: warn  // Doesn't block execution
-  rule: this.priority >= 1 and this.priority <= 5
-  message: "Priority outside recommended range"
+entity Order {
+  constraint priorityRange:warn self.priority >= 1 and self.priority <= 5 "Priority outside recommended range"
 }
 ```
 
@@ -89,13 +84,9 @@ Avoid redundant calculations:
 
 ```manifest
 entity Order {
-  property items: OrderItem[]
-  property subtotal: number
+  property subtotal: number = 0
 
-  computed total {
-    // Automatically recalculated when items or subtotal changes
-    rule: this.subtotal + (this.items.sum(item => item.total) * 0.1)
-  }
+  computed total: number = self.subtotal * 1.1
 }
 ```
 
@@ -124,7 +115,7 @@ single transaction. If you need atomic multi-entity writes, either:
 
 - Model them as a single command that does all the work, or
 - Use a `Store` adapter that exposes its own transaction handle and
-  thread it through. See `docs/patterns/implementing-custom-stores.md`.
+  thread it through. See `docs/guides/implementing-custom-stores.md`.
 
 ### 6. Optimize Store Queries
 
@@ -219,14 +210,12 @@ Manifest uses optimistic concurrency. Commands check entity state before executi
 
 ```manifest
 entity Todo {
-  property version: number
+  property version: number = 0
 
-  command update(title: string) {
-    // Optimistic lock check
-    guard this.version == input.version
-
-    mutate this.title = title
-    mutate this.version = this.version + 1
+  command update(title: string, expectedVersion: number) {
+    guard self.version == expectedVersion
+    mutate title = title
+    mutate version = self.version + 1
   }
 }
 ```
@@ -237,13 +226,14 @@ entity Todo {
 
 ## Monitoring
 
-### Enable Debug Logging
+### Enable profiling
 
 ```typescript
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  debug: true
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123' },
+  { profiling: { enabled: true } }
+);
 ```
 
 **Logs**:
@@ -355,8 +345,8 @@ guard userCanEdit(this, user)  // Database query in guard
 
 ```manifest
 command updateTitle(title: string) {
-  mutate this.title = title
-  emit TitleUpdated { title: this.title }  // Noise
+  mutate title = title
+  emit TitleUpdated
 }
 ```
 
@@ -366,20 +356,15 @@ command updateTitle(title: string) {
 
 ### ❌ Don't: Use memory store for large datasets
 
-```typescript
-const runtime = new RuntimeEngine(ir, {
-  storeProvider: () => new MemoryStore()  // Not for production
-});
-```
-
-**Problem**: Memory store doesn't persist and has poor performance for large datasets.
-
-**Fix**: Use Postgres or Supabase store.
+**Fix:** Use Postgres or Supabase via `@angriff36/manifest/stores`, or implement a custom `Store` and pass it through `storeProvider`.
 
 ### ❌ Don't: Disable IR caching in production
 
 ```typescript
-const result = compile(source, { cache: false });  // Slow
+```typescript
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+const result = await compileToIR(source, { useCache: false });  // Slow
+```
 ```
 
 **Problem**: Recompiling on every request wastes CPU.
@@ -407,6 +392,6 @@ Before deploying to production:
 
 ## Further Reading
 
-- **Store Implementation**: `docs/patterns/implementing-custom-stores.md`
-- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md`
+- **Store Implementation**: `docs/guides/implementing-custom-stores.md`
+- **Transactional Outbox**: `docs/guides/transactional-outbox.md`
 - **API Reference**: `docs/tools/API_REFERENCE.md`

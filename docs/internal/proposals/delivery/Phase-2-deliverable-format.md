@@ -185,7 +185,7 @@
     console.log(code);
   }
 
-  5. The Critical Doc (docs/patterns/external-projections.md)
+  5. The Critical Doc (docs/guides/external-projections.md)
 
   # External Projections Pattern
 
@@ -316,7 +316,7 @@
   - Move capsule-pro generator → src/manifest/projections/nextjs/generator.ts
   - Add src/manifest/projections/nextjs/generator.test.ts (your smoke test)
   - Create bin/generate-projection.ts CLI
-  - Write docs/patterns/external-projections.md (the doc that prevents runtime.query())
+  - Write docs/guides/external-projections.md (the doc that prevents runtime.query())
   - Update README.md to mention projections
   - Verify npm test still shows 427/427 passing
 
@@ -352,7 +352,7 @@ semantics, so keeping the Next.js projection configurable is aligned with the re
 Your registry is fine, but add one thing: a “built-ins register” function that registers all bundled projections in one place. Otherwise every CLI and every consumer will “remember” to register Next.js and
 then one day won’t, and you’ll be back to silent failure theater. This is the same class of bug as the missing `await` you already fixed: easy to miss, catastrophic to trust.
 
-The doc you proposed (`docs/patterns/external-projections.md`) is the most important part of Phase 2. Make it brutally explicit that runtime read APIs are a semantics change and therefore require spec +
+The doc you proposed (`docs/guides/external-projections.md`) is the most important part of Phase 2. Make it brutally explicit that runtime read APIs are a semantics change and therefore require spec +
 conformance updates. That aligns with the repo’s documented “Spec-first workflow” and “Never fix UI by changing semantics.” (Source: `/mnt/data/README.md` “For AI Agents: Critical Constraints” and “Required
  Workflow.”)
 

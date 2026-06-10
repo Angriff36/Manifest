@@ -46,7 +46,7 @@ The language compiles to an **Intermediate Representation (IR)** that serves as 
 
 ## Getting Started
 
-**New to Manifest?** Start with the [Usage Patterns Guide](docs/patterns/usage-patterns.md) to understand the two ways to integrate Manifest into your application:
+**New to Manifest?** Start with the [Usage Patterns Guide](docs/guides/usage-patterns.md) to understand the two ways to integrate Manifest into your application:
 
 1. **Projections** - Auto-generate API routes from `.manifest` files (best for simple CRUD)
 2. **Embedded Runtime** - Use the runtime directly in your handlers (best for complex workflows)
@@ -87,7 +87,7 @@ The Next.js projection includes 4 surfaces:
 
 ### Projection Design Principles
 
-From `docs/patterns/external-projections.md`:
+From `docs/guides/writing-projections.md`:
 
 - **Reads MAY bypass runtime**: Entity routes use direct DB queries for performance (read policies not enforced by default)
 - **Writes MUST use runtime**: Command routes enforce guards, policies, constraints, and event emission
@@ -143,7 +143,7 @@ See `src/manifest/projections/nextjs/README.md` for detailed usage examples.
 - **`src/project-template/templates.ts`**: Code generators for exported projects
 - **`bin/generate-projection.ts`**: CLI tool for code generation
 - **`docs/spec/`**: Language specification (IR schema, semantics, builtins, adapters)
-- **`docs/patterns/external-projections.md`**: Critical documentation on the projection boundary
+- **`docs/guides/writing-projections.md`**: Critical documentation on the projection boundary
 
 ## Example Program
 
@@ -291,7 +291,7 @@ npx tsx bin/generate-projection.ts --help
 
 **Note**: The CLI is a development tool using `tsx`. For production use, import the projection functions directly into your build scripts.
 
-**Important**: Entity routes (nextjs.route) generate READ operations that bypass the runtime (direct DB queries). Command routes (nextjs.command) MUST use `RuntimeEngine.runCommand()` for mutations. See `docs/patterns/external-projections.md` for detailed rationale.
+**Important**: Entity routes (nextjs.route) generate READ operations that bypass the runtime (direct DB queries). Command routes (nextjs.command) MUST use `RuntimeEngine.runCommand()` for mutations. See `docs/guides/writing-projections.md` for detailed rationale.
 
 ### Testing
 

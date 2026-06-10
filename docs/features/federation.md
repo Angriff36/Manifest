@@ -4,44 +4,76 @@
 
 The federated runtime enables multiple Manifest services to communicate with each other while preserving policy enforcement and workflow metadata across service boundaries.
 
+**Package note:** Federation lives in `src/manifest/federation/` and is **not** yet exported from `@angriff36/manifest` in `package.json`. Use it from the monorepo source (or add a `./federation` export when publishing). The API below matches `src/manifest/federation/types.ts` and `client.ts`.
+
 ## ServiceDescriptor
 
-Each service publishes a `ServiceDescriptor` declaring its entities, commands, and policies:
+Each service publishes a `ServiceDescriptor` declaring its exposed entities and commands:
 
 ```typescript
 interface ServiceDescriptor {
-  serviceName: string;
-  baseUrl: string;
-  entities: string[];
-  commands: { entity: string; command: string }[];
-  policies: { entity: string; scope: string; expression: string }[];
+  serviceId: string;
+  displayName?: string;
+  endpoint: string;
+  schemaVersion: string;
+  entities: ExposedEntity[];
+  health?: ServiceHealth;
+  auth?: ServiceAuthConfig;
+}
+
+interface ExposedEntity {
+  name: string;
+  module?: string;
+  commands: ExposedCommand[];
+}
+
+interface ExposedCommand {
+  name: string;
+  idempotent: boolean;
+  requiredPolicies: string[];
+  description?: string;
 }
 ```
+
+Build a descriptor from compiled IR with `buildDescriptor()` (`src/manifest/federation/descriptor.ts`).
 
 ## FederationClient
 
 ```typescript
-import { FederationClient } from "@angriff36/manifest/federation";
+import { FederationRegistry, FederationClient, buildDescriptor } from '../../src/manifest/federation/index.js';
 
-const client = new FederationClient({
-  services: [
-    { serviceName: "inventory", baseUrl: "http://inventory:3001" },
-    { serviceName: "payment", baseUrl: "http://payment:3002" },
-  ],
+const ordersDescriptor = buildDescriptor('orders', ordersIR, {
+  endpoint: 'https://orders.svc.cluster:8080',
+});
+
+const registry = new FederationRegistry();
+registry.register(ordersDescriptor);
+
+const client = new FederationClient(registry);
+
+const response = await client.invoke({
+  serviceId: 'orders',
+  entity: 'Order',
+  command: 'createOrder',
+  input: { customerId: 'c-1' },
+  bridge: { actorId: 'user-1', tenantId: 'tenant-1', correlationId: 'corr-1' },
 });
 ```
 
 ## Policy Bridge
 
-Cross-service calls carry policy context via HTTP headers:
+Cross-service calls carry policy context via HTTP headers (`buildBridgeHeaders` in `client.ts`):
 
 | Header | Value |
 |--------|-------|
-| `X-Manifest-User-Id` | Current user ID |
-| `X-Manifest-Tenant-Id` | Current tenant |
-| `X-Manifest-Role` | Current user role |
-| `X-Manifest-Correlation-Id` | Workflow correlation ID |
-| `X-Manifest-Causation-Id` | Causation identifier |
+| `X-Manifest-Actor` | Acting user ID |
+| `X-Manifest-Tenant` | Tenant ID |
+| `X-Manifest-Org` | Organization ID |
+| `X-Manifest-Roles` | Comma-separated roles |
+| `X-Request-Id` | Request ID for tracing |
+| `X-Correlation-Id` | Workflow correlation ID |
+
+Remote endpoint shape: `POST {endpoint}/__manifest/federation/{entity}/{command}`
 
 ## Conformance Fixtures
 
@@ -49,6 +81,6 @@ Cross-service calls carry policy context via HTTP headers:
 
 ## Notes
 
-- Federation is transport-independent — the default uses HTTP but custom transports are supported
-- Workflow metadata (correlationId, causationId) propagates automatically through federated calls
-- Service descriptors can be discovered via a registry service or hardcoded in configuration
+- Federation is transport-independent — default uses `HttpFederationTransport` (fetch); pass a custom `FederationTransport` for tests or gRPC
+- Workflow metadata (`correlationId`, etc.) propagates through `PolicyBridgeHeaders`
+- Service descriptors are registered in `FederationRegistry`; health checks are optional via `FederationRegistryOptions`

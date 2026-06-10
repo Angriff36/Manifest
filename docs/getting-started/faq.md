@@ -36,7 +36,7 @@ Primary consumers are **AI agents** that emit, validate, and reason about Manife
 | Prisma | Manifest |
 |--------|----------|
 | Database schema + type-safe queries | Business rules + execution semantics |
-| Queries are imperative (`findMany`, `update`) | Commands are declarative (`create Recipe { ... }`) |
+| Queries are imperative (`findMany`, `update`) | Commands are declarative (`command create() { ... }`) |
 | No built-in authorization | Guards and policies are first-class |
 | No event system | Events are first-class with ordering guarantees |
 | Generated code is source | IR is source; generated code is derivative |
@@ -69,7 +69,7 @@ Conformance tests are **executable semantics**, not coverage tests. They prove t
 
 Location: `src/manifest/conformance/`
 
-**Critical**: 467/467 tests must pass. No exceptions.
+**Critical**: All tests must pass (`pnpm test`). No exceptions.
 
 ---
 
@@ -82,7 +82,7 @@ Two integration patterns:
 1. **Projections**: Generate platform code (Next.js routes, Express controllers) from IR
 2. **Embedded Runtime**: Hand-written app code that calls `RuntimeEngine.runCommand` directly
 
-See: `docs/patterns/external-projections.md` and `docs/patterns/embedded-runtime-pattern.md`
+See: `docs/guides/usage-patterns.md` and `docs/guides/embedded-runtime.md`
 
 ### Should I use projections or embedded runtime?
 
@@ -109,7 +109,7 @@ interface Store<T extends EntityInstance = EntityInstance> {
 
 Provide your store via the `storeProvider` option in `RuntimeOptions`.
 
-See: `docs/patterns/implementing-custom-stores.md`
+See: `docs/guides/implementing-custom-stores.md`
 
 ### What storage targets are supported?
 
@@ -134,12 +134,13 @@ Authentication is handled by your application layer (Clerk, Auth0, NextAuth, etc
 
 Fixed order (defined in `docs/spec/semantics.md`):
 
-1. **Policy check** (scoped to `execute` or `all`)
-2. **Guard evaluation** (in order, short-circuit on first `falsey`)
-3. **Constraint validation** (severity: `block`, `warn`, `ok`)
-4. **Action execution** (`persist`, `publish`, `effect`)
-5. **Event emission** (in declaration order)
-6. **Return** result
+1. **Build evaluation context** (`self`, params, runtime context)
+2. **Policy check** (scoped to `execute` or `all`)
+3. **Command-level constraints** (severity: `block`, `warn`, `ok`)
+4. **Guard evaluation** (in order, short-circuit on first falsey)
+5. **Action execution** (`mutate`, `compute`, `persist`, etc.)
+6. **Event emission** (in declaration order)
+7. **Return** `CommandResult`
 
 ### What happens if a guard fails?
 
@@ -164,7 +165,7 @@ See: `docs/spec/semantics.md` → Authorization
 - **`warn`**: May fail; outcome recorded but execution continues
 - **`ok`**: Informational only; never blocks
 
-Non-blocking constraints are recorded in the result under `nonBlockingViolations`.
+Non-blocking constraints are recorded in the result under `constraintOutcomes`.
 
 ### Are read operations (GET) validated?
 
@@ -172,7 +173,7 @@ No. Per `docs/spec/semantics.md`, policies scoped to `read` are NOT enforced by 
 
 Reads are application-defined and may use direct storage queries. Only mutations require runtime command execution.
 
-See: `docs/patterns/external-projections.md` → Read vs. Write Strategy
+See: `docs/guides/usage-patterns.md` → Read vs. Write Strategy
 
 ---
 
@@ -196,7 +197,7 @@ For reads (GET): **Yes, and this is correct**. Reads MAY bypass runtime entirely
 
 For writes (POST/PUT/DELETE): **No**. Mutations MUST use `runtime.runCommand()` to enforce guards, policies, constraints, and events.
 
-See: `docs/patterns/external-projections.md`
+See: `docs/guides/usage-patterns.md`
 
 ### Can I add a runtime `query()` or `get()` method for reads?
 
@@ -205,7 +206,7 @@ See: `docs/patterns/external-projections.md`
 1. Update `docs/spec/semantics.md` with read execution order
 2. Define policy enforcement behavior for `read` scope
 3. Write conformance tests in `src/manifest/conformance/`
-4. Update all 467 tests
+4. Update conformance tests in `src/manifest/conformance/`
 
 Unless you need language-level read policies, use adapters or go direct to storage.
 
@@ -215,26 +216,22 @@ Unless you need language-level read policies, use adapters or go direct to stora
 
 ### How many tests are there?
 
-467 tests total:
-- 142 conformance tests (executable semantics)
-- 285 unit tests (lexer, parser, compiler, runtime)
-- 21 projection tests (Next.js smoke tests)
-- 19 other tests
+Run `pnpm test` to see the current count. The suite includes conformance tests (executable semantics), unit tests (lexer, parser, compiler, runtime), projection tests, and CLI tests.
 
 ### What is the test command?
 
 ```bash
-npm test              # Run all tests (must always pass)
-npm run typecheck     # TypeScript check
-npm run lint          # ESLint validation
-npm run dev           # Development server
-npm run conformance:regen  # Regenerate expected outputs
+pnpm test              # Run all tests (must always pass)
+pnpm run typecheck     # TypeScript check
+pnpm run lint          # ESLint validation
+pnpm run dev           # Development server
+pnpm run conformance:regen  # Regenerate expected outputs
 ```
 
 ### How do I regenerate conformance fixtures?
 
 ```bash
-npm run conformance:regen
+pnpm run conformance:regen
 ```
 
 **Warning**: Only do this when you are intentionally changing language semantics.
@@ -245,7 +242,7 @@ npm run conformance:regen
 
 ### What is the current version?
 
-v0.3.8
+v2.3.0 (see root `package.json`)
 
 ### What are vNext features?
 
@@ -256,11 +253,11 @@ Implemented in IR and runtime, ready for adoption:
 - Policy-based authorization (read/execute/all)
 - IR caching for compilation performance
 
-See: `docs/spec/manifest-vnext.md` and `docs/migration/vnext-migration-guide.md`
+See: `docs/spec/manifest-vnext.md` and `docs/guides/migration/v0.3.8.md`
 
 ### How do I migrate to vNext?
 
-See: `docs/migration/vnext-migration-guide.md`
+See: `docs/guides/migration/v0.3.8.md`
 
 ---
 
@@ -311,9 +308,9 @@ There is no third option.
 1. Update `docs/spec/**` first
 2. Update conformance fixtures
 3. Update implementation
-4. Keep `npm test`, `npm run typecheck`, and `npm run lint` green
+4. Keep `pnpm test`, `pnpm run typecheck`, and `pnpm run lint` green
 
-See: `docs/DOCUMENTATION_GOVERNANCE.md`
+See: `docs/internal/DOCUMENTATION_GOVERNANCE.md`
 
 ### What are the house style rules?
 
@@ -328,7 +325,7 @@ From `house-style.md`:
 ### What is the definition of "done"?
 
 A change is only done when:
-- `npm test` is green (467/467 passing)
+- `pnpm test` is green
 - `npm run typecheck` passes
 - `npm run lint` passes
 - Spec/test/impl are aligned (no undocumented nonconformance)
@@ -342,6 +339,6 @@ A change is only done when:
 - **Semantics**: `docs/spec/semantics.md`
 - **Adapters**: `docs/spec/adapters.md`
 - **Conformance**: `docs/spec/conformance.md`
-- **Patterns**: `docs/patterns/`
-- **Governance**: `docs/DOCUMENTATION_GOVERNANCE.md`
-- **Repo Rules**: `docs/REPO_GUARDRAILS.md`
+- **Patterns**: `docs/guides/`
+- **Governance**: `docs/internal/DOCUMENTATION_GOVERNANCE.md`
+- **Repo Rules**: `docs/internal/REPO_GUARDRAILS.md`

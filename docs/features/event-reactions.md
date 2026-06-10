@@ -6,34 +6,51 @@ Declarative event reactions allow commands to be automatically dispatched when s
 
 ## DSL Syntax
 
+From conformance fixture `67-event-reactions.manifest`:
+
 ```manifest
-event OrderSubmitted: "order.submitted" {
-  orderId: string
-  amount: number
-}
-
-entity OrderProcessor {
+entity Order {
   property required id: string
+  property total: number = 0
+  property status: string = "open"
 
-  command processOrder(orderId: string, amount: number) {
-    guard amount > 0
-    mutate status = "processing"
-    emit OrderProcessing
+  command complete() {
+    guard self.total > 0
+    mutate status = "completed"
+    emit OrderCompleted
   }
 }
 
-on OrderSubmitted run OrderProcessor.processOrder
-  resolve self.id == "processor-1"
+entity Invoice {
+  property required id: string
+  property orderId: string = ""
+  property amount: number = 0
+
+  command createFromOrder(orderId: string, amount: number) {
+    mutate orderId = orderId
+    mutate amount = amount
+  }
+}
+
+event OrderCompleted: "order.completed" {
+  orderId: string
+  finalTotal: number
+}
+
+on OrderCompleted run Invoice.createFromOrder
+  resolve payload._subject.id
   params {
-    orderId: event.orderId
-    amount: event.amount
+    orderId: payload._subject.id,
+    amount: payload.result
   }
 ```
+
+Reaction handlers receive `payload` (enriched event payload) and `self` (alias of payload) in resolve/params expressions — not a separate `event` binding.
 
 ## IR Schema Changes
 
 - `IRReactionRule`: event (string), targetEntity (string), targetCommand (string), resolve (IRExpression), params (IRReactionParam[]), optional module/entity scope
-- `IRRoot.reactions`: array of IRReactionRule
+- `IR.reactions`: array of IRReactionRule
 - `IRModule.reactions`: module-scoped reactions
 
 ## Runtime Behavior
@@ -42,7 +59,7 @@ on OrderSubmitted run OrderProcessor.processOrder
 2. For each reaction, the `resolve` expression identifies the target entity instance
 3. Parameter mappings extract values from the event payload
 4. The target command is invoked with the resolved parameters
-5. Cascading depth limit: `MAX_REACTION_DEPTH=10` prevents infinite reaction loops
+5. Cascading depth limit prevents infinite reaction loops
 6. `correlationId` and `causationId` propagate through reaction chains
 
 ## Scopes
@@ -53,8 +70,8 @@ on OrderSubmitted run OrderProcessor.processOrder
 
 ## Conformance Fixtures
 
-- `67-event-reactions.manifest` — OrderSubmitted triggering processOrder
+- `67-event-reactions.manifest` — `OrderCompleted` triggering `Invoice.createFromOrder`
 
 ## Test Coverage
 
-Tests in `src/manifest/runtime-engine.test.ts` and conformance fixture covering reaction execution, resolve expressions, param mapping, and depth limiting.
+Tests in `src/manifest/runtime-engine.test.ts` and conformance fixtures covering reaction execution, resolve expressions, param mapping, and depth limiting.

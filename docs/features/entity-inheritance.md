@@ -1,20 +1,27 @@
 # Entity Inheritance and Generics
 
-Manifest supports three patterns for structuring entity types: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics. All three are compile-time features -- the IR and runtime see fully flattened entities with no inheritance metadata needed for execution.
+> **Status: Planned.** Conformance fixtures `77`–`85` and this document describe intended syntax. The current parser does **not** accept `extends`, `mixin`, or generic `entity Name<T>` / `entity Alias = Template<T>` forms — compiling those fixtures yields parse errors (`Expected {, got extends` / `mixin` / `<`). Do not use this syntax in production programs until parser + IR compiler support lands.
+
+Manifest will support three patterns for structuring entity types: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics. All three are intended as compile-time features — the IR and runtime would see fully flattened entities.
 
 ## Entity Inheritance (`extends`)
 
 Single inheritance lets one entity derive properties, commands, policies, and constraints from a parent entity.
 
-```manifest
+```text
 entity BaseEntity {
-  property required id: string
+  property required id: string = ""
   property active: boolean = true
-  command Archive { mutate self.active = false }
+
+  command Archive() {
+    guard self.active == true
+    mutate active = false
+    emit EntityArchived
+  }
 }
 
 entity Product extends BaseEntity {
-  property required name: string
+  property required name: string = ""
   property price: number = 0
 }
 ```
@@ -36,19 +43,23 @@ entity Product extends BaseEntity {
 
 Mixins apply reusable trait definitions to entities. Multiple mixins can be applied to a single entity.
 
-```manifest
+```text
 entity Timestampable {
-  property createdAt: datetime
-  property updatedAt: datetime
+  property createdAt: string = ""
+  property updatedAt: string = ""
 }
 
 entity SoftDeletable {
-  property deletedAt: datetime
-  command SoftDelete { mutate self.deletedAt = now() }
+  property deletedAt: string = ""
+
+  command SoftDelete() {
+    mutate deletedAt = "2024-01-01"
+    emit EntitySoftDeleted
+  }
 }
 
 entity Article mixin Timestampable, SoftDeletable {
-  property required title: string
+  property required title: string = ""
 }
 ```
 
@@ -67,7 +78,7 @@ entity Article mixin Timestampable, SoftDeletable {
 
 Both inheritance mechanisms can be combined on a single entity:
 
-```manifest
+```text
 entity Document extends BaseEntity mixin Timestampable, SoftDeletable {
   property required title: string
 }
@@ -79,15 +90,16 @@ The resulting `IREntity` has both `parent: "BaseEntity"` and `mixins: ["Timestam
 
 Generic entities define type parameters that are substituted during compilation, producing concrete entity instantiations.
 
-```manifest
+```text
 entity Paginated<T> {
-  property required items: T[]
+  property page: number = 0
   property total: number = 0
-  property page: number = 1
+  property items: T = ""
+  hasMany items: T
 }
 
-entity ProductList = Paginated<Product> {
-  // Additional members specific to ProductList
+entity ItemList = Paginated<Item> {
+  property category: string = "all"
 }
 ```
 

@@ -29,7 +29,7 @@ interface EmittedEvent {
 }
 ```
 
-`emitIndex` is deterministic: identical IR + identical input + identical context = identical `emitIndex` values. Use it for replay verification (see `docs/patterns/complex-workflows.md` § Pattern 4).
+`emitIndex` is deterministic: identical IR + identical input + identical context = identical `emitIndex` values. Use it for replay verification (see `docs/guides/complex-workflows.md` § Pattern 4).
 
 ---
 
@@ -307,9 +307,10 @@ export function setupInventoryAlerts(tenantId: string) {
 
     // Re-check constraints for this item to get current state
     try {
+      const inst = await runtime.getInstance('InventoryItem', event.payload.id as string);
       const outcomes = await runtime.checkConstraints(
         'InventoryItem',
-        event.payload.id,
+        inst ?? {},
       );
 
       const warnings = getWarningConstraints(outcomes);
@@ -596,6 +597,6 @@ runtime.onEvent(async (event) => {
 - **Spec**: `docs/spec/semantics.md` — Event emission semantics
 - **vNext**: `docs/spec/manifest-vnext.md` — Workflow metadata, emitIndex determinism
 - **Adapters**: `docs/spec/adapters.md` — Action adapters, effect boundaries
-- **Complex Workflows**: `docs/patterns/complex-workflows.md` — Multi-step orchestration with correlation
-- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md` — Detailed outbox implementation
-- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md` — Basic runtime usage
+- **Complex Workflows**: `docs/guides/complex-workflows.md` — Multi-step orchestration with correlation
+- **Transactional Outbox**: `docs/guides/transactional-outbox.md` — Detailed outbox implementation
+- **Embedded Runtime**: `docs/guides/embedded-runtime.md` — Basic runtime usage

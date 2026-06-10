@@ -40,9 +40,9 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // All commands execute within this tenant context
-const result = await runtime.runCommand('Recipe', 'create', {
+const result = await runtime.runCommand('create', {
   name: 'Chocolate Cake',
-});
+}, { entityName: 'Recipe' });
 ```
 
 ### From Auth Provider (Clerk Example)
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   // Runtime scoped to tenant
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
 
-  const result = await runtime.runCommand('Recipe', 'create', await request.json());
+  const result = await runtime.runCommand('create', await request.json(), { entityName: 'Recipe' });
 
   return Response.json(result);
 }
@@ -213,35 +213,25 @@ Use guards and policies to enforce tenant boundaries in business logic.
 ### Manifest Definition
 
 ```manifest
+tenant tenantId : string from context.tenantId
+
 entity Recipe {
   property required id: string
-  property required tenantId: string
   property required name: string
   property createdBy: string
+  property deletedAt: number = 0
 
   command update(name: string) {
-    // Ensure user belongs to same tenant
-    guard context.tenantId == this.tenantId
-
-    // Ensure user has permission
-    guard this.createdBy == user.id or user.role == "admin"
-
+    guard self.createdBy == user.id or user.role == "admin"
     mutate name = name
   }
 
-  command delete() {
-    // Tenant boundary check
-    guard context.tenantId == this.tenantId
-
-    // Role check
-    guard user.role in ["admin", "owner"]
-
+  command archiveRecipe() {
+    guard user.role == "admin" or user.role == "owner"
     mutate deletedAt = now()
   }
 
-  policy CanEdit execute: context.tenantId == self.tenantId and (
-    self.createdBy == user.id or user.role == "admin"
-  )
+  policy CanEdit execute: self.createdBy == user.id or user.role == "admin"
 }
 ```
 
@@ -255,9 +245,11 @@ const runtime = new RuntimeEngine(ir, {
 });
 
 // Attempt to update recipe from tenant-B
-const result = await runtime.runCommand('Recipe', 'update', {
-  instanceId: 'recipe-from-tenant-B',
+const result = await runtime.runCommand('update', {
   name: 'Hacked Recipe',
+}, {
+  entityName: 'Recipe',
+  instanceId: 'recipe-from-tenant-B',
 });
 
 // result.success = false
@@ -380,7 +372,7 @@ export async function POST(request: Request) {
 
   const input = await request.json();
 
-  const result = await runtime.runCommand('Recipe', 'create', input);
+  const result = await runtime.runCommand('create', input, { entityName: 'Recipe' });
 
   return Response.json(result);
 }
@@ -572,9 +564,11 @@ test('cannot access other tenant data', async () => {
     tenantId: 'tenant-A',
   });
 
-  const result = await runtime.runCommand('Recipe', 'update', {
-    instanceId: 'recipe-from-tenant-B',
+  const result = await runtime.runCommand('update', {
     name: 'Hacked',
+  }, {
+    entityName: 'Recipe',
+    instanceId: 'recipe-from-tenant-B',
   });
 
   expect(result.success).toBe(false);
@@ -611,8 +605,8 @@ runtime.onEvent((event) => {
 ## Related Documentation
 
 - **Spec**: `docs/spec/adapters.md` - Custom stores
-- **Custom Stores**: `docs/patterns/implementing-custom-stores.md`
-- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md` - Request identity hardening
+- **Custom Stores**: `docs/guides/implementing-custom-stores.md`
+- **Embedded Runtime**: `docs/guides/embedded-runtime.md` - Request identity hardening
 - **Deployment Boundaries**: `docs/contracts/deployment-boundaries.md` - FAQ #2 (external database)
 
 ---

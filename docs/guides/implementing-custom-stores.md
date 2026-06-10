@@ -52,5 +52,5 @@ const runtime = new RuntimeEngine(ir, {
 ## Related
 
 - `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/patterns/transactional-outbox-pattern.md`
-- `C:/Projects/Manifest/docs/patterns/embedded-runtime-pattern.md`
+- `C:/Projects/Manifest/docs/guides/transactional-outbox.md`
+- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`

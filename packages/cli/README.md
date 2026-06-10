@@ -517,6 +517,6 @@ Check your lib files are set up correctly:
 
 ## Related Documentation
 
-- **[Usage Patterns Guide](../../docs/patterns/usage-patterns.md)** - Projections vs embedded runtime
+- **[Usage Patterns Guide](../../docs/guides/usage-patterns.md)** - Projections vs embedded runtime
 - **[Next.js Projection README](../../src/manifest/projections/nextjs/README.md)** - Projection details
 - **[Language Semantics](../../docs/spec/semantics.md)** - How Manifest works

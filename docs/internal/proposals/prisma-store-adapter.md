@@ -267,7 +267,7 @@ The `createPrismaStore` factory should have unit tests for:
 - [ ] Update scanner to read Prisma schema when `prismaModel` is specified
 - [ ] Add property alignment scanner checks
 - [ ] Write unit tests for Prisma store factory
-- [ ] Document pattern in `docs/patterns/prisma-integration.md`
+- [ ] Document pattern in `docs/guides/implementing-custom-stores.md`
 
 ---
 
@@ -276,4 +276,4 @@ The `createPrismaStore` factory should have unit tests for:
 - `docs/spec/adapters.md` - Store interface and custom store implementation
 - `specs/workflow/Manifest-Workflow-Orchestration-and-Effect-Boundaries.md` - "Prisma is NOT a core runtime store target"
 - `specs/ergonomics/manifest-config-ergonomics.md` - Configuration file design
-- `docs/patterns/implementing-custom-stores.md` - Custom store patterns
+- `docs/guides/implementing-custom-stores.md` - Custom store patterns

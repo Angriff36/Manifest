@@ -53,5 +53,5 @@ await db.transaction(async (tx) => {
 ## Related
 
 - `C:/Projects/Manifest/docs/spec/adapters.md`
-- `C:/Projects/Manifest/docs/patterns/implementing-custom-stores.md`
-- `C:/Projects/Manifest/docs/patterns/embedded-runtime-pattern.md`
+- `C:/Projects/Manifest/docs/guides/implementing-custom-stores.md`
+- `C:/Projects/Manifest/docs/guides/embedded-runtime.md`

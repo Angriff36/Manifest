@@ -19,7 +19,7 @@ Before the patterns, here's how to configure the runtime features used throughou
 import { RuntimeEngine } from '@angriff36/manifest';
 import type { EvaluationLimits, IdempotencyStore } from '@angriff36/manifest';
 
-const engine = new RuntimeEngine(ir, {
+const engine = new RuntimeEngine(ir, {}, {
   // Workflow metadata: callers supply correlationId/causationId per command
   // (not configured here — passed per runCommand call)
 
@@ -55,23 +55,18 @@ entity InventoryItem {
   property parLevel: number = 0
   property costPerUnit: number = 0
 
-  computed isBelowPar = self.quantityAvailable < self.parLevel
-  computed stockoutRisk = self.quantityAvailable <= 0
+  computed isBelowPar: boolean = self.quantityAvailable < self.parLevel
+  computed stockoutRisk: boolean = self.quantityAvailable <= 0
 
   command reserve(quantity: number, eventId: string) {
     guard quantity > 0
     guard self.quantityAvailable >= quantity
 
-    constraint warnBelowPar severity warn
-      when self.quantityAvailable - quantity < self.parLevel
-      message "Reserving will drop below par level"
+    constraint warnBelowPar:warn self.quantityAvailable - quantity < self.parLevel "Reserving will drop below par level"
+    constraint blockStockout:block self.quantityAvailable - quantity < 0 "Insufficient stock for reservation"
 
-    constraint blockStockout severity block
-      when self.quantityAvailable - quantity < 0
-      message "Insufficient stock for reservation"
-
-    mutate self.quantityReserved = self.quantityReserved + quantity
-    mutate self.quantityAvailable = self.quantityAvailable - quantity
+    mutate quantityReserved = self.quantityReserved + quantity
+    mutate quantityAvailable = self.quantityAvailable - quantity
     emit InventoryReserved
   }
 
@@ -79,8 +74,8 @@ entity InventoryItem {
     guard quantity > 0
     guard self.quantityReserved >= quantity
 
-    mutate self.quantityOnHand = self.quantityOnHand - quantity
-    mutate self.quantityReserved = self.quantityReserved - quantity
+    mutate quantityOnHand = self.quantityOnHand - quantity
+    mutate quantityReserved = self.quantityReserved - quantity
     emit InventoryConsumed
   }
 
@@ -243,28 +238,26 @@ entity PrepTask {
   transition status from "claimed" to ["in_progress", "open"]
   transition status from "in_progress" to ["done", "open"]
 
-  computed isOverdue = self.dueByDate != null and now() > self.dueByDate
-  computed percentComplete = self.quantityTotal > 0
+  computed isOverdue: boolean = self.dueByDate != null and now() > self.dueByDate
+  computed percentComplete: number = self.quantityTotal > 0
     ? (self.quantityCompleted / self.quantityTotal) * 100
     : 0
-  computed isUrgent = self.priority >= 8
+  computed isUrgent: boolean = self.priority >= 8
 
   command claim(userId: string) {
     guard self.status == "open"
 
-    constraint warnOverdue severity warn
-      when self.isOverdue == true
-      message "This task is overdue"
+    constraint warnOverdue:warn self.isOverdue == true "This task is overdue"
 
-    mutate self.status = "claimed"
-    mutate self.claimedBy = userId
-    mutate self.claimedAt = now()
+    mutate status = "claimed"
+    mutate claimedBy = userId
+    mutate claimedAt = now()
     emit PrepTaskClaimed
   }
 
   command start() {
     guard self.status == "claimed"
-    mutate self.status = "in_progress"
+    mutate status = "in_progress"
     emit PrepTaskStarted
   }
 
@@ -272,22 +265,22 @@ entity PrepTask {
     guard self.status == "in_progress"
     guard quantityCompleted > 0
 
-    mutate self.quantityCompleted = quantityCompleted
-    mutate self.status = "done"
+    mutate quantityCompleted = quantityCompleted
+    mutate status = "done"
     emit PrepTaskCompleted
   }
 
   command release(reason: string) {
     guard self.status == "claimed" or self.status == "in_progress"
-    mutate self.status = "open"
-    mutate self.claimedBy = null
-    mutate self.claimedAt = null
+    mutate status = "open"
+    mutate claimedBy = null
+    mutate claimedAt = null
     emit PrepTaskReleased
   }
 
   command cancel() {
     guard self.status == "open"
-    mutate self.status = "cancelled"
+    mutate status = "cancelled"
     emit PrepTaskCancelled
   }
 
@@ -320,7 +313,7 @@ export async function claimPrepTask(
 ) {
   const idempotencyStore = new MemoryIdempotencyStore();
 
-  const engine = new RuntimeEngine(ir, {
+  const engine = new RuntimeEngine(ir, {}, {
     storeProvider: createPrismaStoreProvider(tenantId),
     idempotencyStore,
     evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
@@ -552,7 +545,7 @@ export async function replayAndVerify(
   recordedCommands: RecordedCommand[],
 ): Promise<{ verified: boolean; mismatches: string[] }> {
   // Deterministic mode: persist/publish/effect actions throw instead of no-oping
-  const engine = new RuntimeEngine(ir, {
+  const engine = new RuntimeEngine(ir, {}, {
     deterministicMode: true,
     evaluationLimits: { maxExpressionDepth: 32, maxEvaluationSteps: 5_000 },
   });
@@ -761,7 +754,7 @@ When evaluating complex computed properties or deeply nested constraints (e.g., 
 import { RuntimeEngine, EvaluationBudgetExceededError } from '@angriff36/manifest';
 
 // Tight limits for user-facing operations (fast failure on bad data)
-const kitchenEngine = new RuntimeEngine(ir, {
+const kitchenEngine = new RuntimeEngine(ir, {}, {
   evaluationLimits: {
     maxExpressionDepth: 32,
     maxEvaluationSteps: 2_000,
@@ -770,7 +763,7 @@ const kitchenEngine = new RuntimeEngine(ir, {
 });
 
 // Generous limits for batch operations (admin, reporting)
-const batchEngine = new RuntimeEngine(ir, {
+const batchEngine = new RuntimeEngine(ir, {}, {
   evaluationLimits: {
     maxExpressionDepth: 64,
     maxEvaluationSteps: 50_000,
@@ -897,6 +890,6 @@ await prisma.$transaction(async (tx) => {
 - **Spec**: `docs/spec/semantics.md` — Command execution semantics
 - **vNext**: `docs/spec/manifest-vnext.md` — Workflow metadata, idempotency, evaluation limits
 - **Adapters**: `docs/spec/adapters.md` — IdempotencyStore, deterministicMode
-- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md` — Basic usage
-- **Event Wiring**: `docs/patterns/event-wiring.md` — Connecting events to Ably/queues
-- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md` — Guaranteed event delivery
+- **Embedded Runtime**: `docs/guides/embedded-runtime.md` — Basic usage
+- **Event Wiring**: `docs/guides/event-wiring.md` — Connecting events to Ably/queues
+- **Transactional Outbox**: `docs/guides/transactional-outbox.md` — Guaranteed event delivery

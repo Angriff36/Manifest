@@ -124,7 +124,7 @@ single transaction. If you need atomic multi-entity writes, either:
 
 - Model them as a single command that does all the work, or
 - Use a `Store` adapter that exposes its own transaction handle and
-  thread it through. See `docs/patterns/implementing-custom-stores.md`.
+  thread it through. See `docs/guides/implementing-custom-stores.md`.
 
 ### 6. Optimize Store Queries
 
@@ -407,6 +407,6 @@ Before deploying to production:
 
 ## Further Reading
 
-- **Store Implementation**: `docs/patterns/implementing-custom-stores.md`
-- **Transactional Outbox**: `docs/patterns/transactional-outbox-pattern.md`
+- **Store Implementation**: `docs/guides/implementing-custom-stores.md`
+- **Transactional Outbox**: `docs/guides/transactional-outbox.md`
 - **API Reference**: `docs/tools/API_REFERENCE.md`

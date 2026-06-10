@@ -178,9 +178,11 @@ Four primitive type names with fixed runtime representations:
 Properties MAY carry the `masked` modifier, which transforms sensitive values **at read time**. The strategy is explicit in source; modifiers precede the property name:
 
 ```manifest
-property masked(partial, 0, 4) ssn: string
-property masked(email) contact: string unmask when user.role == "admin"
-property masked notes: string            // bare = redact
+entity Patient {
+  property masked(partial, 0, 4) ssn: string
+  property masked(email) contact: string unmask when user.role == "admin"
+  property masked notes: string
+}
 ```
 
 ### Strategies
@@ -263,26 +265,34 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
 - This expansion ensures runtime behavior is consistent regardless of whether policies were inherited or declared.
 
 #### Example
+
+From conformance fixture `55-default-policies.manifest`:
+
 ```manifest
-entity InventoryItem {
-  // Default policy: all commands require kitchen staff role
-  default policy execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
+entity Task {
+  default policy RequireAuth execute: user.id != null "Authentication required"
 
-  command consume(...) { ... }  // Inherits default policy
+  property required title: string
+  property status: string = "pending"
+  property assigneeId: string
 
-  command adjust(...) {
-    // Override: managers only
-    policy execute: user.role in ["kitchen_lead", "manager", "admin"]
-    ...
+  command complete() {
+    guard self.assigneeId == user.id or user.role == "admin"
+    mutate status = "completed"
+  }
+
+  command reassign(newAssigneeId: string) {
+    guard user.role == "admin" or user.role == "manager"
+    mutate assigneeId = newAssigneeId
   }
 }
 ```
 
 In this example:
-- `consume` inherits the default policy (kitchen staff and above)
-- `adjust` overrides with a stricter policy (kitchen lead and above)
-- The IR for `consume` will have `policies: ["InventoryItem_Execute_Default"]` (synthesized name)
-- The IR for `adjust` will have `policies: [explicit declared policy]`
+- `complete` inherits the default policy (`RequireAuth`)
+- `reassign` also inherits `RequireAuth` and adds its own guard for role checks
+- The IR for `complete` will include the inherited default policy name in its `policies` array
+- The IR for `reassign` will include the same inherited default policy name in its `policies` array
 
 ## Commands
 - The IR root `commands` array is the authoritative command definition list.
@@ -354,7 +364,7 @@ Generated client command methods SHALL:
 
 Brief source alignment:
 - `README.md`: "Projections are tooling, not runtime semantics."
-- `docs/patterns/usage-patterns.md`: "Projections are tooling, not language semantics."
+- `docs/guides/usage-patterns.md`: "Projections are tooling, not language semantics."
 
 See also:
 - `../patterns/usage-patterns.md`

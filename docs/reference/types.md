@@ -62,7 +62,9 @@ export interface IR {
   version: '1.0';
   provenance: IRProvenance;
   modules: IRModule[];
+  values: IRValueObject[];
   entities: IREntity[];
+  enums: IREnum[];
   stores: IRStore[];
   events: IREvent[];
   commands: IRCommand[];

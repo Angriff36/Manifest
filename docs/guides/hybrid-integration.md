@@ -37,28 +37,28 @@ entity Recipe {
   property required name: string
   property required ingredients: array
   property status: string = "draft"
-  property publishedAt: timestamp?
+  property publishedAt: datetime?
   property views: number = 0
 
   command create(name: string, ingredients: array) {
-    guard name is not empty
+    guard name != ""
     guard ingredients.length > 0
 
     mutate name = name
     mutate ingredients = ingredients
   }
 
-  command publish() {
-    guard this.status == "draft"
-    guard this.ingredients.length >= 3
+  command goLive() {
+    guard self.status == "draft"
+    guard self.ingredients.length >= 3
 
-    mutate this.status = "published"
-    mutate this.publishedAt = now()
+    mutate status = "published"
+    mutate publishedAt = now()
     emit RecipePublished
   }
 
   command incrementViews() {
-    mutate this.views = this.views + 1
+    mutate views = self.views + 1
   }
 }
 
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
   // Simple create: use projection
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
-  const result = await runtime.runCommand('Recipe', 'create', input);
+  const result = await runtime.runCommand('create', input, { entityName: 'Recipe' });
 
   return Response.json(result);
 }
@@ -141,7 +141,8 @@ export async function POST(
   });
 
   // Execute command
-  const result = await runtime.runCommand('Recipe', 'publish', {
+  const result = await runtime.runCommand('goLive', {}, {
+    entityName: 'Recipe',
     instanceId: params.id,
   });
 
@@ -207,9 +208,11 @@ export async function POST(request: Request) {
       // Reserve inventory
       const reservation = await inventoryService.reserve(event.payload.items);
 
-      await runtime.runCommand('Order', 'reserveInventory', {
-        instanceId: event.payload.id,
+      await runtime.runCommand('reserveInventory', {
         reservationId: reservation.id,
+      }, {
+        entityName: 'Order',
+        instanceId: event.payload.id as string,
       });
     }
 
@@ -220,9 +223,11 @@ export async function POST(request: Request) {
         event.payload.totalAmount
       );
 
-      await runtime.runCommand('Order', 'processPayment', {
-        instanceId: event.payload.id,
+      await runtime.runCommand('processPayment', {
         paymentId: payment.id,
+      }, {
+        entityName: 'Order',
+        instanceId: event.payload.id as string,
       });
     }
 
@@ -234,7 +239,7 @@ export async function POST(request: Request) {
     }
   });
 
-  const result = await runtime.runCommand('Order', 'place', input);
+  const result = await runtime.runCommand('place', input, { entityName: 'Order' });
 
   return Response.json(result);
 }
@@ -269,7 +274,7 @@ app/api/
 export async function GET() { /* ... */ }
 export async function POST(request: Request) {
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
-  return runtime.runCommand('Recipe', 'create', await request.json());
+  return runtime.runCommand('create', await request.json(), { entityName: 'Recipe' });
 }
 ```
 
@@ -295,11 +300,11 @@ export async function POST(
   }
 
   // Create clone with custom logic
-  const result = await runtime.runCommand('Recipe', 'create', {
+  const result = await runtime.runCommand('create', {
     name: `${original.name} (Copy)`,
     ingredients: original.ingredients,
     instructions: original.instructions,
-  });
+  }, { entityName: 'Recipe' });
 
   if (result.success) {
     // Track clone event
@@ -340,7 +345,7 @@ export async function POST(request: Request) {
   setupEventHandlers(runtime);
 
   // Execute command
-  const result = await runtime.runCommand('Invoice', 'create', input);
+  const result = await runtime.runCommand('create', input, { entityName: 'Invoice' });
 
   return Response.json(result);
 }
@@ -435,14 +440,14 @@ export async function POST(request: Request) {
     const input = await request.json();
 
     // Use runtime for multiple commands
-    const orderResult = await runtime.runCommand('Order', 'create', input);
+    const orderResult = await runtime.runCommand('create', input, { entityName: 'Order' });
 
     if (orderResult.success) {
       // Send confirmation
-      await runtime.runCommand('Notification', 'send', {
+      await runtime.runCommand('send', {
         userId: input.userId,
         message: 'Order created successfully',
-      });
+      }, { entityName: 'Notification' });
     }
 
     return Response.json(orderResult);
@@ -494,10 +499,10 @@ const worker = new Worker('reports', async (job) => {
   const runtime = new RuntimeEngine(ir, { userId, tenantId });
 
   // Multi-step report generation
-  const createResult = await runtime.runCommand('Report', 'create', {
+  const createResult = await runtime.runCommand('create', {
     type: reportType,
     dateRange,
-  });
+  }, { entityName: 'Report' });
 
   const reportId = createResult.instance.id;
 
@@ -508,13 +513,16 @@ const worker = new Worker('reports', async (job) => {
   const pdfUrl = await generatePDF(data);
 
   // Update report
-  await runtime.runCommand('Report', 'markGenerated', {
-    instanceId: reportId,
+  await runtime.runCommand('markGenerated', {
     pdfUrl,
+  }, {
+    entityName: 'Report',
+    instanceId: reportId,
   });
 
   // Send email
-  await runtime.runCommand('Report', 'send', {
+  await runtime.runCommand('send', {}, {
+    entityName: 'Report',
     instanceId: reportId,
   });
 
@@ -653,7 +661,7 @@ test('POST /recipes/publish emits event', async () => {
   const events: EmittedEvent[] = [];
 
   runtime.onEvent(event => events.push(event));
-  await runtime.runCommand('Recipe', 'publish', { instanceId });
+  await runtime.runCommand('goLive', {}, { entityName: 'Recipe', instanceId });
 
   expect(events).toContainEqual(
     expect.objectContaining({ name: 'RecipePublished' })
@@ -699,10 +707,10 @@ export async function POST() { /* ... */ }
 ## Related Documentation
 
 - **Spec**: `docs/spec/semantics.md` - Runtime semantics
-- **Usage Patterns**: `docs/patterns/usage-patterns.md` - Decision guide
-- **Embedded Runtime**: `docs/patterns/embedded-runtime-pattern.md`
-- **Event Wiring**: `docs/patterns/event-wiring.md` - Side effects
-- **Complex Workflows**: `docs/patterns/complex-workflows.md` - Multi-step orchestration
+- **Usage Patterns**: `docs/guides/usage-patterns.md` - Decision guide
+- **Embedded Runtime**: `docs/guides/embedded-runtime.md`
+- **Event Wiring**: `docs/guides/event-wiring.md` - Side effects
+- **Complex Workflows**: `docs/guides/complex-workflows.md` - Multi-step orchestration
 
 ---
 

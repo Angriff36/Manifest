@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-21
+Last updated: 2026-06-09
 
 Solutions to common problems when working with Manifest.
 
@@ -12,7 +12,7 @@ Solutions to common problems when working with Manifest.
 
 ### `manifest validate` reports "Missing required field: metadata"
 
-**Cause:** You are running a stale global CLI binary (pre-0.3.23). The old `validate` command ignored the schema it loaded and ran hardcoded validation against a `metadata` field that does not exist in the IR spec. The IR was valid; the CLI was wrong.
+**Cause:** You are running a stale global CLI binary. The old `validate` command ignored the schema it loaded and ran hardcoded validation against a `metadata` field that does not exist in the IR spec. The IR was valid; the CLI was wrong.
 
 **Solution:** Stop using the global binary. Use `pnpm exec manifest` instead, which resolves from the installed package:
 
@@ -20,10 +20,10 @@ Solutions to common problems when working with Manifest.
 pnpm exec manifest validate path/to/output.ir.json
 ```
 
-If you don't have 0.3.23 installed yet:
+If you don't have the current version installed yet:
 
 ```bash
-pnpm add @angriff36/manifest@0.3.23
+pnpm add @angriff36/manifest@2.3.0
 pnpm exec manifest validate path/to/output.ir.json
 ```
 
@@ -33,9 +33,9 @@ Do not copy schema files, modify provenance, or create symlinks as workarounds. 
 
 ### `manifest validate` reports "Schema not found at docs/spec/ir/ir-v1.schema.json"
 
-**Cause:** You are running a stale global CLI binary (pre-0.3.23). The old CLI resolved the schema relative to `process.cwd()`, which only works inside the manifest repo itself. Consumer projects don't have that path.
+**Cause:** You are running a stale global CLI binary. The old CLI resolved the schema relative to `process.cwd()`, which only works inside the manifest repo itself. Consumer projects don't have that path.
 
-**Solution:** Same as above — use `pnpm exec manifest` with 0.3.23+. The schema is now bundled inside the package and resolved relative to the CLI binary, not the working directory.
+**Solution:** Same as above — use `pnpm exec manifest` with the current package. The schema is bundled inside the package and resolved relative to the CLI binary, not the working directory.
 
 ---
 
@@ -43,7 +43,7 @@ Do not copy schema files, modify provenance, or create symlinks as workarounds. 
 
 **Cause:** You have a globally installed CLI binary that is a different version from the `@angriff36/manifest` package installed in your project. These are independent and will drift.
 
-**Solution:** Always use `pnpm exec manifest` (or `npx manifest`). Never rely on a global install. As of 0.3.23, `manifest --version` reads from the package's own `package.json` at runtime, so `pnpm exec manifest --version` will always match the installed package version.
+**Solution:** Always use `pnpm exec manifest` (or `npx manifest`). Never rely on a global install. `manifest --version` reads from the package's own `package.json` at runtime, so `pnpm exec manifest --version` will always match the installed package version.
 
 ---
 
@@ -59,8 +59,8 @@ Do not copy schema files, modify provenance, or create symlinks as workarounds. 
 - Use the lexer output to see how tokens are being parsed
 
 ```typescript
-import { lex } from '@angriff36/manifest';
-const tokens = lex(source);
+import { Lexer } from '@angriff36/manifest/lexer';
+const tokens = new Lexer(source).tokenize();
 console.log(tokens);
 ```
 
@@ -124,22 +124,7 @@ if (!result.success) {
 console.log('Success:', result.result);
 ```
 
-**For API responses**, use the normalization helper to get a consistent diagnostic structure:
-
-```typescript
-import { normalizeCommandResult } from '@angriff36/manifest/api-diagnostics';
-
-const result = await runtime.runCommand('create', input, { entityName: 'Todo' });
-const normalized = normalizeCommandResult('Todo', 'create', result);
-
-if (!normalized.success) {
-  console.error('Failed:', normalized.diagnostics);
-  // diagnostics contains: kind, entity, command, ruleName, message, resolved values
-  return;
-}
-
-console.log('Success:', normalized.data);
-```
+**For API responses**, map `CommandResult` fields to your HTTP response shape in application code. The runtime returns structured failure details on `guardFailure`, `policyDenial`, and `error` — there is no `diagnostics` field on `CommandResult`. Next.js projections generate helpers such as `manifestSuccessResponse` / `manifestErrorResponse` in `@/lib/manifest-response`.
 
 ### "Policy denied"
 
@@ -153,9 +138,8 @@ console.log('Success:', normalized.data);
 ```typescript
 // Verify your runtime context
 const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
+  actorId: 'user-123',
   tenantId: 'tenant-456',
-  // Add any other context your policies reference
   user: {
     id: 'user-123',
     role: 'admin'
@@ -170,12 +154,12 @@ const runtime = new RuntimeEngine(ir, {
 **Solution**:
 - Check constraint severity (`block`, `warn`, `ok`)
 - Review constraint expression and resolved values
-- For non-blocking constraints, check `result.nonBlockingViolations`
+- For non-blocking constraints, check `result.constraintOutcomes`
 
 ```typescript
-if (result.nonBlockingViolations) {
-  console.warn('Non-blocking violations:', result.nonBlockingViolations);
-  // Execution continues but warnings are recorded
+const warnings = result.constraintOutcomes?.filter(o => o.severity === 'warn');
+if (warnings?.length) {
+  console.warn('Non-blocking constraint outcomes:', warnings);
 }
 ```
 
@@ -189,19 +173,19 @@ if (result.nonBlockingViolations) {
 - Check that you're using the correct runtime for your environment
 
 ```typescript
-// Browser: use memory or localStorage
-// Node.js: can use postgres or supabase
-
-// Custom store:
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  storeProvider: (entityName) => {
-    if (entityName === 'Todo') {
-      return new MyCustomStore();
-    }
-    return undefined; // default to memory
+// Custom store (storeProvider is the third constructor argument):
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123', user: { id: 'user-123', role: 'admin' } },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Todo') {
+        return new MyCustomStore();
+      }
+      return undefined; // default to memory
+    },
   }
-});
+);
 ```
 
 ---
@@ -219,7 +203,9 @@ const runtime = new RuntimeEngine(ir, {
 
 ```bash
 # Verify entity exists in IR
-npx manifest-generate compile program.manifest | jq '.entities[].name'
+pnpm exec manifest compile program.manifest -o program.ir.json
+# Then inspect entities (requires jq)
+jq '.entities[].name' program.ir.json
 ```
 
 ### "Cannot find module '@/lib/manifest-response'"
@@ -396,9 +382,11 @@ npm run lint -- --fix
 - Implement retry logic
 
 ```typescript
+import { PostgresStore } from '@angriff36/manifest/stores';
+
 const store = new PostgresStore({
   connectionString: process.env.DATABASE_URL,
-  pool: { min: 1, max: 10 }
+  tableName: 'todos',
 });
 ```
 
@@ -408,7 +396,7 @@ const store = new PostgresStore({
 
 Still stuck?
 
-1. **Check the FAQ**: `docs/FAQ.md`
+1. **Check the FAQ**: `docs/getting-started/faq.md`
 2. **Review semantics**: `docs/spec/semantics.md`
 3. **Check examples**: `src/manifest/examples.ts`
 4. **Review conformance fixtures**: `src/manifest/conformance/fixtures/`
@@ -418,19 +406,20 @@ Still stuck?
 
 ## Debugging Tips
 
-### Enable verbose logging
+### Enable profiling
 
 ```typescript
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  debug: true  // Enable debug logging
-});
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: 'user-123' },
+  { profiling: { enabled: true } }
+);
 ```
 
 ### Dump IR for inspection
 
 ```bash
-node scripts/debug/dump-ir.mts program.manifest > ir.json
+pnpm exec manifest compile program.manifest -o ir.json
 ```
 
 ### Trace guard evaluation
@@ -453,7 +442,7 @@ if (!result.success && result.guardFailure) {
 ### Inspect runtime state
 
 ```typescript
-console.log('Entities:', runtime.entities);
-console.log('Stores:', runtime.stores);
-console.log('Context:', runtime.context);
+console.log('Entities:', runtime.getEntities());
+console.log('Context:', runtime.getContext());
+// Per-entity store: runtime.getStore('Task')
 ```

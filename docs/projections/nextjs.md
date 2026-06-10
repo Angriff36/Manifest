@@ -4,7 +4,9 @@ The Next.js projection turns compiled Manifest IR into App Router API artifacts:
 
 ## What it generates
 
-The projection registers under the name `nextjs` and exposes six surfaces, declared on the generator as `['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'ts.types', 'ts.client']`.
+The projection registers under the name `nextjs` and exposes nine surfaces:
+
+`nextjs.route`, `nextjs.detail`, `nextjs.command`, `nextjs.dispatcher`, `nextjs.subscribe`, `nextjs.subscriptionHook`, `nextjs.sharedRuntime`, `ts.types`, `ts.client`
 
 `nextjs.route` and `nextjs.detail` emit GET handlers for an entity — a list route and a single-record detail route. By design these reads issue direct Prisma queries against the client at `databaseImportPath` and bypass the runtime engine, because Manifest does not enforce `read` policies during command execution and direct queries avoid runtime overhead for simple fetches.
 
@@ -58,8 +60,8 @@ const result = projection?.generate(ir, { surface: 'nextjs.dispatcher' });
 From the CLI the same projection backs `manifest generate`. The `nextjs` projection has dedicated multi-surface orchestration so `--surface all` fans out across route, dispatcher, types, and client:
 
 ```bash
-manifest compile modules/recipe.manifest --output ir/
-manifest generate ir/recipe.ir.json --projection nextjs --surface all --output apps/api/app/api/
+pnpm exec manifest compile modules/recipe.manifest -o ir/
+pnpm exec manifest generate ir/recipe.ir.json -p nextjs -s all -o apps/api/app/api/
 ```
 
 ## Type mapping & behavior

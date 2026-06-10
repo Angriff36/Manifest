@@ -1,53 +1,63 @@
 # Date and Time Types
 
-Manifest represents points in time with the `datetime` type and offers UTC-based date component built-ins for extracting parts of a timestamp. This page documents what the language and runtime actually provide for date and time handling.
+Manifest provides primitive types `date`, `time`, `datetime`, and `duration`, plus built-ins for date extraction and duration arithmetic. See conformance fixture `92-date-time-types.manifest`.
 
 ## Syntax
 
-There is no dedicated conformance fixture introducing `date`, `time`, `duration`, or `interval` as primitive types — those keywords are not present in the lexer. The date type that the runtime and projections work with is `datetime`, used like any scalar property type:
+```manifest
+module Scheduling {
+  entity Meeting {
+    property required title: string
+    property day: date
+    property startsAt: time
+    property due: datetime
+    property length: duration
 
-```
-entity Article {
-  property required title: string
-  timestamps
+    computed dayLabel: string = dateOf(due)
+    computed endsAt: number = addDuration(due, length)
+
+    command schedule(newDue: number) {
+      guard durationBetween(self.due, newDue) >= 0
+      mutate due = newDue
+      emit MeetingScheduled
+    }
+  }
+
+  store Meeting in memory
+
+  event MeetingScheduled: "scheduling.meeting.scheduled"
 }
 ```
 
-The `timestamps` modifier (fixture `src/manifest/conformance/fixtures/62-timestamp-auto-fields.manifest`) injects `createdAt` and `updatedAt` properties typed as `datetime`. Type names in Manifest are open strings, so a property may also be declared `property scheduledFor: datetime` and will compile, but no date-specific parsing or validation is attached to such a declaration.
+The `timestamps` entity modifier (fixture `62-timestamp-auto-fields.manifest`) injects `createdAt` and `updatedAt` as `datetime` properties.
 
-Date components are read at runtime through expression built-ins operating on a numeric millisecond timestamp. From `src/manifest/conformance/fixtures/56-expression-builtins.manifest`:
+**Note:** `date` and `time` are valid property *names* as well as types — the fixture uses `property date: string` and `property time: number` to regression-test that names are not reserved.
 
-```
-entity DateUtils {
-  property required id: string
-  property baseTs: number = 0
+## Built-ins
 
-  computed extractedYear: number = year(self.baseTs)
-  computed extractedMonth: number = month(self.baseTs)
-  computed extractedDay: number = day(self.baseTs)
-  computed extractedHours: number = hours(self.baseTs)
-  computed extractedMinutes: number = minutes(self.baseTs)
-  computed extractedSeconds: number = seconds(self.baseTs)
-}
-```
+From `docs/spec/builtins.md` and the runtime:
+
+| Built-in | Purpose |
+|----------|---------|
+| `now()` | Current time (milliseconds since epoch) |
+| `year(ts)`, `month(ts)`, `day(ts)` | UTC date components from numeric timestamp |
+| `hours(ts)`, `minutes(ts)`, `seconds(ts)` | UTC time components |
+| `dateOf(ts)` | Date portion of a datetime |
+| `addDuration(ts, duration)` | Add a duration to a timestamp |
+| `durationBetween(a, b)` | Difference between two timestamps |
 
 ## Behavior
 
-The `datetime` type name flows through the type system as an open string; it is the type the IR compiler injects for `timestamps`-generated properties (`src/manifest/ir-compiler.ts`) and the value the runtime populates from `getNow()` on create and update.
+- `datetime` values are numeric millisecond timestamps at runtime unless your store/projection maps them differently.
+- Date component built-ins use UTC methods for determinism.
+- Write-time validation applies to `date`, `time`, `datetime`, and `duration` property assignments (see `runtime-engine.ts` `validateDateTimeTypes`).
 
-The date built-ins in the runtime engine's `getBuiltins()` (`src/manifest/runtime-engine.ts`) all operate on a number interpreted as milliseconds since the epoch and return a UTC component:
+## Projections
 
-- `year(ts)` returns `getUTCFullYear()`.
-- `month(ts)` returns `getUTCMonth() + 1` (so January is 1, not 0).
-- `day(ts)` returns `getUTCDate()`.
-- `hours(ts)`, `minutes(ts)`, `seconds(ts)` return the corresponding UTC components.
+The Prisma projection maps `datetime` to native timestamp columns. `date`, `time`, and `duration` map according to each projection's type table.
 
-Each returns the input unchanged when it is not a number. UTC methods are used deliberately so results are timezone-independent and deterministic.
+## Conformance Fixture
 
-## How it maps to projections
-
-The `timestamps`-injected `datetime` properties map to native Prisma column attributes (`@default(now())` and `@updatedAt`) in the Prisma projection. There is no separate projection mapping for `date`, `time`, `duration`, or `interval` types because those types do not exist in the implementation.
-
-## Notes & limitations
-
-This is the most significant source/summary discrepancy in this set. The feature summary for `date-time-types` claims dedicated `Date`, `Time`, `Duration`, and `Interval` primitive types with database column mappings and date arithmetic. None of that is in the source: the lexer registers no such keywords, no conformance fixture introduces them, and the feature's own agent output records that the session actually implemented `decimal`, `money`, and `enum` instead. What genuinely exists is the `datetime` type (notably via `timestamps`) and the six UTC date-component built-ins documented above. There are no date arithmetic, comparison, or formatting built-ins beyond component extraction.
+- `src/manifest/conformance/fixtures/92-date-time-types.manifest`
+- `src/manifest/conformance/fixtures/62-timestamp-auto-fields.manifest`
+- `src/manifest/conformance/fixtures/56-expression-builtins.manifest`

@@ -14,7 +14,7 @@ npx vitest -u src/manifest/projections/snapshot.test.ts
 
 The test file builds a fixed IR fixture in `snapshotIR()` — a small but representative program with two entities (`Task`, `User`), a computed property, relationships (`belongsTo`/`hasMany`), commands with guards and actions, events with channels, a policy, constraints, and a `durable` store for both entities so the ORM projections (Prisma, Drizzle) emit output. The IR provenance is hardcoded (`contentHash: 'snapshot-fixture-hash'`, fixed `compiledAt`) so the input is deterministic.
 
-The suite enumerates projections via `listBuiltinProjections()` and asserts there are exactly 13 built-in projections. For each projection it generates every surface with `generateAllSurfaces`, which runs the projection once per surface and then again per entity, de-duplicating artifacts by `id` and diagnostics by message/entity.
+The suite enumerates projections via `listBuiltinProjections()` and asserts there are exactly 20 built-in projections. For each projection it generates every surface with `generateAllSurfaces`, which runs the projection once per surface and then again per entity, de-duplicating artifacts by `id` and diagnostics by message/entity.
 
 Non-deterministic content is stabilized before snapshotting: a `stabilize()` helper replaces any ISO-8601 timestamp matching `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z` with the fixed value `2025-01-01T00:00:00.000Z`.
 
@@ -27,9 +27,9 @@ Snapshots are stored in `src/manifest/projections/__snapshots__/snapshot.test.ts
 - Test file: `src/manifest/projections/snapshot.test.ts`.
 - Snapshot file: `src/manifest/projections/__snapshots__/snapshot.test.ts.snap`.
 - Update command: `npx vitest -u src/manifest/projections/snapshot.test.ts`.
-- Coverage guard: `expect(projections.length).toBe(13)` — adding or removing a built-in projection requires updating this count.
+- Coverage guard: `expect(projections.length).toBe(20)` — adding or removing a built-in projection requires updating this count.
 - Stabilization: ISO timestamps normalized to `2025-01-01T00:00:00.000Z`.
 
 ## Notes & limitations
 
-The fixture is a single representative IR, not exhaustive coverage of every language construct, so snapshot diffs reflect changes against that one program rather than the full feature surface. The hardcoded projection count (13) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.
+The fixture is a single representative IR, not exhaustive coverage of every language construct, so snapshot diffs reflect changes against that one program rather than the full feature surface. The hardcoded projection count (20) is a deliberate tripwire: it fails when the built-in projection set changes, forcing a conscious snapshot update. Only ISO-millisecond timestamps are stabilized; any other non-deterministic output in a generator would make snapshots flaky and must be handled in the generator itself, since the runtime determinism assertion would also catch it.

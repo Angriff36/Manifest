@@ -71,7 +71,7 @@ export interface ProjectionResult {
  * - Reads (GET operations) MAY bypass runtime entirely
  * - Writes (POST/PUT/DELETE) MUST use runtime.executeCommand()
  *
- * See docs/patterns/external-projections.md for detailed rationale.
+ * See docs/guides/writing-projections.md for detailed rationale.
  */
 export interface ProjectionTarget {
   /** Unique identifier (e.g., "nextjs", "hono", "express") */

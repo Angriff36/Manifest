@@ -55,7 +55,11 @@ Manifest does NOT provide WebSockets, Server-Sent Events, or real-time push.
 **Example:**
 
 ```typescript
-const runtime = new RuntimeEngine(ir, { userId, tenantId });
+const runtime = new RuntimeEngine(ir, {
+  actorId: userId,
+  tenantId,
+  user: { id: userId },
+});
 
 // Wire events to Ably
 runtime.onEvent((event) => {
@@ -72,7 +76,7 @@ runtime.onEvent((event) => {
 });
 ```
 
-See: `docs/patterns/event-wiring.md` for complete examples.
+See: `docs/guides/event-wiring.md` for complete examples.
 
 ---
 
@@ -105,7 +109,7 @@ runtime.onEvent((event) => {
 });
 ```
 
-See: `docs/patterns/event-wiring.md` for job queue integration patterns.
+See: `docs/guides/event-wiring.md` for job queue integration patterns.
 
 ---
 
@@ -131,18 +135,18 @@ const userMapping = await db.userTenantMapping.findUnique({ where: { userId } })
 
 // Manifest runtime
 const runtime = new RuntimeEngine(ir, {
-  userId,
+  actorId: userId,
   tenantId: userMapping.tenantId,
-  context: { role: userMapping.role }
+  user: { id: userId, role: userMapping.role },
 });
 
-// Manifest policy checks
-policy CanDeleteInvoice execute: user.role == "admin" or self.createdBy == user.id
+// Manifest policy (in .manifest source):
+// policy CanDeleteInvoice execute: user.role == "admin" or self.createdBy == user.id
 ```
 
 **Critical**: Never trust `userId` or `tenantId` from request body. Always derive from auth context.
 
-See: `docs/patterns/embedded-runtime-pattern.md` → Request Identity Hardening
+See: `docs/guides/embedded-runtime.md` → Request Identity Hardening
 
 ---
 
@@ -178,16 +182,20 @@ class PrismaRecipeStore implements Store<Recipe> {
   // ... other Store methods
 }
 
-const runtime = new RuntimeEngine(ir, { userId, tenantId }, {
-  storeProvider: (entityName) => {
-    if (entityName === 'Recipe') {
-      return new PrismaRecipeStore(prisma);
-    }
+const runtime = new RuntimeEngine(
+  ir,
+  { actorId: userId, tenantId, user: { id: userId } },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Recipe') {
+        return new PrismaRecipeStore(prisma);
+      }
+    },
   }
-});
+);
 ```
 
-See: `docs/patterns/implementing-custom-stores.md`
+See: `docs/guides/implementing-custom-stores.md`
 
 ---
 
@@ -226,7 +234,7 @@ model Invoice {
 }
 ```
 
-See: `docs/contracts/deployment-boundaries.md` → Migration Story
+See: `docs/internal/contracts/deployment-boundaries.md` → Migration Story
 
 ---
 
@@ -264,7 +272,7 @@ Manifest is the **semantic contract** that sits between your framework and your 
 
 1. **Deterministic Semantics**: Same IR + same context = same result
 2. **IR Provenance**: Every IR has a verifiable hash and lineage
-3. **Executable Conformance**: 467 tests prove compiler/runtime behavior
+3. **Executable Conformance**: The full test suite (`pnpm test`) proves compiler/runtime behavior
 4. **Guard-Based Security**: Authorization cannot be bypassed
 5. **Event Ordering Guarantees**: Events emitted in declaration order
 
@@ -313,8 +321,12 @@ export async function GET() {
 // Generated command route (mutations use runtime)
 export async function POST(request: Request) {
   const input = await request.json();
-  const runtime = new RuntimeEngine(ir, { userId, tenantId });
-  const result = await runtime.runCommand('Recipe', 'create', input);
+  const runtime = new RuntimeEngine(ir, {
+    actorId: userId,
+    tenantId,
+    user: { id: userId },
+  });
+  const result = await runtime.runCommand('create', input, { entityName: 'Recipe' });
   return Response.json(result);
 }
 ```
@@ -324,7 +336,11 @@ export async function POST(request: Request) {
 ```typescript
 // Custom orchestration
 export async function POST(request: Request) {
-  const runtime = new RuntimeEngine(ir, { userId, tenantId });
+  const runtime = new RuntimeEngine(ir, {
+    actorId: userId,
+    tenantId,
+    user: { id: userId },
+  });
 
   // Multi-step workflow with event handling
   runtime.onEvent((event) => {
@@ -335,11 +351,11 @@ export async function POST(request: Request) {
     }
   });
 
-  const result = await runtime.runCommand('Order', 'place', input);
+  const result = await runtime.runCommand('place', input, { entityName: 'Order' });
 
   if (!result.success) {
     // Custom error handling
-    await logFailure(result.diagnostics);
+    await logFailure(result.guardFailure?.formatted ?? result.error);
     return Response.json({ error: 'Order failed' }, { status: 400 });
   }
 
@@ -347,7 +363,7 @@ export async function POST(request: Request) {
 }
 ```
 
-See: `docs/patterns/hybrid-integration.md` for detailed examples.
+See: `docs/guides/hybrid-integration.md` for detailed examples.
 
 ---
 
@@ -371,10 +387,10 @@ See: `docs/patterns/hybrid-integration.md` for detailed examples.
 
 - **Spec**: `docs/spec/README.md` - Language semantics and IR contract
 - **Adapters**: `docs/spec/adapters.md` - Adapter boundaries and contracts
-- **Usage Patterns**: `docs/patterns/usage-patterns.md` - Projections vs embedded runtime
-- **Event Wiring**: `docs/patterns/event-wiring.md` - Connect events to infrastructure
-- **Custom Stores**: `docs/patterns/implementing-custom-stores.md` - ORM integration
-- **Deployment Boundaries**: `docs/contracts/deployment-boundaries.md` - What's in scope vs not
+- **Usage Patterns**: `docs/guides/usage-patterns.md` - Projections vs embedded runtime
+- **Event Wiring**: `docs/guides/event-wiring.md` - Connect events to infrastructure
+- **Custom Stores**: `docs/guides/implementing-custom-stores.md` - ORM integration
+- **Deployment Boundaries**: `docs/internal/contracts/deployment-boundaries.md` - What's in scope vs not
 
 ---
 

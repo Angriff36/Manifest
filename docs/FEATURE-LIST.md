@@ -664,7 +664,7 @@ Note: There are some pre-existing test failures in the CLI test suite (`compile.
 The declarative event reactions feature has been **fully implemented** in the previous session. Here's a comprehensive summary:
 
 ### Language Syntax
-```manifest
+```text
 on <EventName> run <EntityType>.<commandName>
   resolve <expression>
   params { <paramName>: <expression>, ... }
@@ -4430,7 +4430,10 @@ I've successfully completed the property-based testing feature for the Manifest 
 
 **Syntax Examples:**
 ```manifest
-// Command rate limit
+event NotificationSent: notifications {
+  payload: string
+}
+
 command sendNotification(recipient: string, message: string) {
   rateLimit {
     maxRequests: 10
@@ -4438,18 +4441,13 @@ command sendNotification(recipient: string, message: string) {
     scope: user
     burstAllowance: 5
   }
+  guard context.authenticated == true
   emit NotificationSent
 }
 
-// Policy rate limit (inline syntax)
-policy ReadRestricted read: context.role == 'admin' 
-  rateLimit { maxRequests: 1000 windowMs: 60000 scope: user }
+policy ReadRestricted read: context.role == 'admin' rateLimit { maxRequests: 1000 windowMs: 60000 scope: user }
 
-// Policy rate limit (block syntax)
-policy WriteRestricted write: context.role == 'admin' {
-  message: "Only admins can write"
-  rateLimit { maxRequests: 100 windowMs: 60000 scope: tenant }
-}
+policy WriteRestricted write: context.role == 'admin' "Only admins can write" rateLimit { maxRequests: 100 windowMs: 60000 scope: "tenant" }
 ```
 
 **Verification:**

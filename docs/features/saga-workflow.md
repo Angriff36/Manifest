@@ -67,17 +67,20 @@ The runtime engine exposes saga execution through `runSaga`:
 
 ```typescript
 const result = await runtime.runSaga('ProcessOrder', {
-  correlationId: 'order-123',
-  context: { userId: 'user-456' },
-});
+  chargePayment: { input: { amount: 100 }, instanceId: 'pay-1' },
+  reserveInventory: { input: { quantity: 2 }, instanceId: 'inv-1' },
+  notifyCustomer: { input: { email: 'user@example.com' } },
+}, { correlationId: 'order-123' });
 ```
 
 `SagaResult` contains:
-- `success: boolean` -- Whether all steps completed.
-- `completedSteps: string[]` -- Names of steps that succeeded.
-- `failedStep?: string` -- Name of the step that failed (if any).
-- `compensationResults?: SagaStepResult[]` -- Results of compensating commands (if compensation ran).
-- `emittedEvents: EmittedEvent[]` -- All events emitted during the saga.
+- `saga: string` — Saga name
+- `success: boolean` — Whether all steps completed
+- `status: 'completed' | 'compensated' | 'aborted'`
+- `steps: SagaStepResult[]` — Per-step forward/compensation results
+- `failedStep?: string` — Name of the step that failed (if any)
+- `error?: string` — Error message when saga cannot run
+- `emittedEvents: EmittedEvent[]` — All events emitted during the saga
 
 ## IR Representation
 

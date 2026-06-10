@@ -137,7 +137,7 @@ const normalized = normalizeCommandResult('Todo', 'create', result);
 
 Queries entities from storage (if supported by store).
 
-**Note**: Read operations are application-defined. This method may not be available in all runtimes. See `docs/patterns/external-projections.md` for read strategy.
+**Note**: Read operations are application-defined. This method may not be available in all runtimes. See `docs/guides/writing-projections.md` for read strategy.
 
 #### `on(event: string, handler: (event: Event) => void): void`
 

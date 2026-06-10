@@ -7,7 +7,7 @@
  * The registry auto-registers builtins on first access, so consumers
  * can simply call getProjection(name) without manual initialization.
  *
- * See docs/patterns/external-projections.md for detailed rationale.
+ * See docs/guides/writing-projections.md for detailed rationale.
  */
 
 export * from './interface.js';

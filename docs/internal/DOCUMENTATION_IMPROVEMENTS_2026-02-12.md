@@ -30,7 +30,7 @@ This document clearly explains:
 
 **Impact:** Developers knew events were emitted but didn't know how to connect them to WebSockets, queues, webhooks, etc.
 
-**Solution:** Created `docs/patterns/event-wiring.md`
+**Solution:** Created `docs/guides/event-wiring.md`
 
 This document provides concrete examples for:
 - Real-time transports (Ably, Pusher, WebSockets)
@@ -47,7 +47,7 @@ This document provides concrete examples for:
 
 **Impact:** Developers didn't see how to use embedded runtime for sophisticated business processes.
 
-**Solution:** Created `docs/patterns/complex-workflows.md`
+**Solution:** Created `docs/guides/complex-workflows.md`
 
 This document demonstrates:
 - Multi-step order state machines (inventory → payment → fulfillment)
@@ -63,7 +63,7 @@ This document demonstrates:
 
 **Impact:** Developers didn't know how to implement tenant isolation with compound keys and scoping.
 
-**Solution:** Created `docs/patterns/multi-tenancy.md`
+**Solution:** Created `docs/guides/multi-tenancy.md`
 
 This document shows:
 - Tenant scoping in runtime context
@@ -81,7 +81,7 @@ This document shows:
 
 **Impact:** Developers didn't know when to use projections vs embedded runtime or how to combine them effectively.
 
-**Solution:** Created `docs/patterns/hybrid-integration.md`
+**Solution:** Created `docs/guides/hybrid-integration.md`
 
 This document demonstrates:
 - CRUD with custom actions (projections for simple ops, runtime for complex)
@@ -134,7 +134,7 @@ The documentation now has clear layers:
    - Category clarity
    - When to use vs when NOT to use
 
-3. **Patterns (Advisory)** - `docs/patterns/**`
+3. **Patterns (Advisory)** - `docs/guides/**`
    - How to integrate in real apps
    - Event wiring, workflows, multi-tenancy, hybrid approaches
    - Concrete examples with code
@@ -181,10 +181,10 @@ The documentation now makes this abundantly clear:
 ## Files Created
 
 1. `docs/ARCHITECTURE_AND_POSITIONING.md` (355 lines)
-2. `docs/patterns/event-wiring.md` (589 lines)
-3. `docs/patterns/complex-workflows.md` (498 lines)
-4. `docs/patterns/multi-tenancy.md` (492 lines)
-5. `docs/patterns/hybrid-integration.md` (514 lines)
+2. `docs/guides/event-wiring.md` (589 lines)
+3. `docs/guides/complex-workflows.md` (498 lines)
+4. `docs/guides/multi-tenancy.md` (492 lines)
+5. `docs/guides/hybrid-integration.md` (514 lines)
 
 **Total:** 2,448 lines of comprehensive integration documentation
 

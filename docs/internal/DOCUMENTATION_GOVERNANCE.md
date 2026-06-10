@@ -62,7 +62,7 @@ Rules:
 ### Tier C: Guidance and integration docs (advisory)
 
 Help users implement or adopt Manifest behavior:
-- `docs/patterns/**`
+- `docs/guides/**`
 - `docs/migration/**`
 - `docs/tools/**`
 - `docs/contracts/**`
@@ -149,7 +149,7 @@ confirmed in this file.
 | `src/manifest/conformance/` | A — Binding | Fixture-based executable semantics evidence |
 | `docs/proposals/` | B — Non-binding | Design proposals, deferred work, drafts |
 | `docs/plans/`, `docs/notes/`, `docs/context/` | B — Non-binding | Work-in-progress, session snapshots |
-| `docs/patterns/` | C — Advisory | Integration patterns and usage guidance |
+| `docs/guides/` | C — Advisory | Integration patterns and usage guidance |
 | `docs/tools/` | C — Advisory | CLI and API usage guides |
 | `docs/contracts/` | C — Advisory | Signpost + scope boundary docs (no normative content) |
 | `docs/migration/` | C — Advisory | Version-jump guides |

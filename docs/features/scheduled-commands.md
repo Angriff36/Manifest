@@ -1,6 +1,8 @@
 # Scheduled / Cron Command Triggers
 
-Scheduled commands trigger entity commands on time-based schedules using cron expressions, fixed intervals, or periodic timers. Schedules are declarative metadata compiled into the IR and consumed by projection targets. The Manifest runtime does not include a built-in scheduler -- schedules are implemented by your hosting platform through generated cron routes or external schedulers.
+> **Status: Planned.** The `schedule` DSL syntax below is **not yet implemented** in the lexer, parser, or IR schema. The conformance fixture `76-scheduled-commands.manifest` exists as forward-looking evidence; schedule lines are currently skipped during parse. Use platform schedulers (Vercel cron, CloudWatch, etc.) to invoke `runCommand` until this feature ships.
+
+Scheduled commands will trigger entity commands on time-based schedules using cron expressions, fixed intervals, or periodic timers. Schedules are intended to be declarative metadata compiled into the IR and consumed by projection targets. The Manifest runtime does not include a built-in scheduler — schedules would be implemented by your hosting platform through generated cron routes or external schedulers.
 
 ## DSL Syntax
 
@@ -67,9 +69,12 @@ Projection targets consume schedule metadata:
 - **Express/Hono**: Route handlers for external scheduler invocation.
 - **Terraform projection**: CloudWatch Event rules or similar scheduled resources.
 
-## IR Representation
+## IR Representation (planned)
+
+When implemented, schedules would compile to IR objects similar to:
 
 ```typescript
+// PLANNED — not in ir-v1.schema.json today
 interface IRSchedule {
   name: string;
   trigger: IRTrigger;
@@ -78,14 +83,7 @@ interface IRSchedule {
   params?: IRScheduleParam[];
   module?: string;
 }
-
-type IRTrigger =
-  | { type: 'cron'; expression: string }
-  | { type: 'interval'; duration: string }
-  | { type: 'every'; count: number; unit: string };
 ```
-
-The IR root has an optional `schedules?: IRSchedule[]` field. Modules record schedule names in `schedules?: string[]`.
 
 ## Conformance Fixture
 

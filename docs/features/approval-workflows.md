@@ -22,7 +22,7 @@ entity PurchaseOrder {
     command: submit
     stages {
       manager {
-        policy: user.role == "manager" or user.role == "admin"
+        policy: user.role == "manager"
         required: 1
       }
       director {
@@ -31,8 +31,10 @@ entity PurchaseOrder {
         when: self.amount > 10000
       }
     }
-    timeout: 72 hours
-    on_timeout: cancel
+    timeout: 72
+    on_timeout: "cancel"
+    emit ApprovalRequested
+    emit ApprovalGranted
   }
 }
 ```

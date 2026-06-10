@@ -52,7 +52,7 @@ projection options — never by editing them as if they were source.
 | Understand doc authority tiers | `docs/DOCUMENTATION_GOVERNANCE.md` |
 | Find binding language law | `docs/spec/**` and `src/manifest/conformance/**` |
 | Map consumer repo folders (`.manifest`, IR, generated routes) | `docs/spec/project-layout.md` |
-| Find advisory guidance and patterns | `docs/patterns/**`, `docs/tools/**` |
+| Find advisory guidance and patterns | `docs/guides/**`, `docs/tools/**` |
 | Find design history or deferred proposals | `docs/proposals/**`, `docs/archive/**` |
 
 ## What "done" means

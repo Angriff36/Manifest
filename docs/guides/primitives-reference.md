@@ -45,7 +45,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | Multi-step workflows (event prep → inventory → stations), saga patterns, any flow where you need to reconstruct "what happened" later. |
 | **Limitations** | Caller's responsibility to generate and propagate. No automatic correlation. No storage — callers must persist events themselves. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Workflow Metadata" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 1 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 1 |
 
 ### causationId
 
@@ -58,7 +58,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | You need to trace *why* something happened. E.g., inventory was consumed *because* a prep task started. |
 | **Limitations** | Caller must construct the causation chain. The runtime does not auto-link events to downstream commands. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Workflow Metadata" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 3 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 3 |
 
 ### emitIndex
 
@@ -71,7 +71,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | Replay verification (compare expected vs actual emitIndex), event deduplication (use as part of idempotency key), ordering events within a command. |
 | **Limitations** | Per-command only. Does NOT provide cross-command ordering. For global ordering, use timestamps or a sequence from your event store. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Workflow Metadata" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 4 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 4 |
 
 ---
 
@@ -88,7 +88,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | User-initiated actions from unreliable clients (tablet double-tap), webhook retries, any operation where duplicate execution causes damage. |
 | **Limitations** | When a store is configured, every command MUST include an `idempotencyKey` in options — omitting it returns an error. Cache has no built-in TTL; caller manages eviction. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Idempotency", `docs/spec/adapters.md` § "IdempotencyStore" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 2 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 2 |
 
 ---
 
@@ -105,7 +105,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | Replay verification, conformance testing, unit testing where you want to prove no side effects. |
 | **Limitations** | Throws a hard error (not a `CommandResult` failure) because effect boundary violations are programming mistakes. Callers must catch `ManifestEffectBoundaryError` if they expect it. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Effect Boundary Enforcement", `docs/spec/adapters.md` § "Deterministic Mode" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 4 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 4 |
 
 ### EvaluationLimits
 
@@ -118,7 +118,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | Running user-supplied or AI-generated Manifest programs. Tighter limits for user-facing (fast failure), looser for batch/admin. |
 | **Limitations** | Inside `runCommand`, budget exceeded → `CommandResult` failure (safe). From `checkConstraints`/`evaluateComputed`/`createInstance`/`updateInstance`, budget exceeded → thrown `EvaluationBudgetExceededError` (callers must catch). |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Diagnostic Payload Bounding" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 6 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 6 |
 
 **Error behavior by entry point:**
 
@@ -145,7 +145,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **Use when** | Status fields with a defined state machine (prep tasks, proposals, purchase orders). |
 | **Limitations** | Validation happens BEFORE constraint evaluation. If no rule matches the current value, the transition is unconstrained from that state. Only works on properties explicitly referenced in transition rules. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "State Transitions" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 2 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 2 |
 
 **PrepTask state machine:**
 
@@ -168,13 +168,13 @@ Three levels, evaluated during command execution:
 
 | | |
 |---|---|
-| **Configure** | In `.manifest` source: `constraint warnBelowPar severity warn when ... message "..."` |
+| **Configure** | In `.manifest` source: `constraint warnBelowPar:warn self.quantityAvailable - quantity < self.parLevel "..."` |
 | **Scope** | Per constraint on an entity or command. |
 | **Default** | `block` if severity not specified. |
 | **Use when** | You need graduated responses to rule violations instead of binary pass/fail. |
 | **Limitations** | `ok` constraints never block — even when the expression evaluates to false. `warn` constraints produce outcomes but never halt. Only `block` constraints can be overridden. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Constraint Blocks" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 5 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 5 |
 
 ### Override Mechanism
 
@@ -187,7 +187,7 @@ Three levels, evaluated during command execution:
 | **Use when** | Manager approval workflows. Emergency overrides with audit trail. |
 | **Limitations** | Only works on constraints marked `overrideable: true` in the IR. If the constraint has an `overridePolicyRef`, that policy must also pass. Override attempts against non-overrideable constraints are silently rejected (constraint failure stands). |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Override Mechanism" |
-| **Example** | `docs/patterns/complex-workflows.md` § Pattern 5 |
+| **Example** | `docs/guides/complex-workflows.md` § Pattern 5 |
 
 ### Concurrency Controls
 
@@ -222,11 +222,11 @@ Three levels, evaluated during command execution:
 | | |
 |---|---|
 | **What** | Authorization rules evaluated before guards. Control who can read/write/execute. |
-| **Configure** | In `.manifest` source: `policy canExecute { ... }` |
+| **Configure** | In `.manifest` source: `policy CanExecute execute: user.role == "admin" "..."` |
 | **Scope** | Per entity. |
 | **Default** | No policies → all operations permitted. |
 | **Use when** | Role-based access control, tenant isolation at the rule layer. |
-| **Limitations** | Policies are evaluated before guards, before constraints, before actions. A denied policy returns a failure immediately — nothing else runs. |
+| **Limitations** | Policies run first, then command-level constraints, then guards. A denied policy returns immediately. |
 | **Spec** | `docs/spec/semantics.md` § "Commands" |
 
 ### Computed Properties
@@ -252,7 +252,7 @@ Three levels, evaluated during command execution:
 | **Use when** | Real-time updates (Ably), async side effects (BullMQ), audit trails (outbox), webhook delivery. |
 | **Limitations** | Events are emitted in declaration order, only after successful execution. If a guard or constraint fails, no events fire. Event handlers run synchronously during `runCommand` — dispatch to queues for async work. |
 | **Spec** | `docs/spec/semantics.md` § "Events", `docs/spec/manifest-vnext.md` § "Workflow Metadata" |
-| **Example** | `docs/patterns/event-wiring.md` |
+| **Example** | `docs/guides/event-wiring.md` |
 
 ### Stores
 
@@ -263,9 +263,9 @@ Three levels, evaluated during command execution:
 | **Scope** | Per entity. |
 | **Default** | In-memory store (data lost on engine disposal). |
 | **Use when** | Always — every entity needs a store. Use `memory` for tests, custom `PrismaStore` adapters for production. |
-| **Limitations** | Store adapters must implement `load(id)` and `save(id, data)`. The runtime does not manage database transactions — wrap in `prisma.$transaction` at the caller level. |
+| **Limitations** | Store adapters must implement `getAll`, `getById`, `create`, `update`, `delete`, and `clear`. The runtime does not manage database transactions — wrap in `prisma.$transaction` at the caller level. |
 | **Spec** | `docs/spec/adapters.md` § "Store Adapters" |
-| **Example** | `docs/patterns/implementing-custom-stores.md` |
+| **Example** | `docs/guides/implementing-custom-stores.md` |
 
 ---
 
@@ -274,14 +274,13 @@ Three levels, evaluated during command execution:
 Every `runCommand` call follows this fixed order. No primitive changes it:
 
 ```
-1. Idempotency check       → cached result returned if key exists
+1. Idempotency check       → cached result returned if key exists (when configured)
 2. Policies                → authorization (deny = immediate failure)
-3. Transition validation   → state machine check (reject = failure)
+3. Command constraints     → severity-based (block = failure unless overridden)
 4. Guards                  → preconditions (first false = failure)
-5. Constraints             → severity-based (block = failure unless overridden)
-6. Actions                 → mutations, effects
-7. Events                  → emitted in declaration order
-8. Return CommandResult
+5. Actions                 → mutations (transition validation during mutate), effects
+6. Events                  → emitted in declaration order
+7. Return CommandResult
 ```
 
 Budget tracking (`EvaluationLimits`) wraps the entire flow. If any expression evaluation exceeds the budget during steps 2–7, the command fails.
@@ -310,6 +309,6 @@ Budget tracking (`EvaluationLimits`) wraps the entire flow. If any expression ev
 ## Related Documentation
 
 - **Spec (normative)**: `docs/spec/semantics.md`, `docs/spec/manifest-vnext.md`, `docs/spec/adapters.md`
-- **Patterns (advisory)**: `docs/patterns/complex-workflows.md`, `docs/patterns/event-wiring.md`
-- **Stores**: `docs/patterns/implementing-custom-stores.md`
+- **Patterns (advisory)**: `docs/guides/complex-workflows.md`, `docs/guides/event-wiring.md`
+- **Stores**: `docs/guides/implementing-custom-stores.md`
 - **Compliance**: `docs/COMPLIANCE_MATRIX.md`

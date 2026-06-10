@@ -2,12 +2,13 @@
 
 ## Summary
 
-Real-time subscriptions enable live updates when entity state changes. Entities marked with the `realtime` modifier automatically generate SSE endpoints and React hooks.
+Real-time subscriptions enable live updates when entity state changes. Entities flagged with `realtime` inside the entity body generate SSE routes and React hooks via the Next.js projection.
 
 ## DSL Syntax
 
 ```manifest
-realtime entity Task {
+entity Task {
+  realtime
   property required id: string
   property title: string
   property status: string = "pending"
@@ -19,30 +20,42 @@ realtime entity Task {
 }
 ```
 
+The `realtime` keyword is a line inside the entity block, not a prefix on `entity`.
+
 ## SSE Endpoints
 
-- `GET /api/manifest/{entity}/subscribe` — All changes
-- `GET /api/manifest/{entity}/subscribe?id=X` — Specific instance
+The Next.js projection generates:
+
+- `GET /api/{entitySegment}/subscribe` — streams runtime events for the entity
+
+(`entitySegment` is the lowercased entity name, e.g. `task` for `Task`.)
 
 ## React Hooks
 
-```typescript
-import { useTaskRealtime } from "@/lib/manifest-realtime";
+The projection generates `use{Entity}Subscription` hooks:
 
-function TaskList() {
-  const { tasks, loading } = useTaskRealtime();
-  // tasks updates automatically on entity changes
+```typescript
+import { useTaskSubscription } from "@/hooks/useTaskSubscription";
+
+function TaskMonitor() {
+  const { connected, lastEvent } = useTaskSubscription({
+    onEvent: (event) => {
+      console.log(event.name, event.payload);
+    },
+  });
+
+  return <div>{connected ? "Live" : "Connecting…"}</div>;
 }
 ```
 
 ## Features
 
-- Auto-reconnect with exponential backoff (1s → 30s max)
-- Entity-level filtering by ID or property conditions
-- Typed React hooks per entity
+- Auto-reconnect with exponential backoff (generated hook)
+- Entity-level SSE filtering via runtime `subscribe(entityName, listener)`
+- Typed event payloads per entity
 
 ## Notes
 
 - Real-time is a projection feature — the core runtime emits events; SSE transport is generated code
-- The `realtime` modifier does not change runtime behavior
+- The `realtime` flag does not change runtime command semantics
 - For high-throughput, consider WebSocket transport (custom projection)

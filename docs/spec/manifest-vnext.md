@@ -9,7 +9,7 @@ Enforced by: src/manifest/conformance/**, npm test
 
 This document specifies vNext language and runtime features for Manifest: constraint outcomes, overrides, workflows, concurrency, state transitions, and runtime performance. It is a Tier A normative document per `docs/DOCUMENTATION_GOVERNANCE.md`.
 
-All normative statements use RFC 2119 language (MUST, SHOULD, MAY). Advisory guidance is explicitly marked or lives in `docs/patterns/`.
+All normative statements use RFC 2119 language (MUST, SHOULD, MAY). Advisory guidance is explicitly marked or lives in `docs/guides/`.
 
 ## Scope
 
@@ -100,8 +100,10 @@ belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenan
 `onDelete` and `onUpdate` actions MAY be declared on any `belongsTo` or `ref` relationship:
 
 ```manifest
-belongsTo tenant: Account with tenantId onDelete restrict
-belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onDelete cascade
+entity LineItem {
+  belongsTo tenant: Account with tenantId onDelete restrict
+  belongsTo item: Product fields [tenantId, itemId] references [tenantId, id] onDelete cascade
+}
 ```
 
 Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
@@ -364,7 +366,7 @@ This section lists vNext items that are declared in this specification but not y
 | Provenance verification (`requireValidProvenance`) | This document, "Provenance and IR Integrity" | IMPLEMENTED | Runtime enforces `requireValidProvenance` via `verifyIRHash()`, `assertValidProvenance()`, and `RuntimeEngine.create()` factory. 10 unit tests verify valid/tampered/absent hash scenarios. Hash computation uses recursive key-sorting for full content coverage. |
 | Diagnostics completeness | This document, "Diagnostics" | PARTIAL | Guard index and policy name are tested. Transition failure details (property, current, attempted, allowed) and concurrency conflict details format are not explicitly unit-tested for completeness. |
 | Performance guardrails | This document, "Diagnostics" | NOT_IMPLEMENTED | No instrumentation counters for step-count verification. Advisory only. |
-| Compilation caching | This document, "Advisory Guidance" | ADVISORY | No normative requirement. See `docs/patterns/complex-workflows.md` for caching patterns. |
+| Compilation caching | This document, "Advisory Guidance" | ADVISORY | No normative requirement. See `docs/guides/complex-workflows.md` for caching patterns. |
 
 ---
 
@@ -388,7 +390,7 @@ The following items are recommendations, not normative requirements. They are do
 
 For multi-step workflow patterns (saga orchestration, step replay, workflow state machines), see:
 
-- `docs/patterns/complex-workflows.md` (advisory patterns for workflow entities)
+- `docs/guides/complex-workflows.md` (advisory patterns for workflow entities)
 - `CHANGELOG-workflow-framework.md` (implementation details for correlationId, causationId, emitIndex, idempotency)
 
 These patterns are advisory conventions. The normative workflow requirements (event metadata, idempotency, effect boundaries) are defined above in "Workflow Metadata (Normative)".
@@ -425,7 +427,7 @@ A conforming Manifest projection MUST produce a **route manifest** — a canonic
 
 ### Read vs Write Semantics
 
-Per `docs/patterns/external-projections.md`:
+Per `docs/guides/external-projections.md`:
 
 - **Reads** (GET endpoints): MAY bypass runtime entirely. Projections may use direct storage queries or adapter-level abstractions for read paths.
 - **Writes** (POST/PUT/DELETE endpoints): MUST execute commands via `RuntimeEngine.runCommand()`. Bypassing runtime command execution bypasses guard/policy/constraint semantics.
@@ -522,4 +524,4 @@ The route manifest (`routes.manifest.json`) MUST conform to this structure:
 | Conformance rules | `docs/spec/conformance.md` |
 | Documentation authority | `docs/DOCUMENTATION_GOVERNANCE.md` |
 | Compliance tracking | `docs/COMPLIANCE_MATRIX.md` |
-| Route surface boundary | `docs/patterns/external-projections.md` |
+| Route surface boundary | `docs/guides/external-projections.md` |

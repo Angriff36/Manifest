@@ -556,9 +556,9 @@ Ensure:
 ## Next Steps
 
 - **Advanced Features**: See `docs/spec/manifest-vnext.md` for vNext features
-- **Projections**: See `docs/patterns/external-projections.md`
-- **Custom Stores**: See `docs/patterns/implementing-custom-stores.md`
-- **Embedded Runtime**: See `docs/patterns/embedded-runtime-pattern.md`
+- **Projections**: See `docs/guides/writing-projections.md`
+- **Custom Stores**: See `docs/guides/implementing-custom-stores.md`
+- **Embedded Runtime**: See `docs/guides/embedded-runtime.md`
 
 ---
 

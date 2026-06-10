@@ -13,21 +13,20 @@ role User {
 
 role Manager extends User {
   allow write
-  allow execute
+  allow execute CreateReport
 }
 
 role Admin extends Manager {
   allow delete
-  allow override
-  deny impersonate
+  deny execute DangerousReset
 }
 ```
 
 ## Permission Inheritance
 
 - `User` can read
-- `Manager` extends `User` → can read, write, execute
-- `Admin` extends `Manager` → can read, write, execute, delete, override (but NOT impersonate)
+- `Manager` extends `User` → can read, write, execute `CreateReport`
+- `Admin` extends `Manager` → can read, write, execute `CreateReport`, delete (but `DangerousReset` is denied)
 
 ### Inheritance Rules
 
@@ -37,7 +36,7 @@ role Admin extends Manager {
 
 ## Runtime Builtins
 
-- `hasPermission(user, permission)` — checks if a user's role grants a specific permission
+- `hasPermission(action, target?)` — checks if the current user's role grants a permission (reads `context.user.role`)
 - `roleAllows(roleName, action)` — checks if a named role allows an action
 
 ## Context-Sensitive `role` Keyword

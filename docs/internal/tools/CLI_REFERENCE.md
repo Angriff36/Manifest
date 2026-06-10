@@ -996,5 +996,5 @@ warning APPROVED_BYPASS_REQUIRED app/api/migration/route.ts — Direct write at 
 - **Integration check guide**: `docs/tools/integration-check.md`
 - **Project Scaffolding**: `docs/MANIFEST_PROJECT_SCAFFOLDING.md`
 - **Quick Start**: `docs/QUICKSTART.md`
-- **Projections**: `docs/patterns/external-projections.md`
+- **Projections**: `docs/guides/writing-projections.md`
 - **API Reference**: `docs/tools/API_REFERENCE.md`

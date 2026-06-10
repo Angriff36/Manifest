@@ -2,7 +2,7 @@
 
 Authority: Advisory
 Enforced by: None
-Last updated: 2026-02-12
+Last updated: 2026-06-09
 
 Get up and running with Manifest in 5 minutes.
 
@@ -11,13 +11,15 @@ Get up and running with Manifest in 5 minutes.
 ## Installation
 
 ```bash
-npm install @angriff36/manifest
+pnpm add @angriff36/manifest
 ```
 
-Or use the standalone CLI:
+Configure GitHub Packages for the `@angriff36` scope if you have not already. See `docs/reference/packages-and-distribution.md`.
+
+Or use the CLI from the installed package:
 
 ```bash
-npx manifest-generate compile my-program.manifest
+pnpm exec manifest compile my-program.manifest -o ir/
 ```
 
 ---
@@ -27,30 +29,42 @@ npx manifest-generate compile my-program.manifest
 Create `my-program.manifest`:
 
 ```manifest
-entity Todo {
-  property id: string
-  property title: string
-  property completed: boolean
-  property createdAt: timestamp
+entity Task {
+  property required title: string = ""
+  property required status: string = "todo"
+  property required assigneeId: string = ""
+  property required createdAt: number = 0
 
-  command create(title: string) {
-    guard title is not empty
-    guard title.length < 100
-
-    mutate this.title = title
-    mutate this.completed = false
-    mutate this.createdAt = now()
+  command updateStatus(newStatus: string) {
+    guard newStatus != null and newStatus != ""
+    guard newStatus == "todo" or newStatus == "in-progress" or newStatus == "done"
+    mutate status = newStatus
+    emit TaskStatusUpdated
   }
 
-  command complete() {
-    guard this.completed is false
-
-    mutate this.completed = true
-    emit TodoCompleted { todoId: this.id }
+  command assignTask(userId: string) {
+    guard userId != null and userId != ""
+    guard self.assigneeId == "" or user.role == "admin"
+    mutate assigneeId = userId
+    emit TaskAssigned
   }
 
-  policy read allow if user.role == "admin"
-  policy execute allow if user.id == this.createdBy
+  store Task in memory
+}
+
+policy OnlyCreatorOrAssignee execute: user.role == "admin" or user.id == self.assigneeId "Only admins or the assigned user can modify this task"
+
+event TaskStatusUpdated: "tasks.updated" {
+  id: string
+  oldStatus: string
+  newStatus: string
+  updatedAt: number
+}
+
+event TaskAssigned: "tasks.assigned" {
+  id: string
+  assigneeId: string
+  assignedAt: number
 }
 ```
 
@@ -62,9 +76,9 @@ entity Todo {
 import { compileToIR } from '@angriff36/manifest/ir-compiler';
 
 const source = `
-  entity Todo {
-    property id: string
-    property title: string
+  entity Task {
+    property required title: string = ""
+    property required status: string = "todo"
   }
 `;
 
@@ -87,30 +101,33 @@ console.log('IR:', ir);
 import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
+  actorId: 'user-123',
   tenantId: 'tenant-456',
+  user: { id: 'user-123', role: 'admin' },
 });
 
-// Create a todo
-const createResult = await runtime.runCommand('Todo', 'create', {
-  title: 'Learn Manifest'
+// Create a task instance first (commands run on instances)
+const instance = await runtime.createInstance('Task', {
+  title: 'Learn Manifest',
 });
 
-if (!createResult.success) {
-  console.error('Failed:', createResult.diagnostics);
+if (!instance) {
+  console.error('Failed to create instance');
   process.exit(1);
 }
 
-console.log('Created:', createResult.instance);
+console.log('Created:', instance);
 
-// Complete it
-const completeResult = await runtime.runCommand('Todo', 'complete', {
-  id: createResult.instance.id
+// Update status via command
+const updateResult = await runtime.runCommand('updateStatus', {
+  newStatus: 'done',
+}, {
+  entityName: 'Task',
+  instanceId: instance.id,
 });
 
-if (completeResult.success) {
-  console.log('Events:', completeResult.events);
-  // Output: Events: [{ name: 'TodoCompleted', channel: 'default', ... }]
+if (updateResult.success) {
+  console.log('Events:', updateResult.emittedEvents);
 }
 ```
 
@@ -121,7 +138,14 @@ if (completeResult.success) {
 Use the Next.js projection to generate API routes:
 
 ```bash
-npx manifest-generate nextjs Todo my-program.manifest --output app/api/todos/route.ts
+pnpm exec manifest build my-program.manifest -p nextjs -s route --code-output generated/
+```
+
+Or compile to IR first, then generate:
+
+```bash
+pnpm exec manifest compile my-program.manifest -o ir/
+pnpm exec manifest generate ir/ -p nextjs -s route -o generated/
 ```
 
 Generated route (simplified):
@@ -151,14 +175,18 @@ export async function POST(request: NextRequest) {
 
   const input = await request.json();
 
-  const runtime = new RuntimeEngine(ir, { userId, tenantId });
-  const result = await runtime.runCommand('Todo', 'create', input);
+  const runtime = new RuntimeEngine(ir, {
+    actorId: userId,
+    tenantId,
+    user: { id: userId, role: userMapping.role },
+  });
+  const result = await runtime.runCommand('updateStatus', input, { entityName: 'Task', instanceId: input.id });
 
   if (!result.success) {
-    return manifestErrorResponse(result.diagnostics);
+    return manifestErrorResponse(result.guardFailure?.formatted ?? result.error ?? 'Command failed');
   }
 
-  return manifestSuccessResponse({ todo: result.instance });
+  return manifestSuccessResponse({ task: result.instance });
 }
 ```
 
@@ -167,13 +195,14 @@ export async function POST(request: NextRequest) {
 ## Listen to Events
 
 ```typescript
-runtime.on('TodoCompleted', (event) => {
-  console.log('Todo completed:', event.payload.todoId);
-
-  // Trigger side effects
-  sendEmail(event.payload.todoId);
-  updateAnalytics(event.payload.todoId);
+const unsubscribe = runtime.onEvent((event) => {
+  if (event.name === 'TaskStatusUpdated') {
+    console.log('Task status updated:', event.payload);
+  }
 });
+
+// Later: unsubscribe();
+unsubscribe();
 ```
 
 ---
@@ -185,45 +214,51 @@ Integrate with existing databases via the `Store` interface:
 ```typescript
 import { RuntimeEngine, Store } from '@angriff36/manifest';
 
-class PrismaTodoStore implements Store<Todo> {
+class PrismaTaskStore implements Store {
   async getAll() {
-    return await prisma.todo.findMany({
+    return await prisma.task.findMany({
       where: { deletedAt: null }
     });
   }
 
   async getById(id: string) {
-    return await prisma.todo.findUnique({ where: { id } }) ?? undefined;
+    return await prisma.task.findUnique({ where: { id } }) ?? undefined;
   }
 
-  async create(data: Partial<Todo>) {
-    return await prisma.todo.create({ data });
+  async create(data: Record<string, unknown>) {
+    return await prisma.task.create({ data });
   }
 
-  async update(id: string, data: Partial<Todo>) {
-    return await prisma.todo.update({ where: { id }, data });
+  async update(id: string, data: Record<string, unknown>) {
+    return await prisma.task.update({ where: { id }, data });
   }
 
   async delete(id: string) {
-    await prisma.todo.delete({ where: { id } });
+    await prisma.task.delete({ where: { id } });
     return true;
   }
 
   async clear() {
-    await prisma.todo.deleteMany({});
+    await prisma.task.deleteMany({});
   }
 }
 
-const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
-  tenantId: 'tenant-456',
-  storeProvider: (entityName) => {
-    if (entityName === 'Todo') {
-      return new PrismaTodoStore();
-    }
-    return undefined; // Use default memory store
+const runtime = new RuntimeEngine(
+  ir,
+  {
+    actorId: 'user-123',
+    tenantId: 'tenant-456',
+    user: { id: 'user-123', role: 'admin' },
+  },
+  {
+    storeProvider: (entityName) => {
+      if (entityName === 'Task') {
+        return new PrismaTaskStore();
+      }
+      return undefined; // Use default memory store
+    },
   }
-});
+);
 ```
 
 ---
@@ -231,9 +266,9 @@ const runtime = new RuntimeEngine(ir, {
 ## Next Steps
 
 - **Language Reference**: `docs/spec/semantics.md`
-- **Integration Patterns**: `docs/patterns/usage-patterns.md`
-- **Next.js Integration**: `docs/patterns/external-projections.md`
-- **Custom Stores**: `docs/patterns/implementing-custom-stores.md`
+- **Integration Patterns**: `docs/guides/usage-patterns.md`
+- **Next.js Integration**: `docs/projections/nextjs.md`
+- **Custom Stores**: `docs/guides/implementing-custom-stores.md`
 - **Full Examples**: `src/manifest/examples.ts`
 
 ---
@@ -241,23 +276,23 @@ const runtime = new RuntimeEngine(ir, {
 ## Common Commands
 
 ```bash
-# Compile manifest file
-npx manifest-generate compile program.manifest
+# Compile manifest file to IR
+pnpm exec manifest compile program.manifest -o ir/
 
-# Generate Next.js routes
-npx manifest-generate nextjs Recipe program.manifest --output app/api/recipes/route.ts
+# Build IR + generate Next.js routes
+pnpm exec manifest build program.manifest -p nextjs -s route --code-output generated/
 
 # Run tests
-npm test
+pnpm test
 
 # Type check
-npm run typecheck
+pnpm run typecheck
 
 # Lint
-npm run lint
+pnpm run lint
 
-# Development server
-npm run dev
+# Development server (Kitchen/Runtime UI)
+pnpm run dev
 ```
 
 ---
@@ -270,7 +305,7 @@ Check that the entity name matches exactly (case-sensitive).
 
 ### "Guard failed but no diagnostic"
 
-Ensure you're not silently catching errors. The runtime always emits diagnostics for guard failures.
+Ensure you're not silently catching errors. The runtime returns `guardFailure` on guard failures with index, expression, and resolved values.
 
 ### Tests failing after "small" change
 
@@ -278,6 +313,6 @@ Conformance tests are executable semantics. If tests fail, you either changed la
 
 ### Unsupported storage target
 
-The runtime throws clear errors for unsupported targets. Use `storeProvider` to add custom stores.
+The runtime throws clear errors for unsupported targets. Use `storeProvider` in the third constructor argument to add custom stores.
 
-See: `docs/FAQ.md` for more troubleshooting.
+See: `docs/getting-started/faq.md` for more troubleshooting.
