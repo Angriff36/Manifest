@@ -38,6 +38,18 @@
       "types": "./dist/manifest/projections/prisma/generator.d.ts",
       "import": "./dist/manifest/projections/prisma/generator.js"
     },
+    "./projections/prisma-store": {
+      "types": "./dist/manifest/projections/prisma-store/generator.d.ts",
+      "import": "./dist/manifest/projections/prisma-store/generator.js"
+    },
+    "./stores/prisma-generic": {
+      "types": "./dist/manifest/stores/prisma-generic/index.d.ts",
+      "import": "./dist/manifest/stores/prisma-generic/index.js"
+    },
+    "./debug": {
+      "types": "./dist/manifest/debug/index.d.ts",
+      "import": "./dist/manifest/debug/index.js"
+    },
     "./projections/openapi": {
       "types": "./dist/manifest/projections/openapi/generator.d.ts",
       "import": "./dist/manifest/projections/openapi/generator.js"

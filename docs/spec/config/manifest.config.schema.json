@@ -31,7 +31,8 @@
       "properties": {
         "nextjs": { "$ref": "#/definitions/NextJsProjectionConfig" },
         "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" },
-        "prisma":  { "$ref": "#/definitions/PrismaProjectionConfig" }
+        "prisma":  { "$ref": "#/definitions/PrismaProjectionConfig" },
+        "prisma-store": { "$ref": "#/definitions/PrismaStoreProjectionConfig" }
       }
     },
     "env": {
@@ -447,6 +448,43 @@
         },
         "options": { "$ref": "#/definitions/PrismaProjectionOptions" }
       }
+    },
+    "PrismaStoreProjectionConfig": {
+      "type": "object",
+      "description": "Configuration for the Prisma store metadata/registry projection (GenericPrismaStore).",
+      "additionalProperties": false,
+      "properties": {
+        "options": { "$ref": "#/definitions/PrismaStoreProjectionOptions" }
+      }
+    },
+    "PrismaStoreProjectionOptions": {
+      "description": "Options for prisma-store.metadata and prisma-store.registry surfaces. Extends PrismaProjectionOptions for consistent naming with schema.prisma emission.",
+      "allOf": [
+        { "$ref": "#/definitions/PrismaProjectionOptions" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "metadataOutput": {
+              "type": "string",
+              "description": "Path hint for emitted prisma-model-metadata.generated.ts.",
+              "default": "prisma-model-metadata.generated.ts"
+            },
+            "registryOutput": {
+              "type": "string",
+              "description": "Path hint for emitted prisma-store-registry.generated.ts.",
+              "default": "prisma-store-registry.generated.ts"
+            },
+            "accessorNames": {
+              "description": "Per-entity Prisma client delegate override.",
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "storeImportPath": { "type": "string" },
+            "metadataImportPath": { "type": "string" }
+          }
+        }
+      ]
     },
     "PrismaProjectionOptions": {
       "type": "object",

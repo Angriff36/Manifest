@@ -13,6 +13,7 @@ import { registerProjection } from './registry.js';
 import { NextJsProjection } from './nextjs/generator.js';
 import { RoutesProjection } from './routes/generator.js';
 import { PrismaProjection } from './prisma/generator.js';
+import { PrismaStoreProjection } from './prisma-store/generator.js';
 import { OpenApiProjection } from './openapi/generator.js';
 import { ReactQueryProjection } from './react-query/generator.js';
 import { ZodProjection } from './zod/generator.js';
@@ -53,6 +54,7 @@ export function registerBuiltinProjections(): void {
 
   // Prisma schema projection (composite PK/FK, referential actions, v1.0)
   registerProjection(new PrismaProjection());
+  registerProjection(new PrismaStoreProjection());
 
   // OpenAPI 3.1.0 spec projection
   registerProjection(new OpenApiProjection());

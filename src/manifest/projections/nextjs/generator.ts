@@ -21,6 +21,7 @@ import {
   READ_ROUTES_DEFAULTS,
 } from './defaults.js';
 import { resolveTableName, type NamingConventionInput } from '../shared/naming.js';
+import { generateScheduleCronRoutes } from './schedule-generator.js';
 
 /**
  * Re-export the canonical defaults so consumers of
@@ -494,7 +495,7 @@ function generateEntityTypes(entity: IREntity): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -699,6 +700,13 @@ export class NextJsProjection implements ProjectionTarget {
           }],
           diagnostics: sharedResult.diagnostics,
         };
+      }
+
+      case 'nextjs.schedule': {
+        const scheduleOpts = normalizeOptions(options);
+        return generateScheduleCronRoutes(ir, {
+          runtimeImportPath: scheduleOpts.runtimeImportPath,
+        });
       }
 
       case 'ts.types': {

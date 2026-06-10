@@ -944,6 +944,29 @@ program
 /**
  * manifest doctor
  */
+/**
+ * manifest repl [source]
+ *
+ * Interactive REPL for inspecting IR and running commands against the runtime.
+ */
+program
+  .command('repl')
+  .description('Interactive Manifest runtime REPL for debugging guards, policies, and entity state')
+  .argument('[source]', 'Source .manifest file or directory')
+  .option('--json', 'JSON output mode for machine-readable responses', false)
+  .option('--user <id>', 'User id for runtime context')
+  .option('--tenant <id>', 'Tenant id for runtime context')
+  .option('--context <json>', 'Additional runtime context JSON')
+  .action(async (source, options = {}) => {
+    const { replCommand } = await import('./commands/repl.js');
+    await replCommand(source, {
+      json: options.json,
+      user: options.user,
+      tenant: options.tenant,
+      context: options.context,
+    });
+  });
+
 program
   .command('doctor')
   .description('Run ranked offline diagnostics for source/IR/route drift and duplicate merges')

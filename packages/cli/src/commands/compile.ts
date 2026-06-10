@@ -287,6 +287,15 @@ export async function compileCommand(source: string | undefined, options: Compil
     // Get manifest files
     const files = await getManifestFiles(source || '', options);
 
+    // Multiple sources with a single .json output path would overwrite each
+    // other (last file wins). Auto-merge into one IR artifact instead.
+    if (files.length > 1 && options.output?.endsWith('.json')) {
+      spinner.info(
+        `Multiple sources with single JSON output — using merged compilation → ${options.output}`,
+      );
+      return compileMerged(source, { ...options, merge: true });
+    }
+
     if (files.length === 0) {
       spinner.warn('No .manifest files found');
       console.log('  Create a .manifest file or specify a source pattern');

@@ -29,6 +29,7 @@ import {
 } from './runtime-command-extensions.js';
 import { getSchedulesFromIR } from './runtime-schedule.js';
 import type { IRSchedule } from './ir';
+import { RuntimeProfilingBridge } from './runtime-profiling-bridge.js';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -293,6 +294,14 @@ export interface RuntimeOptions {
    * accessible via `engine.getProfiles()`.
    */
   profiling?: import('./profiling').ProfilingOptions;
+  /** Optional per-action trace hook for @angriff36/manifest/debug CommandTraceRecorder */
+  actionTraceHook?: (info: {
+    index: number;
+    kind: string;
+    target?: string;
+    entityName?: string;
+    instanceId?: string;
+  }) => void | Promise<void>;
   /** Injectable sleep for deterministic retry backoff in tests/adapters */
   sleep?: (ms: number) => Promise<void>;
   /** Deterministic jitter override for retry delays (used when retry.jitter is true) */
@@ -767,6 +776,9 @@ export class RuntimeEngine {
   /** Per-engine sliding-window rate limiter (in-memory; durable store is a follow-up) */
   private rateLimiter = new RateLimiter();
 
+  private readonly profilingBridge: RuntimeProfilingBridge;
+  private actionTraceCounter = 0;
+
   /**
    * In-process approval request cache, keyed by
    * `${entity}:${instanceId}:${approvalName}`. Always maintained as a mirror
@@ -947,6 +959,7 @@ export class RuntimeEngine {
     this.ir = ir;
     this.context = context;
     this.options = options;
+    this.profilingBridge = new RuntimeProfilingBridge(options.profiling);
     this.initializeStores();
     this.buildRelationshipIndex();
     this.buildRoleIndex();
@@ -1655,7 +1668,7 @@ export class RuntimeEngine {
    * Returns an empty array when profiling is not configured.
    */
   getProfiles(): import('./profiling').CommandProfile[] {
-    return [];
+    return [...this.profilingBridge.getProfiles()];
   }
 
   /**
@@ -2263,6 +2276,14 @@ export class RuntimeEngine {
       }
 
       // Full command execution (with optional retry wrapper)
+      if (this.profilingBridge.isEnabled()) {
+        this.profilingBridge.beginCommand(
+          commandName,
+          options.entityName,
+          options.instanceId,
+          this.getNow(),
+        );
+      }
       const runOnce = () => this._executeCommandInternal(commandName, input, options);
       if (command?.retry) {
         result = await executeWithRetry(command.retry, runOnce, {
@@ -2292,6 +2313,13 @@ export class RuntimeEngine {
       thrown = e;
       throw e;
     } finally {
+      if (this.profilingBridge.isEnabled() && result !== undefined) {
+        this.profilingBridge.complete(
+          result.success,
+          this.ir.entities.length,
+          this.stores.size,
+        );
+      }
       if (auditEnabled) {
         await this.emitAudit({
           sink: this.options.auditSink!,
@@ -2840,6 +2868,8 @@ export class RuntimeEngine {
     // Clear concurrency conflict tracking
     this.lastConcurrencyConflict = null;
 
+    this.actionTraceCounter = 0;
+
     // Initialize evaluation budget for bounded complexity enforcement
     const ownsEvalBudget = this.initEvalBudget();
     try {
@@ -2903,7 +2933,10 @@ export class RuntimeEngine {
     const beforePolicyResult = await this.runMiddleware('before-policy', command, evalContext, input, options);
     if (beforePolicyResult) return beforePolicyResult;
 
-    const policyResult = await this.checkPolicies(command, evalContext);
+    const policyResult = await this.profilingBridge.trackPhase(
+      'policyEvaluation',
+      () => this.checkPolicies(command, evalContext),
+    );
     if (!policyResult.allowed) {
       return {
         success: false,
@@ -2919,7 +2952,10 @@ export class RuntimeEngine {
     // vNext: Evaluate command constraints (after policies, before guards)
     // Pass command context so OverrideApplied events include commandName/entityName/instanceId per spec
     const commandContext = { commandName, entityName: options.entityName, instanceId: options.instanceId };
-    const constraintResult = await this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext);
+    const constraintResult = await this.profilingBridge.trackPhase(
+      'constraintValidation',
+      () => this.evaluateCommandConstraints(command, evalContext, options.overrideRequests, commandContext),
+    );
     if (!constraintResult.allowed) {
       // Find the blocking constraint for the error message
       const blocking = constraintResult.outcomes.find(o => !o.passed && !o.overridden && o.severity === 'block');
@@ -2938,10 +2974,12 @@ export class RuntimeEngine {
     const beforeGuardResult = await this.runMiddleware('before-guard', command, evalContext, input, options);
     if (beforeGuardResult) return beforeGuardResult;
 
+    this.profilingBridge.startPhase('guardEvaluation');
     for (let i = 0; i < command.guards.length; i += 1) {
       const guard = command.guards[i];
       const result = await this.evaluateExpression(guard, evalContext);
       if (!result) {
+        this.profilingBridge.endPhase('guardEvaluation');
         return {
           success: false,
           error: `Guard condition failed for command '${commandName}'`,
@@ -2959,26 +2997,32 @@ export class RuntimeEngine {
         };
       }
     }
+    this.profilingBridge.endPhase('guardEvaluation');
 
     // ── Approval gate: block command if pending approval required ──
+    this.profilingBridge.startPhase('approvalGate');
     if (options.entityName) {
       const approvalResult = await this.checkApprovalGate(
         commandName, options.entityName, options.instanceId, evalContext, options,
       );
       if (approvalResult) {
+        this.profilingBridge.endPhase('approvalGate');
         return approvalResult;
       }
     }
+    this.profilingBridge.endPhase('approvalGate');
 
     let autoCreatedInstance: EntityInstance | undefined;
     let createConstraintOutcomes: ConstraintOutcome[] | undefined;
 
     if (shouldAutoCreateInstance && options.entityName && autoCreateEntity && autoCreatePreparedData) {
+      this.profilingBridge.startPhase('autoCreate');
       const createResult = await this.persistPreparedCreate(
         options.entityName,
         autoCreateEntity,
         autoCreatePreparedData
       );
+      this.profilingBridge.endPhase('autoCreate');
       createConstraintOutcomes = createResult.constraintOutcomes;
 
       if (!createResult.instance) {
@@ -3028,6 +3072,7 @@ export class RuntimeEngine {
     const beforeActionResult = await this.runMiddleware('before-action', command, evalContext, input, options);
     if (beforeActionResult) return beforeActionResult;
 
+    this.profilingBridge.startPhase('actionExecution');
     for (const action of command.actions) {
       const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
 
@@ -3069,6 +3114,7 @@ export class RuntimeEngine {
       }
       result = actionResult;
     }
+    this.profilingBridge.endPhase('actionExecution');
 
     if (autoCreatedInstance && options.entityName) {
       const currentInstance = await this.getInstanceRaw(options.entityName, autoCreatedInstance.id);
@@ -3076,6 +3122,7 @@ export class RuntimeEngine {
       result = autoCreatedInstance;
     }
 
+    this.profilingBridge.startPhase('eventEmission');
     // Finalize canonical subject metadata for command-declared events.
     // Resolution order for subject.id:
     //   1. instanceId passed to runCommand (already set on baseSubject)
@@ -3197,6 +3244,8 @@ export class RuntimeEngine {
         }
       }
     }
+
+    this.profilingBridge.endPhase('eventEmission');
 
     const commandResult: CommandResult = {
       success: true,
@@ -3537,6 +3586,23 @@ export class RuntimeEngine {
     return entries;
   }
 
+  private async notifyActionTrace(
+    index: number,
+    kind: string,
+    target: string | undefined,
+    options: { entityName?: string; instanceId?: string },
+  ): Promise<void> {
+    const hook = this.options.actionTraceHook;
+    if (!hook) return;
+    await hook({
+      index,
+      kind,
+      target,
+      entityName: options.entityName,
+      instanceId: options.instanceId,
+    });
+  }
+
   private async executeAction(
     action: IRAction,
     evalContext: Record<string, unknown>,
@@ -3556,6 +3622,7 @@ export class RuntimeEngine {
     }
 
     const value = await this.evaluateExpression(action.expression, evalContext);
+    const traceIndex = ++this.actionTraceCounter;
 
     switch (action.kind) {
       case 'mutate':
@@ -3564,6 +3631,7 @@ export class RuntimeEngine {
             [action.target]: value,
           });
         }
+        await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
         return value;
 
       case 'emit':
@@ -3588,10 +3656,12 @@ export class RuntimeEngine {
         };
         this.eventLog.push(event);
         this.notifyListeners(event);
+        await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
         return value;
       }
 
       case 'persist':
+        await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
         return value;
 
       case 'compute':
@@ -3600,10 +3670,12 @@ export class RuntimeEngine {
             [action.target]: value,
           });
         }
+        await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
         return value;
 
       case 'effect':
       default:
+        await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
         return value;
     }
   }

@@ -4,6 +4,40 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.1] - 2026-06-10
+
+Downstream integration wave: Prisma store projection, runtime profiling,
+schedule cron routes, debug tracing, and CLI fixes for multi-file compile and
+REPL registration.
+
+### Added
+
+- **Prisma store projection** — `prisma-store.metadata` and
+  `prisma-store.registry` surfaces plus `GenericPrismaStore` runtime at
+  `@angriff36/manifest/stores/prisma-generic`. Config schema adds
+  `projections.prisma-store` with `accessorNames` and output path hints.
+- **Runtime profiling** — `RuntimeEngine.getProfiles()` returns real phase
+  timings (policy, constraint, guard, approval, autoCreate, action,
+  eventEmission) when `profiling` options are enabled.
+- **Next.js schedule cron** — `nextjs.schedule` surface emits cron route
+  handlers for IR `schedules` declarations.
+- **Debug export** — `@angriff36/manifest/debug` with `CommandTraceRecorder`
+  and `actionTraceHook` on `RuntimeOptions` for per-action snapshots.
+- **REPL CLI** — `manifest repl` registered in the CLI command table.
+
+### Fixed
+
+- **Multi-file compile** — when multiple `.manifest` sources target a single
+  `.json` output, the CLI auto-redirects to merged compilation instead of
+  last-file-wins overwrite.
+- **`COMPILER_VERSION`** — synced to `2.4.0` (was stale at `2.3.1`).
+
+### Notes
+
+- v2.4 contextual keywords (`mixin`, `schedule`, `retry`, `rateLimit`, `cron`,
+  etc.) remain lexer identifiers, not global reserved words, so property names
+  like `property schedule: string` continue to parse.
+
 ## [2.4.0] - 2026-06-10
 
 Language and projection wave: entity composition, scheduled commands, command

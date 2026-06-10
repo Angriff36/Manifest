@@ -63,6 +63,9 @@ export const KEYWORDS = new Set([
   'saga',
   // webhook declaration keywords
   'webhook', 'signature', 'idempotencyHeader', 'transform',
+  // v2.4 composition + command extensions are contextual identifiers parsed
+  // at declaration sites (mixin, schedule, retry, rateLimit, cron, etc.) — not
+  // global reserved words, so property names like `property schedule: string` work.
 ]);
 
 const OPERATORS = new Set([
