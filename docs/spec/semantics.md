@@ -388,6 +388,34 @@ See also:
 - `emitIndex` is a per-command counter only. It is NOT a global sequence. Cross-command ordering is the caller's responsibility.
 - Given identical IR + identical runtime context (including injected `now`/`generateId`) + identical input + identical options, emitted events MUST have identical `emitIndex` values.
 
+### Realtime Entities
+
+Entities MAY declare a bare `realtime` flag inside the entity block:
+
+```manifest
+entity Order {
+  property id: string
+  realtime
+}
+```
+
+- `realtime` is a contextual identifier, NOT a reserved word: `property realtime: boolean` remains a valid plain property declaration.
+- The flag compiles to `IREntity.realtime: true`.
+- **`realtime` has no runtime execution semantics.** It is a projection hint only: projections (Next.js, Express) use it to emit SSE subscription surfaces for the flagged entity. Identical IR with and without the flag produces identical command execution results, identical events, and identical state.
+
+#### Runtime `subscribe()` contract
+
+The reference runtime exposes `subscribe(entityName, listener): () => void` — a convenience over `onEvent` that exists regardless of any entity's `realtime` flag:
+
+- The listener receives only events whose `subject.entity === entityName`.
+- Events **without** a `subject.entity` are NOT delivered to `subscribe` listeners (use `onEvent` for the unfiltered firehose).
+- The return value is an unsubscribe function; after it is called the listener receives no further events.
+- Multiple subscribers (same or different entity names) are independent; listener errors are swallowed exactly as for `onEvent` listeners and never affect execution.
+
+#### Deployment constraint (generated SSE surfaces)
+
+The event stream is per-engine-instance and in-memory. Generated SSE code therefore uses a module-scoped singleton engine (a generated `getSharedRuntime()` accessor shared by SSE routes and command routes). This requires a long-lived Node server process and a **single-instance deployment**; serverless or multi-instance fan-out needs an external event bus and is out of scope.
+
 ### Idempotency (vNext)
 - A conforming runtime MAY support an `IdempotencyStore` for command deduplication.
 - When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. If no key is provided, the runtime MUST return an error.
