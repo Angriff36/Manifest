@@ -4,6 +4,40 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.0] - 2026-06-09
+
+Date/time primitive types with write-time validation, read-time property
+masking, realtime entities with SSE surfaces in the Next.js projection, and
+packaging fixes that make the published package install-and-go. No breaking
+changes — all new syntax is opt-in.
+
+### Added
+
+- **Date/time primitive types** — `date`, `time`, and `datetime` property
+  types with pure UTC-only validation and conversion builtins. Invalid values
+  are rejected at write time with blocking `E_TYPE_*` outcomes. Type mappings
+  added for the TypeScript generators, Prisma, Zod, and JSON Schema
+  projections. Conformance fixture 92.
+- **Property masking** — contextual `masked` modifier (with optional
+  strategy arguments, e.g. `masked(redact)`) and `unmask when <expr>` clause.
+  Masking is applied at read time in `getInstance`/`getAllInstances`; the IR
+  carries `maskStrategy` with a compiler-enforced invariant (`masked` ∈
+  modifiers ⇔ `maskStrategy` present). Conformance fixture 93.
+- **Realtime entities** — contextual `realtime` entity flag (parser, AST, IR,
+  schema) plus `runtime.subscribe(entityName, listener)` built on `onEvent`.
+  The Next.js projection emits SSE surfaces for realtime entities: a
+  `subscribe` route, a client subscription hook, and a module-scoped shared
+  runtime accessor so subscriptions observe command events.
+
+### Fixed
+
+- **Packaging** — published package is now install-and-go: missing runtime
+  dependencies declared, package exports corrected, and ESM import
+  specifiers fixed.
+- Reserved `hasPermission`/`roleAllows` and the date/time builtin names in
+  the plugin API so plugins cannot shadow spec-guaranteed builtins.
+- Deflaked projection registration tests via static registry import.
+
 ## [2.2.0] - 2026-06-03
 
 A new opt-in identifier-casing convention for the Prisma projection, plus the
