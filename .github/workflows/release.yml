@@ -41,11 +41,25 @@ jobs:
 
       - name: Build release notes from CHANGELOG.md
         run: |
-          node tools/release/extract-changelog-section.mjs "${{ needs.resolve.outputs.tag_version }}" > release-notes.md
+          VER="${{ needs.resolve.outputs.tag_version }}"
+          # Prefer the CHANGELOG from main — sections are sometimes added after
+          # the tag (v2.2.0 and v2.3.0 both shipped without one at the tagged
+          # commit, which used to fail this job and kill the GitHub Release).
+          git fetch --depth=1 origin main
+          git show origin/main:CHANGELOG.md > CHANGELOG.main.md 2>/dev/null \
+            && cp CHANGELOG.main.md CHANGELOG.md || true
+          if ! node tools/release/extract-changelog-section.mjs "$VER" > release-notes.md; then
+            echo "::warning::No CHANGELOG section for $VER — emitting fallback notes instead of failing."
+            {
+              echo "## $VER"
+              echo ""
+              echo "_No changelog section found for $VER. See CHANGELOG.md on main._"
+            } > release-notes.md
+          fi
           echo "" >> release-notes.md
           echo "---" >> release-notes.md
           echo "" >> release-notes.md
-          echo "Install: \`npm install @angriff36/manifest@${{ needs.resolve.outputs.tag_version }}\` (GitHub Packages registry)." >> release-notes.md
+          echo "Install: \`npm install @angriff36/manifest@$VER\` (GitHub Packages registry)." >> release-notes.md
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2

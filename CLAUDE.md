@@ -21,6 +21,25 @@ pnpm run bench              # Run benchmarks
 
 **Critical**: `pnpm test` must remain green. No exceptions.
 
+## Release Procedure (agents keep botching this — follow exactly)
+
+A release is **not done** when the version-bump commit lands on main. The
+`v*` tag is the publish trigger; without it, nothing ships. v2.3.0 sat
+unpublished for a day because an agent stopped after the commit.
+
+1. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md` (release notes
+   are extracted from it by `tools/release/extract-changelog-section.mjs`)
+2. Bump `version` in root `package.json`; commit `[release] vX.Y.Z (...)`
+   and push main
+3. **Tag and push the tag** — this is the step agents drop:
+   `git tag -a vX.Y.Z -m "..." <release-commit> && git push origin vX.Y.Z`
+4. Verify the `Release` workflow run is green AND the `publish` job's
+   "Publish to GitHub Packages" step succeeded
+   (`gh run list --workflow release.yml`). A red run can still have
+   published — check the job, not just the run conclusion.
+
+Do not move/force-push a tag after the publish job has run.
+
 ## Architecture
 
 ### IR-First Language Design
