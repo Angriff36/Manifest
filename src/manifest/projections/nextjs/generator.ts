@@ -116,6 +116,13 @@ interface NormalizedNextJsOptions {
   dispatcher: NormalizedDispatcherOptions;
   concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions;
   readRoutes: NormalizedReadRoutesOptions;
+  paths: {
+    typesFile: string;
+    clientFile: string;
+    hooksDir: string;
+    sharedRuntimeFile: string;
+  };
+  sharedRuntimeImportPath: string;
 }
 
 /**
@@ -142,6 +149,21 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     enabled: options?.readRoutes?.enabled ?? READ_ROUTES_DEFAULTS.enabled,
     directDbReads: options?.readRoutes?.directDbReads ?? READ_ROUTES_DEFAULTS.directDbReads,
   };
+
+  // Resolve artifact paths from generatedDir (default: 'src').
+  // Individual path overrides take precedence.
+  const generatedDir = options?.generatedDir ?? 'src';
+  const paths = {
+    typesFile: options?.paths?.typesFile ?? `${generatedDir}/types/manifest-generated.ts`,
+    clientFile: options?.paths?.clientFile ?? `${generatedDir}/lib/manifest-client.ts`,
+    hooksDir: options?.paths?.hooksDir ?? `${generatedDir}/hooks`,
+    sharedRuntimeFile: options?.paths?.sharedRuntimeFile ?? `${generatedDir}/lib/manifest-shared-runtime.ts`,
+  };
+
+  // Derive the import path for the shared-runtime module from its pathHint.
+  // e.g. 'src/lib/manifest-shared-runtime.ts' → '@/lib/manifest-shared-runtime'
+  const sharedRuntimeImportPath = pathHintToImport(paths.sharedRuntimeFile);
+
   return {
     authProvider: options?.authProvider ?? NEXTJS_DEFAULTS.authProvider,
     authImportPath: options?.authImportPath ?? NEXTJS_DEFAULTS.authImportPath,
@@ -161,16 +183,18 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     dispatcher,
     concreteCommandRoutes,
     readRoutes,
+    paths,
+    sharedRuntimeImportPath,
   };
 }
 
 /**
- * Import path for the generated shared-runtime accessor module
- * (nextjs.sharedRuntime surface, emitted at src/lib/manifest-shared-runtime.ts).
- * Realtime SSE requires command execution and subscriptions to share ONE
- * engine instance, so this is a fixed convention rather than an option.
+ * Convert a pathHint (e.g. 'src/lib/manifest-shared-runtime.ts') to a
+ * TypeScript import alias (e.g. '@/lib/manifest-shared-runtime').
  */
-const SHARED_RUNTIME_IMPORT_PATH = '@/lib/manifest-shared-runtime';
+function pathHintToImport(pathHint: string): string {
+  return '@/' + pathHint.replace(/^src\//, '').replace(/\.ts$/, '');
+}
 
 /**
  * True when any entity in the IR is flagged `realtime`. Realtime is a
@@ -612,6 +636,7 @@ export class NextJsProjection implements ProjectionTarget {
             diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.subscriptionHook" requires entity' }],
           };
         }
+        const opts = normalizeOptions(options);
         const hookResult = this._subscriptionHook(ir, request.entity);
         if (hookResult.diagnostics.some(d => d.severity === 'error') || !hookResult.code) {
           return { artifacts: [], diagnostics: hookResult.diagnostics };
@@ -619,7 +644,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: `nextjs.subscriptionHook:${request.entity}`,
-            pathHint: `src/hooks/use${request.entity}Subscription.ts`,
+            pathHint: `${opts.paths.hooksDir}/use${request.entity}Subscription.ts`,
             contentType: 'typescript',
             code: hookResult.code,
           }],
@@ -628,6 +653,7 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'nextjs.sharedRuntime': {
+        const opts = normalizeOptions(options);
         const sharedResult = this._sharedRuntime(ir, options);
         if (!sharedResult.code) {
           return { artifacts: [], diagnostics: sharedResult.diagnostics };
@@ -635,7 +661,7 @@ export class NextJsProjection implements ProjectionTarget {
         return {
           artifacts: [{
             id: 'nextjs.sharedRuntime',
-            pathHint: 'src/lib/manifest-shared-runtime.ts',
+            pathHint: opts.paths.sharedRuntimeFile,
             contentType: 'typescript',
             code: sharedResult.code,
           }],
@@ -644,11 +670,12 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'ts.types': {
+        const opts = normalizeOptions(options);
         const result = this._types(ir);
         return {
           artifacts: [{
             id: 'ts.types',
-            pathHint: 'src/types/manifest-generated.ts',
+            pathHint: opts.paths.typesFile,
             contentType: 'typescript',
             code: result.code,
           }],
@@ -657,11 +684,12 @@ export class NextJsProjection implements ProjectionTarget {
       }
 
       case 'ts.client': {
+        const opts = normalizeOptions(options);
         const result = this._client(ir);
         return {
           artifacts: [{
             id: 'ts.client',
-            pathHint: 'src/lib/manifest-client.ts',
+            pathHint: opts.paths.clientFile,
             contentType: 'typescript',
             code: result.code,
           }],
@@ -826,7 +854,7 @@ export class NextJsProjection implements ProjectionTarget {
     if (useExternalExecutor) {
       lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
     } else if (useShared) {
-      lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
+      lines.push(generateImport('{ getSharedRuntime }', options.sharedRuntimeImportPath));
     } else {
       lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     }
@@ -965,7 +993,7 @@ export class NextJsProjection implements ProjectionTarget {
     if (useExternalExecutor) {
       lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
     } else if (useShared) {
-      lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
+      lines.push(generateImport('{ getSharedRuntime }', options.sharedRuntimeImportPath));
     } else {
       lines.push(generateImport('{ createManifestRuntime }', runtimeImportPath));
     }
@@ -1134,7 +1162,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
     lines.push(generateImport('{ manifestErrorResponse }', opts.responseImportPath));
-    lines.push(generateImport('{ getSharedRuntime }', SHARED_RUNTIME_IMPORT_PATH));
+    lines.push(generateImport('{ getSharedRuntime }', opts.sharedRuntimeImportPath));
     const authImport = generateAuthImport(opts);
     if (authImport) lines.push(authImport);
     lines.push('');

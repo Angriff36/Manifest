@@ -175,6 +175,13 @@ program
     // CLI flag overrides are layered on inside generateCommand.
     const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
 
+    // Default to cwd — the projection's pathHint already contains the full
+    // relative path from project root (e.g. apps/api/app/api/…).  Omitting
+    // -o should write files relative to the project root, not crash.
+    if (!options.output) {
+      options.output = '.';
+    }
+
     await generateCommand(ir, {
       ...options,
       projectionOptionsFromConfig,

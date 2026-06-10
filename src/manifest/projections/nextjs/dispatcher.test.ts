@@ -45,7 +45,7 @@ describe('nextjs.dispatcher surface', () => {
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     expect(result.artifacts).toHaveLength(1);
     expect(result.artifacts[0].pathHint).toBe(
-      'apps/api/app/api/manifest/[entity]/commands/[command]/route.ts'
+      'app/api/manifest/[entity]/commands/[command]/route.ts'
     );
     expect(result.artifacts[0].id).toBe('nextjs.dispatcher');
     expect(result.artifacts[0].contentType).toBe('typescript');

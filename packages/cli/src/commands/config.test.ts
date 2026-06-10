@@ -123,7 +123,7 @@ describe('manifest config print-defaults', () => {
     const { stdout } = await captureOutput(() => configPrintDefaultsCommand({ json: true }));
     const trimmed = stdout.trim();
     const parsed = JSON.parse(trimmed);
-    expect(parsed.nextjs.authProvider).toBe('clerk');
+    expect(parsed.nextjs.authProvider).toBe('none');
     expect(parsed.dispatcher.executionMode).toBe('inline');
     expect(parsed.concreteCommandRoutes.legacyAliasesOnly).toBe(true);
     expect(parsed.tenantProvider.lookupKey).toBe('orgId');
@@ -157,7 +157,7 @@ describe('manifest config inspect (print-effective)', () => {
 
     expect(parsed.configPath).toBeNull();
     expect(parsed.build.src).toBe('**/*.manifest');
-    expect(parsed.projections.nextjs.options.authProvider).toBe('clerk');
+    expect(parsed.projections.nextjs.options.authProvider).toBe('none');
     expect(parsed.projections.nextjs.options.dispatcher.executionMode).toBe('inline');
   });
 

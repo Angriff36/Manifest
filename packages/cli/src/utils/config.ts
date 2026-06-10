@@ -472,16 +472,16 @@ export async function getNextJsOptions(cwd: string = process.cwd()): Promise<{
   const options = build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
 
   return {
-    authProvider: options.authProvider as string || 'clerk',
+    authProvider: options.authProvider as string || 'none',
     authImportPath: options.authImportPath as string || '@/lib/auth',
     databaseImportPath: options.databaseImportPath as string || '@/lib/database',
     runtimeImportPath: options.runtimeImportPath as string || '@/lib/manifest-runtime',
     responseImportPath: options.responseImportPath as string || '@/lib/manifest-response',
-    includeTenantFilter: options.includeTenantFilter as boolean ?? true,
-    includeSoftDeleteFilter: options.includeSoftDeleteFilter as boolean ?? true,
+    includeTenantFilter: options.includeTenantFilter as boolean ?? false,
+    includeSoftDeleteFilter: options.includeSoftDeleteFilter as boolean ?? false,
     tenantIdProperty: options.tenantIdProperty as string || 'tenantId',
     deletedAtProperty: options.deletedAtProperty as string || 'deletedAt',
-    appDir: options.appDir as string || 'app',
+    appDir: options.appDir as string || 'app/api',
   };
 }
 

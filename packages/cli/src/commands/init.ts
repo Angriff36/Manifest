@@ -118,8 +118,9 @@ function showPostInit(answers: InitAnswers, config: ManifestConfig) {
 
   if (answers.enableCodegen && answers.projectionTarget) {
     console.log('4. Generate code:');
-    const output = config.projections?.[answers.projectionTarget]?.output || 'generated';
-    console.log(chalk.gray(`   manifest generate ${config.output} -o ${output}`));
+    // Do NOT pass -o here: the projection's pathHint already encodes the full
+    // directory structure from project root (e.g. apps/api/app/api/…).
+    // Passing -o apps/api would double the prefix: apps/api/apps/api/….
     console.log(chalk.gray(`   manifest generate ${config.output} -p ${answers.projectionTarget}`));
     console.log('');
   }

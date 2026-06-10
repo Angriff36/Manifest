@@ -143,7 +143,7 @@ describe('CLI Generate Command - API Contract Tests', () => {
         entity: 'TestEntity',
       });
 
-      expect(result.artifacts[0].pathHint).toBe('apps/api/app/api/testentity/list/route.ts');
+      expect(result.artifacts[0].pathHint).toBe('app/api/testentity/list/route.ts');
     });
 
     it('should include correct subdirectories for commands', () => {
@@ -169,7 +169,7 @@ describe('CLI Generate Command - API Contract Tests', () => {
         options: { concreteCommandRoutes: { enabled: true } },
       });
 
-      expect(result.artifacts[0].pathHint).toBe('apps/api/app/api/testentity/create/route.ts');
+      expect(result.artifacts[0].pathHint).toBe('app/api/testentity/create/route.ts');
     });
 
     it('should not include app/api prefix for types', () => {

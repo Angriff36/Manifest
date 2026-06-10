@@ -279,8 +279,8 @@ output: yaml-ir/`
     it('should return defaults when no config exists', async () => {
       const options = await getNextJsOptions(tempDir);
 
-      expect(options.authProvider).toBe('clerk');
-      expect(options.includeTenantFilter).toBe(true);
+      expect(options.authProvider).toBe('none');
+      expect(options.includeTenantFilter).toBe(false);
       expect(options.tenantIdProperty).toBe('tenantId');
     });
 

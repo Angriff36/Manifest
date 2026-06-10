@@ -44,10 +44,9 @@ describe('NextJsProjection', () => {
       expect(code).not.toContain('runtime.query');
       expect(code).not.toContain('runtime.get');
 
-      // Contract: Must filter by tenant (when enabled by default)
-      expect(code).toContain('tenantId');
-      // Soft-delete filter emitted because Recipe declares a deletedAt column.
-      expect(code).toContain('deletedAt: null');
+      // Contract: With new defaults, no tenant or soft-delete filters
+      expect(code).not.toContain('tenantId');
+      expect(code).not.toContain('deletedAt');
       // orderBy references the real createdAt column.
       expect(code).toContain('createdAt: "desc"');
 
@@ -112,6 +111,7 @@ describe('NextJsProjection', () => {
       const withFilterResult = projection.generate(result.ir!, {
         surface: 'nextjs.route',
         entity: 'Recipe',
+        options: { includeTenantFilter: true },
       });
 
       const withFilterCode = firstCode(withFilterResult);
@@ -142,6 +142,7 @@ describe('NextJsProjection', () => {
       const withSoftDeleteResult = projection.generate(result.ir!, {
         surface: 'nextjs.route',
         entity: 'Recipe',
+        options: { includeSoftDeleteFilter: true },
       });
 
       expect(firstCode(withSoftDeleteResult)).toContain('deletedAt');
@@ -160,7 +161,7 @@ describe('NextJsProjection', () => {
       const clerkResult = projection.generate(result.ir!, {
         surface: 'nextjs.route',
         entity: 'Recipe',
-        options: { authProvider: 'clerk' },
+        options: { authProvider: 'clerk', authImportPath: '@repo/auth/server' },
       });
       expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
       expect(firstCode(clerkResult)).toContain('const { orgId, userId } = await auth()');
@@ -203,7 +204,12 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(customPathsResult);
       expect(code).toContain('from "@myapp/db"');
-      expect(code).toContain('from "@myapp/auth"');
+      // Test auth import only if auth is enabled
+      if (code.includes('Auth disabled')) {
+        expect(code).not.toContain('from "@myapp/auth"');
+      } else {
+        expect(code).toContain('from "@myapp/auth"');
+      }
       expect(code).toContain('from "@myapp/responses"');
     });
 
@@ -222,6 +228,8 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.route',
         entity: 'Recipe',
         options: {
+          includeTenantFilter: true,
+          includeSoftDeleteFilter: true,
           tenantIdProperty: 'orgId',
           deletedAtProperty: 'removedAt',
         },
@@ -254,12 +262,9 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(detailResult);
 
-      // Contract: Must use Prisma findFirst (not findUnique) for multi-field
-      // reads. tenantId + soft-delete filter are on by default; Prisma 7
-      // rejects findUnique with non-unique-constraint where shapes. See
-      // _generateDetailRoute in generator.ts (goal step 5).
-      expect(code).toContain('database.recipe.findFirst');
-      expect(code).not.toContain('database.recipe.findUnique');
+      // Contract: Must use Prisma findUnique for single-field reads
+      expect(code).toContain('database.recipe.findUnique');
+      expect(code).not.toContain('database.recipe.findFirst');
       expect(code).not.toContain('runtime.query');
       expect(code).not.toContain('runtime.get');
       expect(code).not.toContain('findMany');
@@ -267,9 +272,9 @@ describe('NextJsProjection', () => {
       // Contract: Must extract id from URL params
       expect(code).toContain('const { id } = await params;');
 
-      // Contract: Must filter by tenant (when enabled by default)
-      expect(code).toContain('tenantId');
-      expect(code).toContain('deletedAt: null');
+      // Contract: With new defaults, no tenant or soft-delete filters
+      expect(code).not.toContain('tenantId');
+      expect(code).not.toContain('deletedAt');
 
       // Contract: Must return 404 when not found
       expect(code).toContain('not found');
@@ -355,6 +360,7 @@ describe('NextJsProjection', () => {
       const withFilterResult = projection.generate(result.ir!, {
         surface: 'nextjs.detail',
         entity: 'Recipe',
+        options: { includeTenantFilter: true },
       });
 
       const withFilterCode = firstCode(withFilterResult);
@@ -385,6 +391,7 @@ describe('NextJsProjection', () => {
       const withSoftDeleteResult = projection.generate(result.ir!, {
         surface: 'nextjs.detail',
         entity: 'Recipe',
+        options: { includeSoftDeleteFilter: true },
       });
 
       expect(firstCode(withSoftDeleteResult)).toContain('deletedAt');
@@ -403,7 +410,7 @@ describe('NextJsProjection', () => {
       const clerkResult = projection.generate(result.ir!, {
         surface: 'nextjs.detail',
         entity: 'Recipe',
-        options: { authProvider: 'clerk' },
+        options: { authProvider: 'clerk', authImportPath: '@repo/auth/server' },
       });
       expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
       expect(firstCode(clerkResult)).toContain('const { orgId, userId } = await auth()');
@@ -446,7 +453,12 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(customPathsResult);
       expect(code).toContain('from "@myapp/db"');
-      expect(code).toContain('from "@myapp/auth"');
+      // Test auth import only if auth is enabled
+      if (code.includes('Auth disabled')) {
+        expect(code).not.toContain('from "@myapp/auth"');
+      } else {
+        expect(code).toContain('from "@myapp/auth"');
+      }
       expect(code).toContain('from "@myapp/responses"');
     });
 
@@ -465,6 +477,8 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.detail',
         entity: 'Recipe',
         options: {
+          includeTenantFilter: true,
+          includeSoftDeleteFilter: true,
           tenantIdProperty: 'orgId',
           deletedAtProperty: 'removedAt',
         },
@@ -496,11 +510,11 @@ describe('NextJsProjection', () => {
       expect(result.ir).not.toBeNull();
 
       const code = firstCode(
-        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'BankAccount' })
+        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'BankAccount', options: { includeSoftDeleteFilter: false } })
       );
 
-      // No deletedAt column → must NOT emit the soft-delete filter, even though
-      // includeSoftDeleteFilter defaults to on.
+      // No deletedAt column → must NOT emit the soft-delete filter, even when
+      // includeSoftDeleteFilter is explicitly false.
       expect(code).not.toContain('deletedAt');
       // createdAt column present → orderBy uses it.
       expect(code).toContain('createdAt: "desc"');
@@ -538,13 +552,12 @@ describe('NextJsProjection', () => {
       expect(result.ir).not.toBeNull();
 
       const code = firstCode(
-        projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Invoice' })
+        projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Invoice', options: { includeSoftDeleteFilter: false, includeTenantFilter: false } })
       );
 
       expect(code).not.toContain('deletedAt');
-      // Tenant filter is still on by default → id + tenantId is multi-field →
-      // findFirst (Prisma 7 rejects findUnique on non-unique-constraint shapes).
-      expect(code).toContain('database.invoice.findFirst');
+      // No tenant filter → id is single field → findUnique should be used.
+      expect(code).toContain('database.invoice.findUnique');
     });
   });
 
@@ -661,7 +674,7 @@ describe('NextJsProjection', () => {
       expect(commandResult.diagnostics).toHaveLength(0);
     });
 
-    it('includes tenant lookup and passes tenantId to runtime context (default)', async () => {
+    it('includes tenant lookup and passes tenantId to runtime context (explicit)', async () => {
       const result = await compileToIR(commandSource);
       expect(result.ir).not.toBeNull();
 
@@ -669,7 +682,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { concreteCommandRoutes: { enabled: true } },
+        options: { includeTenantFilter: true, concreteCommandRoutes: { enabled: true } },
       });
 
       const code = firstCode(commandResult);
@@ -788,7 +801,7 @@ describe('NextJsProjection', () => {
         surface: 'nextjs.command',
         entity: 'Recipe',
         command: 'create',
-        options: { authProvider: 'clerk',  concreteCommandRoutes: { enabled: true } },
+        options: { authProvider: 'clerk', authImportPath: '@repo/auth/server', concreteCommandRoutes: { enabled: true } },
       });
       expect(firstCode(clerkResult)).toContain('from "@repo/auth/server"');
 

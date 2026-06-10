@@ -240,10 +240,10 @@ describe('nextjs.command concreteCommandRoutes config', () => {
 });
 
 describe('exported defaults', () => {
-  it('NEXTJS_DEFAULTS exposes the historical hardcoded values', () => {
-    expect(NEXTJS_DEFAULTS.authProvider).toBe('clerk');
-    expect(NEXTJS_DEFAULTS.authImportPath).toBe('@repo/auth/server');
-    expect(NEXTJS_DEFAULTS.appDir).toBe('apps/api/app/api');
+  it('NEXTJS_DEFAULTS exposes the current default values', () => {
+    expect(NEXTJS_DEFAULTS.authProvider).toBe('none');
+    expect(NEXTJS_DEFAULTS.authImportPath).toBe('@/lib/auth');
+    expect(NEXTJS_DEFAULTS.appDir).toBe('app/api');
     expect(NEXTJS_DEFAULTS.tenantIdProperty).toBe('tenantId');
     expect(NEXTJS_DEFAULTS.deletedAtProperty).toBe('deletedAt');
   });
@@ -280,14 +280,14 @@ describe('exported defaults', () => {
           "path": "/manifest/[entity]/commands/[command]/route.ts",
         },
         "nextjs": {
-          "appDir": "apps/api/app/api",
-          "authImportPath": "@repo/auth/server",
-          "authProvider": "clerk",
-          "databaseImportPath": "@repo/database",
+          "appDir": "app/api",
+          "authImportPath": "@/lib/auth",
+          "authProvider": "none",
+          "databaseImportPath": "@/lib/database",
           "deletedAtProperty": "deletedAt",
           "includeComments": true,
-          "includeSoftDeleteFilter": true,
-          "includeTenantFilter": true,
+          "includeSoftDeleteFilter": false,
+          "includeTenantFilter": false,
           "indentSize": 2,
           "responseImportPath": "@/lib/manifest-response",
           "runtimeImportPath": "@/lib/manifest-runtime",

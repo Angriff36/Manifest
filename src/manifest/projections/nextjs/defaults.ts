@@ -8,14 +8,10 @@
  *   - `packages/cli/src/utils/config.ts` — when resolving an effective config
  *   - `manifest config print-defaults` — to render defaults for inspection
  *
- * Values intentionally mirror the historical hardcoded defaults so that
- * downstream consumers see no behavioural drift when defaults move here.
- *
- * Keys describing *how generated code looks* (import paths, app dir, etc.)
- * are Manifest-generic — they must not embed any downstream-app-specific
- * branding. Where the existing defaults reflect a turborepo + `apps/api`
- * convention, they are preserved for backward compatibility but every value
- * MUST be overridable from `manifest.config.yaml`.
+ * Defaults are intentionally minimal: no auth, no tenant filtering, no
+ * soft-delete. A basic `entity User { name: string }` should produce
+ * runnable code against a standard Next.js project without any config.
+ * Monorepo/auth/tenant setups opt in via `manifest.config.yaml`.
  */
 import type { NextJsProjectionOptions } from '../interface';
 
@@ -28,16 +24,16 @@ import type { NextJsProjectionOptions } from '../interface';
  * without updating both is a documentation drift.
  */
 export const NEXTJS_DEFAULTS = {
-  authProvider: 'clerk',
-  authImportPath: '@repo/auth/server',
-  databaseImportPath: '@repo/database',
+  authProvider: 'none',
+  authImportPath: '@/lib/auth',
+  databaseImportPath: '@/lib/database',
   responseImportPath: '@/lib/manifest-response',
   runtimeImportPath: '@/lib/manifest-runtime',
-  includeTenantFilter: true,
-  includeSoftDeleteFilter: true,
+  includeTenantFilter: false,
+  includeSoftDeleteFilter: false,
   tenantIdProperty: 'tenantId',
   deletedAtProperty: 'deletedAt',
-  appDir: 'apps/api/app/api',
+  appDir: 'app/api',
   strictMode: true,
   includeComments: true,
   indentSize: 2,
@@ -50,7 +46,7 @@ export const NEXTJS_DEFAULTS = {
   unauthorizedStatus: 401,
 } as const satisfies Required<Omit<
   NextJsProjectionOptions,
-  'tenantProvider' | 'dispatcher' | 'concreteCommandRoutes' | 'readRoutes'
+  'tenantProvider' | 'dispatcher' | 'concreteCommandRoutes' | 'readRoutes' | 'generatedDir' | 'paths'
 >>;
 
 /**

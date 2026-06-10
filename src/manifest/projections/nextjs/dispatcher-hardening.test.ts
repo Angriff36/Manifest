@@ -156,7 +156,12 @@ describe('auth failures map to unauthorizedStatus, not 500 (goal step 4)', () =>
     const ir = await sample();
     const code = target.generate(ir, {
       surface: 'nextjs.dispatcher',
-      options: { unauthorizedStatus: 403 },
+      options: {
+        unauthorizedStatus: 403,
+        // Enable auth to test unauthorizedStatus
+        authProvider: 'clerk',
+        authImportPath: '@repo/auth/server'
+      },
     }).artifacts[0].code;
 
     // Both the inline auth check AND the catch-block classifier must use 403
@@ -207,15 +212,15 @@ describe('Prisma 7 detail route findFirst vs findUnique (goal step 5)', () => {
     return result.ir!;
   }
 
-  it('default detail (tenant + soft-delete on) uses findFirst, never findUnique', async () => {
+  it('default detail (tenant + soft-delete off) uses findUnique', async () => {
     const ir = await sample();
     const code = target.generate(ir, { surface: 'nextjs.detail', entity: 'Recipe' }).artifacts[0].code;
 
-    expect(code).toContain('database.recipe.findFirst');
-    expect(code).not.toContain('database.recipe.findUnique');
-    // Multi-field where shape must include id + tenantId + deletedAt
-    expect(code).toContain('tenantId');
-    expect(code).toContain('deletedAt: null');
+    expect(code).toContain('database.recipe.findUnique');
+    expect(code).not.toContain('database.recipe.findFirst');
+    // With defaults, no tenant or soft-delete filters
+    expect(code).not.toContain('tenantId');
+    expect(code).not.toContain('deletedAt');
   });
 
   it('id-only detail (filters off) uses findUnique (single unique-constraint shape)', async () => {

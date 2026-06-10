@@ -3531,34 +3531,23 @@ exports[`projection snapshots > nextjs > generated artifacts match snapshot 1`] 
 
 import type { NextRequest } from "next/server";
 import { getTenantIdForOrg } from "@/app/lib/tenant";
-import { database } from "@repo/database";
+import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
-import { auth } from "@repo/auth/server";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-  const { orgId, userId } = await auth();
-  if (!(userId && orgId)) {
-    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, 401);
-  }
+  // Auth disabled - all requests allowed
+  const userId = "anonymous";
 
-  const tenantId = await getTenantIdForOrg(orgId);
-
-  if (!tenantId) {
-    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
-  }
 
     const { id } = await params;
 
-    // Using findFirst — multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+.
-    const task = await database.task.findFirst({
-      where: {
-        id,
-        tenantId
-      },
+    // Using findUnique — single id is a unique constraint.
+    const task = await database.task.findUnique({
+      where: { id },
     });
 
     if (!task) {
@@ -3590,34 +3579,23 @@ export async function GET(
 
 import type { NextRequest } from "next/server";
 import { getTenantIdForOrg } from "@/app/lib/tenant";
-import { database } from "@repo/database";
+import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
-import { auth } from "@repo/auth/server";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-  const { orgId, userId } = await auth();
-  if (!(userId && orgId)) {
-    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, 401);
-  }
+  // Auth disabled - all requests allowed
+  const userId = "anonymous";
 
-  const tenantId = await getTenantIdForOrg(orgId);
-
-  if (!tenantId) {
-    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
-  }
 
     const { id } = await params;
 
-    // Using findFirst — multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+.
-    const user = await database.user.findFirst({
-      where: {
-        id,
-        tenantId
-      },
+    // Using findUnique — single id is a unique constraint.
+    const user = await database.user.findUnique({
+      where: { id },
     });
 
     if (!user) {
@@ -3653,8 +3631,6 @@ export async function GET(
 import type { NextRequest } from "next/server";
 import { manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult } from "@/lib/manifest-response";
 import { createManifestRuntime } from "@/lib/manifest-runtime";
-import { getTenantIdForOrg } from "@/app/lib/tenant";
-import { auth } from "@repo/auth/server";
 
 // Next.js 15 App Router: dynamic route params are async.
 // See https://nextjs.org/docs/app/api-reference/file-conventions/route
@@ -3664,16 +3640,8 @@ interface DispatcherContext {
 
 export async function POST(request: NextRequest, ctx: DispatcherContext) {
   try {
-  const { orgId, userId } = await auth();
-  if (!(userId && orgId)) {
-    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, 401);
-  }
-
-  const tenantId = await getTenantIdForOrg(orgId);
-
-  if (!tenantId) {
-    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
-  }
+  // Auth disabled - all requests allowed
+  const userId = "anonymous";
 
     const body = await request.json();
     const { entity, command } = await ctx.params;
@@ -3689,12 +3657,10 @@ export async function POST(request: NextRequest, ctx: DispatcherContext) {
         : undefined;
 
     const runtime = await createManifestRuntime({
-      tenantId: tenantId,
-      orgId: tenantId,
       actorId: userId,
       requestId: request.headers.get("x-request-id") ?? undefined,
       source: "route",
-      user: { id: userId, tenantId: tenantId },
+      user: { id: userId, tenantId: "__no_tenant__" },
     });
 
     const result = await runtime.runCommand(command, body, {
@@ -3738,27 +3704,17 @@ export async function POST(request: NextRequest, ctx: DispatcherContext) {
 
 import type { NextRequest } from "next/server";
 import { getTenantIdForOrg } from "@/app/lib/tenant";
-import { database } from "@repo/database";
+import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
-import { auth } from "@repo/auth/server";
 
 export async function GET(request: NextRequest) {
   try {
-  const { orgId, userId } = await auth();
-  if (!(userId && orgId)) {
-    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, 401);
-  }
+  // Auth disabled - all requests allowed
+  const userId = "anonymous";
 
-  const tenantId = await getTenantIdForOrg(orgId);
-
-  if (!tenantId) {
-    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
-  }
 
 const tasks = await database.task.findMany({
-    where: {
-        tenantId
-      },
+    
     orderBy: {
       createdAt: "desc",
     },
@@ -3789,27 +3745,17 @@ const tasks = await database.task.findMany({
 
 import type { NextRequest } from "next/server";
 import { getTenantIdForOrg } from "@/app/lib/tenant";
-import { database } from "@repo/database";
+import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
-import { auth } from "@repo/auth/server";
 
 export async function GET(request: NextRequest) {
   try {
-  const { orgId, userId } = await auth();
-  if (!(userId && orgId)) {
-    return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, 401);
-  }
+  // Auth disabled - all requests allowed
+  const userId = "anonymous";
 
-  const tenantId = await getTenantIdForOrg(orgId);
-
-  if (!tenantId) {
-    return manifestErrorResponse({ error: "Tenant not found", diagnostics: [] }, 400);
-  }
 
 const users = await database.user.findMany({
-    where: {
-        tenantId
-      },
+    
     orderBy: {
       id: "desc",
     },

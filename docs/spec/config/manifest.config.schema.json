@@ -176,17 +176,17 @@
           "type": "string",
           "enum": ["clerk", "nextauth", "custom", "none"],
           "description": "Auth provider that wraps generated route handlers.",
-          "default": "clerk"
+          "default": "none"
         },
         "authImportPath": {
           "type": "string",
           "description": "Module path for the auth helpers (auth(), getServerSession, etc.).",
-          "default": "@repo/auth/server"
+          "default": "@/lib/auth"
         },
         "databaseImportPath": {
           "type": "string",
           "description": "Module path for the database client used by direct-read routes.",
-          "default": "@repo/database"
+          "default": "@/lib/database"
         },
         "responseImportPath": {
           "type": "string",
@@ -201,12 +201,12 @@
         "includeTenantFilter": {
           "type": "boolean",
           "description": "When true, generated read routes filter by tenantIdProperty and POST handlers resolve a tenantId before executing.",
-          "default": true
+          "default": false
         },
         "includeSoftDeleteFilter": {
           "type": "boolean",
           "description": "When true, generated read routes filter by `${deletedAtProperty}: null`.",
-          "default": true
+          "default": false
         },
         "tenantIdProperty": {
           "type": "string",
@@ -221,7 +221,7 @@
         "appDir": {
           "type": "string",
           "description": "App Router base directory. Generated route pathHints are relative to this.",
-          "default": "apps/api/app/api"
+          "default": "app/api"
         },
         "strictMode": {
           "type": "boolean",
@@ -246,6 +246,22 @@
           "maximum": 499,
           "description": "HTTP status returned when the auth helper rejects the request OR when it throws (invalid/expired token). Auth failures MUST NEVER surface as 500.",
           "default": 401
+        },
+        "generatedDir": {
+          "type": "string",
+          "description": "Base directory for generated non-route artifacts (types, client, hooks, shared-runtime). Individual paths can be overridden via the 'paths' object.",
+          "default": "src"
+        },
+        "paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Fine-grained overrides for individual artifact pathHints. When set, takes precedence over generatedDir.",
+          "properties": {
+            "typesFile": { "type": "string", "description": "pathHint for ts.types artifact. Default: '${generatedDir}/types/manifest-generated.ts'" },
+            "clientFile": { "type": "string", "description": "pathHint for ts.client artifact. Default: '${generatedDir}/lib/manifest-client.ts'" },
+            "hooksDir": { "type": "string", "description": "Base directory for subscription hooks. Default: '${generatedDir}/hooks'" },
+            "sharedRuntimeFile": { "type": "string", "description": "pathHint for nextjs.sharedRuntime artifact. Default: '${generatedDir}/lib/manifest-shared-runtime.ts'" }
+          }
         },
         "tenantProvider": {
           "type": "object",

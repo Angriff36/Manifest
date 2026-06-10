@@ -243,6 +243,28 @@ export interface NextJsProjectionOptions {
     enabled?: boolean;
     directDbReads?: boolean;
   };
+
+  /**
+   * Base directory for generated non-route artifacts (types, client, hooks,
+   * shared-runtime). Default: `'src'`.
+   */
+  generatedDir?: string;
+
+  /**
+   * Fine-grained overrides for individual artifact paths. Each value is
+   * relative to project root. When set, it takes precedence over
+   * `generatedDir`.
+   */
+  paths?: {
+    /** pathHint for ts.types. Default: `${generatedDir}/types/manifest-generated.ts` */
+    typesFile?: string;
+    /** pathHint for ts.client. Default: `${generatedDir}/lib/manifest-client.ts` */
+    clientFile?: string;
+    /** Base dir for subscription hooks. Default: `${generatedDir}/hooks` */
+    hooksDir?: string;
+    /** pathHint for nextjs.sharedRuntime. Default: `${generatedDir}/lib/manifest-shared-runtime.ts` */
+    sharedRuntimeFile?: string;
+  };
 }
 
 /**
