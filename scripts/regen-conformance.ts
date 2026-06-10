@@ -98,6 +98,9 @@ async function regen() {
     if (irForOutput.provenance) {
       irForOutput.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
       irForOutput.provenance.contentHash = 'normalized-content-hash';
+      // compilerVersion tracks package.json (see scripts/sync-version.mjs);
+      // normalize it so release bumps never churn conformance fixtures.
+      irForOutput.provenance.compilerVersion = 'normalized-compiler-version';
     }
     writeJson(irPath, irForOutput);
   }

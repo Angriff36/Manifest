@@ -58,6 +58,10 @@ jobs:
         id: ver
         run: |
           NEW_VERSION=$(npm version "${{ inputs.version }}" --no-git-tag-version)
+          # Explicit re-sync (the `version` lifecycle script also runs this;
+          # belt-and-suspenders so COMPILER_VERSION can never desync — the
+          # test suite gate enforces it via version.test.ts).
+          node scripts/sync-version.mjs
           VER="${NEW_VERSION#v}"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$VER" >/dev/null; then
@@ -101,7 +105,7 @@ jobs:
           VER="${{ steps.ver.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json CHANGELOG.md
+          git add package.json CHANGELOG.md src/manifest/version.ts
           git commit -m "[release] v$VER"
           git tag -a "v$VER" -m "v$VER"
           git push origin main

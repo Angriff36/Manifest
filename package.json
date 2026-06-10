@@ -201,6 +201,7 @@
     "url": "https://github.com/Angriff36/Manifest.git"
   },
   "scripts": {
+    "version": "node scripts/sync-version.mjs && git add src/manifest/version.ts",
     "dev": "vite",
     "build": "pnpm run build:lib && vite build",
     "build:lib": "tsc -p tsconfig.lib.json",

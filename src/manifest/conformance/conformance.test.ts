@@ -180,6 +180,9 @@ function normalizeIR(ir: IR): IR {
     normalized.provenance.compiledAt = '2024-01-01T00:00:00.000Z';
     normalized.provenance.contentHash = 'normalized-content-hash';
     normalized.provenance.irHash = 'normalized-ir-hash';
+    // compilerVersion tracks package.json; normalized so release bumps
+    // never churn expected fixtures (mirrors regen-conformance.ts).
+    normalized.provenance.compilerVersion = 'normalized-compiler-version';
   }
   return normalized;
 }
