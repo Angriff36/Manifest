@@ -17,6 +17,10 @@
 import { describe, it, expect } from 'vitest';
 import { compileToIR } from '../../ir-compiler';
 import { OpenApiProjection } from './generator';
+// Static import: pulling the full registry graph through a dynamic import
+// inside a test body can exceed the 5s test timeout under full-suite load.
+// Registration stays lazy — it happens inside getProjection(), not at import.
+import { getProjection } from '../registry';
 
 describe('OpenApiProjection', () => {
   const projection = new OpenApiProjection();
@@ -63,8 +67,7 @@ describe('OpenApiProjection', () => {
       expect(projection.surfaces).toContain('openapi.spec');
     });
 
-    it('is registered as a built-in projection', async () => {
-      const { getProjection } = await import('../registry');
+    it('is registered as a built-in projection', () => {
       const p = getProjection('openapi');
       expect(p).toBeDefined();
       expect(p!.name).toBe('openapi');

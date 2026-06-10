@@ -18,6 +18,10 @@
 import { describe, it, expect } from 'vitest';
 import { compileToIR } from '../../ir-compiler';
 import { LlmContextProjection } from './generator';
+// Static import: pulling the full registry graph through a dynamic import
+// inside a test body can exceed the 5s test timeout under full-suite load.
+// Registration stays lazy — it happens inside getProjection(), not at import.
+import { getProjection } from '../registry';
 import type { ManifestContext } from './types';
 
 describe('LlmContextProjection', () => {
@@ -62,8 +66,7 @@ describe('LlmContextProjection', () => {
       expect(projection.surfaces).toContain('llm-context.ir');
     });
 
-    it('is registered as a built-in projection', async () => {
-      const { getProjection } = await import('../registry');
+    it('is registered as a built-in projection', () => {
       const p = getProjection('llm-context');
       expect(p).toBeDefined();
       expect(p!.name).toBe('llm-context');

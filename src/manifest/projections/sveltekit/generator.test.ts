@@ -17,6 +17,10 @@
 import { describe, it, expect } from 'vitest';
 import type { IR, IREntity, IRCommand, IRPolicy } from '../../ir';
 import { SvelteKitProjection } from './generator';
+// Static import: pulling the full registry graph through a dynamic import
+// inside a test body can exceed the 5s test timeout under full-suite load.
+// Registration stays lazy — it happens inside getProjection(), not at import.
+import { getProjection } from '../registry';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -181,8 +185,7 @@ describe('SvelteKitProjection', () => {
       expect(projection.surfaces).toContain('sveltekit.client');
     });
 
-    it('is registered as a built-in projection', async () => {
-      const { getProjection } = await import('../registry');
+    it('is registered as a built-in projection', () => {
       const p = getProjection('sveltekit');
       expect(p).toBeDefined();
       expect(p!.name).toBe('sveltekit');

@@ -16,6 +16,10 @@
 import { describe, it, expect } from 'vitest';
 import { compileToIR } from '../../ir-compiler';
 import { ReactQueryProjection } from './generator';
+// Static import: pulling the full registry graph through a dynamic import
+// inside a test body can exceed the 5s test timeout under full-suite load.
+// Registration stays lazy — it happens inside getProjection(), not at import.
+import { getProjection } from '../registry';
 import type { IR } from '../../ir';
 
 describe('ReactQueryProjection', () => {
@@ -59,8 +63,7 @@ describe('ReactQueryProjection', () => {
       expect(projection.surfaces).toContain('react-query.provider');
     });
 
-    it('is registered as a built-in projection', async () => {
-      const { getProjection } = await import('../registry');
+    it('is registered as a built-in projection', () => {
       const p = getProjection('react-query');
       expect(p).toBeDefined();
       expect(p!.name).toBe('react-query');
