@@ -258,6 +258,43 @@ describe('IRCompiler', () => {
     });
   });
 
+  describe('Realtime Entity Flag IR', () => {
+    it('should compile bare realtime flag into IREntity.realtime', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Order {
+          property id: string
+          realtime
+        }
+        entity Plain {
+          property id: string
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const [order, plain] = result.ir?.entities ?? [];
+      expect(order.realtime).toBe(true);
+      // Non-realtime entities omit the key entirely (deterministic IR shape).
+      expect(plain.realtime).toBeUndefined();
+      expect('realtime' in plain).toBe(false);
+    });
+
+    it('regression: property named realtime compiles as a plain property', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        entity Device {
+          property realtime: boolean
+        }
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      const entity = result.ir?.entities[0];
+      expect(entity?.realtime).toBeUndefined();
+      expect(entity?.properties[0].name).toBe('realtime');
+      expect(entity?.properties[0].type.name).toBe('boolean');
+    });
+  });
+
   describe('Property Masking IR', () => {
     it('should compile masked strategy into maskStrategy', async () => {
       const compiler = new IRCompiler();

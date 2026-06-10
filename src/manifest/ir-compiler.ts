@@ -596,6 +596,7 @@ export class IRCompiler {
       versionProperty: e.versionProperty,
       versionAtProperty: e.versionAtProperty,
       ...(e.timestamps ? { timestamps: true } : {}),
+      ...(e.realtime ? { realtime: true } : {}),
       ...(e.transitions.length > 0 ? { transitions: e.transitions.map(t => this.transformTransition(t)) } : {}),
       ...(e.approvals.length > 0 ? { approvals: e.approvals.map(a => this.transformApproval(a, e)) } : {}),
     };

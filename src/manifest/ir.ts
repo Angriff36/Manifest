@@ -141,6 +141,8 @@ export interface IREntity {
   versionAtProperty?: string;
   /** When true, createdAt/updatedAt are auto-injected and populated at runtime */
   timestamps?: boolean;
+  /** Projection hint: generate SSE subscription surfaces for this entity. No runtime execution semantics. */
+  realtime?: boolean;
   /** Optional allowed state transitions for validation */
   transitions?: IRTransition[];
   /** Approval workflow declarations gating command execution */

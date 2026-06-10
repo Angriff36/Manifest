@@ -377,6 +377,10 @@
           "type": "boolean",
           "description": "When true, createdAt/updatedAt are auto-injected and populated at runtime"
         },
+        "realtime": {
+          "type": "boolean",
+          "description": "Projection hint: generate SSE subscription surfaces for this entity. No runtime execution semantics."
+        },
         "transitions": {
           "type": "array",
           "items": {

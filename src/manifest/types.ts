@@ -100,6 +100,8 @@ export interface EntityNode extends ASTNode {
   versionAtProperty?: string;
   /** Auto-inject createdAt/updatedAt properties and runtime population */
   timestamps?: boolean;
+  /** Projection hint: generate SSE subscription surfaces for this entity (no runtime execution semantics) */
+  realtime?: boolean;
 }
 
 export interface PropertyNode extends ASTNode {

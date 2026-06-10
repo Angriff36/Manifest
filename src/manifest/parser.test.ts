@@ -329,6 +329,63 @@ entity User {
     });
   });
 
+  describe('Realtime Entity Flag Parsing', () => {
+    it('should parse bare realtime flag inside entity block', () => {
+      const source = `
+entity Order {
+  property id: string
+  realtime
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const entity = result.program.entities[0];
+      expect(entity.realtime).toBe(true);
+      expect(entity.properties).toHaveLength(1);
+      expect(entity.properties[0].name).toBe('id');
+    });
+
+    it('regression: property named realtime still parses as plain property', () => {
+      const source = `
+entity Device {
+  property realtime: boolean
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const entity = result.program.entities[0];
+      expect(entity.realtime).toBeUndefined();
+      expect(entity.properties).toHaveLength(1);
+      expect(entity.properties[0].name).toBe('realtime');
+      expect(entity.properties[0].dataType.name).toBe('boolean');
+    });
+
+    it('entity without the flag has realtime undefined', () => {
+      const source = `
+entity Plain {
+  property id: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[0].realtime).toBeUndefined();
+    });
+
+    it('flag and a property named realtime can coexist', () => {
+      const source = `
+entity Sensor {
+  property realtime: boolean
+  realtime
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      const entity = result.program.entities[0];
+      expect(entity.realtime).toBe(true);
+      expect(entity.properties[0].name).toBe('realtime');
+    });
+  });
+
   describe('Constraint Parsing', () => {
     it('should parse inline constraint', () => {
       const source = `

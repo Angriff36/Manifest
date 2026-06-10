@@ -158,6 +158,7 @@ export class Parser {
     let versionProperty: string | undefined;
     let versionAtProperty: string | undefined;
     let timestamps: boolean | undefined;
+    let realtime: boolean | undefined;
 
     while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
       this.skipNL();
@@ -248,6 +249,14 @@ export class Parser {
         this.advance();
         timestamps = true;
       }
+      // Contextual `realtime` flag (not a reserved word, same approach as the
+      // `masked` modifier): a bare `realtime` line inside an entity block marks
+      // the entity as realtime. `property realtime: boolean` is unaffected —
+      // property declarations are consumed by the `property` branch above.
+      else if (this.check('IDENTIFIER', 'realtime')) {
+        this.advance();
+        realtime = true;
+      }
       else if (this.check('KEYWORD', 'event')) {
         // Entity-scoped events are not supported - emit warning to prevent silent data loss
         const pos = this.current()?.position;
@@ -271,6 +280,7 @@ export class Parser {
       ...(alternateKeys.length > 0 ? { alternateKeys } : {}),
       versionProperty, versionAtProperty,
       ...(timestamps ? { timestamps } : {}),
+      ...(realtime ? { realtime } : {}),
     };
   }
 
