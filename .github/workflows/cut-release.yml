@@ -57,10 +57,9 @@ jobs:
       - name: Resolve and bump version
         id: ver
         run: |
-          NEW_VERSION=$(npm version "${{ inputs.version }}" --no-git-tag-version)
-          # Explicit re-sync (the `version` lifecycle script also runs this;
-          # belt-and-suspenders so COMPILER_VERSION can never desync — the
-          # test suite gate enforces it via version.test.ts).
+          # --ignore-scripts: the package.json `version` lifecycle echoes npm
+          # lifecycle banners into stdout, which breaks GITHUB_OUTPUT parsing.
+          NEW_VERSION=$(npm version "${{ inputs.version }}" --no-git-tag-version --ignore-scripts)
           node scripts/sync-version.mjs
           VER="${NEW_VERSION#v}"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
