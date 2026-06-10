@@ -30,6 +30,10 @@ import { ElasticsearchProjection } from './elasticsearch/generator.js';
 import { TerraformProjection } from './terraform/generator.js';
 import { AnalyticsProjection } from './analytics/generator.js';
 import { SvelteKitProjection } from './sveltekit/generator.js';
+import { KyselyProjection } from './kysely/generator.js';
+import { DynamoDBProjection } from './dynamodb/generator.js';
+import { PydanticProjection } from './pydantic/generator.js';
+import { DartProjection } from './dart/generator.js';
 
 /**
  * Register all built-in projections.
@@ -101,6 +105,18 @@ export function registerBuiltinProjections(): void {
   // SvelteKit projection (server routes, load functions, client utilities)
   registerProjection(new SvelteKitProjection());
 
+  // Kysely type-safe query builder projection (Database interface + row types)
+  registerProjection(new KyselyProjection());
+
+  // DynamoDB single-table projection (CloudFormation, CDK, Terraform)
+  registerProjection(new DynamoDBProjection());
+
+  // Pydantic v2 model projection (Python entities, commands, API client)
+  registerProjection(new PydanticProjection());
+
+  // Dart/Flutter model projection (classes, enums, API client)
+  registerProjection(new DartProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -135,5 +151,9 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new TerraformProjection(),
     new AnalyticsProjection(),
     new SvelteKitProjection(),
+    new KyselyProjection(),
+    new DynamoDBProjection(),
+    new PydanticProjection(),
+    new DartProjection(),
   ];
 }

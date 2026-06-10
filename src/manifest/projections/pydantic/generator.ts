@@ -310,7 +310,7 @@ function generateEntityModel(
   // Class declaration
   lines.push(`# Entity: ${entity.name}`);
   lines.push(`class ${name}(BaseModel):`);
-  lines.push(`    \"\"\"${name} model from Manifest IR entity '${entity.name}'.\"\"\"`);
+  lines.push(`    """${name} model from Manifest IR entity '${entity.name}'."""`);
   lines.push('');
 
   // Generate properties
@@ -361,7 +361,7 @@ function generateEntityModel(
   if (opts.emitJsonSchema) {
     lines.push('');
     lines.push('    class Config:');
-    lines.push('        json_schema_extra = {\"example\": {}}');
+    lines.push('        json_schema_extra = {"example": {}}');
   }
 
   // Computed properties
@@ -406,7 +406,7 @@ function generatePropertyLine(
 ): PropertyLineResult {
   const lines: string[] = [];
   const fieldName = snakeCase(prop.name);
-  let typeAnnotation = irTypeToPython(prop.type, diagnostics, imports);
+  const typeAnnotation = irTypeToPython(prop.type, diagnostics, imports);
 
   // Handle optional (properties without 'required' modifier)
   const isRequired = prop.modifiers.includes('required');
@@ -452,9 +452,9 @@ function generateComputedPropertyLine(
   lines.push(`@computed_field`);
   lines.push(`@property`);
   lines.push(`def ${fieldName}(self) -> ${typeAnnotation}:`);
-  lines.push(`    \"\"\"Computed property from IR.\"\"\"`);
+  lines.push(`    """Computed property from IR."""`);
   lines.push(`    # TODO: Implement computed property logic from expression`);
-  lines.push(`    raise NotImplementedError(\"Computed property '${cp.name}' not implemented\")`);
+  lines.push(`    raise NotImplementedError("Computed property '${cp.name}' not implemented")`);
 
   return lines;
 }
@@ -485,11 +485,11 @@ function generateCommandModel(
 
   if (command.parameters.length === 0) {
     lines.push(`class ${schemaName}(BaseModel):`);
-    lines.push(`    \"\"\"Parameter model for command '${command.name}'.\"\"\"`);
+    lines.push(`    """Parameter model for command '${command.name}'."""`);
     lines.push(`    pass`);
   } else {
     lines.push(`class ${schemaName}(BaseModel):`);
-    lines.push(`    \"\"\"Parameter model for command '${command.name}'.\"\"\"`);
+    lines.push(`    """Parameter model for command '${command.name}'."""`);
     lines.push('');
 
     for (const param of command.parameters) {
@@ -505,7 +505,7 @@ function generateCommandModel(
     const returnExpr = irTypeToPython(command.returns, diagnostics, imports);
     const returnName = `${name}Return`;
     lines.push(`class ${returnName}(BaseModel):`);
-    lines.push(`    \"\"\"Return type model for command '${command.name}'.\"\"\"`);
+    lines.push(`    """Return type model for command '${command.name}'."""`);
     lines.push(`    value: ${returnExpr}`);
   }
 
@@ -520,7 +520,7 @@ function generateParameterLine(
 ): PropertyLineResult {
   const lines: string[] = [];
   const fieldName = snakeCase(param.name);
-  let typeAnnotation = irTypeToPython(param.type, diagnostics, imports);
+  const typeAnnotation = irTypeToPython(param.type, diagnostics, imports);
 
   const hasDefault = param.defaultValue !== undefined;
   const isNullable = param.type.nullable;
