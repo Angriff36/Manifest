@@ -1,12 +1,12 @@
-import type { IRCommand, IRPolicy, IRRetry, IRRateLimit } from './ir';
-import type { CommandResult } from './runtime-engine';
-import { RateLimiter, type RateLimitConfig } from './runtime-rate-limit';
+import type { IRCommand, IRPolicy, IRRetry, IRRateLimit } from './ir.js';
+import type { CommandResult } from './runtime-engine.js';
+import { RateLimiter, type RateLimitConfig } from './runtime-rate-limit.js';
 import {
   computeRetryDelays,
   isRetryableError,
   applyJitter,
   type RetryConfig,
-} from './runtime-retry';
+} from './runtime-retry.js';
 
 export function toRateLimitConfig(rl: IRRateLimit): RateLimitConfig {
   return {

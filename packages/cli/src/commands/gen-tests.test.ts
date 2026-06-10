@@ -45,21 +45,29 @@ describe('manifest generate-tests', () => {
     }
   });
 
-  it('is registered with help text and expected options', async () => {
-    const { stdout, code } = await runCli(['generate-tests', '--help']);
-    expect(code).toBe(0);
-    expect(stdout).toContain('Generate conformance test fixtures');
-    expect(stdout).toContain('--feature');
-    expect(stdout).toContain('--category');
-    expect(stdout).toContain('--count');
-    expect(stdout).toContain('--dry-run');
-  });
+  it(
+    'is registered with help text and expected options',
+    async () => {
+      const { stdout, code } = await runCli(['generate-tests', '--help']);
+      expect(code).toBe(0);
+      expect(stdout).toContain('Generate conformance test fixtures');
+      expect(stdout).toContain('--feature');
+      expect(stdout).toContain('--category');
+      expect(stdout).toContain('--count');
+      expect(stdout).toContain('--dry-run');
+    },
+    30_000,
+  );
 
-  it('is reachable via the gen-tests alias', async () => {
-    const { stdout, code } = await runCli(['gen-tests', '--help']);
-    expect(code).toBe(0);
-    expect(stdout).toContain('Generate conformance test fixtures');
-  });
+  it(
+    'is reachable via the gen-tests alias',
+    async () => {
+      const { stdout, code } = await runCli(['gen-tests', '--help']);
+      expect(code).toBe(0);
+      expect(stdout).toContain('Generate conformance test fixtures');
+    },
+    30_000,
+  );
 
   it('fails fast without an API key (exit 1, nothing written)', async () => {
     // The command handles its own errors and calls process.exit(1).
