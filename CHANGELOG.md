@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.1] - 2026-06-10
+
+Republish of 2.3.0. The 2.3.0 version on GitHub Packages is broken — its
+metadata exists but the tarball returns 404, so installs fail with
+`ERR_PNPM_FETCH_404`. No code changes; see 2.3.0 below for what shipped.
+Consumers should skip 2.3.0 and install 2.3.1.
+
 ## [2.3.0] - 2026-06-09
 
 Date/time primitive types with write-time validation, read-time property
