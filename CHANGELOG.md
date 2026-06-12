@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.2] - 2026-06-12
+
+### Changed
+
+- [chore] sync packages/cli/dist with committed src
+- [fix] GenericPrismaStore: requiresTenantConnect connect-mode + snake_case tenant/deleted_at column resolution
+
 ## [2.4.1] - 2026-06-10
 
 Downstream integration wave: Prisma store projection, runtime profiling,
