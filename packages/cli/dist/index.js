@@ -135,7 +135,7 @@ program
     .command('generate')
     .description('Generate code from IR using a projection')
     .argument('<ir>', 'IR file or directory')
-    .option('-p, --projection <name>', 'Projection name (nextjs, ts.types, ts.client)', 'nextjs')
+    .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
     .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
     .option('-o, --output <path>', 'Output directory')
     .option('--auth <provider>', 'Auth provider or import path')
@@ -147,6 +147,12 @@ program
     // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
     // CLI flag overrides are layered on inside generateCommand.
     const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+    // Default to cwd — the projection's pathHint already contains the full
+    // relative path from project root (e.g. apps/api/app/api/…).  Omitting
+    // -o should write files relative to the project root, not crash.
+    if (!options.output) {
+        options.output = '.';
+    }
     await generateCommand(ir, {
         ...options,
         projectionOptionsFromConfig,
@@ -161,7 +167,7 @@ program
     .command('build')
     .description('Compile and generate in one step')
     .argument('[source]', 'Source .manifest file or glob pattern')
-    .option('-p, --projection <name>', 'Projection name (nextjs, ts.types, ts.client)', 'nextjs')
+    .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
     .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
     .option('--ir-output <path>', 'IR output directory')
     .option('--code-output <path>', 'Generated code output directory')
@@ -193,7 +199,7 @@ program
     .command('watch')
     .description('Watch .manifest files and rebuild on change')
     .argument('[source]', 'Source .manifest file, directory, or glob pattern')
-    .option('-p, --projection <name>', 'Projection name (nextjs, ts.types, ts.client)', 'nextjs')
+    .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
     .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
     .option('--ir-output <path>', 'IR output directory')
     .option('--code-output <path>', 'Generated code output directory')
@@ -286,6 +292,44 @@ program
         format: options.format,
         schema: options.schema,
         minScore: options.minScore,
+        verbose: options.verbose,
+    });
+});
+/**
+ * manifest generate-tests [source]
+ *
+ * LLM-driven conformance fixture generation: analyzes existing fixtures
+ * and emits new .manifest sources + expected IR covering edge cases,
+ * boundary conditions, and adversarial inputs. Generated fixtures are
+ * compiled and validated before being written.
+ */
+program
+    .command('generate-tests')
+    .alias('gen-tests')
+    .description('Generate conformance test fixtures via LLM analysis of existing fixtures')
+    .argument('[source]', 'Source .manifest file, directory, or glob to analyze')
+    .option('--feature <description>', 'Feature description to focus generation on')
+    .option('--category <type>', 'Test category: edge-cases, boundary, adversarial, coverage', 'edge-cases')
+    .option('--count <n>', 'Number of fixtures to generate', (v) => parseInt(v, 10), 3)
+    .option('--output <path>', 'Output directory for fixtures (default: conformance fixtures dir)')
+    .option('--api-key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY env var)')
+    .option('--model <model>', 'Claude model to use')
+    .option('--temperature <n>', 'Generation temperature (0-1)', (v) => parseFloat(v))
+    .option('--max-retries <n>', 'Max retry attempts for validation failures', (v) => parseInt(v, 10))
+    .option('--dry-run', 'Preview generated fixtures without writing files', false)
+    .option('--verbose', 'Show detailed iteration logs', false)
+    .action(async (source, options = {}) => {
+    const { genTestsCommand } = await import('./commands/gen-tests.js');
+    await genTestsCommand(source, {
+        feature: options.feature,
+        category: options.category,
+        count: options.count,
+        output: options.output,
+        apiKey: options.apiKey,
+        model: options.model,
+        temperature: options.temperature,
+        maxRetries: options.maxRetries,
+        dryRun: options.dryRun,
         verbose: options.verbose,
     });
 });
@@ -818,6 +862,28 @@ program
 /**
  * manifest doctor
  */
+/**
+ * manifest repl [source]
+ *
+ * Interactive REPL for inspecting IR and running commands against the runtime.
+ */
+program
+    .command('repl')
+    .description('Interactive Manifest runtime REPL for debugging guards, policies, and entity state')
+    .argument('[source]', 'Source .manifest file or directory')
+    .option('--json', 'JSON output mode for machine-readable responses', false)
+    .option('--user <id>', 'User id for runtime context')
+    .option('--tenant <id>', 'Tenant id for runtime context')
+    .option('--context <json>', 'Additional runtime context JSON')
+    .action(async (source, options = {}) => {
+    const { replCommand } = await import('./commands/repl.js');
+    await replCommand(source, {
+        json: options.json,
+        user: options.user,
+        tenant: options.tenant,
+        context: options.context,
+    });
+});
 program
     .command('doctor')
     .description('Run ranked offline diagnostics for source/IR/route drift and duplicate merges')

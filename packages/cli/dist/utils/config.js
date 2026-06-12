@@ -255,16 +255,16 @@ export async function getNextJsOptions(cwd = process.cwd()) {
     const { build } = await loadAllConfigs(cwd);
     const options = build.projections?.nextjs?.options || build.projections?.['nextjs']?.options || {};
     return {
-        authProvider: options.authProvider || 'clerk',
+        authProvider: options.authProvider || 'none',
         authImportPath: options.authImportPath || '@/lib/auth',
         databaseImportPath: options.databaseImportPath || '@/lib/database',
         runtimeImportPath: options.runtimeImportPath || '@/lib/manifest-runtime',
         responseImportPath: options.responseImportPath || '@/lib/manifest-response',
-        includeTenantFilter: options.includeTenantFilter ?? true,
-        includeSoftDeleteFilter: options.includeSoftDeleteFilter ?? true,
+        includeTenantFilter: options.includeTenantFilter ?? false,
+        includeSoftDeleteFilter: options.includeSoftDeleteFilter ?? false,
         tenantIdProperty: options.tenantIdProperty || 'tenantId',
         deletedAtProperty: options.deletedAtProperty || 'deletedAt',
-        appDir: options.appDir || 'app',
+        appDir: options.appDir || 'app/api',
     };
 }
 /**

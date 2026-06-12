@@ -96,9 +96,60 @@ async function generateFromIR(irFile, options, spinner) {
         }
     }
     else {
-        throw new Error(`Unknown projection: ${options.projection} (supported: nextjs)`);
+        // All other projections resolve through the registry. They expose
+        // surface-driven generation only, so the CLI walks each surface
+        // (globally and per-entity) and writes whatever artifacts come back.
+        await generateWithRegistryProjection(ir, options, outputDir, spinner);
     }
     spinner.succeed(`Generated ${options.projection} code from ${path.basename(irFile)}`);
+}
+/**
+ * Generate using any registry-registered projection (prisma, zod, kysely,
+ * dynamodb, pydantic, dart, ...). Mirrors the surface-walking strategy of
+ * the projection snapshot suite: call each surface once globally, then once
+ * per entity, deduplicating artifacts by id and diagnostics by message.
+ */
+async function generateWithRegistryProjection(ir, options, outputDir, spinner) {
+    const registry = await import('@angriff36/manifest/projections');
+    const projection = registry.getProjection(options.projection);
+    if (!projection) {
+        const available = registry.getProjectionNames().sort().join(', ');
+        throw new Error(`Unknown projection: ${options.projection} (available: ${available})`);
+    }
+    const projectionOptions = {
+        ...(options.projectionOptionsFromConfig ?? {}),
+    };
+    // `--surface all` walks every surface; otherwise accept either the full
+    // surface id ("kysely.types") or its short suffix ("types").
+    const surfaces = options.surface === 'all'
+        ? [...projection.surfaces]
+        : projection.surfaces.filter((s) => s === options.surface || s.endsWith(`.${options.surface}`));
+    if (surfaces.length === 0) {
+        throw new Error(`Unknown surface: ${options.surface} (projection '${projection.name}' supports: ${projection.surfaces.join(', ')})`);
+    }
+    const seenArtifactIds = new Set();
+    for (const surface of surfaces) {
+        spinner.text = `Generating ${surface}...`;
+        const merged = { artifacts: [], diagnostics: [] };
+        const collect = (result) => {
+            for (const artifact of result.artifacts) {
+                if (!seenArtifactIds.has(artifact.id)) {
+                    seenArtifactIds.add(artifact.id);
+                    merged.artifacts.push(artifact);
+                }
+            }
+            for (const diag of result.diagnostics) {
+                if (!merged.diagnostics.some((d) => d.message === diag.message && d.entity === diag.entity)) {
+                    merged.diagnostics.push(diag);
+                }
+            }
+        };
+        collect(projection.generate(ir, { surface, options: projectionOptions }));
+        for (const entity of ir.entities ?? []) {
+            collect(projection.generate(ir, { surface, entity: entity.name, options: projectionOptions }));
+        }
+        await writeProjectionResult(merged, outputDir);
+    }
 }
 /**
  * Generate all projection surfaces.
