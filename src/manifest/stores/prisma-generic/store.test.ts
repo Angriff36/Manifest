@@ -78,3 +78,67 @@ describe('GenericPrismaStore', () => {
     expect(() => new GenericPrismaStore({ widget: {} }, 'Widget', 't1', metadata)).toThrow(/no delegate/);
   });
 });
+
+describe('GenericPrismaStore tenant column resolution', () => {
+  // Models where tenant is the SOLE FK-bearing relation expose `tenant` as a
+  // relation in Prisma's checked create input and REJECT scalar tenantId
+  // ("Unknown argument tenantId"). requiresTenantConnect flips create() to
+  // relation-connect form; everything else keeps flat scalar writes.
+  it('uses tenant connect (not scalar tenantId) when requiresTenantConnect is set', async () => {
+    const meta: PrismaModelMetadata = {
+      Widget: {
+        ...metadata.Widget,
+        requiresTenantConnect: true,
+      },
+    };
+    const delegate = mockDelegate();
+    const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', meta);
+
+    await store.create({ name: 'Alpha' });
+
+    const createArgs = delegate.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(createArgs.data.tenant).toEqual({ connect: { id: 'tenant-1' } });
+    expect(createArgs.data.tenantId).toBeUndefined();
+  });
+
+  // Physical snake_case columns (tenant_id / deleted_at) previously got a
+  // phantom camelCase `tenantId`/`deletedAt` key in writes and filters, which
+  // Prisma rejects ("Unknown argument"). The store must resolve the actual
+  // column name from field metadata instead of assuming camelCase.
+  it('resolves snake_case tenant_id and deleted_at columns from field metadata', async () => {
+    const meta: PrismaModelMetadata = {
+      Widget: {
+        accessor: 'widget',
+        dbName: null,
+        pgSchema: null,
+        pkFields: ['id'],
+        whereAccessor: 'id',
+        hasDeletedAt: true,
+        fields: [
+          { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
+          { name: 'name', irName: 'name', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
+          { name: 'tenant_id', irName: 'tenantId', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
+          { name: 'deleted_at', irName: 'deletedAt', type: 'DateTime', isEnum: false, isList: false, optional: true, hasDefault: false, isUpdatedAt: false, isId: false },
+        ],
+      },
+    };
+    const delegate = mockDelegate();
+    const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', meta);
+
+    await store.create({ name: 'Alpha' });
+    const createArgs = delegate.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(createArgs.data.tenant_id).toBe('tenant-1');
+    expect(createArgs.data.tenantId).toBeUndefined();
+
+    await store.getAll();
+    const findArgs = delegate.findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(findArgs.where.tenant_id).toBe('tenant-1');
+    expect(findArgs.where.deleted_at).toBeNull();
+    expect(findArgs.where.tenantId).toBeUndefined();
+    expect(findArgs.where.deletedAt).toBeUndefined();
+
+    await store.clear();
+    const delArgs = delegate.deleteMany.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(delArgs.where.tenant_id).toBe('tenant-1');
+  });
+});

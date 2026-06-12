@@ -53,6 +53,15 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     this.delegate = delegate;
   }
 
+  private tenantField(): PrismaFieldMeta | undefined {
+    return this.meta.fields.find(
+      f =>
+        f.irName === 'tenantId' ||
+        f.name === 'tenantId' ||
+        f.name === 'tenant_id',
+    );
+  }
+
   private coerce(field: PrismaFieldMeta, value: unknown): unknown {
     if (field.isList) return asStringArray(value);
     switch (field.type) {
@@ -78,8 +87,16 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     const now = new Date();
     for (const field of this.meta.fields) {
       if (field.isUpdatedAt) continue;
-      if (field.name === 'tenantId') {
-        out.tenantId = this.tenantId;
+      if (
+        field.irName === 'tenantId' ||
+        field.name === 'tenantId' ||
+        field.name === 'tenant_id'
+      ) {
+        if (this.meta.requiresTenantConnect) {
+          out.tenant = { connect: { id: this.tenantId } };
+        } else {
+          out[field.name] = this.tenantId;
+        }
         continue;
       }
       if (field.name === 'id') {
@@ -102,7 +119,14 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     const patch: Record<string, unknown> = {};
     for (const field of this.meta.fields) {
       if (field.isUpdatedAt) continue;
-      if (field.name === 'tenantId' || field.name === 'id') continue;
+      if (
+        field.irName === 'tenantId' ||
+        field.name === 'tenantId' ||
+        field.name === 'tenant_id' ||
+        field.name === 'id'
+      ) {
+        continue;
+      }
       const hasIr = data[field.irName] !== undefined;
       const hasRaw = data[field.name] !== undefined;
       if (!hasIr && !hasRaw) continue;
@@ -115,7 +139,8 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     if (this.meta.pkFields.length > 1) {
       const key: Record<string, unknown> = {};
       for (const pf of this.meta.pkFields) {
-        key[pf] = pf === 'tenantId' ? this.tenantId : id;
+        key[pf] =
+          pf === 'tenantId' || pf === 'tenant_id' ? this.tenantId : id;
       }
       return { [this.meta.whereAccessor]: key };
     }
@@ -123,8 +148,17 @@ export class GenericPrismaStore implements Store<EntityInstance> {
   }
 
   private tenantFilter(extra?: Record<string, unknown>): Record<string, unknown> {
-    const where: Record<string, unknown> = { tenantId: this.tenantId, ...extra };
-    if (this.meta.hasDeletedAt) where.deletedAt = null;
+    const tenantCol = this.tenantField()?.name ?? 'tenantId';
+    const where: Record<string, unknown> = { [tenantCol]: this.tenantId, ...extra };
+    if (this.meta.hasDeletedAt) {
+      const deletedField = this.meta.fields.find(
+        f =>
+          f.irName === 'deletedAt' ||
+          f.name === 'deletedAt' ||
+          f.name === 'deleted_at',
+      );
+      where[deletedField?.name ?? 'deletedAt'] = null;
+    }
     return where;
   }
 
@@ -199,6 +233,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
   }
 
   async clear(): Promise<void> {
-    await this.delegate.deleteMany({ where: { tenantId: this.tenantId } });
+    const tenantCol = this.tenantField()?.name ?? 'tenantId';
+    await this.delegate.deleteMany({ where: { [tenantCol]: this.tenantId } });
   }
 }

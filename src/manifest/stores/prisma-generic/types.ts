@@ -29,6 +29,8 @@ export interface PrismaModelMeta {
   /** Prisma compound-unique accessor for composite PKs (e.g. `tenantId_id`). */
   whereAccessor: string;
   hasDeletedAt: boolean;
+  /** When true, create() uses `tenant: { connect: { id } }` instead of scalar tenantId. */
+  requiresTenantConnect?: boolean;
   versionProperty?: string;
   fields: PrismaFieldMeta[];
 }
