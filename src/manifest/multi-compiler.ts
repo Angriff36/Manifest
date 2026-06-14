@@ -17,6 +17,9 @@ import {
   IRTenant,
   IRReactionRule,
   IRRole,
+  IRSaga,
+  IRWebhook,
+  IRSchedule,
 } from './ir';
 import { COMPILER_VERSION, SCHEMA_VERSION } from './version.js';
 
@@ -224,6 +227,9 @@ function mergeIRs(
   const values: IRValueObject[] = [];
   const reactions: IRReactionRule[] = [];
   const roles: IRRole[] = [];
+  const sagas: IRSaga[] = [];
+  const webhooks: IRWebhook[] = [];
+  const schedules: IRSchedule[] = [];
   const moduleMap = new Map<string, IRModule>();
   let tenant: IRTenant | undefined;
 
@@ -237,6 +243,9 @@ function mergeIRs(
     values.push(...ir.values);
     if (ir.reactions) reactions.push(...ir.reactions);
     if (ir.roles) roles.push(...ir.roles);
+    if (ir.sagas) sagas.push(...ir.sagas);
+    if (ir.webhooks) webhooks.push(...ir.webhooks);
+    if (ir.schedules) schedules.push(...ir.schedules);
 
     if (ir.tenant && !tenant) {
       tenant = ir.tenant;
@@ -258,6 +267,15 @@ function mergeIRs(
         if (mod.roles) {
           existing.roles = [...new Set([...(existing.roles ?? []), ...mod.roles])].sort();
         }
+        if (mod.sagas) {
+          existing.sagas = [...new Set([...(existing.sagas ?? []), ...mod.sagas])].sort();
+        }
+        if (mod.schedules) {
+          existing.schedules = [...new Set([...(existing.schedules ?? []), ...mod.schedules])].sort();
+        }
+        if (mod.webhooks) {
+          existing.webhooks = [...new Set([...(existing.webhooks ?? []), ...mod.webhooks])].sort();
+        }
       } else {
         moduleMap.set(mod.name, { ...mod });
       }
@@ -278,6 +296,9 @@ function mergeIRs(
   values.sort((a, b) => a.name.localeCompare(b.name));
   reactions.sort((a, b) => `${a.event}.${a.targetEntity}`.localeCompare(`${b.event}.${b.targetEntity}`));
   roles.sort((a, b) => a.name.localeCompare(b.name));
+  sagas.sort((a, b) => a.name.localeCompare(b.name));
+  webhooks.sort((a, b) => a.name.localeCompare(b.name));
+  schedules.sort((a, b) => a.name.localeCompare(b.name));
 
   const modules = [...moduleMap.values()].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -316,6 +337,9 @@ function mergeIRs(
   if (tenant) ir.tenant = tenant;
   if (reactions.length > 0) ir.reactions = reactions;
   if (roles.length > 0) ir.roles = roles;
+  if (sagas.length > 0) ir.sagas = sagas;
+  if (webhooks.length > 0) ir.webhooks = webhooks;
+  if (schedules.length > 0) ir.schedules = schedules;
 
   return ir;
 }

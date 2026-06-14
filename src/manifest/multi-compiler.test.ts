@@ -383,4 +383,50 @@ describe('Multi-Compiler', () => {
     expect(result.ir).not.toBeNull();
     expect(result.ir!.policies).toHaveLength(2);
   });
+
+  // mergeIRs previously concatenated entities/enums/stores/events/commands/
+  // policies/values/reactions/roles/modules/tenant but silently DROPPED sagas,
+  // webhooks, and schedules — so any multi-file (or even single-entry) project
+  // lost saga orchestration, webhook triggers, and scheduled commands during
+  // the merge step, even though single-file compilation emits them. (D9/D11.)
+  it('merges sagas, webhooks, and schedules (not just entities/commands)', async () => {
+    const host = createMemoryHost({
+      '/project/main.manifest': `
+        entity Job {
+          property required id: string
+          property status: string = "new"
+          command perform() {
+            mutate status = "done"
+            emit JobDone
+          }
+          store in memory
+        }
+
+        event JobDone: "job.done" { id: string }
+
+        saga RunJob {
+          step doIt {
+            command: Job.perform
+          }
+          on_failure: "abort"
+        }
+
+        webhook JobInbound "/webhooks/job" run Job.perform
+
+        schedule nightlyJob cron "0 0 * * *" run Job.perform
+      `,
+    });
+
+    const result = await compileProjectToIR({
+      entries: ['/project/main.manifest'],
+      host,
+      basePath: '/project',
+    });
+
+    expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+    expect(result.ir).not.toBeNull();
+    expect(result.ir!.sagas?.map(s => s.name)).toEqual(['RunJob']);
+    expect(result.ir!.webhooks?.map(w => w.name)).toEqual(['JobInbound']);
+    expect(result.ir!.schedules?.map(s => s.name)).toEqual(['nightlyJob']);
+  });
 });
