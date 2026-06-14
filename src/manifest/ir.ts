@@ -398,6 +398,8 @@ export interface IRCommand {
   rateLimit?: IRRateLimit;
   actions: IRAction[];
   emits: string[];
+  /** Explicit event payload field expressions (from `emit Event { field: expr }`). */
+  emitPayloads?: IREmitPayload[];
   returns?: IRType;
   /** When true, defers action execution to a background worker queue */
   async?: boolean;
@@ -412,6 +414,17 @@ export interface IRParameter {
   type: IRType;
   required: boolean;
   defaultValue?: IRValue;
+}
+
+export interface IREmitPayload {
+  /** Target event name (matches an entry in the command's `emits`). */
+  eventName: string;
+  fields: IREmitPayloadField[];
+}
+
+export interface IREmitPayloadField {
+  name: string;
+  expression: IRExpression;
 }
 
 export interface IRAction {

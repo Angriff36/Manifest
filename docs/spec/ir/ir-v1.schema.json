@@ -896,6 +896,13 @@
             "type": "string"
           }
         },
+        "emitPayloads": {
+          "type": "array",
+          "description": "Explicit event payload field expressions from `emit Event { field: expr }`.",
+          "items": {
+            "$ref": "#/definitions/IREmitPayload"
+          }
+        },
         "returns": {
           "$ref": "#/definitions/IRType"
         },
@@ -910,6 +917,41 @@
         "failureEvent": {
           "type": "string",
           "description": "Auto-derived failure event name, synthesized when async is true. Format: {commandName}Failed."
+        }
+      }
+    },
+    "IREmitPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventName",
+        "fields"
+      ],
+      "properties": {
+        "eventName": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/IREmitPayloadField"
+          }
+        }
+      }
+    },
+    "IREmitPayloadField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "expression"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "expression": {
+          "$ref": "#/definitions/IRExpression"
         }
       }
     },

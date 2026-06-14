@@ -816,6 +816,7 @@ export class Parser {
     let retry: RetryPolicyNode | undefined;
     let rateLimit: RateLimitNode | undefined;
     const guards: ExpressionNode[] = [], constraints: ConstraintNode[] = [], actions: ActionNode[] = [], emits: string[] = [];
+    const emitPayloads: NonNullable<CommandNode['emitPayloads']> = [];
 
     if (this.check('PUNCTUATION', '{')) {
       this.advance(); this.skipNL();
@@ -832,7 +833,16 @@ export class Parser {
         }
         else if (this.check('KEYWORD', 'guard') || this.check('KEYWORD', 'when')) { this.advance(); guards.push(this.parseExpr()); }
         else if (this.check('KEYWORD', 'constraint')) { constraints.push(this.parseConstraint()); }
-        else if (this.check('KEYWORD', 'emit')) { this.advance(); emits.push(this.consumeIdentifier().value); }
+        else if (this.check('KEYWORD', 'emit')) {
+          this.advance();
+          const eventName = this.consumeIdentifier().value;
+          emits.push(eventName);
+          // Optional explicit payload: emit EventName { field: expr, ... }
+          if (this.check('PUNCTUATION', '{')) {
+            const payload = this.parsePrimary();
+            if (payload.type === 'Object') emitPayloads.push({ eventName, payload });
+          }
+        }
         else actions.push(this.parseAction());
         this.skipNL();
       }
@@ -852,6 +862,7 @@ export class Parser {
       constraints: constraints.length ? constraints : undefined,
       actions,
       emits: emits.length ? emits : undefined,
+      emitPayloads: emitPayloads.length ? emitPayloads : undefined,
       returns
     };
   }

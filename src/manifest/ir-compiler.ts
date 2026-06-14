@@ -1003,6 +1003,17 @@ export class IRCompiler {
       ...(c.rateLimit ? { rateLimit: this.transformRateLimit(c.rateLimit) } : {}),
       actions: c.actions.map(a => this.transformAction(a)),
       emits: c.emits || [],
+      ...(c.emitPayloads && c.emitPayloads.length > 0
+        ? {
+            emitPayloads: c.emitPayloads.map(ep => ({
+              eventName: ep.eventName,
+              fields: ep.payload.properties.map(p => ({
+                name: p.key,
+                expression: this.transformExpression(p.value),
+              })),
+            })),
+          }
+        : {}),
       returns: c.returns ? this.transformType(c.returns) : undefined,
     };
 

@@ -3138,7 +3138,18 @@ export class RuntimeEngine {
     for (const eventName of command.emits) {
       const event = this.ir.events.find(e => e.name === eventName);
       const prov = this.ir.provenance;
-      const eventPayload = { ...input, result };
+      const eventPayload: Record<string, unknown> = { ...input, result };
+
+      // G7: populate explicitly-declared payload fields (`emit Event { field: expr }`).
+      // Evaluated against the post-action evalContext (self = current instance,
+      // command input, user, context) so reactions can read declared event fields
+      // instead of finding them undefined.
+      const payloadSpec = command.emitPayloads?.find(ep => ep.eventName === eventName);
+      if (payloadSpec) {
+        for (const field of payloadSpec.fields) {
+          eventPayload[field.name] = await this.evaluateExpression(field.expression, evalContext);
+        }
+      }
 
       // Fallback: resolve subject.id from payload.id if not yet set
       const eventSubject: EventSubject = subject.id

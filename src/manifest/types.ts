@@ -174,6 +174,8 @@ export interface CommandNode extends ASTNode {
   rateLimit?: RateLimitNode;
   actions: ActionNode[];
   emits?: string[];
+  /** Explicit event payload field expressions: `emit Event { field: expr }`. */
+  emitPayloads?: { eventName: string; payload: ObjectNode }[];
   returns?: TypeNode;
   /** When true, defers action execution to a background worker queue */
   async?: boolean;
