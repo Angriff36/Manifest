@@ -141,4 +141,35 @@ describe('GenericPrismaStore tenant column resolution', () => {
     const delArgs = delegate.deleteMany.mock.calls[0][0] as { where: Record<string, unknown> };
     expect(delArgs.where.tenant_id).toBe('tenant-1');
   });
+
+  // Soft-delete previously hardcoded `data: { deletedAt: new Date() }`, ignoring
+  // the resolved physical column. With a remapped deleted_at column that wrote to
+  // the wrong (nonexistent) field — a silent soft-delete failure. delete() must
+  // resolve the column from field metadata, exactly like tenantFilter() does.
+  it('soft-deletes using the resolved deleted_at column, not a hardcoded deletedAt', async () => {
+    const meta: PrismaModelMetadata = {
+      Widget: {
+        accessor: 'widget',
+        dbName: null,
+        pgSchema: null,
+        pkFields: ['id'],
+        whereAccessor: 'id',
+        hasDeletedAt: true,
+        fields: [
+          { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
+          { name: 'name', irName: 'name', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
+          { name: 'deleted_at', irName: 'deletedAt', type: 'DateTime', isEnum: false, isList: false, optional: true, hasDefault: false, isUpdatedAt: false, isId: false },
+        ],
+      },
+    };
+    const delegate = mockDelegate();
+    const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', meta);
+
+    const ok = await store.delete('w1');
+    expect(ok).toBe(true);
+
+    const updateArgs = delegate.update.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(updateArgs.data.deleted_at).toBeInstanceOf(Date);
+    expect(updateArgs.data.deletedAt).toBeUndefined();
+  });
 });

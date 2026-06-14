@@ -62,6 +62,21 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     );
   }
 
+  /**
+   * The soft-delete field, resolved by IR name (`deletedAt` is a stable
+   * framework convention) so the physical column can be remapped freely.
+   * Used by both tenantFilter() and delete() so the resolved column name is
+   * applied consistently — never hardcoded.
+   */
+  private deletedAtField(): PrismaFieldMeta | undefined {
+    return this.meta.fields.find(
+      f =>
+        f.irName === 'deletedAt' ||
+        f.name === 'deletedAt' ||
+        f.name === 'deleted_at',
+    );
+  }
+
   private coerce(field: PrismaFieldMeta, value: unknown): unknown {
     if (field.isList) return asStringArray(value);
     switch (field.type) {
@@ -151,13 +166,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     const tenantCol = this.tenantField()?.name ?? 'tenantId';
     const where: Record<string, unknown> = { [tenantCol]: this.tenantId, ...extra };
     if (this.meta.hasDeletedAt) {
-      const deletedField = this.meta.fields.find(
-        f =>
-          f.irName === 'deletedAt' ||
-          f.name === 'deletedAt' ||
-          f.name === 'deleted_at',
-      );
-      where[deletedField?.name ?? 'deletedAt'] = null;
+      where[this.deletedAtField()?.name ?? 'deletedAt'] = null;
     }
     return where;
   }
@@ -221,7 +230,7 @@ export class GenericPrismaStore implements Store<EntityInstance> {
       if (this.meta.hasDeletedAt) {
         await this.delegate.update({
           where: this.whereUnique(id),
-          data: { deletedAt: new Date() },
+          data: { [this.deletedAtField()?.name ?? 'deletedAt']: new Date() },
         });
       } else {
         await this.delegate.deleteMany({ where: this.tenantFilter({ id }) });
