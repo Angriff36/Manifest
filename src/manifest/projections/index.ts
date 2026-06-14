@@ -33,6 +33,12 @@ export { HealthCheckProjection } from './health/generator.js';
 export { MaterializedViewsProjection } from './materialized-views/generator.js';
 export { ElasticsearchProjection } from './elasticsearch/generator.js';
 export { TerraformProjection } from './terraform/generator.js';
+export { AnalyticsProjection } from './analytics/generator.js';
+export { SvelteKitProjection } from './sveltekit/generator.js';
+export { KyselyProjection } from './kysely/generator.js';
+export { DynamoDBProjection } from './dynamodb/generator.js';
+export { PydanticProjection } from './pydantic/generator.js';
+export { DartProjection } from './dart/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';

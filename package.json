@@ -26,6 +26,10 @@
       "types": "./dist/manifest/ir-compiler.d.ts",
       "import": "./dist/manifest/ir-compiler.js"
     },
+    "./multi-compiler": {
+      "types": "./dist/manifest/multi-compiler.d.ts",
+      "import": "./dist/manifest/multi-compiler.js"
+    },
     "./projections/nextjs": {
       "types": "./dist/manifest/projections/nextjs/generator.d.ts",
       "import": "./dist/manifest/projections/nextjs/generator.js"
@@ -69,6 +73,22 @@
     "./projections/mermaid": {
       "types": "./dist/manifest/projections/mermaid/generator.d.ts",
       "import": "./dist/manifest/projections/mermaid/generator.js"
+    },
+    "./projections/kysely": {
+      "types": "./dist/manifest/projections/kysely/generator.d.ts",
+      "import": "./dist/manifest/projections/kysely/generator.js"
+    },
+    "./projections/analytics": {
+      "types": "./dist/manifest/projections/analytics/generator.d.ts",
+      "import": "./dist/manifest/projections/analytics/generator.js"
+    },
+    "./projections/llm-context": {
+      "types": "./dist/manifest/projections/llm-context/generator.d.ts",
+      "import": "./dist/manifest/projections/llm-context/generator.js"
+    },
+    "./projections/materialized-views": {
+      "types": "./dist/manifest/projections/materialized-views/generator.d.ts",
+      "import": "./dist/manifest/projections/materialized-views/generator.js"
     },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",

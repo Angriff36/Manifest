@@ -209,6 +209,23 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
 }
 
 /**
+ * Merge multiple already-compiled IRs into a single deterministic IR (public API).
+ *
+ * Thin wrapper over the internal multi-file merge for callers that already hold
+ * compiled IRs (e.g. composing IRs from separately-compiled sources). Provenance
+ * sources are derived from each input IR's provenance. The result's irHash is NOT
+ * recomputed — call computeIRHash(result) if a content hash is required.
+ */
+export function mergeIR(irs: IR[]): IR {
+  const sources = irs.flatMap(ir =>
+    ir.provenance.sources && ir.provenance.sources.length > 0
+      ? ir.provenance.sources.map(s => ({ absPath: s.path, contentHash: s.contentHash }))
+      : [{ absPath: ir.provenance.contentHash, contentHash: ir.provenance.contentHash }],
+  );
+  return mergeIRs(irs, sources, '');
+}
+
+/**
  * Merge multiple IR outputs into a single deterministic IR.
  * Arrays are concatenated and sorted by name for determinism.
  * Modules with the same name are merged (union of members).
