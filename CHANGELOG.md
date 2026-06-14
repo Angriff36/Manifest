@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.5.0] - 2026-06-14
+
+### Changed
+
+- [feat] explicit event payloads: emit Event { field: expr } (G7)
+- [fix] reject computed-property references in guards/constraints (G8)
+- [feat] complete public projection export surface + add public mergeIR (D25, D12)
+- [fix] multi-compiler: mergeIRs preserves sagas, webhooks, and schedules
+- [fix] expose PrismaStoreProjection via listBuiltinProjections + index re-export
+- [fix] GenericPrismaStore: soft-delete writes the resolved deleted_at column, not a hardcoded one
+- [fix] diagnose parsed-but-unlowered top-level constructs instead of dropping them silently
+
 ## [2.4.2] - 2026-06-12
 
 ### Changed

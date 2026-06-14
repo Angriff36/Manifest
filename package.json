@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
@@ -169,10 +169,6 @@
     "./plugin-loader": {
       "types": "./dist/manifest/plugin-loader.d.ts",
       "import": "./dist/manifest/plugin-loader.js"
-    },
-    "./multi-compiler": {
-      "types": "./dist/manifest/multi-compiler.d.ts",
-      "import": "./dist/manifest/multi-compiler.js"
     },
     "./module-resolver": {
       "types": "./dist/manifest/module-resolver.d.ts",
