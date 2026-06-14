@@ -1,0 +1,9 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Guard on command 'Account.withdraw' references computed property 'isRich', which is not available during guard evaluation. Inline the formula or use a stored property."
+    }
+  ]
+}

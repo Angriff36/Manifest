@@ -381,6 +381,19 @@ export class IRCompiler {
       this.emitDiagnostic('warning', `Composition '${composition.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
     }
 
+    // House style: computed properties are NOT materialized into the guard/
+    // constraint evaluation context, so a guard or constraint that references one
+    // silently resolves to `undefined` (wrong authorization/validation). Reject it
+    // with a clear diagnostic instead of letting it succeed silently. (G8)
+    for (const entity of program.entities) {
+      this.checkComputedRefsInGuardsAndConstraints(entity);
+    }
+    for (const mod of program.modules) {
+      for (const entity of mod.entities) {
+        this.checkComputedRefsInGuardsAndConstraints(entity, mod.name);
+      }
+    }
+
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const values: IRValueObject[] = program.values.map(v => this.transformValueObject(v));
     const entities: IREntity[] = [
@@ -1000,6 +1013,99 @@ export class IRCompiler {
     }
 
     return cmd;
+  }
+
+  /**
+   * Reject guards/constraints that reference a computed property of the owning
+   * entity. Computed values are not materialized into the guard/constraint eval
+   * context, so such references silently resolve to `undefined` and produce wrong
+   * results. Detects both bare (`isRich`) and explicit (`self.isRich` /
+   * `this.isRich`) references. (G8)
+   */
+  private checkComputedRefsInGuardsAndConstraints(entity: EntityNode, moduleName?: string): void {
+    const computedNames = new Set(entity.computedProperties.map(c => c.name));
+    if (computedNames.size === 0) return;
+    const qualified = moduleName ? `${moduleName}.${entity.name}` : entity.name;
+
+    const findComputedRef = (expr: ExpressionNode): string | null => {
+      let found: string | null = null;
+      const walk = (e: ExpressionNode): void => {
+        if (found) return;
+        switch (e.type) {
+          case 'Identifier':
+            if (computedNames.has(e.name)) found = e.name;
+            break;
+          case 'MemberAccess':
+            if (
+              e.object.type === 'Identifier' &&
+              (e.object.name === 'self' || e.object.name === 'this') &&
+              computedNames.has(e.property)
+            ) {
+              found = e.property;
+            } else {
+              walk(e.object);
+            }
+            break;
+          case 'BinaryOp':
+            walk(e.left);
+            walk(e.right);
+            break;
+          case 'UnaryOp':
+            walk(e.operand);
+            break;
+          case 'Call':
+            walk(e.callee);
+            e.arguments.forEach(walk);
+            break;
+          case 'Conditional':
+            walk(e.condition);
+            walk(e.consequent);
+            walk(e.alternate);
+            break;
+          case 'Array':
+            e.elements.forEach(walk);
+            break;
+          case 'Object':
+            e.properties.forEach(p => walk(p.value));
+            break;
+          case 'Lambda':
+            walk(e.body);
+            break;
+        }
+      };
+      walk(expr);
+      return found;
+    };
+
+    for (const cmd of entity.commands) {
+      for (const guard of cmd.guards ?? []) {
+        const ref = findComputedRef(guard);
+        if (ref) {
+          this.emitDiagnostic(
+            'error',
+            `Guard on command '${qualified}.${cmd.name}' references computed property '${ref}', which is not available during guard evaluation. Inline the formula or use a stored property.`,
+          );
+        }
+      }
+      for (const con of cmd.constraints ?? []) {
+        const ref = findComputedRef(con.expression);
+        if (ref) {
+          this.emitDiagnostic(
+            'error',
+            `Constraint '${con.name}' on command '${qualified}.${cmd.name}' references computed property '${ref}', which is not available during constraint evaluation. Inline the formula or use a stored property.`,
+          );
+        }
+      }
+    }
+    for (const con of entity.constraints) {
+      const ref = findComputedRef(con.expression);
+      if (ref) {
+        this.emitDiagnostic(
+          'error',
+          `Constraint '${con.name}' on entity '${qualified}' references computed property '${ref}', which is not available during constraint evaluation. Inline the formula or use a stored property.`,
+        );
+      }
+    }
   }
 
   private transformParameter(p: ParameterNode): IRParameter {

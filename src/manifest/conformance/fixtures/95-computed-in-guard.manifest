@@ -1,0 +1,16 @@
+// A guard that references a computed property. Computed values are NOT
+// materialized into the guard evaluation context, so the reference would
+// silently resolve to `undefined` at runtime (wrong authorization). The
+// compiler must reject this instead of letting it succeed silently. (G8)
+
+entity Account {
+  property required id: string
+  property balance: number = 0
+
+  computed isRich: boolean = balance > 1000
+
+  command withdraw(amount: number) {
+    guard self.isRich
+    mutate balance = 0
+  }
+}
