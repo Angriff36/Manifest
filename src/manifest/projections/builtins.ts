@@ -136,6 +136,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new NextJsProjection(),
     new RoutesProjection(),
     new PrismaProjection(),
+    new PrismaStoreProjection(),
     new OpenApiProjection(),
     new ReactQueryProjection(),
     new ZodProjection(),

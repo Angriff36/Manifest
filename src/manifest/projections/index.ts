@@ -17,6 +17,7 @@ export * from './registry.js';
 export { NextJsProjection } from './nextjs/generator.js';
 export { RoutesProjection } from './routes/generator.js';
 export { PrismaProjection } from './prisma/generator.js';
+export { PrismaStoreProjection } from './prisma-store/generator.js';
 export { OpenApiProjection } from './openapi/generator.js';
 export { ReactQueryProjection } from './react-query/generator.js';
 export { ZodProjection } from './zod/generator.js';
