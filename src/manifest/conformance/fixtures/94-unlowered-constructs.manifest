@@ -1,0 +1,17 @@
+// Top-level constructs that have full parser support but no IR lowering yet
+// (flow, effect, expose, compose). House style forbids silent no-ops, so each
+// must surface a warning diagnostic. Compilation still succeeds (warnings only).
+
+entity Widget {
+  property required id: string = ""
+}
+
+flow ProcessWidget(string) -> string {
+}
+
+effect NotifyUser: log
+
+expose Widget as function
+
+compose WidgetPipeline {
+}

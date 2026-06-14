@@ -1,0 +1,21 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Flow 'ProcessWidget' is parsed but not yet lowered to IR; it has no effect at runtime."
+    },
+    {
+      "severity": "warning",
+      "message": "Effect 'NotifyUser' is parsed but not yet lowered to IR; it has no effect at runtime."
+    },
+    {
+      "severity": "warning",
+      "message": "Expose of entity 'Widget' is parsed but not yet lowered to IR; it has no effect at runtime."
+    },
+    {
+      "severity": "warning",
+      "message": "Composition 'WidgetPipeline' is parsed but not yet lowered to IR; it has no effect at runtime."
+    }
+  ]
+}

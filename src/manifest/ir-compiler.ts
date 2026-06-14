@@ -359,6 +359,28 @@ export class IRCompiler {
       this.emitDiagnostic(severity, message);
     });
 
+    // House style: syntax that parses must either lower into IR or be diagnosed,
+    // never silently dropped. The following top-level constructs have full parser
+    // support but no IR lowering yet (planned/unimplemented). Surface them as
+    // warnings so the no-op is explicit instead of silent. These do not null the
+    // IR (warnings only); they are NOT hard errors because they appear in the
+    // canonical examples and represent a planned-but-unlowered surface. Emitted in
+    // a fixed order (flows, effects, exposures, compositions) for deterministic
+    // diagnostics. `use` is intentionally excluded — it has partial (path)
+    // handling and belongs to multi-file resolution.
+    for (const flow of program.flows) {
+      this.emitDiagnostic('warning', `Flow '${flow.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+    }
+    for (const effect of program.effects) {
+      this.emitDiagnostic('warning', `Effect '${effect.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+    }
+    for (const exposure of program.exposures) {
+      this.emitDiagnostic('warning', `Expose of entity '${exposure.entity}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+    }
+    for (const composition of program.compositions) {
+      this.emitDiagnostic('warning', `Composition '${composition.name}' is parsed but not yet lowered to IR; it has no effect at runtime.`);
+    }
+
     const modules: IRModule[] = program.modules.map(m => this.transformModule(m));
     const values: IRValueObject[] = program.values.map(v => this.transformValueObject(v));
     const entities: IREntity[] = [
