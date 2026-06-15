@@ -4,6 +4,19 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.7.0] - 2026-06-15
+
+### Added
+
+- **Status-based soft-delete for `GenericPrismaStore` (D27).** The generic store
+  previously soft-deleted only via a `deletedAt` timestamp column, so entities
+  that mark deletion by transitioning a status field (e.g. `status='deleted'`)
+  needed a bespoke store class. New opt-in per-entity prisma-store projection
+  option `softDelete: { field, deletedValue }` emits `softDeleteStatus` into the
+  store metadata; `delete()` then transitions the status column (no timestamp, no
+  hard delete) and reads exclude rows already at that value. Independent of and
+  taking precedence over the `deletedAt` path. Default behavior unchanged.
+
 ## [2.6.0] - 2026-06-15
 
 ### Added
