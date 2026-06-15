@@ -1,0 +1,108 @@
+---
+title: "Convex backend projection"
+sidebarTitle: "Convex"
+description: "Generate a complete Convex backend from Manifest IR — defineSchema/defineTable validators, reactive queries, governed mutations, crons, HTTP webhooks, and saga orchestrators, all standalone with no runtime dependency."
+---
+
+The Convex projection emits a complete, self-contained Convex backend from compiled Manifest IR. It started as a schema-only projection (`convex.schema`, shipped in 2.9.0) and now spans six surfaces covering schema, reads, governed writes, schedules, webhooks, and sagas. Everything it emits is standalone Convex code with no Manifest runtime dependency, and typechecks against `convex@1.41`. Like the [Prisma](/integration/prisma) and [Drizzle](/projections/drizzle) projections, all Convex-specific interpretation (table names, validators, references, indexes) lives in the projection and its options — never in Manifest core grammar or IR.
+
+## What it generates
+
+The projection registers under the name `convex` and declares six surfaces:
+
+| Surface | Path hint | Emits |
+| --- | --- | --- |
+| `convex.schema` | `convex/schema.ts` (configurable via `output`) | `defineSchema` / `defineTable` with `convex/values` validators, enum unions, `v.id` references, and indexes. Optionally a system events table. |
+| `convex.queries` | `convex/queries.ts` | Reactive reads over `ctx.db`: `list<Entity>`, `get<Entity>` (by Convex `_id`), and `list<Entity>By<Field>` over `.withIndex` for indexed/tenant/reference fields. Adds `listRecentEvents` when the events table is emitted. |
+| `convex.mutations` | `convex/mutations.ts` | One governed `mutation` per IR command. Runs policies → guards → constraints (runtime order, fail-closed), applies `mutate` actions, appends an event row, and fires matched reactions. |
+| `convex.crons` | `convex/crons.ts` | IR schedules → `cronJobs()` (`crons.cron` / `crons.interval`) referencing the command mutations. |
+| `convex.http` | `convex/http.ts` | IR webhooks → `httpRouter` / `httpAction` routes that read the request body, map `transform` params, and `ctx.runMutation` the command. |
+| `convex.sagas` | `convex/sagas.ts` | IR sagas → orchestrator `action`s that run each step via `ctx.runMutation`, tracking completed steps and compensating in reverse on failure (`onFailure: compensate`) or rethrowing (`abort`). |
+
+Only persistent entities are projected. Entities marked `external`, entities with no `store` declaration, and entities whose store target is `memory` / `localStorage` are skipped; `durable` / `postgres` / `supabase` targets are emission targets. `computed` properties are never emitted as fields, and the IR `id` is dropped because Convex's built-in document `_id` is identity.
+
+## Usage
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { getProjection } from '@angriff36/manifest/projections';
+
+const { ir } = await compileToIR(source);
+
+const projection = getProjection('convex');
+const result = projection?.generate(ir, {
+  surface: 'convex.schema',
+  options: {
+    referenceMode: 'convexId',
+    tableMappings: { CateringEvent: 'events' },
+  },
+});
+
+for (const artifact of result?.artifacts ?? []) {
+  // write artifact.code at artifact.pathHint
+}
+```
+
+`ConvexProjection` can also be imported directly from `@angriff36/manifest/projections/convex`. Through the CLI it is dispatched by registry name. The CLI accepts either the full surface id (`convex.schema`) or its short suffix (`schema`), and `--surface all` walks every surface in one run:
+
+```bash
+# one surface
+manifest generate ir/app.ir.json --projection convex --surface convex.schema --output convex
+
+# every surface (schema, queries, mutations, crons, http, sagas)
+manifest generate ir/app.ir.json --projection convex --surface all --output convex
+```
+
+Each artifact is written at its `pathHint` (e.g. `convex/schema.ts`, `convex/queries.ts`) relative to `--output`.
+
+## Type mapping & behavior
+
+The IR `type.name` string maps to a `convex/values` validator through `DEFAULT_TYPE_MAPPING` in `type-mapping.ts`:
+
+| Manifest type | Convex validator | Notes |
+| --- | --- | --- |
+| `string`, `text`, `uuid` | `v.string()` | |
+| `boolean`, `bool` | `v.boolean()` | |
+| `int`, `bigint` | `v.int64()` | Convex Int64 (JS bigint), lossless for ids and counts. |
+| `float` | `v.number()` | Convex Float64; author accepted rounding. |
+| `decimal`, `money` | `v.string()` | Lossless exact-decimal transport (Convex has no native decimal). Override to `v.number()` per property if ergonomics are preferred over exactness. |
+| `date`, `datetime`, `time`, `duration` | `v.number()` | Epoch milliseconds, the Convex-idiomatic timestamp. Override to `v.string()` for ISO-8601. |
+| `json` | `v.any()` | |
+| `bytes` | `v.bytes()` | |
+
+As with Prisma and Drizzle, bare `number` is intentionally absent — it is ambiguous between integers, reals, and money. The projection emits a hard `CONVEX_AMBIGUOUS_NUMBER` diagnostic and skips the field; an unknown type with no override emits a hard `CONVEX_UNKNOWN_TYPE` diagnostic. There is no silent fallback.
+
+Validators compose: enums become `v.union(v.literal("a"), v.literal("b"))`, `array<T>` becomes `v.array(<element>)`, nullable properties union with `v.null()`, and non-required properties wrap in `v.optional(...)` (enum + nullable flatten into a single union). For `belongsTo` / `ref` relationships in the default `convexId` mode, a property that backs the relationship is retyped from its declared scalar to `v.id("<targetTable>")`, preserving its own optional/nullable. Indexes are emitted for `indexed` properties (`by_<field>`), the tenant column, and every reference, plus any consumer-supplied composite/named indexes. Referential actions (`onDelete` / `onUpdate`) emit a deferred-info diagnostic — Convex has no schema-level cascade.
+
+## Options
+
+The options object is `ConvexProjectionOptions` in `convex/options.ts`, normalized through `normalizeOptions`. Per-entity and per-property options use the nested `Record<EntityName, Record<PropertyName, X>>` shape — there are no dotted-string `"Entity.property"` keys anywhere on this surface.
+
+| Option | Type | Default | Purpose |
+| --- | --- | --- | --- |
+| `output` | `string` | `"convex/schema.ts"` | Path hint for the emitted schema artifact (flows to `ProjectionArtifact.pathHint`). |
+| `tableMappings` | `Record<EntityName, string>` | `{}` | Per-entity table-name override; always wins over the naming convention. |
+| `typeMappings` | `Record<EntityName, Record<PropertyName, string>>` | `{}` | Per-property validator override; the value is the literal Convex validator expression, e.g. `"v.number()"` or `"v.int64()"`. |
+| `indexes` | `Record<EntityName, IndexEntry[]>` | `{}` | Per-entity composite/named indexes. Each entry is a `string[]` (composite) or `{ fields, name? }`, becoming a `.index("name", [...])` call. |
+| `references` | `Record<EntityName, Record<string, string>>` | `{}` | Per-relationship foreign-key field-name override (default is the non-tenant `foreignKey.fields` column, or `${relationshipName}Id`). |
+| `referenceMode` | `'convexId' \| 'stringId'` | `'convexId'` | How `belongsTo` / `ref` references are represented. `'convexId'` → `v.id("<targetTable>")`; `'stringId'` → `v.string()` for app-level string ids (UUIDs). |
+| `naming` | `NamingConventionInput` | `{ table: 'camelCase', pluralizeTables: true }` | Table-name casing/pluralization. The Convex-idiomatic default is applied when omitted; `tableMappings` is the escape hatch for irregular plurals. |
+| `emitEventsTable` | `boolean` | `true` | Emit a system events table (the reactive event log governed mutations append to). |
+| `eventsTable` | `string` | `"manifestEvents"` | Name of the system events table. If the resolved name collides with an entity table it is deterministically suffixed (with a `CONVEX_EVENTS_TABLE_COLLISION` diagnostic). |
+| `policyMode` | `'enforce' \| 'skip'` | `'enforce'` | Authorization-policy enforcement in generated mutations — see below. |
+
+### policyMode
+
+`policyMode` (added in 2.10.x) controls whether generated mutations enforce authorization policies. Its accepted values are exactly `'enforce'` and `'skip'`, defaulting to `'enforce'`.
+
+<Note>
+With `policyMode: 'skip'`, the role/policy (authorization) checks are omitted from generated mutations, while guards and constraints (state validation) are still enforced. When skipped, the `ROLE_PERMISSIONS` map and `checkRole` helper are not emitted, so there is no dead code. This is intended for dev/demo backends that have no auth context configured, so the generated files don't need hand-editing. Production builds should keep the default `'enforce'`.
+</Note>
+
+## Notes & limitations
+
+<Note>
+Mutation governance is rendered **fail-closed**: each policy, guard, and constraint is rendered from IR via a pure expression resolver, and any expression the resolver cannot fully map emits a hard `CONVEX_UNRESOLVED_{POLICY,GUARD,CONSTRAINT}` diagnostic together with a denying `throw` — never a silent pass. Roles become a `ROLE_PERMISSIONS` map plus a `checkRole()` helper (with an `all` wildcard). Reactions that create tenant-scoped targets automatically thread the source `tenantId` (2.10.3) unless an explicit reaction param sets it.
+</Note>
+
+This projection's behavior is taken directly from `src/manifest/projections/convex/generator.ts`, `options.ts`, `type-mapping.ts`, `functions.ts`, and `orchestration.ts`. The schema surface shipped in 2.9.0; the five functions/orchestration surfaces, `listRecentEvents`, the create-mutation completeness fix, and `policyMode` landed across the 2.10.x releases.
