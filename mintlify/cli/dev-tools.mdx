@@ -206,6 +206,204 @@ The LSP server binary is `packages/lsp-server/bin/manifest-lsp.js`. Configure yo
 The LSP server bundles the Manifest compiler, so no separate compile step is needed. It reads `.manifest` files directly from disk and compiles them on every document change.
 </Tip>
 
+## More developer commands
+
+Concise reference for the remaining inspection, debugging, and authoring commands. Run any with `--help` for the full flag list.
+
+### `manifest check [source]`
+
+Compile `.manifest` source and validate the generated IR in one step — a fast "does this compile and conform?" gate. Flags mirror `compile` plus `validate`: `-o, --output`, `-g, --glob`, `-d, --diagnostics`, `--pretty`, `--schema <path>`, `--strict` (fail on warnings).
+
+```bash
+manifest check modules/recipe.manifest --strict
+```
+
+### `manifest preflight`
+
+Validate environment variables against the `env` mapping in `manifest.config.yaml`, or generate a `.env.example`. Consumes the structured `env` block documented in [Configuration](/cli/configuration#param-env).
+
+<ParamField path="-f, --format" type="string" default="text">Output format: `text` or `json`.</ParamField>
+<ParamField path="--generate-example" type="boolean">Generate `.env.example` instead of checking the environment.</ParamField>
+<ParamField path="-o, --output" type="string" default=".env.example">Output path for the generated `.env.example`.</ParamField>
+
+```bash
+manifest preflight
+manifest preflight --generate-example
+```
+
+### `manifest install-hooks`
+
+Install a Git pre-commit hook that runs `manifest fmt` / `manifest validate` (driven by the [`hooks`](/cli/configuration#param-hooks) config block).
+
+<ParamField path="-f, --force" type="boolean">Overwrite an existing hook configuration.</ParamField>
+<ParamField path="--provider" type="string" default="husky">Hook provider: `husky` or `simple-git-hooks`.</ParamField>
+
+```bash
+manifest install-hooks --provider husky
+```
+
+### `manifest generate-tests [source]` (alias `gen-tests`)
+
+LLM-driven conformance fixture generation: analyzes existing fixtures and emits new `.manifest` sources plus expected IR covering edge cases. Generated fixtures are compiled and validated before being written.
+
+Key flags: `--feature <description>`, `--category <edge-cases|boundary|adversarial|coverage>` (default `edge-cases`), `--count <n>` (default `3`), `--output <path>`, `--api-key <key>` (or `ANTHROPIC_API_KEY`), `--model <model>`, `--temperature <n>`, `--max-retries <n>`, `--dry-run`, `--verbose`.
+
+```bash
+manifest generate-tests src/ --category boundary --count 5 --dry-run
+```
+
+### `manifest mock <source>`
+
+Start a local HTTP mock server from compiled IR (or a `.manifest` file), backed by the runtime engine with in-memory stores — lets frontend teams develop against a realistic API before the backend ships.
+
+<ParamField path="-p, --port" type="string" default="4000">Port number.</ParamField>
+<ParamField path="--host" type="string" default="127.0.0.1">Bind host.</ParamField>
+<ParamField path="--cors" type="boolean" default="false">Enable CORS headers.</ParamField>
+<ParamField path="--scenario" type="string" default="default">Hint mode: `default`, `guard-fail`, or `constraint-fail`.</ParamField>
+
+```bash
+manifest mock ir/app.ir.json --port 4000 --cors
+```
+
+### `manifest repl [source]`
+
+Interactive runtime REPL for inspecting IR and exercising guards, policies, and entity state against the runtime.
+
+<ParamField path="--json" type="boolean">Machine-readable JSON response mode.</ParamField>
+<ParamField path="--user" type="string">User id for runtime context.</ParamField>
+<ParamField path="--tenant" type="string">Tenant id for runtime context.</ParamField>
+<ParamField path="--context" type="string">Additional runtime context as JSON.</ParamField>
+
+```bash
+manifest repl src/app.manifest --user u_123 --tenant t_1
+```
+
+### `manifest harness <manifest>`
+
+Run a fixture-generator-style harness script against compiled IR and report failed steps/assertions.
+
+<ParamField path="-s, --script" type="string" required>Path to the harness script JSON.</ParamField>
+<ParamField path="-f, --format" type="string" default="text">Output format: `text` or `json`.</ParamField>
+
+```bash
+manifest harness src/app.manifest --script harness.json
+```
+
+### `manifest load-test [source]`
+
+Generate k6 or Artillery load-test scripts from IR entities and commands, with realistic data, ramp-up profiles, and SLO thresholds.
+
+Key flags: `-o, --output <path>` (default `load-tests`), `-f, --format <k6|artillery>` (default `k6`), `--base-url <url>`, `--ramp-up <stages>`, `--slo <thresholds>`, `--command <name...>`, `--entity <name...>`, `--profile`, `--timeout <ms>` (default `30000`), `--json`.
+
+```bash
+manifest load-test src/app.manifest --format k6 --base-url http://localhost:3000
+```
+
+### `manifest routes`
+
+Compile all `.manifest` files and emit the canonical route manifest (the agent-accessible equivalent of the DevTools Route Surface tab).
+
+<ParamField path="-s, --src" type="string">Source glob for `.manifest` files.</ParamField>
+<ParamField path="-f, --format" type="string" default="json">Output format: `json` or `summary`.</ParamField>
+<ParamField path="-b, --base-path" type="string" default="/api">Base path prefix for routes.</ParamField>
+
+```bash
+manifest routes --format summary
+```
+
+### `manifest lint-routes`
+
+Scan client directories for hardcoded route strings and fail when violations are found — the enforcement layer for canonical routes.
+
+<ParamField path="-f, --format" type="string" default="text">Output format: `text` or `json`.</ParamField>
+<ParamField path="-c, --config" type="string">Config file path.</ParamField>
+
+```bash
+manifest lint-routes
+```
+
+### `manifest runtime-check <entity> <command>`
+
+Correlate route surface, source manifests, and precompiled IR for a single command to spot drift.
+
+<ParamField path="--route" type="string">Optional canonical route path to validate (exact match).</ParamField>
+<ParamField path="--json" type="boolean">JSON output.</ParamField>
+<ParamField path="--src" type="string">Source manifest glob pattern.</ParamField>
+<ParamField path="--ir-root" type="path...">Compiled IR root directory/directories.</ParamField>
+
+```bash
+manifest runtime-check Recipe publish --route /api/recipe/commands/publish
+```
+
+### `manifest inspect entity <entityName>`
+
+Inspect a single entity across source manifests and precompiled IR.
+
+<ParamField path="--json" type="boolean">JSON output.</ParamField>
+<ParamField path="--src" type="string">Source manifest glob pattern.</ParamField>
+<ParamField path="--ir-root" type="path...">Compiled IR root directory/directories.</ParamField>
+
+```bash
+manifest inspect entity Recipe
+```
+
+### `manifest duplicates`
+
+Summarize duplicate merge reports (`*.merge-report.json`) produced by merge compilation.
+
+<ParamField path="--entity" type="string">Filter duplicate entries by entity name/key.</ParamField>
+<ParamField path="--merge-report" type="string">Override the merge-report glob pattern.</ParamField>
+<ParamField path="--json" type="boolean">JSON output.</ParamField>
+
+```bash
+manifest duplicates --entity Recipe
+```
+
+### `manifest cache-status`
+
+Show offline cache guidance — precompiled IR timestamps and restart advice.
+
+<ParamField path="--entity" type="string">Optional entity context for guidance text.</ParamField>
+<ParamField path="--command" type="string">Optional command context for guidance text.</ParamField>
+<ParamField path="--json" type="boolean">JSON output.</ParamField>
+<ParamField path="--ir-root" type="path...">Compiled IR root directory/directories.</ParamField>
+
+```bash
+manifest cache-status
+```
+
+### `manifest plugins list`
+
+List plugins declared in `manifest.config` (see the [`plugins`](/cli/configuration#param-plugins) config block). Pass `--json` for machine-readable output.
+
+```bash
+manifest plugins list
+```
+
+## `manifest versions`
+
+IR snapshot versioning with semantic tags, changelog, and integrity verification. Snapshots live under `.manifest-versions/` (override with `--store <path>` on every subcommand).
+
+| Subcommand | Purpose | Key flags |
+|---|---|---|
+| `versions list` | List saved IR versions | `--store`, `--json` |
+| `versions show <version>` | Show version metadata (number, tag, or `latest`) | `--store`, `--json` |
+| `versions save [source]` | Compile and save a new IR snapshot | `--tag <tag>`, `--auto-tag`, `--label <text>`, `--store` |
+| `versions diff <from> <to>` | Compare two saved versions | `--breaking`, `--sql`, `--json`, `--store` |
+| `versions changelog [from] [to]` | Generate a changelog between two versions | `--store`, `--json` |
+| `versions tag <version> <tag>` | Apply a semantic version tag to a saved version | `--store` |
+| `versions rollback <version>` | Output a previous IR snapshot | `-o, --output <path>`, `--store` |
+| `versions verify [version]` | Verify IR integrity via SHA-256 comparison | `--all`, `--json`, `--store` |
+
+```bash
+# Save a tagged snapshot, then verify integrity
+manifest versions save src/app.manifest --tag 1.0.0
+manifest versions verify latest
+
+# Diff two versions with breaking-change analysis
+manifest versions diff 1.0.0 latest --breaking
+```
+
 ## Typical workflow
 
 A common development workflow combines all four tools:

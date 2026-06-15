@@ -99,22 +99,14 @@ The CLI also accepts `manifest.config.yml`, `.manifestrc.yaml`, and `.manifestrc
 
 ## Quick-start with npx
 
-If you don't have Manifest installed yet, you can bootstrap a new project in one command using npx:
+If you don't have Manifest installed yet, you can run the CLI without installing it using npx:
 
 ```bash
-# Interactive project scaffolding
+# Interactive config setup in the current project
 npx @angriff36/manifest init
 
-# Non-interactive with template
-npx @angriff36/manifest init --template nextjs --output my-app
+# Overwrite an existing config
+npx @angriff36/manifest init --force
 ```
 
-Available templates:
-
-| Template | What you get |
-|----------|-------------|
-| `nextjs` | Next.js App Router project with Manifest routes, Prisma, and Clerk auth |
-| `minimal` | Single `.manifest` file with `manifest.config.yaml` and a `package.json` |
-| `express` | Express server with Manifest runtime and REST routes |
-
-The init command creates the project directory, writes a `manifest.config.yaml`, and optionally runs `manifest build` to generate initial output.
+`manifest init` interactively writes a `manifest.config.yaml` into the current directory; it does not scaffold a project or accept a template. Its only flags are `-f, --force`, `--ci <provider>` (generate a CI workflow instead of a config — see [CI/CD](/cli/ci-cd)), and `--node-versions <versions>` (CI matrix versions, used with `--ci`).

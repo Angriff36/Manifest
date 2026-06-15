@@ -30,8 +30,16 @@ If the target is `nextjs` or `remix`, the generated code output defaults to `app
 
 ### Options
 
-<ParamField path="--force" type="boolean" default="false">
-  Overwrite an existing `manifest.config.yaml`. The command is interactive and requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+<ParamField path="-f, --force" type="boolean" default="false">
+  Overwrite an existing `manifest.config.yaml` (or CI workflow file when `--ci` is used). The interactive setup requires a TTY; in non-interactive shells it writes a minimal config with defaults.
+</ParamField>
+
+<ParamField path="--ci" type="string">
+  Generate a CI workflow for the given provider (currently `github`) instead of running the interactive config setup. See [CI/CD](/cli/ci-cd).
+</ParamField>
+
+<ParamField path="--node-versions" type="string">
+  Comma-separated Node.js versions for the generated CI matrix (default: `18,20,22`). Only meaningful with `--ci`.
 </ParamField>
 
 ### Examples
@@ -62,8 +70,8 @@ manifest compile [source] [options]
 
 ### Options
 
-<ParamField path="-o, --output" type="string" default="ir/">
-  Output directory or file path. When the output is a directory, each source file produces a matching `.ir.json` file inside it. When no output is specified and a config file is present, the config's `output` field is used.
+<ParamField path="-o, --output" type="string">
+  Output directory or file path. The flag itself has **no default** — when omitted, the CLI falls back to the config's `output` field if a config file is present, and otherwise writes alongside the source / to stdout depending on the input. (The `ir/` value is the documented config-level fallback, not a flag default.) When the output is a directory, each source file produces a matching `.ir.json` file inside it.
 </ParamField>
 
 <ParamField path="-g, --glob" type="string">
@@ -76,6 +84,14 @@ manifest compile [source] [options]
 
 <ParamField path="--pretty" type="boolean" default="true">
   Pretty-print the IR JSON output with two-space indentation. Disable for compact output.
+</ParamField>
+
+<ParamField path="--merge" type="boolean" default="false">
+  Merge multiple source files into a single IR, resolving `use` declarations across files. Produces one combined IR rather than one `.ir.json` per source.
+</ParamField>
+
+<ParamField path="--entry" type="string...">
+  Entry file(s) for merge compilation (repeatable). The merge starts from these files and follows their `use` declarations. Auto-detected when omitted. Only meaningful together with `--merge`.
 </ParamField>
 
 ### Examples
@@ -110,15 +126,15 @@ manifest generate <ir> [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection to use for code generation. Supported values: `nextjs`, `prisma`. The projection determines the framework and file shape of the generated output. Dispatch is generic via the projection registry — adding a new projection means registering it, not editing the CLI.
+  Projection to use for code generation. Accepts **any registered projection name** — dispatch is generic via the projection registry, so this is not a fixed list. Registered projections include `nextjs`, `routes`, `prisma`, `prisma-store`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`, `graphql`, `react-query`, `express`, `hono`, `mermaid`, `json-schema`, `storybook`, `sveltekit`, `pydantic`, `dynamodb`, `dart`, `terraform`, `elasticsearch`, `analytics`, `materialized-views`, and more. Adding a new projection means registering it, not editing the CLI.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
-  Which surface(s) to generate. Values depend on the projection:
+  Which surface(s) to generate. Valid surface names are projection-specific; pass `all` to emit every surface the projection declares.
 
-  **nextjs** (default): `route` (GET handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes)
+  **nextjs** (default): `route` (GET list handlers) · `detail` (GET detail handlers) · `command` (POST handlers) · `dispatcher` (canonical write surface) · `types` (TS interfaces) · `client` (typed fetch SDK) · `all` (everything except concrete per-command routes, which are opt-in)
 
-  **prisma**: `prisma.schema` (single `schema.prisma` artifact). The CLI default `all` is treated as "the projection's first declared surface" for non-nextjs projections.
+  For other projections the CLI default `all` resolves to the projection's declared surface set (e.g. the `prisma` projection emits a single `schema.prisma` artifact). An unknown surface name is reported as a diagnostic, not silently ignored.
 </ParamField>
 
 <ParamField path="-o, --output" type="string">
@@ -126,7 +142,7 @@ manifest generate <ir> [options]
 </ParamField>
 
 <ParamField path="--auth" type="string">
-  *(nextjs only)* Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to `projections.nextjs.options.authImportPath`, then `authProvider`, then defaults to `clerk`.
+  *(nextjs only)* Auth provider name or import path (e.g. `clerk` or `@repo/auth/server`). Falls back to `projections.nextjs.options.authImportPath`, then `authProvider`, then the `authProvider` default of `none` (no auth wrapper).
 </ParamField>
 
 <ParamField path="--database" type="string">
@@ -199,11 +215,11 @@ manifest build [source] [options]
 ### Options
 
 <ParamField path="-p, --projection" type="string" default="nextjs">
-  Projection name for the generate stage.
+  Projection name for the generate stage. Accepts any registered projection (e.g. `nextjs`, `prisma`, `zod`, `drizzle`, `convex`, `openapi`, `kysely`, …) — see [`manifest generate`](#manifest-generate-ir) for the full list.
 </ParamField>
 
 <ParamField path="-s, --surface" type="string" default="all">
-  Surface(s) to generate. Same values as `manifest generate`: `route`, `command`, `types`, `client`, or `all`.
+  Surface(s) to generate. Same values as `manifest generate` — projection-specific, with `all` emitting every declared surface (nextjs: `route`, `detail`, `command`, `dispatcher`, `types`, `client`).
 </ParamField>
 
 <ParamField path="--ir-output" type="string">
