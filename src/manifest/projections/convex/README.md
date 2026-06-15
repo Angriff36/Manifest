@@ -10,8 +10,36 @@ Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
 | Surface | Output | Status |
 |---|---|---|
 | `convex.schema` | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
-| `convex.functions` | queries + governed mutations | ⏳ Phase 2 |
+| `convex.queries` | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads) | ✅ Phase 2 |
+| `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command) | ✅ Phase 2 |
 | `convex.crons` / sagas / webhooks | `convex/crons.ts` etc. | ⏳ Phase 3 |
+
+## Functions surfaces (Phase 2)
+
+`convex.queries` emits reactive reads (`list<E>`, `get<E>`, `list<E>By<Field>`
+over `.withIndex`, FK args typed `v.id`). Reads are not governed.
+
+`convex.mutations` emits one `mutation` per IR command:
+- **Governance is inline and FAIL CLOSED.** Each command runs its policies →
+  guards → constraints (runtime order), rendered from IR by a pure
+  expression resolver. Anything the resolver cannot map emits a hard
+  `CONVEX_UNRESOLVED_{POLICY,GUARD,CONSTRAINT}` diagnostic **and** a denying
+  `throw` — never a silent pass. (Measured: 100% of capsule's 2545 governance
+  expressions resolve.)
+- **Roles** become a `ROLE_PERMISSIONS` map + `checkRole()` (with `all`
+  wildcard); `roleAllows(user.role, X)` → `checkRole(userRole, X)`.
+- **create** commands: args are the command *parameters*; `mutate` actions map
+  params → stored fields; guards reference the parameters.
+- non-**create**: `docId: v.id(table)` + params; load, govern, `patch`.
+- Each mutation appends an **event row** (to the `events` table) and fires
+  matched **reactions** (create-target → insert; other → resolve + patch — the
+  PoC's `// TODO` stubs are completed).
+
+Generated functions were typechecked against real `convex@1.41` (1043
+mutations + 843 queries, zero type errors).
+
+The schema surface emits a system `events` table by default
+(`emitEventsTable: false` to suppress, `eventsTable` to rename).
 
 ## Usage
 

@@ -85,6 +85,22 @@ describe('renderExpression — builtins', () => {
   });
 });
 
+describe('renderExpression — global roots & locals', () => {
+  it('renders user.role / context.x verbatim, not as doc members', () => {
+    const userRole: IRExpression = { kind: 'member', object: id('user'), property: 'role' };
+    expect(renderExpression(userRole, DOC).code).toBe('user.role');
+    const ctx: IRExpression = { kind: 'member', object: id('context'), property: 'tenantId' };
+    expect(renderExpression(ctx, DOC).code).toBe('context.tenantId');
+  });
+
+  it('renders declared locals (command params) verbatim', () => {
+    const e: IRExpression = { kind: 'binary', operator: '>', left: id('amount'), right: lit(0) };
+    expect(renderExpression(e, { selfVar: 'doc', locals: ['amount'] }).code).toBe('(amount > 0)');
+    // without the local, a bare identifier is a self member
+    expect(renderExpression(id('amount'), DOC).code).toBe('doc.amount');
+  });
+});
+
 describe('renderExpression — fail closed', () => {
   it('reports unknown builtins instead of rendering true', () => {
     const res = renderExpression({ kind: 'call', callee: { kind: 'identifier', name: 'mysteryFn' }, args: [] }, DOC);

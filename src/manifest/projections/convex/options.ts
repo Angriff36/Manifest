@@ -90,6 +90,16 @@ export interface ConvexProjectionOptions {
    * `tableMappings` is the escape hatch for irregular plurals.
    */
   naming?: NamingConventionInput;
+
+  /**
+   * Emit a system events table in the schema (the reactive event log that
+   * governed mutations append to). Default `true`. The functions surface
+   * inserts event rows into this table.
+   */
+  emitEventsTable?: boolean;
+
+  /** Name of the system events table. Default `"events"`. */
+  eventsTable?: string;
 }
 
 /**
@@ -98,6 +108,8 @@ export interface ConvexProjectionOptions {
 export const CONVEX_PROJECTION_DEFAULTS = {
   output: 'convex/schema.ts',
   referenceMode: 'convexId' as ReferenceMode,
+  emitEventsTable: true,
+  eventsTable: 'events',
 } as const;
 
 /**
@@ -114,7 +126,7 @@ export const CONVEX_DEFAULT_NAMING: NamingConventionInput = {
  * Single trust boundary: after this, the projection trusts the contents.
  */
 export function normalizeOptions(raw: Record<string, unknown> | undefined): Required<
-  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references'>
+  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable'>
 > & Pick<ConvexProjectionOptions, 'naming'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
@@ -124,6 +136,8 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Requ
     typeMappings: input.typeMappings ?? {},
     indexes: input.indexes ?? {},
     references: input.references ?? {},
+    emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
+    eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
     // Absent → Convex-idiomatic default applied by the generator.
     naming: input.naming,
   };

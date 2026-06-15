@@ -39,13 +39,16 @@ import {
 } from './options.js';
 import { resolveConvexValidator } from './type-mapping.js';
 import { resolveTableName } from '../shared/naming.js';
+import { generateQueries, generateMutations } from './functions.js';
 
 // ============================================================================
 // Surface identifiers
 // ============================================================================
 
 const SURFACE_SCHEMA = 'convex.schema' as const;
-const SURFACES = [SURFACE_SCHEMA] as const;
+const SURFACE_QUERIES = 'convex.queries' as const;
+const SURFACE_MUTATIONS = 'convex.mutations' as const;
+const SURFACES = [SURFACE_SCHEMA, SURFACE_QUERIES, SURFACE_MUTATIONS] as const;
 
 // ============================================================================
 // Store target classification (identical policy to the Prisma projection)
@@ -65,13 +68,42 @@ function isPersistent(target: IRStore['target']): boolean {
 // Naming
 // ============================================================================
 
-type NormalizedOptions = ReturnType<typeof normalizeOptions>;
+export type NormalizedOptions = ReturnType<typeof normalizeOptions>;
 
 /** Resolve the Convex table key for an entity (override → convention). */
-function resolveConvexTableName(entityName: string, options: NormalizedOptions): string {
+export function resolveConvexTableName(entityName: string, options: NormalizedOptions): string {
   const override = options.tableMappings[entityName];
   if (override) return override;
   return resolveTableName(entityName, options.naming ?? CONVEX_DEFAULT_NAMING);
+}
+
+/**
+ * Map FK column name → target Convex table for an entity's belongsTo/ref
+ * relationships (convexId mode only; empty in stringId mode). Shared by the
+ * schema generator (to retype FK-backing properties) and the functions
+ * generator (to type create-mutation args / reference queries).
+ */
+export function collectFkTargets(
+  entity: IREntity,
+  ir: IR,
+  options: NormalizedOptions,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  if (options.referenceMode !== 'convexId') return map;
+  const tenantProp = ir.tenant?.property;
+  for (const rel of entity.relationships) {
+    if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
+    const fkField = resolveReferenceField(entity, rel, tenantProp, options);
+    map.set(fkField, resolveConvexTableName(rel.target, options));
+  }
+  return map;
+}
+
+/** True when an entity owns a persistent (emittable) store and is not external. */
+export function isPersistentEntity(entity: IREntity, ir: IR): boolean {
+  if ((entity as { external?: boolean }).external === true) return false;
+  const store = ir.stores.find(s => s.entity === entity.name);
+  return !!store && isPersistent(store.target);
 }
 
 // ============================================================================
@@ -102,7 +134,7 @@ interface FieldEmission {
  * Build a validator expression for a property, applying enum/array/nullable
  * wrapping. Returns `undefined` (with a diagnostic) for unmappable types.
  */
-function buildValidator(
+export function buildValidator(
   entity: IREntity,
   prop: IRProperty,
   ir: IR,
@@ -260,14 +292,7 @@ function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableE
   // Map FK column name → target table for belongsTo/ref relationships. In
   // convexId mode, a property whose name matches an FK column is retyped to a
   // v.id reference. Skipped entirely in stringId mode (properties keep scalars).
-  const fkTargets = new Map<string, string>();
-  if (options.referenceMode === 'convexId') {
-    for (const rel of entity.relationships) {
-      if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
-      const fkField = resolveReferenceField(entity, rel, tenantProp, options);
-      fkTargets.set(fkField, resolveConvexTableName(rel.target, options));
-    }
-  }
+  const fkTargets = collectFkTargets(entity, ir, options);
 
   // Properties (skip computed structurally by only reading `properties`; skip
   // the IR `id` — Convex's document `_id` is identity).
@@ -352,6 +377,14 @@ export class ConvexProjection implements ProjectionTarget {
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
+    if (request.surface === SURFACE_QUERIES) {
+      const { code, diagnostics } = generateQueries(ir, request.options);
+      return { artifacts: [{ id: SURFACE_QUERIES, pathHint: 'convex/queries.ts', contentType: 'typescript', code }], diagnostics };
+    }
+    if (request.surface === SURFACE_MUTATIONS) {
+      const { code, diagnostics } = generateMutations(ir, request.options);
+      return { artifacts: [{ id: SURFACE_MUTATIONS, pathHint: 'convex/mutations.ts', contentType: 'typescript', code }], diagnostics };
+    }
     if (request.surface !== SURFACE_SCHEMA) {
       return {
         artifacts: [],
@@ -377,7 +410,25 @@ export class ConvexProjection implements ProjectionTarget {
       if (block) blocks.push(block);
     }
 
-    if (blocks.length === 0) {
+    const entityBlockCount = blocks.length;
+
+    if (options.emitEventsTable) {
+      const t = options.eventsTable;
+      blocks.push(
+        `  ${t}: defineTable({\n` +
+        `    type: v.string(),\n` +
+        `    entity: v.string(),\n` +
+        `    entityId: v.string(),\n` +
+        `    payload: v.any(),\n` +
+        `    createdAt: v.number(),\n` +
+        `  })\n` +
+        `    .index("by_type", ["type"])\n` +
+        `    .index("by_entity", ["entity"])\n` +
+        `    .index("by_entityId", ["entityId"])`,
+      );
+    }
+
+    if (entityBlockCount === 0) {
       diagnostics.push({
         severity: 'warning',
         code: 'CONVEX_EMPTY_SCHEMA',

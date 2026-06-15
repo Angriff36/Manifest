@@ -17,6 +17,9 @@
 
 import type { IRExpression, IRValue } from '../../ir';
 
+/** Identifier roots that always render as themselves (not members of `selfVar`). */
+export const DEFAULT_GLOBALS: readonly string[] = ['user', 'context', 'args', 'payload', 'request'];
+
 /** How bare identifiers and `self`/`this` resolve. */
 export interface RenderScope {
   /** Variable name that `self.x` / `this.x` / bare `x` resolve against (e.g. "doc"). */
@@ -27,6 +30,14 @@ export interface RenderScope {
    * themselves (used for already-bound locals like command params). Default true.
    */
   bareIdentifierIsSelf?: boolean;
+  /**
+   * Identifier roots that render verbatim (e.g. `user`, `context`). A member
+   * access `user.role` thus becomes `user.role`, not `doc.user.role`. Defaults
+   * to {@link DEFAULT_GLOBALS}.
+   */
+  globals?: readonly string[];
+  /** Already-bound local names (e.g. command parameters) that render verbatim. */
+  locals?: readonly string[];
 }
 
 export interface RenderResult {
@@ -78,6 +89,8 @@ function renderLiteralValue(v: IRValue): string {
 export function renderExpression(expr: IRExpression | undefined, scope: RenderScope): RenderResult {
   const unresolved: string[] = [];
   const bareIsSelf = scope.bareIdentifierIsSelf !== false;
+  const globals = new Set(scope.globals ?? DEFAULT_GLOBALS);
+  const locals = new Set(scope.locals ?? []);
 
   const go = (e: IRExpression | undefined): string => {
     if (!e) {
@@ -91,8 +104,8 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
       case 'identifier': {
         if (e.name === 'now') return 'Date.now()';
         if (e.name === 'uuid') return 'crypto.randomUUID()';
-        if (e.name === 'payload') return 'payload';
         if (e.name === 'self' || e.name === 'this') return scope.selfVar;
+        if (globals.has(e.name) || locals.has(e.name)) return e.name;
         return bareIsSelf ? `${scope.selfVar}.${e.name}` : e.name;
       }
 
