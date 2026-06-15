@@ -4,7 +4,9 @@
 
 > Source: https://manifest-b1e8623f.mintlify.app
 
-> Package: @angriff36/manifest v1.0.2
+> Package: @angriff36/manifest v2.10.2
+
+<!-- NOTE: This file is a point-in-time snapshot of the documentation body and is not auto-regenerated. The version banner above has been updated to the current release, but the prose below may reflect an earlier docs state. Treat the live docs pages as authoritative. -->
 
 
 ---
@@ -320,7 +322,7 @@ URL: https://manifest-b1e8623f.mintlify.app/installation
 Manifest is published as `@angriff36/manifest` to GitHub Packages. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and a package manager that supports scoped registries (npm or pnpm).
 
 
-  **Current version:** `1.0.2`. v1.0.0 introduced composite PK/FK, referential actions, and the Prisma projection. v1.0.1–v1.0.2 fixed FK serialization, duplicate `@default` dedup, and CLI output handling.
+  **Current version:** `2.10.2`. (Historical: v1.0.0 introduced composite PK/FK, referential actions, and the Prisma projection.) This snapshot's prose may lag the live docs; the live pages are authoritative.
 
 
 ## Install the package

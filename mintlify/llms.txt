@@ -1,5 +1,9 @@
 # Manifest
 
+> Package: @angriff36/manifest v2.10.2
+
+<!-- NOTE: This file is a point-in-time snapshot of the docs index and is not auto-regenerated. The version banner above is current; links and summaries below may reflect an earlier docs state. Treat the live docs pages as authoritative. -->
+
 > Manifest is a declarative domain modeling language and runtime. It compiles `.manifest` source files to a deterministic Intermediate Representation (IR) that enforces guards, policies, constraints, and events identically on every platform.
 
 Manifest is designed for AI agents that emit, validate, and reason about business rules as code. The runtime is IR-first: the compiled IR is the executable contract, not generated TypeScript.

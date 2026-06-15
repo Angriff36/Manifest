@@ -147,7 +147,7 @@ The issues below cover the most common problems reported when working with Manif
 
     **How to fix it**
 
-    Upgrade to 0.3.10 or later:
+    Upgrade to the latest release (the fix has shipped since `0.3.10`):
 
     ```bash
     pnpm add @angriff36/manifest@latest
@@ -157,7 +157,7 @@ The issues below cover the most common problems reported when working with Manif
 
     ```bash
     pnpm exec manifest --help
-    node .\node_modules\@manifest\runtime\packages\cli\dist\index.js --help
+    node .\node_modules\@angriff36\manifest\packages\cli\dist\index.js --help
     .\node_modules\.bin\manifest.cmd --help
     ```
 
@@ -356,14 +356,14 @@ The issues below cover the most common problems reported when working with Manif
     pnpm exec manifest validate path/to/output.ir.json
     ```
 
-    If you don't have 0.3.23 installed yet:
+    If you are on an old version, upgrade to the latest release:
 
     ```bash
-    pnpm add @angriff36/manifest@0.3.23
+    pnpm add @angriff36/manifest@latest
     pnpm exec manifest validate path/to/output.ir.json
     ```
 
-    As of 0.3.23, the schema is bundled inside the package and resolved relative to the CLI binary, not the working directory. Do not copy schema files, modify provenance, or create symlinks as workarounds.
+    Since `0.3.23`, the schema is bundled inside the package and resolved relative to the CLI binary, not the working directory. Do not copy schema files, modify provenance, or create symlinks as workarounds.
 
     <Tip>
       Always use `pnpm exec manifest` (or `npx manifest`) rather than a globally installed binary. Run `pnpm exec manifest --version` to confirm the version matches the installed package.

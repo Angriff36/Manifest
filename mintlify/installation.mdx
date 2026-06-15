@@ -7,7 +7,7 @@ description: "Add @angriff36/manifest to any Node.js 18+ project with npm or pnp
 Manifest is published as `@angriff36/manifest` to GitHub Packages. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and a package manager that supports scoped registries (npm or pnpm).
 
 <Note>
-  **Current version:** `2.3.0`. This release added date/time primitive types, property masking, realtime entity subscriptions (SSE), and made the package fully self-contained: all CLI, MCP server, and LSP server runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
+  **Current version:** `2.10.2`. The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all ship inside `@angriff36/manifest`, and their runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
 </Note>
 
 ## Install the package
@@ -127,11 +127,7 @@ manifest generate ir/recipe.ir.json --projection nextjs --output app/api/
 manifest build modules/recipe.manifest
 ```
 
-If you prefer to install the CLI as a dev dependency explicitly, it is also published separately:
-
-```bash
-npm install -D @manifest/cli
-```
+The `manifest` CLI ships **inside** `@angriff36/manifest` — there is no separate CLI package to install. Once `@angriff36/manifest` is a dependency, the `manifest` binary is available via `npx manifest` or your package manager's script runner.
 
 <Tip>
   Run `manifest init` once at the start of a project. It creates `manifest.config.yaml` with your framework, auth provider, import paths, and output directory. After that, `manifest build` reads those defaults and you only need to pass flags when overriding them.
@@ -155,12 +151,12 @@ EOF
 
 ## Windows note
 
-On Windows with pnpm, the `manifest` shim may exit with code `0` and no output on older versions. If this happens, invoke the CLI directly:
+On Windows with pnpm, the `manifest` shim has historically exited with code `0` and no output on some setups. If you hit this, invoke the CLI directly:
 
 ```bash
 pnpm exec manifest --help
-# or
-node .\node_modules\@manifest\runtime\packages\cli\dist\index.js --help
+# or run the bundled binary directly:
+node .\node_modules\@angriff36\manifest\packages\cli\dist\index.js --help
 ```
 
-This was fixed in `0.3.10` — updating to the latest version resolves it.
+If you are on a current release this should not occur; keeping `@angriff36/manifest` up to date is the simplest fix.

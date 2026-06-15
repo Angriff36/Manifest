@@ -116,34 +116,39 @@ const runtime = new RuntimeEngine(ir, {
   tenantId: 'tenant-456',
 });
 
-// Run the "create" command on the Todo entity
-const createResult = await runtime.runCommand('Todo', 'create', {
-  title: 'Learn Manifest'
-});
+// Run the "create" command on the Todo entity.
+// Signature: runCommand(commandName, input, { entityName })
+const createResult = await runtime.runCommand(
+  'create',
+  { title: 'Learn Manifest' },
+  { entityName: 'Todo' }
+);
 
 if (!createResult.success) {
-  console.error('Failed:', createResult.diagnostics);
+  console.error('Failed:', createResult.guardFailure ?? createResult.error);
   process.exit(1);
 }
 
 console.log('Created:', createResult.instance);
 ```
 
-When the command succeeds, `createResult.instance` contains the resulting entity state. When it fails — because a guard evaluated to `false` or a policy denied access — `createResult.diagnostics` tells you exactly which check failed and what values were resolved.
+When the command succeeds, `createResult.instance` contains the resulting entity state. When it fails — because a guard evaluated to `false` or a policy denied access — inspect `createResult.guardFailure` (and `policyDenial`, `constraintOutcomes`, etc.) to see exactly which check failed and what values were resolved. `CommandResult` has no `diagnostics` field.
 
 </Step>
 
 <Step title="Chain a second command and inspect events">
 
-Use the instance returned by `create` to run `complete`. Check `completeResult.events` to see the `TodoCompleted` event that the command emitted.
+Use the instance returned by `create` to run `complete`. Check `completeResult.emittedEvents` to see the `TodoCompleted` event that the command emitted.
 
 ```typescript
-const completeResult = await runtime.runCommand('Todo', 'complete', {
-  id: createResult.instance.id
-});
+const completeResult = await runtime.runCommand(
+  'complete',
+  {},
+  { entityName: 'Todo', instanceId: createResult.instance.id }
+);
 
 if (completeResult.success) {
-  console.log('Events:', completeResult.events);
+  console.log('Events:', completeResult.emittedEvents);
   // Output: Events: [{ name: 'TodoCompleted', channel: 'default', ... }]
 }
 ```

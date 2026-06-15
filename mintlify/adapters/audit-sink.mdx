@@ -54,6 +54,7 @@ The `outcome` field is one of:
 | `success` | Command completed; state was mutated and events emitted. |
 | `guard_denied` | A guard expression evaluated to false. |
 | `policy_denied` | A policy check rejected the command. |
+| `rate_limit_denied` | A command or policy rate limiter blocked execution. |
 | `constraint_failed` | One or more constraint validations failed. |
 | `concurrency_conflict` | Optimistic concurrency check failed. |
 | `missing_tenant_context` | The command required a tenant context that was not supplied. |
