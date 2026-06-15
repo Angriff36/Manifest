@@ -262,6 +262,50 @@ Validator mapping is grounded in current Convex docs (confirmed: `v.id(table)`,
 than guessing. (`manifest-lab` with Hermes' generator lives on the user's other
 machine — `ssh oc@100.86.15.13` — available if a direct side-by-side is needed.)
 
+## 5c. Phase 2 design decisions (`convex.functions`)
+
+Locked decisions for the functions surface (queries + governed mutations +
+reactions), informed by Hermes' PoC at `manifest-lab/scripts/generate-convex.mjs`:
+
+- **Expression resolver** (`convex/expression.ts`): a pure IR-expression → TS
+  renderer. Reuse Hermes' battle-tested operator/builtin map verbatim (the part
+  that took 5 rounds to get right): `now`→`Date.now()`, `uuid`→
+  `crypto.randomUUID()`, `addDays(d,n)`, `percent(a,b)`→`(a/b)*100` /
+  `percent(a)`→`a/100`, `between(x,lo,hi)`→`(x>=lo && x<=hi)`,
+  `removeTagFromString`; operators `in`→`right.includes(left)`, `contains`/
+  `notContains`, `or`/`and`/`==`/`!=` → `||`/`&&`/`===`/`!==`; unary `not`→`!`.
+  Scopes: `self.x`/bare identifier → `doc.x`; `payload.x` preserved; literals
+  rendered exactly (note: literal `0`/`false`/`""` are valid, not "missing").
+- **Fail CLOSED on governance** (divergence from PoC). The PoC returns `"true"`
+  for any expression it cannot resolve, so unparseable guards/policies silently
+  pass — a security bypass that violates house style ("no permissive defaults").
+  Instead: an unresolved guard/policy/constraint emits a hard
+  `CONVEX_UNRESOLVED_GUARD` / `_POLICY` / `_CONSTRAINT` **diagnostic** at
+  generation time AND renders a `throw` (deny) so the gap is loud, not open.
+  Non-governance expressions (mutate targets, reaction params) may render a
+  best-effort value with an info diagnostic.
+- **Mutations** (`convex/<module-or-all>.ts`): one `mutation` per IR command.
+  - `create`: args from entity properties (FK args typed `v.id("<targetTable>")`
+    to match the Phase-1 schema, not `v.string()`); insert; emit event row;
+    run matched reactions.
+  - non-`create`: arg `docId: v.id("<table>")` + command params; load doc;
+    run policies → guards → constraints (fail-closed order mirrors the runtime:
+    policies → guards → actions → emits); `ctx.db.patch`; emit; reactions.
+  - Role hierarchy from `ir.roles[].effectivePermissions` → a `checkRole()` map;
+    `roleAllows(user.role, X)` → `checkRole(userRole, X)`.
+- **Queries** (`convex/queries.ts`): `list<Entity>`, `get<Entity>`, and
+  `list<Entity>By<Field>` for each indexed/reference field (uses `withIndex`).
+  Reads bypass governance (reads are not governed mutations), tenant/soft-delete
+  filterable.
+- **Reactions**: complete the PoC's stubs. `create`-target reactions →
+  `ctx.db.insert(targetTable, {params})` with params resolved from the reaction
+  AST; non-`create` reactions resolve the target id and invoke the patch with
+  mapped params (no `// TODO` left behind), each emitting a diagnostic if a
+  param can't be resolved.
+- **Surfaces emitted as separate artifacts**: `convex.schema` (Phase 1),
+  `convex.queries`, `convex.mutations` (or a single `convex.functions` umbrella
+  returning multiple artifacts). Decide during impl; keep each file regenerable.
+
 ## 6. Out of scope for Phase 1 (roadmap)
 
 - `convex.functions` (queries + inline-governed mutations + complete reactions) — Phase 2.
