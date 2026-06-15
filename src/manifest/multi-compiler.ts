@@ -1,6 +1,7 @@
 import { Parser } from './parser.js';
 import { IRCompiler, computeIRHash } from './ir-compiler.js';
 import { resolveModuleGraph, ResolverHost } from './module-resolver.js';
+import type { EntityIndex } from './entity-composition.js';
 import {
   IR,
   IRModule,
@@ -72,6 +73,27 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     return { ir: null, diagnostics, sources };
   }
 
+  // Phase 1.5: Build a project-wide composition index so that an entity can
+  // `extends` or `mixin` a base declared in a different file. We parse every file
+  // once and collect all entity AST nodes (root + module level) by name. The
+  // per-file compile consults this only for parent/mixin resolution; each file
+  // still emits exactly its own entities, and cross-file duplicates are caught in
+  // Phase 3 below.
+  const compositionContext: EntityIndex = {};
+  for (const file of resolution.order) {
+    const { program } = parser.parse(file.source);
+    for (const entity of program.entities) {
+      // First declaration wins for the lookup index; genuine cross-file duplicates
+      // are reported as errors in Phase 3.
+      if (!compositionContext[entity.name]) compositionContext[entity.name] = entity;
+    }
+    for (const mod of program.modules) {
+      for (const entity of mod.entities) {
+        if (!compositionContext[entity.name]) compositionContext[entity.name] = entity;
+      }
+    }
+  }
+
   // Phase 2: Compile each file in topological order
   const compiledIRs: Array<{ ir: IR; absPath: string }> = [];
   const compiler = new IRCompiler();
@@ -80,6 +102,7 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     const result = await compiler.compileToIR(file.source, {
       useCache,
       sourcePath: file.absPath,
+      compositionContext,
     });
 
     for (const d of result.diagnostics) {

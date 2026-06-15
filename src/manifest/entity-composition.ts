@@ -12,13 +12,23 @@ import {
  *           versionProperty, versionAtProperty, timestamps, realtime.
  */
 
-interface EntityIndex {
+export interface EntityIndex {
   [name: string]: EntityNode;
 }
 
 export function expandEntityComposition(
   program: ManifestProgram,
-  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void
+  emitDiagnostic: (severity: 'error' | 'warning', message: string) => void,
+  /**
+   * Optional project-wide index of entities declared in OTHER files of the same
+   * compile unit. Used by the multi-file compiler so that an entity can `extends`
+   * or `mixin` a base declared in a different file. These external entities are
+   * only consulted for composition resolution (parent/mixin lookup); the local
+   * file's own entities always take precedence, and externals never count toward
+   * the local duplicate-declaration check (cross-file duplicates are validated
+   * separately by the multi-compiler).
+   */
+  externalEntities?: EntityIndex
 ): ManifestProgram {
   // Build index of all entities by name from root and modules
   const entityIndex: EntityIndex = {};
@@ -41,16 +51,31 @@ export function expandEntityComposition(
     }
   }
 
-  // Validate and resolve extends/mixin graph (cycle detection)
+  // Merge external (cross-file) entities as a fallback for composition lookups.
+  // Local entities win; externals fill in only names not declared locally. This
+  // lets `extends`/`mixin` resolve a base declared in another file without
+  // affecting which entities this file actually emits.
+  const localNames = new Set(Object.keys(entityIndex));
+  if (externalEntities) {
+    for (const name of Object.keys(externalEntities)) {
+      if (!entityIndex[name]) {
+        entityIndex[name] = externalEntities[name];
+      }
+    }
+  }
+
+  // Validate and resolve extends/mixin graph (cycle detection).
+  // Only LOCAL entities are validated/expanded here; cross-file bases are reached
+  // transitively through recursion and validated within their own file's compile.
   const validated = new Set<string>();
   const inProgress = new Set<string>();
 
-  for (const name of Object.keys(entityIndex)) {
+  for (const name of localNames) {
     validateEntityGraph(name, entityIndex, validated, inProgress, emitDiagnostic);
   }
 
-  // Expand composition for all entities
-  for (const name of Object.keys(entityIndex)) {
+  // Expand composition for all local entities
+  for (const name of localNames) {
     const entity = entityIndex[name];
     expandComposition(entity, entityIndex, new Set<string>(), emitDiagnostic);
   }

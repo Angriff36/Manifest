@@ -1,5 +1,5 @@
 import { Parser } from './parser.js';
-import { expandEntityComposition } from './entity-composition.js';
+import { expandEntityComposition, type EntityIndex } from './entity-composition.js';
 import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
 import {
   ManifestProgram,
@@ -308,11 +308,15 @@ export class IRCompiler {
     this.diagnostics.push({ severity, message, line, column });
   }
 
-  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string }): Promise<CompileToIRResult> {
+  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string; compositionContext?: EntityIndex }): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
-    // vNext: Check cache before compilation
-    const useCache = options?.useCache ?? true;
+    // vNext: Check cache before compilation.
+    // The content-hash cache keys on THIS file's source only. When a
+    // compositionContext is supplied (multi-file build), the compiled IR also
+    // depends on entities declared in OTHER files, so caching by this file's hash
+    // alone would be incorrect — bypass the cache entirely in that mode.
+    const useCache = (options?.useCache ?? true) && !options?.compositionContext;
     if (useCache) {
       const contentHash = await computeContentHash(source);
       const cached = this.cache.get(contentHash);
@@ -337,7 +341,7 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = await this.transformProgram(program, source, options?.sourcePath);
+    const ir = await this.transformProgram(program, source, options?.sourcePath, options?.compositionContext);
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
     if (this.diagnostics.some(d => d.severity === 'error')) {
@@ -353,11 +357,13 @@ export class IRCompiler {
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string): Promise<IR> {
-    // Expand entity composition (extends, mixin, policies)
+  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string, compositionContext?: EntityIndex): Promise<IR> {
+    // Expand entity composition (extends, mixin, policies). The optional
+    // compositionContext lets cross-file `extends`/`mixin` bases resolve in
+    // multi-file builds.
     expandEntityComposition(program, (severity, message) => {
       this.emitDiagnostic(severity, message);
-    });
+    }, compositionContext);
 
     // House style: syntax that parses must either lower into IR or be diagnosed,
     // never silently dropped. The following top-level constructs have full parser

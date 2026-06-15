@@ -429,4 +429,96 @@ describe('Multi-Compiler', () => {
     expect(result.ir!.webhooks?.map(w => w.name)).toEqual(['JobInbound']);
     expect(result.ir!.schedules?.map(s => s.name)).toEqual(['nightlyJob']);
   });
+
+  describe('cross-file composition (mixins / extends)', () => {
+    it('resolves a mixin defined in one file and consumed in another', async () => {
+      const host = createMemoryHost({
+        '/project/mixins.manifest': `
+          entity TenantScoped {
+            indexed property required tenantId: string = ""
+          }
+          entity SoftDeletable {
+            property deletedAt: string = ""
+          }
+        `,
+        '/project/article.manifest': `
+          use "./mixins.manifest"
+          entity Article mixin TenantScoped, SoftDeletable {
+            property required title: string = ""
+          }
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/article.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      expect(result.ir).not.toBeNull();
+      const article = result.ir!.entities.find(e => e.name === 'Article');
+      expect(article).toBeDefined();
+      expect(article!.mixins).toEqual(['TenantScoped', 'SoftDeletable']);
+      // Mixin properties are flattened into the consumer (precedence: mixins then own)
+      const propNames = article!.properties.map(p => p.name);
+      expect(propNames).toContain('tenantId');
+      expect(propNames).toContain('deletedAt');
+      expect(propNames).toContain('title');
+    });
+
+    it('resolves an extends parent defined in another file', async () => {
+      const host = createMemoryHost({
+        '/project/base.manifest': `
+          entity BaseRecord {
+            property required id: string = ""
+            property createdAt: string = ""
+          }
+        `,
+        '/project/doc.manifest': `
+          use "./base.manifest"
+          entity Document extends BaseRecord {
+            property required title: string = ""
+          }
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/doc.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
+      const doc = result.ir!.entities.find(e => e.name === 'Document');
+      expect(doc).toBeDefined();
+      const propNames = doc!.properties.map(p => p.name);
+      expect(propNames).toContain('id');
+      expect(propNames).toContain('createdAt');
+      expect(propNames).toContain('title');
+    });
+
+    it('reports an error for a mixin that exists in no file', async () => {
+      const host = createMemoryHost({
+        '/project/main.manifest': `
+          entity Article mixin DoesNotExist {
+            property required title: string = ""
+          }
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/main.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.ir).toBeNull();
+      expect(
+        result.diagnostics.some(
+          d => d.severity === 'error' && d.message.includes('DoesNotExist'),
+        ),
+      ).toBe(true);
+    });
+  });
 });
