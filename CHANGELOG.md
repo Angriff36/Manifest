@@ -4,6 +4,41 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.0] - 2026-06-15
+
+### Added
+
+- **Convex projection — functions & orchestration surfaces.** Builds on the
+  `convex.schema` surface (2.9.0) with five new surfaces, completing the
+  Manifest → Convex projection. All emit standalone, self-contained Convex code
+  (no runtime dependency) and typecheck against `convex@1.41`.
+  - **`convex.queries`** — reactive reads: `list<E>`, `get<E>`, and
+    `list<E>By<Field>` over `.withIndex`, with FK arguments typed `v.id`.
+  - **`convex.mutations`** — one governed `mutation` per IR command. Governance
+    is rendered inline and **fail-closed**: each command runs its policies →
+    guards → constraints (runtime order) via a pure IR-expression → TypeScript
+    resolver; any expression the resolver cannot map emits a hard
+    `CONVEX_UNRESOLVED_{POLICY,GUARD,CONSTRAINT}` diagnostic and a denying
+    `throw`, never a silent pass. Roles become a `ROLE_PERMISSIONS` map +
+    `checkRole()` (with `all` wildcard); `roleAllows(user.role, X)` →
+    `checkRole(userRole, X)`. `create` commands source args from the command
+    parameters and map them to stored fields via the `mutate` actions. Each
+    mutation appends an event row and fires matched reactions (create-target →
+    insert; other → resolve + patch). The schema surface now emits a system
+    `events` table by default (`emitEventsTable` / `eventsTable` options).
+  - **`convex.crons`** — IR schedules → `cronJobs()` (`crons.cron` /
+    `crons.interval`) referencing the command mutations.
+  - **`convex.http`** — IR webhooks → `httpRouter` / `httpAction` routes that
+    read the request body, map `transform` params, and `ctx.runMutation` the
+    command.
+  - **`convex.sagas`** — IR sagas → orchestrator `action`s that run each step via
+    `ctx.runMutation`, tracking completed steps and compensating in reverse on
+    failure (`onFailure: compensate`) or rethrowing (`abort`).
+
+  The expression resolver was measured at 100% coverage of capsule's 2545 real
+  governance expressions; 843 queries + 1043 mutations + 2 saga orchestrators
+  generated from the merged IR with zero type errors against real Convex.
+
 ## [2.9.0] - 2026-06-15
 
 ### Added
