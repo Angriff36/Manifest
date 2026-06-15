@@ -4,6 +4,37 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.9.0] - 2026-06-15
+
+### Added
+
+- **Convex schema projection (`convex.schema`).** New built-in projection
+  (`src/manifest/projections/convex/`) that emits a `convex/schema.ts` artifact
+  (`defineSchema`/`defineTable` + `convex/values` validators) from IR. Registered
+  in the projection registry and exported at `@angriff36/manifest/projections/convex`.
+  Highlights:
+  - **Lossless numerics** — `int`/`bigint` → `v.int64()`, `decimal`/`money` →
+    `v.string()` (no float rounding); `float` → `v.number()`. Bare `number` is a
+    hard `CONVEX_AMBIGUOUS_NUMBER` diagnostic, unknown types a hard
+    `CONVEX_UNKNOWN_TYPE` (no silent fallback), mirroring the Prisma projection.
+  - **Typed references** — `belongsTo`/`ref` emit `v.id("<targetTable>")`, and a
+    property that *backs* a relationship is retyped to the reference rather than
+    its declared scalar. `referenceMode: 'stringId'` opts out for app-level ids.
+  - Enums → `v.union(v.literal(...))`; `array<T>` → `v.array(...)`; nullable →
+    union with `v.null()`; non-required → `v.optional(...)`.
+  - `computed` properties are never emitted; the IR `id` is dropped (Convex's
+    document `_id` is identity); referential actions emit a deferred-info
+    diagnostic (cascades belong to the future functions surface).
+  - Indexes for `indexed` properties, the tenant column, and every reference;
+    composite/named indexes via the `indexes` option. Convex-idiomatic camelCase
+    + pluralized table names by default, overridable via `tableMappings`/`naming`.
+  - Options bag (`ConvexProjectionOptions`): `output`, `tableMappings`,
+    `typeMappings`, `indexes`, `references`, `referenceMode`, `naming`.
+
+  Validated against a 199-entity merged IR (zero error diagnostics); the emitted
+  `convex/schema.ts` typechecks against `convex@1.41` with `--strict`. This is
+  Phase 1; governed functions (queries/mutations) and schedules are roadmapped.
+
 ## [2.8.0] - 2026-06-15
 
 ### Changed
