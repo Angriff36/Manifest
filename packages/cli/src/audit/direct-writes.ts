@@ -15,6 +15,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
+import { buildDirectWriteRegex, DEFAULT_WRITE_RECEIVER } from './write-receiver.js';
 
 const ROUTE_GLOBS = [
   'app/api/**/route.{ts,js,mjs,cjs}',
@@ -34,9 +35,6 @@ const ALLOWLIST_SEGMENTS = [
   ['src', 'manifest', 'stores.node.ts'],
 ];
 
-const DIRECT_WRITE_RE =
-  /\bprisma\s*\.\s*\w+\s*\.\s*(create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(/;
-
 function isAllowlisted(filePath: string, root: string): boolean {
   const rel = path.relative(root, filePath).split(/[\\/]/);
   return ALLOWLIST_SEGMENTS.some((segments) =>
@@ -44,16 +42,21 @@ function isAllowlisted(filePath: string, root: string): boolean {
   );
 }
 
-async function scanFile(filePath: string, root: string): Promise<AuditFinding[]> {
+async function scanFile(
+  filePath: string,
+  root: string,
+  re: RegExp,
+  receiver: string
+): Promise<AuditFinding[]> {
   if (isAllowlisted(filePath, root)) return [];
   const content = await fs.readFile(filePath, 'utf-8');
-  const match = DIRECT_WRITE_RE.exec(content);
+  const match = re.exec(content);
   if (!match) return [];
   return [
     {
       severity: 'error',
       code: 'DIRECT_WRITE',
-      message: `Direct prisma.${match[1]} call outside runtime adapters`,
+      message: `Direct ${receiver}.${match[1]} call outside runtime adapters`,
       file: path.relative(root, filePath).replace(/\\/g, '/'),
       detector: 'direct-writes',
     },
@@ -65,6 +68,8 @@ export const directWritesDetector: Detector = {
   description: 'Flag direct ORM writes outside runtime adapters',
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     const findings: AuditFinding[] = [];
+    const receiver = ctx.writeReceiver ?? DEFAULT_WRITE_RECEIVER;
+    const directWriteRe = buildDirectWriteRegex(receiver);
     const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
     const ignorePatterns = ctx.excludeGlobs;
     // Default globs and user --include patterns may overlap (e.g. defaults
@@ -83,7 +88,7 @@ export const directWritesDetector: Detector = {
       for (const file of matches) {
         if (seen.has(file)) continue;
         seen.add(file);
-        findings.push(...(await scanFile(file, ctx.root)));
+        findings.push(...(await scanFile(file, ctx.root, directWriteRe, receiver)));
       }
     }
     return findings;

@@ -42,6 +42,8 @@ export interface EnforceSurfaceOptions {
   strict?: boolean;
   include?: string[];
   exclude?: string[];
+  /** ORM client identifier the direct-write detectors match on (default: prisma). */
+  writeReceiver?: string;
 }
 
 export interface EnforceSurfaceFinding {
@@ -143,6 +145,7 @@ export async function enforceSurfaceCommand(
     bypassRegistry: resolve(options.bypassRegistry),
     includeGlobs: options.include,
     excludeGlobs: options.exclude,
+    writeReceiver: options.writeReceiver,
   };
 
   const raw: AuditFinding[] = [];

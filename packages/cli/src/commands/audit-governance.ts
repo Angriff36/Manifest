@@ -33,6 +33,8 @@ export interface AuditGovernanceOptions {
   strict?: boolean;
   commandsRegistry?: string;
   bypassRegistry?: string;
+  /** ORM client identifier the direct-write detectors match on (default: prisma). */
+  writeReceiver?: string;
 }
 
 export interface AuditGovernanceResult {
@@ -69,6 +71,7 @@ export async function auditGovernanceCommand(
     root,
     commandsRegistry: options.commandsRegistry,
     bypassRegistry: options.bypassRegistry,
+    writeReceiver: options.writeReceiver,
   };
 
   const findings: AuditFinding[] = [];

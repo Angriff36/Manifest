@@ -50,6 +50,13 @@ export interface DetectorContext {
    * editing each detector.
    */
   excludeGlobs?: string[];
+  /**
+   * The ORM client identifier that direct-write detectors match on (the
+   * variable a write is called against, e.g. `prisma.user.create`). Defaults to
+   * `prisma`. Set this when the consumer re-exports its client under another
+   * name (e.g. `database`) so governed-write detection still fires.
+   */
+  writeReceiver?: string;
 }
 
 export interface Detector {

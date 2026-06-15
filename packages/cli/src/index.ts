@@ -620,6 +620,7 @@ program
   .option('--bypass-registry <path>', 'Path to bypasses.json (enables bypass-violations detector)')
   .option('--strict', 'Exit non-zero on any error finding', false)
   .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--write-receiver <name>', 'ORM client identifier direct-write detectors match on (default: prisma)')
   .action(async (options = {}, cmd) => {
     // Surface a deprecation hint when callers invoke the legacy alias.
     const invokedAs = cmd?.args?.[0] ?? cmd?.name?.();
@@ -664,6 +665,7 @@ program
   .option('--strict', 'Exit non-zero on any error finding', false)
   .option('--include <glob...>', 'Additional include globs')
   .option('--exclude <glob...>', 'Exclude globs (generated files, build output, fixtures, etc.)')
+  .option('--write-receiver <name>', 'ORM client identifier direct-write detectors match on (default: prisma)')
   .action(async (options = {}) => {
     await enforceSurfaceCommand({
       root: options.root,
@@ -674,6 +676,7 @@ program
       strict: !!options.strict,
       include: options.include,
       exclude: options.exclude,
+      writeReceiver: options.writeReceiver,
     });
   });
 

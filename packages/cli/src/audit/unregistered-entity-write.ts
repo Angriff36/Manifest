@@ -16,6 +16,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { glob } from 'glob';
 import type { AuditFinding, Detector, DetectorContext } from './types.js';
+import { buildEntityWriteRegex, DEFAULT_WRITE_RECEIVER } from './write-receiver.js';
 
 const ROUTE_GLOBS = [
   'app/api/**/route.{ts,js,mjs,cjs}',
@@ -36,9 +37,6 @@ const EXCLUDE_GLOBS = [
   '**/build/**',
   '**/generated/**',
 ];
-
-const WRITE_RE =
-  /\bprisma\s*\.\s*(\w+)\s*\.\s*(create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(/g;
 
 interface EntityRegistryEntry {
   name: string;
@@ -74,6 +72,8 @@ export const unregisteredEntityWriteDetector: Detector = {
   async run(ctx: DetectorContext): Promise<AuditFinding[]> {
     if (!ctx.entitiesRegistry) return [];
     const known = await loadEntityNames(ctx.entitiesRegistry);
+    const receiver = ctx.writeReceiver ?? DEFAULT_WRITE_RECEIVER;
+    const writeRe = buildEntityWriteRegex(receiver);
     const findings: AuditFinding[] = [];
     const seen = new Set<string>();
     const scanPatterns = [...ROUTE_GLOBS, ...(ctx.includeGlobs ?? [])];
@@ -88,15 +88,15 @@ export const unregisteredEntityWriteDetector: Detector = {
         if (seen.has(file)) continue;
         seen.add(file);
         const src = await fs.readFile(file, 'utf-8');
-        WRITE_RE.lastIndex = 0;
+        writeRe.lastIndex = 0;
         let m: RegExpExecArray | null;
-        while ((m = WRITE_RE.exec(src))) {
+        while ((m = writeRe.exec(src))) {
           const model = m[1];
           if (known.has(model)) continue;
           findings.push({
             severity: 'error',
             code: 'UNREGISTERED_ENTITY_WRITE',
-            message: `Direct write prisma.${model}.${m[2]} against model with no Manifest entity registered`,
+            message: `Direct write ${receiver}.${model}.${m[2]} against model with no Manifest entity registered`,
             file: path.relative(ctx.root, file).replace(/\\/g, '/'),
             detector: 'unregistered-entity-write',
             entity: model,
