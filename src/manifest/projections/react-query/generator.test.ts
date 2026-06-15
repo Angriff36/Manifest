@@ -451,6 +451,154 @@ describe('ReactQueryProjection', () => {
   });
 
   // ========================================================================
+  // react-query.hooks surface — D23 options (routes, envelope, adapter, command envelope)
+  // ========================================================================
+
+  describe('react-query.hooks surface — entityRoutes override', () => {
+    it('routes reads and writes to domain paths with original casing', async () => {
+      const source = `
+        entity Event {
+          property required id: string
+          property name: string = ""
+
+          command announce(name: string) {
+            mutate name = name
+          }
+        }
+
+        store Event in memory
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, {
+        surface: 'react-query.hooks',
+        options: {
+          entityRoutes: {
+            Event: { readBase: '/api/events/event', writeBase: '/api/manifest/Event/commands' },
+          },
+        },
+      });
+      const code = firstCode(hooksResult);
+
+      expect(code).toContain('`/api/events/event/list`');
+      expect(code).toContain('`/api/events/event/${encodeURIComponent(id)}`');
+      expect(code).toContain('/api/manifest/Event/commands/announce');
+      // Default flattened path must NOT appear.
+      expect(code).not.toContain('/api/event/list');
+    });
+  });
+
+  describe('react-query.hooks surface — readEnvelope override', () => {
+    it('uses overridden envelope keys and a fallback key', async () => {
+      const source = `
+        entity Dish {
+          property required id: string
+          property name: string = ""
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, {
+        surface: 'react-query.hooks',
+        options: {
+          readEnvelope: {
+            Dish: { listKey: 'dishes', detailKey: 'dish', fallbackKey: 'data' },
+          },
+        },
+      });
+      const code = firstCode(hooksResult);
+
+      expect(code).toContain('data.dishes ?? data.data');
+      expect(code).toContain('data.dish ?? data.data');
+      // Default `+s` pluralization (dishs) must not leak.
+      expect(code).not.toContain('data.dishs');
+    });
+  });
+
+  describe('react-query.hooks surface — fetchAdapter import', () => {
+    it('imports the host adapter and omits the inline helper', async () => {
+      const source = `entity Foo { property id: string }`;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, {
+        surface: 'react-query.hooks',
+        options: { fetchAdapter: { importPath: '@/lib/api', importName: 'apiFetch' } },
+      });
+      const code = firstCode(hooksResult);
+
+      expect(code).toContain("import { apiFetch } from '@/lib/api';");
+      expect(code).not.toContain('async function apiFetch<T>');
+    });
+
+    it('aliases a differently-named adapter export to apiFetch', async () => {
+      const source = `entity Foo { property id: string }`;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, {
+        surface: 'react-query.hooks',
+        options: { fetchAdapter: { importPath: '@/lib/api', importName: 'authedFetch' } },
+      });
+      const code = firstCode(hooksResult);
+
+      expect(code).toContain("import { authedFetch as apiFetch } from '@/lib/api';");
+    });
+  });
+
+  describe('react-query.hooks surface — commandEnvelope', () => {
+    it('types mutations as CommandEnvelope when enabled', async () => {
+      const source = `
+        entity Foo {
+          property id: string
+          property val: string = ""
+
+          command doIt(val: string) {
+            mutate val = val
+          }
+        }
+
+        store Foo in memory
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, {
+        surface: 'react-query.hooks',
+        options: { commandEnvelope: true },
+      });
+      const code = firstCode(hooksResult);
+
+      expect(code).toContain('export interface CommandEnvelope<T> {');
+      expect(code).toContain('CommandEnvelope<');
+    });
+
+    it('does not emit CommandEnvelope by default', async () => {
+      const source = `
+        entity Foo {
+          property id: string
+          property val: string = ""
+
+          command doIt(val: string) {
+            mutate val = val
+          }
+        }
+
+        store Foo in memory
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, { surface: 'react-query.hooks' });
+      const code = firstCode(hooksResult);
+
+      expect(code).not.toContain('CommandEnvelope');
+    });
+  });
+
+  // ========================================================================
   // Determinism
   // ========================================================================
 

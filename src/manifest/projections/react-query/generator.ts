@@ -29,6 +29,32 @@ import type {
 // Options
 // ---------------------------------------------------------------------------
 
+/** Per-entity route base overrides (preserves original casing / domain routes). */
+export interface EntityRouteOverride {
+  /** Replaces `${apiBasePath}/${lowercased}` for list + detail reads. */
+  readBase?: string;
+  /** Replaces `${dispatcherBasePath}/${lowercased}/commands` for command writes. */
+  writeBase?: string;
+}
+
+/** Per-entity read-envelope key overrides (replaces hardcoded pluralization). */
+export interface ReadEnvelopeOverride {
+  /** Key holding the array in a list response (default: `${camelEntity}s`). */
+  listKey?: string;
+  /** Key holding the object in a detail response (default: `${camelEntity}`). */
+  detailKey?: string;
+  /** Optional secondary key to fall back to (emits `data.x ?? data.fallback`). */
+  fallbackKey?: string;
+}
+
+/** Import a host-provided fetch adapter instead of the inline `apiFetch`. */
+export interface FetchAdapterOption {
+  /** Module to import the adapter from, e.g. '@/lib/api'. */
+  importPath: string;
+  /** Exported name of the adapter (default: 'apiFetch'). Aliased to apiFetch. */
+  importName?: string;
+}
+
 export interface ReactQueryProjectionOptions {
   /** Base API path prefix (default: '/api') */
   apiBasePath?: string;
@@ -42,6 +68,29 @@ export interface ReactQueryProjectionOptions {
   typesImportPath?: string;
   /** Default staleTime in ms (default: 30_000) */
   defaultStaleTime?: number;
+  /**
+   * Per-entity route base overrides keyed by entity name. Lets a consumer route
+   * reads/writes to domain paths with original casing (e.g. Event →
+   * `/api/events/event`) instead of the default flattened lowercase path.
+   */
+  entityRoutes?: Record<string, EntityRouteOverride>;
+  /**
+   * Per-entity read-envelope key overrides keyed by entity name. Replaces the
+   * default `+s` pluralization (which breaks on irregulars like Dish→dishes) and
+   * supports a fallback key (e.g. `data.events ?? data.data`).
+   */
+  readEnvelope?: Record<string, ReadEnvelopeOverride>;
+  /**
+   * When set, the generated hooks import an existing fetch adapter (for auth /
+   * credentials) instead of emitting the inline `apiFetch`.
+   */
+  fetchAdapter?: FetchAdapterOption;
+  /**
+   * When true, command mutations type their response as the dispatcher/sync
+   * envelope `{ success, result, events }` via a generated `CommandEnvelope<T>`
+   * instead of the bare command return type. Default: false.
+   */
+  commandEnvelope?: boolean;
 }
 
 interface NormalizedOptions {
@@ -51,6 +100,10 @@ interface NormalizedOptions {
   errorBoundaryIntegration: boolean;
   typesImportPath: string;
   defaultStaleTime: number;
+  entityRoutes: Record<string, EntityRouteOverride>;
+  readEnvelope: Record<string, ReadEnvelopeOverride>;
+  fetchAdapter?: { importPath: string; importName: string };
+  commandEnvelope: boolean;
 }
 
 function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions {
@@ -61,7 +114,37 @@ function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions
     errorBoundaryIntegration: opts?.errorBoundaryIntegration ?? true,
     typesImportPath: opts?.typesImportPath ?? '@/types/manifest-generated',
     defaultStaleTime: opts?.defaultStaleTime ?? 30_000,
+    entityRoutes: opts?.entityRoutes ?? {},
+    readEnvelope: opts?.readEnvelope ?? {},
+    fetchAdapter: opts?.fetchAdapter
+      ? {
+          importPath: opts.fetchAdapter.importPath,
+          importName: opts.fetchAdapter.importName ?? 'apiFetch',
+        }
+      : undefined,
+    commandEnvelope: opts?.commandEnvelope ?? false,
   };
+}
+
+// Route + envelope resolvers. Each falls back to the historical default so
+// output is byte-identical when no override is supplied.
+function resolveReadBase(entityName: string, opts: NormalizedOptions): string {
+  return opts.entityRoutes[entityName]?.readBase ?? `${opts.apiBasePath}/${entityName.toLowerCase()}`;
+}
+
+function resolveWriteBase(entityName: string, opts: NormalizedOptions): string {
+  return (
+    opts.entityRoutes[entityName]?.writeBase ??
+    `${opts.dispatcherBasePath}/${entityName.toLowerCase()}/commands`
+  );
+}
+
+function resolveListKey(entityName: string, camelName: string, opts: NormalizedOptions): string {
+  return opts.readEnvelope[entityName]?.listKey ?? `${camelName}s`;
+}
+
+function resolveDetailKey(entityName: string, camelName: string, opts: NormalizedOptions): string {
+  return opts.readEnvelope[entityName]?.detailKey ?? camelName;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +249,13 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   lines.push("  type UseQueryOptions,");
   lines.push("  type UseMutationOptions,");
   lines.push("} from '@tanstack/react-query';");
+  // Optional host-provided fetch adapter (auth/credentials). Aliased to apiFetch
+  // so call sites are identical to the inline-helper path.
+  if (opts.fetchAdapter) {
+    const { importPath, importName } = opts.fetchAdapter;
+    const binding = importName === 'apiFetch' ? 'apiFetch' : `${importName} as apiFetch`;
+    lines.push(`import { ${binding} } from '${importPath}';`);
+  }
   lines.push("");
 
   // Types section — inline types so the hooks file is self-contained
@@ -173,6 +263,16 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   lines.push("// Entity types (from IR)");
   lines.push("// ============================================================");
   lines.push("");
+
+  // Command response envelope (opt-in): the dispatcher/sync write shape.
+  if (opts.commandEnvelope) {
+    lines.push("export interface CommandEnvelope<T> {");
+    lines.push("  success: boolean;");
+    lines.push("  result: T;");
+    lines.push("  events: unknown[];");
+    lines.push("}");
+    lines.push("");
+  }
 
   for (const entity of ir.entities) {
     lines.push(generateEntityTypes(entity));
@@ -212,20 +312,23 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   lines.push("} as const;");
   lines.push("");
 
-  // API fetch helpers
-  lines.push("// ============================================================");
-  lines.push("// API fetch helpers");
-  lines.push("// ============================================================");
-  lines.push("");
-  lines.push("async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {");
-  lines.push("  const response = await fetch(url, init);");
-  lines.push("  if (!response.ok) {");
-  lines.push("    const error = await response.json().catch(() => ({ message: response.statusText }));");
-  lines.push("    throw new Error(error.message || `Request failed: ${response.status}`);");
-  lines.push("  }");
-  lines.push("  return response.json();");
-  lines.push("}");
-  lines.push("");
+  // API fetch helpers. When a fetchAdapter is configured, the import above
+  // provides `apiFetch`; otherwise emit the inline default helper.
+  if (!opts.fetchAdapter) {
+    lines.push("// ============================================================");
+    lines.push("// API fetch helpers");
+    lines.push("// ============================================================");
+    lines.push("");
+    lines.push("async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {");
+    lines.push("  const response = await fetch(url, init);");
+    lines.push("  if (!response.ok) {");
+    lines.push("    const error = await response.json().catch(() => ({ message: response.statusText }));");
+    lines.push("    throw new Error(error.message || `Request failed: ${response.status}`);");
+    lines.push("  }");
+    lines.push("  return response.json();");
+    lines.push("}");
+    lines.push("");
+  }
 
   // Entity query hooks
   lines.push("// ============================================================");
@@ -236,17 +339,24 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   for (const entity of ir.entities) {
     const name = entity.name;
     const camelName = toLowerCamelCase(name);
-    const lowerName = name.toLowerCase();
+    const readBase = resolveReadBase(name, opts);
+    const listKey = resolveListKey(name, camelName, opts);
+    const detailKey = resolveDetailKey(name, camelName, opts);
+    const fallbackKey = opts.readEnvelope[name]?.fallbackKey;
 
     // List hook
+    const listType = fallbackKey
+      ? `{ ${listKey}?: ${name}[]; ${fallbackKey}?: ${name}[] }`
+      : `{ ${listKey}: ${name}[] }`;
+    const listExtract = fallbackKey ? `data.${listKey} ?? data.${fallbackKey}` : `data.${listKey}`;
     lines.push(`export function use${name}List(`);
     lines.push(`  options?: Omit<UseQueryOptions<${name}[], Error>, 'queryKey' | 'queryFn'>,`);
     lines.push(`) {`);
     lines.push(`  return useQuery({`);
     lines.push(`    queryKey: queryKeys.${camelName}.lists(),`);
     lines.push(`    queryFn: () =>`);
-    lines.push(`      apiFetch<{ ${camelName}s: ${name}[] }>(\`${opts.apiBasePath}/${lowerName}/list\`)`);
-    lines.push(`        .then(data => data.${camelName}s),`);
+    lines.push(`      apiFetch<${listType}>(\`${readBase}/list\`)`);
+    lines.push(`        .then(data => ${listExtract}),`);
     lines.push(`    staleTime: ${opts.defaultStaleTime},`);
     lines.push(`    ...options,`);
     lines.push(`  });`);
@@ -254,6 +364,12 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push("");
 
     // Detail hook
+    const detailType = fallbackKey
+      ? `{ ${detailKey}?: ${name}; ${fallbackKey}?: ${name} }`
+      : `{ ${detailKey}: ${name} }`;
+    const detailExtract = fallbackKey
+      ? `data.${detailKey} ?? data.${fallbackKey}`
+      : `data.${detailKey}`;
     lines.push(`export function use${name}Detail(`);
     lines.push(`  id: string,`);
     lines.push(`  options?: Omit<UseQueryOptions<${name}, Error>, 'queryKey' | 'queryFn'>,`);
@@ -261,8 +377,8 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`  return useQuery({`);
     lines.push(`    queryKey: queryKeys.${camelName}.detail(id),`);
     lines.push(`    queryFn: () =>`);
-    lines.push(`      apiFetch<{ ${camelName}: ${name} }>(\`${opts.apiBasePath}/${lowerName}/\${encodeURIComponent(id)}\`)`);
-    lines.push(`        .then(data => data.${camelName}),`);
+    lines.push(`      apiFetch<${detailType}>(\`${readBase}/\${encodeURIComponent(id)}\`)`);
+    lines.push(`        .then(data => ${detailExtract}),`);
     lines.push(`    enabled: !!id,`);
     lines.push(`    staleTime: ${opts.defaultStaleTime},`);
     lines.push(`    ...options,`);
@@ -294,7 +410,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     if (!entity) continue;
 
     const hookName = `use${entityName}${capitalize(command.name)}`;
-    const lowerEntity = entityName.toLowerCase();
+    const writeBase = resolveWriteBase(entityName, opts);
     const commandSlug = toKebabCase(command.name);
     const camelEntity = toLowerCamelCase(entityName);
 
@@ -302,9 +418,12 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     const inputTypeName = hasParams
       ? `${entityName}${capitalize(command.name)}Input`
       : 'void';
-    const returnTypeName = command.returns
+    const bareReturnType = command.returns
       ? irTypeToTsType(command.returns)
       : 'unknown';
+    const returnTypeName = opts.commandEnvelope
+      ? `CommandEnvelope<${bareReturnType}>`
+      : bareReturnType;
 
     lines.push(`export function ${hookName}(`);
     lines.push(`  options?: Omit<UseMutationOptions<${returnTypeName}, Error, ${inputTypeName}>, 'mutationFn'>,`);
@@ -312,7 +431,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`  const queryClient = useQueryClient();`);
     lines.push(`  return useMutation({`);
     lines.push(`    mutationFn: (${hasParams ? 'input' : ''}: ${inputTypeName}) =>`);
-    lines.push(`      apiFetch<${returnTypeName}>(\`${opts.dispatcherBasePath}/${lowerEntity}/commands/${commandSlug}\`, {`);
+    lines.push(`      apiFetch<${returnTypeName}>(\`${writeBase}/${commandSlug}\`, {`);
     lines.push(`        method: 'POST',`);
     lines.push(`        headers: { 'Content-Type': 'application/json' },`);
     lines.push(`        body: JSON.stringify(${hasParams ? 'input' : '{}'}),`);
