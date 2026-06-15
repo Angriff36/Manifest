@@ -22,7 +22,7 @@
  *   - Unknown `type.name` produces a hard error diagnostic. No fallback.
  */
 
-import type { IR, IREntity, IRProperty, IRRelationship, IRStore, IRValue } from '../../ir';
+import type { IR, IREntity, IREnum, IRProperty, IRRelationship, IRStore, IRValue } from '../../ir';
 import type {
   ProjectionArtifact,
   ProjectionDiagnostic,
@@ -96,15 +96,52 @@ function resolveSchemaName(entity: IREntity, options: PrismaProjectionOptions): 
 }
 
 /**
- * Build the datasource `schemas = [...]` list: explicit entries first (order
- * preserved), then any schema referenced by a model but not explicitly listed,
- * appended in sorted order. Guarantees every referenced schema is declared.
+ * Resolve the database schema an enum belongs to (multiSchema only). Mirrors
+ * `resolveSchemaName` for entities: explicit `entitySchema[name]` override,
+ * then the enum's IR `module`, then `defaultSchema`.
  */
-function buildSchemasList(entities: IREntity[], options: PrismaProjectionOptions): string[] {
+function resolveEnumSchemaName(enumDef: IREnum, options: PrismaProjectionOptions): string | undefined {
+  const ms = options.multiSchema;
+  if (!ms?.enabled) return undefined;
+  return ms.entitySchema?.[enumDef.name] ?? enumDef.module ?? ms.defaultSchema ?? 'public';
+}
+
+/**
+ * Emit a Prisma `enum` block from an IR enum. Only the value *names* are
+ * emitted: a Prisma enum value identifier IS its stored database value, whereas
+ * an IR enum value's `label` is UI-display-only and `ordinal` is a sort hint —
+ * neither is expressible as plain Prisma enum syntax (and emitting `label` via
+ * `@map` would silently change the stored value), so both are intentionally
+ * dropped. Declaration order is preserved (authoritative from the IR).
+ */
+function emitEnum(enumDef: IREnum, options: PrismaProjectionOptions): string {
+  const lines: string[] = [`enum ${enumDef.name} {`];
+  for (const value of enumDef.values) {
+    lines.push(`  ${value.name}`);
+  }
+  const schemaName = resolveEnumSchemaName(enumDef, options);
+  if (schemaName) {
+    lines.push('');
+    lines.push(`  @@schema("${schemaName}")`);
+  }
+  lines.push('}');
+  return lines.join('\n');
+}
+
+/**
+ * Build the datasource `schemas = [...]` list: explicit entries first (order
+ * preserved), then any schema referenced by a model OR enum but not explicitly
+ * listed, appended in sorted order. Guarantees every referenced schema is declared.
+ */
+function buildSchemasList(entities: IREntity[], enums: IREnum[], options: PrismaProjectionOptions): string[] {
   const ordered: string[] = [...(options.multiSchema?.schemas ?? [])];
   const used = new Set<string>();
   for (const entity of entities) {
     const schema = resolveSchemaName(entity, options);
+    if (schema) used.add(schema);
+  }
+  for (const enumDef of enums) {
+    const schema = resolveEnumSchemaName(enumDef, options);
     if (schema) used.add(schema);
   }
   for (const schema of [...used].sort()) {
@@ -185,10 +222,18 @@ function emitPropertyLine(
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
   const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  // Enum-typed property: the IR type name matches a declared enum. The Prisma
+  // field type IS the enum name (emitted as a `enum` block by emitEnum), unless
+  // a typeMappings override is explicitly supplied.
+  const isEnum = (ir.enums?.some(e => e.name === effectiveTypeName) ?? false) && !isValueObject;
   const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
   const hasOverride = typeOverrides !== undefined
     && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
-  const scalar = isValueObject ? 'Json' : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
+  const scalar = isValueObject
+    ? 'Json'
+    : (isEnum && !hasOverride)
+      ? effectiveTypeName
+      : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
 
   if (!scalar) {
     if (effectiveTypeName === 'number' && !hasOverride) {
@@ -285,8 +330,14 @@ function emitPropertyLine(
 
   // IR-level default: only emit if fieldAttributes didn't supply a @default override.
   if (prop.defaultValue && !fieldAttrHasDefault) {
-    const def = literalToPrismaDefault(prop.defaultValue);
-    if (def !== undefined) attrs.push(`@default(${def})`);
+    if (isEnum && prop.defaultValue.kind === 'string') {
+      // An enum default is a member identifier, emitted bare (`@default(draft)`),
+      // never quoted like a string literal (`@default("draft")` would be invalid).
+      attrs.push(`@default(${prop.defaultValue.value})`);
+    } else {
+      const def = literalToPrismaDefault(prop.defaultValue);
+      if (def !== undefined) attrs.push(`@default(${def})`);
+    }
   }
 
   // Field-level attributes from config (e.g. @unique, @default(now()), @updatedAt).
@@ -862,10 +913,24 @@ export class PrismaProjection implements ProjectionTarget {
       emittedEntities.add(entity.name);
     }
 
-    // Schemas referenced by the models we are about to emit (empty when
+    // Enums referenced by an emitted (durable) entity's property. We only emit
+    // enum blocks that a Prisma model actually uses — an enum referenced solely
+    // by a skipped (memory/external) entity would be an orphan declaration.
+    const referencedEnumNames = new Set<string>();
+    for (const entity of toEmit) {
+      for (const prop of entity.properties) {
+        const typeName = prop.type.name === 'array' && prop.type.generic
+          ? prop.type.generic.name
+          : prop.type.name;
+        if ((ir.enums ?? []).some(e => e.name === typeName)) referencedEnumNames.add(typeName);
+      }
+    }
+    const enumsToEmit = (ir.enums ?? []).filter(e => referencedEnumNames.has(e.name));
+
+    // Schemas referenced by the models/enums we are about to emit (empty when
     // multiSchema is disabled). Drives both the datasource `schemas = [...]`
     // list and the models-only advisory below.
-    const schemasList = buildSchemasList(toEmit, options);
+    const schemasList = buildSchemasList(toEmit, enumsToEmit, options);
 
     // Models-only mode (no provider → no datasource block): @@schema is still
     // emitted, but the consumer's existing datasource must declare the schemas.
@@ -888,6 +953,8 @@ export class PrismaProjection implements ProjectionTarget {
       modelBlocks.push(lines.join('\n'));
     }
 
+    const enumBlocks: string[] = enumsToEmit.map(e => emitEnum(e, options));
+
     const header = [
       '// Auto-generated by @manifest/projection-prisma',
       '// DO NOT EDIT — regenerate with the projection.',
@@ -896,8 +963,9 @@ export class PrismaProjection implements ProjectionTarget {
     ];
 
     const headerStr = header.join('\n');
-    const code = (modelBlocks.length > 0)
-      ? headerStr + '\n' + modelBlocks.join('\n\n') + '\n'
+    const bodyBlocks = [...modelBlocks, ...enumBlocks];
+    const code = (bodyBlocks.length > 0)
+      ? headerStr + '\n' + bodyBlocks.join('\n\n') + '\n'
       : headerStr + '// No persistent entities found in IR.\n';
 
     const artifacts: ProjectionArtifact[] = [

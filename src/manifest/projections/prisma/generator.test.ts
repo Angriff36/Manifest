@@ -2177,3 +2177,100 @@ describe('PrismaProjection — date/time primitive types', () => {
     expect(errs).toHaveLength(0);
   });
 });
+
+describe('PrismaProjection — enum types', () => {
+  function statusEnum() {
+    return {
+      name: 'Status',
+      values: [
+        { name: 'draft' },
+        { name: 'published', label: 'Published' },
+        { name: 'archived', ordinal: 2 },
+      ],
+    };
+  }
+
+  it('emits an enum block, types the column as the enum, and emits a BARE @default', () => {
+    const ir = emptyIR();
+    ir.enums.push(statusEnum());
+    ir.entities.push(
+      bareEntity('Article', {
+        properties: [
+          {
+            name: 'status',
+            type: { name: 'Status', nullable: false },
+            modifiers: ['required'],
+            defaultValue: { kind: 'string', value: 'draft' },
+          },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Article'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    const code = result.artifacts[0].code;
+
+    // Enum block with BARE value names — label ("Published") and ordinal (2) are
+    // UI/sort-only and intentionally dropped; no @map (that would change the value).
+    expect(code).toMatch(/enum Status \{/);
+    expect(code).toMatch(/^\s+draft$/m);
+    expect(code).toMatch(/^\s+published$/m);
+    expect(code).toMatch(/^\s+archived$/m);
+    expect(code).not.toMatch(/Published/);
+    expect(code).not.toMatch(/@map/);
+
+    // Column typed as the enum; default emitted bare (not quoted like a string).
+    expect(code).toMatch(/^\s+status Status @default\(draft\)$/m);
+    expect(code).not.toMatch(/@default\("draft"\)/);
+
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs).toHaveLength(0);
+  });
+
+  it('does NOT emit an enum referenced only by a skipped (memory) entity', () => {
+    const ir = emptyIR();
+    ir.enums.push({ name: 'Color', values: [{ name: 'red' }, { name: 'blue' }] });
+    ir.entities.push(
+      bareEntity('Palette', {
+        properties: [{ name: 'color', type: { name: 'Color', nullable: false }, modifiers: ['required'] }],
+      }),
+    );
+    ir.stores.push(memoryStore('Palette'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    const code = result.artifacts[0]?.code ?? '';
+    expect(code).not.toMatch(/enum Color/);
+  });
+
+  it('places the enum in its module schema under multiSchema and lists it in the datasource', () => {
+    const ir = emptyIR();
+    ir.enums.push({ name: 'Stage', module: 'sales', values: [{ name: 'lead' }, { name: 'won' }] });
+    ir.entities.push({
+      name: 'Deal',
+      module: 'sales',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'stage', type: { name: 'Stage', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    });
+    ir.stores.push(durableStore('Deal'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', multiSchema: { enabled: true } },
+    });
+    const code = result.artifacts[0].code;
+
+    expect(code).toMatch(/enum Stage \{/);
+    expect(code).toMatch(/^\s+@@schema\("sales"\)$/m);
+    expect(code).toMatch(/schemas\s+= \[[^\]]*"sales"[^\]]*\]/);
+
+    const errs = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errs).toHaveLength(0);
+  });
+});
