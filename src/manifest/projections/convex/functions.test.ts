@@ -160,6 +160,39 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('seatCounts: args.seatCounts ?? [2n, 4n]'); // array<int> propagates int64 coercion
   });
 
+  it('binds reaction payload to the runtime contract (result + _subject)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Event', [prop('title', 'string', ['required'])]),
+      entity('Board', [prop('sourceId', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('Event'), durable('Board')];
+    // Reaction reads payload.result.id — the reference-runtime binding the
+    // projection previously omitted, crashing on `undefined.id` at runtime.
+    ir.reactions = [{
+      event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create',
+      resolve: { kind: 'literal', value: { kind: 'null' } },
+      params: [{ name: 'sourceId', expression: { kind: 'member', object: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'result' }, property: 'id' } }],
+    }] as IRReactionRule[];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [], emits: ['EventCreated'] }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('result: { _id, id: _id, ...doc }');                       // result.id aliases Convex _id
+    expect(code).toContain('_subject: { entity: "Event", command: "create", id: _id }'); // canonical subject metadata
+    expect(code).toContain('sourceId: payload.result.id');                            // reaction reads through it, no crash
+  });
+
+  it('maps array-typed command params to v.array(...), not v.any()', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Event', [prop('title', 'string', ['required'])])];
+    ir.stores = [durable('Event')];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [
+      { name: 'tags', type: { name: 'array', nullable: false, generic: { name: 'string', nullable: false } }, required: false },
+    ], guards: [], constraints: [], actions: [], emits: [] }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('tags: v.optional(v.array(v.string()))'); // array param keeps its element type
+    expect(code).not.toContain('v.any()');
+  });
+
   it('threads source tenantId into tenant-scoped reaction creates', () => {
     const ir = emptyIR();
     ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };

@@ -4,6 +4,30 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.5] - 2026-06-15
+
+### Fixed
+
+- **Convex reactions — payload now matches the reference-runtime contract.**
+  Reaction `resolve`/`param` expressions resolve `payload` against the binding
+  the reference runtime builds (`runtime-engine.ts`): the emitted event payload
+  is `{ ...input, result }`, and reactions additionally see `_subject` (the
+  canonical `{ entity, command, id }` metadata). The Convex projection bound
+  only `{ _id, ...doc }`, so conformant IR expressions like `payload.result.id`
+  or `payload._subject.id` read through `undefined` and crashed the reaction at
+  runtime. Generated mutations now bind `result` (the affected entity, with its
+  app-level `id` aliased to the Convex `_id`, since convexId mode stores no `id`
+  scalar) and `_subject`, on both create and non-create mutations. No IR or
+  `.manifest` change is required.
+
+- **Convex command params — `array<T>` no longer collapses to `v.any()`.**
+  Array-typed command parameters were validated as `v.any()` (entity *fields*
+  already got `v.array(...)`, but the parameter path did not), losing element
+  typing on the generated mutation arg. Array params now map to
+  `v.array(<element>)`, mirroring the field path. Unknown leaf types still fall
+  back to `v.any()` (params are not schema fields, so an unmapped type stays
+  permissive rather than a hard diagnostic).
+
 ## [2.10.4] - 2026-06-15
 
 ### Fixed

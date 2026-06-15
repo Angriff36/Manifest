@@ -81,9 +81,19 @@ function defaultToTs(value: IRValue, validator?: string): string {
   }
 }
 
-/** Validator expression for a command parameter (FK-aware, no optional wrap). */
-function paramValidator(typeName: string): string {
-  return resolveConvexValidator(typeName, undefined, '') ?? 'v.any()';
+/**
+ * Validator expression for a command parameter (no optional wrap). Mirrors the
+ * entity-field `array<T>` handling so an `array`-typed param maps to
+ * `v.array(<element>)` instead of collapsing to a structureless `v.any()`.
+ * Unknown leaf types still fall back to `v.any()` (params are not schema fields,
+ * so an unmapped type is permissive rather than a hard diagnostic).
+ */
+function paramValidator(type: { name: string; generic?: { name: string } }): string {
+  if (type.name === 'array' && type.generic) {
+    const element = resolveConvexValidator(type.generic.name, undefined, '') ?? 'v.any()';
+    return `v.array(${element})`;
+  }
+  return resolveConvexValidator(type.name, undefined, '') ?? 'v.any()';
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +355,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     // Command params that are not entity fields (they feed actions) → args.
     for (const p of params) {
       if (argNames.has(p.name)) continue;
-      const validator = paramValidator(p.type.name);
+      const validator = paramValidator(p.type);
       argLines.push(`    ${p.name}: ${p.required ? validator : `v.optional(${validator})`}`);
       argNames.add(p.name);
     }
@@ -366,7 +376,17 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
     diagnostics.push(...reactions.diagnostics);
     const tail = [...events, ...reactions.lines].join('\n');
-    const payloadBinding = /\bpayload\b/.test(tail) ? `    const payload: Record<string, any> = { _id, ...doc };\n` : '';
+    // Reaction expressions resolve `payload` against the reference-runtime
+    // contract (runtime-engine.ts): the emitted event payload is `{ ...input,
+    // result }` and reactions additionally see `_subject` (the canonical
+    // entity/command/id metadata). `result` is the affected entity, with its
+    // app-level `id` aliased to the Convex `_id` (convexId mode stores no `id`
+    // scalar). Without these keys, IR expressions like `payload.result.id` /
+    // `payload._subject.id` read through `undefined` and crash at runtime.
+    const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: _id }`;
+    const payloadBinding = /\bpayload\b/.test(tail)
+      ? `    const payload: Record<string, any> = { _id, id: _id, ...doc, result: { _id, id: _id, ...doc }, ${subjectLiteral} };\n`
+      : '';
     const bodyText = [...checks.lines, tail].join('\n');
 
     const body =
@@ -387,7 +407,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
   // Non-create mutation
   const argLines = [`    docId: v.id("${table}")`];
   for (const p of cmd.parameters ?? []) {
-    argLines.push(`    ${p.name}: ${p.required ? paramValidator(p.type.name) : `v.optional(${paramValidator(p.type.name)})`}`);
+    argLines.push(`    ${p.name}: ${p.required ? paramValidator(p.type) : `v.optional(${paramValidator(p.type)})`}`);
   }
 
   // Non-create: command params are destructured locals; self.x → doc.x.
@@ -410,7 +430,13 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
   diagnostics.push(...reactions.diagnostics);
 
   const tail = [...events, ...reactions.lines].join('\n');
-  const payloadBinding = /\bpayload\b/.test(tail) ? `    const payload: Record<string, any> = { ...doc, ...updates };\n` : '';
+  // Same reference-runtime payload contract as the create branch: `result` is
+  // the affected entity (post-patch) with `id` aliased to the Convex `_id`, and
+  // `_subject` carries the canonical entity/command/id metadata reactions read.
+  const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: docId }`;
+  const payloadBinding = /\bpayload\b/.test(tail)
+    ? `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`
+    : '';
   const argDestructure = paramNames.length ? `, ${paramNames.join(', ')}` : '';
   const bodyText = [...checks.lines, ...updateLines, tail].join('\n');
 
