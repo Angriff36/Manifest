@@ -30,6 +30,7 @@
           {
             "group": "Language",
             "pages": [
+              "language/manifest-files",
               "language/entities",
               "language/commands",
               "language/guards-policies",
@@ -57,6 +58,7 @@
             "pages": [
               "integration/nextjs",
               "integration/prisma",
+              "projections/convex",
               "projections/drizzle",
               "projections/remix",
               "projections/sveltekit",

@@ -1,0 +1,349 @@
+---
+title: "Manifest files: anatomy, syntax, and best practices"
+description: "The complete reference for .manifest source files — what a file contains, the declaration grammar, types, expressions, ordering rules, what is not allowed, and house-style best practices."
+sidebarTitle: "Manifest files (.manifest)"
+---
+
+A `.manifest` file is the human-authored source of a Manifest program. The compiler reads it through a lexer → parser → AST → IR-compiler pipeline and produces an **Intermediate Representation (IR)** — a JSON document that is the single source of truth for program semantics. Everything else (TypeScript, Prisma schemas, Convex functions, React Query hooks, and the other [projections](/projections/additional-projections)) is a *view* generated from that IR.
+
+This page is the canonical reference for the file format itself: what you can put in a `.manifest` file, what you cannot, how the pieces are ordered, and the conventions that keep programs deterministic. For deep dives on individual constructs, follow the cross-links into the rest of the Language section.
+
+<Note>
+The grammar described here is the one the parser actually accepts (`src/manifest/lexer.ts`, `src/manifest/parser.ts`). When this page and your intuition disagree, the parser wins — and the conformance fixtures in `src/manifest/conformance/` are the executable proof.
+</Note>
+
+## Anatomy of a file
+
+A file is a flat sequence of **top-level declarations**. There is no required wrapper, no `package` header, and no semicolons. Whitespace and newlines are insignificant except as token separators.
+
+```manifest
+// 1. Cross-file imports first (optional)
+use "./shared/money.manifest"
+
+// 2. Any number of declarations, in any order
+enum Status { draft, published, archived }
+
+entity Invoice {
+  property required id: string
+  property status: Status = draft
+  property total: decimal(12, 2) = 0
+
+  computed isPayable: boolean = total > 0 and status == published
+
+  command publish() {
+    guard self.total > 0
+    mutate status = published
+    emit invoicePublished
+  }
+}
+
+store Invoice in postgres { table: "invoices" }
+event invoicePublished: "billing.invoice.published" { invoiceId: string }
+```
+
+The only hard ordering rule at the top level is that **every `use` declaration must come before all other declarations** (see [Ordering rules](#ordering-rules)). Beyond that, declarations may appear in any order; the IR preserves the order it encountered them.
+
+### Comments
+
+```manifest
+// line comment
+
+/*
+  block comment
+*/
+```
+
+### Identifiers
+
+Identifiers match `[A-Za-z_][A-Za-z0-9_]*`. Entity, enum, and module names are conventionally `PascalCase`; properties, commands, and policies are `camelCase`. [Reserved words](#reserved-words) cannot be used as declaration names, but they *are* allowed as member-access keys and object-literal keys (so `self.from` or `{ to: ... }` parse fine).
+
+### Literals
+
+| Kind | Examples |
+| --- | --- |
+| String | `"hello"`, `'hello'`, `` `hello` `` (all three quote styles; backticks are plain strings, not interpolated) |
+| Number | `42`, `3.14` |
+| Boolean | `true`, `false` |
+| Null | `null` |
+
+## Top-level declarations
+
+Every construct the parser accepts at the top level:
+
+| Keyword | Purpose | Reference |
+| --- | --- | --- |
+| `use` | Import another `.manifest` file (must be first) | [Modules](/language/modules) |
+| `module` | Namespace grouping of declarations | [Modules](/language/modules) |
+| `entity` | A typed data structure with behavior | [Entities](/language/entities) |
+| `enum` | A named set of values | [Types](/language/types) |
+| `value` | A value object (properties only) | [Types](/language/types) |
+| `tenant` | Declare the tenant property (max one per program) | [Tenancy](/language/tenancy) |
+| `command` / `async command` | A standalone operation | [Commands](/language/commands) · [Async](/language/async-commands) |
+| `policy` | A standalone authorization rule | [Guards & policies](/language/guards-policies) |
+| `store` | Bind an entity to a persistence target | [Stores](/language/stores) |
+| `event` | Declare a publishable event | [Events](/language/events) |
+| `on` | A reaction that runs a command when an event fires | [Reactions](/language/reactions) |
+| `saga` | A multi-step workflow with compensation | [Workflows](/language/workflows) |
+| `role` | A role in the authorization hierarchy | [Roles](/language/roles) |
+| `webhook` | An inbound webhook bound to a command | [Events](/language/events) |
+| `schedule` | A cron/interval-triggered command | [Workflows](/language/workflows) |
+| `flow` / `effect` / `expose` / `compose` | Advanced composition and effect boundaries | [Advanced entities](/language/advanced-entities) |
+
+A `module` block accepts a subset of these: entities, enums, commands, policies, stores, events, reactions, sagas, roles, webhooks, and schedules.
+
+## Entities
+
+The entity is the core construct. Its header can declare inheritance and mixins, and its body holds the rest in any order.
+
+```manifest
+entity PurchaseOrder extends Auditable mixin Timestamped {
+  // properties
+  property required id: string
+  property amount: money(12, 2) = 0
+  property private internalNote: string = ""
+
+  // computed (a.k.a. derived) values — recomputed, never stored as input
+  computed isLarge: boolean = amount > 10000
+
+  // relationships
+  hasMany lines: PurchaseLine
+  belongsTo vendor: Vendor
+
+  // constraints
+  constraint nonNegative: amount >= 0 "Amount cannot be negative"
+
+  // authorization
+  policy canApprove execute: user.role == "manager"
+  default policy read: true
+
+  // behavior & commands
+  command approve() {
+    guard self.amount > 0
+    mutate status = "approved"
+    emit poApproved
+  }
+
+  // concurrency, state machine, lifecycle flags
+  versionProperty version: number
+  transition status from "draft" to ["approved", "rejected"]
+  timestamps
+}
+```
+
+Sub-blocks an entity may contain: `property`, `computed`/`derived`, relationships (`hasMany`, `hasOne`, `belongsTo`, `ref`), `behavior`/`on`, `command`/`async command`, `constraint`, `policy` (and a `policies { … }` block / `default policy …`), `store … in …`, `versionProperty`/`versionAtProperty`, `key [...]` / `unique [...]`, `transition`, `approval`, the `timestamps` flag, and the bare `realtime` flag. See [Advanced entities](/language/advanced-entities) for `extends`, `mixin`, keys, and transitions.
+
+<Warning>
+Events declared *inside* an entity are dropped with a warning. Declare `event` at the top level or inside a `module`.
+</Warning>
+
+## Types
+
+| Category | Type names |
+| --- | --- |
+| Primitives | `string`, `number`, `boolean`, `any`, `void` |
+| Collections | `list`, `map`, `array<T>`, and the `T[]` postfix sugar |
+| Exact decimal | `decimal(precision, scale)`, `money(precision, scale)` |
+| Date/time | `date`, `time`, `datetime`, `duration` |
+| User-defined | enum names, `value` object names |
+| Nullable | any type followed by `?` (e.g. `string?`, `Money?`) |
+
+<Note>
+`date`, `time`, `datetime`, and `duration` are **not reserved words** — the parser accepts any token as a type name, so they work as types and the corresponding date/time [builtins](#built-in-functions) operate on them. See [Date/time types](/language/types).
+</Note>
+
+## Property modifiers
+
+Modifiers are written **before** the property name:
+
+```manifest
+property required unique email: string
+property private apiKey: string
+property masked(last4) cardNumber: string unmask when user.role == "admin"
+```
+
+Reserved modifiers: `required`, `unique`, `indexed`, `private`, `readonly`, `optional`, `searchable`, `encrypted`. A default value uses `= <expr>`.
+
+The contextual `masked` modifier accepts a strategy — `masked(redact)`, `masked(partial)`, `masked(email)`, `masked(phone)`, or `masked(last4)` — and an optional trailing `unmask when <expr>` clause. The `unmask when` clause is a compile error without `masked`.
+
+<Warning>
+Omitting `required` does **not** imply optional. Use `optional` or a `?` on the type to mark a field nullable.
+</Warning>
+
+## Expressions
+
+Expressions appear in guards, computed properties, constraints, policies, defaults, and command actions.
+
+### Operators
+
+Symbolic: `+ - * / %`, `== != < > <= >=`, `&& || !`, the ternary `? :`, and member/access operators `.` `?.` `[]`. Word operators: `and`, `or`, `not`, `is`, `in`, `contains`. Precedence, lowest to highest: ternary → `or` → `and` → equality (`== != is in contains`) → comparison (`< > <= >=`) → additive → multiplicative → unary (`!`, `-`, `not`) → postfix (`.`, `?.`, calls, index) → primary. Lambdas are written `(a, b) => expr` and are used by aggregate builtins.
+
+### Binding namespaces
+
+Expressions may reference exactly four namespaces. These are spec-guaranteed bindings — guards must reference them rather than relying on inferred state.
+
+| Binding | Meaning |
+| --- | --- |
+| `self.` | The current entity instance (e.g. `self.status`) |
+| `this.` | Alias for the current instance |
+| `user.` | The calling principal (e.g. `user.role`, `user.id`) |
+| `context.` | Runtime context supplied at execution time |
+
+<Note>
+Prefer `self.` over `this.` in new code. `self` is a reserved binding; `this` works only because it happens to be an ordinary identifier, so `self` is the spec-blessed form.
+</Note>
+
+### Built-in functions
+
+The runtime provides a fixed set of builtins (`getBuiltins`, `src/manifest/runtime-engine.ts`). Core builtins always win over a plugin of the same name, so these names are effectively reserved in expressions:
+
+- **General:** `now`, `uuid`
+- **Strings:** `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`
+- **Math:** `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`
+- **Aggregates:** `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`
+- **Date/time:** `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`
+- **Feature flags:** `flag`
+- **RBAC:** `hasPermission`, `roleAllows`
+
+See [Expressions](/language/expressions) for usage and examples.
+
+## Commands and execution order
+
+```manifest
+command transfer(optional memo: string = "") returns Receipt {
+  retry { attempts: 3 }
+  rateLimit { perMinute: 10 }
+  guard self.balance >= amount
+  constraint amountPositive: amount > 0 "Amount must be positive"
+  mutate balance = balance - amount
+  emit transferred { amount: amount }
+}
+```
+
+At runtime, a command executes in a **fixed order** that cannot be reconfigured:
+
+<Steps>
+  <Step title="Policies">Authorization rules are evaluated first.</Step>
+  <Step title="Guards">Guards run in declaration order; execution halts on the first falsey guard.</Step>
+  <Step title="Constraints">Data validation runs with its severity (`ok`/`warn`/`block`).</Step>
+  <Step title="Actions">Mutations and other effects apply.</Step>
+  <Step title="Emits">Declared events publish.</Step>
+  <Step title="Return">The result is produced.</Step>
+</Steps>
+
+This ordering is part of the language contract. Diagnostics explain failures (which guard, which expression, resolved values) but never change the order or auto-repair a failing program.
+
+## Other declarations at a glance
+
+```manifest
+enum Priority { low, normal = "Normal", urgent(2) }      // optional label and ordinal
+
+value Money {                                            // value objects hold properties only
+  property amount: decimal(12, 2)
+  property currency: string
+}
+
+policy adminOnly execute: user.role == "admin"           // standalone policy
+
+store Order in supabase { table: "orders" }              // persistence binding
+
+event orderPlaced: "shop.order.placed" { orderId: string }
+
+on orderPlaced run Inventory.reserve resolve self.orderId  // reaction
+
+role manager extends staff { allow approve  deny delete }  // role hierarchy
+
+saga Checkout {                                          // workflow with compensation
+  step charge   { command: Payment.charge   compensate: Payment.refund }
+  step ship     { command: Fulfillment.ship compensate: Fulfillment.cancel }
+  on_failure: "compensate"
+  emit checkoutFailed
+}
+
+webhook stripe "/hooks/stripe" run Payment.record        // inbound webhook
+  method: POST
+  idempotencyHeader: "Stripe-Idempotency-Key"
+
+schedule nightlyClose cron "0 0 * * *" run Ledger.close  // scheduled command
+```
+
+## Ordering rules
+
+- **`use` first.** All `use` declarations must precede every other top-level declaration. A `use` that appears later is an error.
+- **`use` paths** must be relative (`./` or `../`) and end in `.manifest`.
+- **One `tenant`** declaration per program.
+- **Command execution order** is fixed (policies → guards → constraints → actions → emits → return); guards halt on the first falsey result.
+- **No required ordering** among an entity's sub-blocks, or among top-level declarations other than `use`. IR preserves encounter order.
+
+## What is not allowed
+
+The parser rejects these outright — they are common mistakes, not features:
+
+- **No entity generics.** `entity Paginated<T>` is invalid; type parameters exist only inside property types like `array<T>`.
+- **No `import` statements.** Cross-file composition is `use "./file.manifest"` only. There is no `import { X } from "…"`.
+- **No `external entity` keyword.** `external` is not a lexer keyword and the parser has no `external` branch, so `external entity X {}` does not parse. (`external` exists only as an *IR-level* entity flag that persistence projections honor by skipping the entity; it is not authored in source.)
+- **No `policy` clause inside a command body.** Declare authorization at the entity level (`policy … execute: …`) or as a top-level `policy`.
+- **Reserved words as identifiers.** A keyword used as a declaration name produces *"Reserved word 'X' cannot be used as an identifier."*
+- **`value` blocks** may contain properties only — no commands, computed, or constraints.
+- **Events inside entities** are dropped with a warning.
+- **`unmask when` without `masked`** is a compile error.
+- **`async`** must be followed by `command`.
+- Structural mistakes — missing colons, unclosed braces, a constraint block without an `expression`, a composite `references [...]` without an explicit `fields [...]`, or a saga/approval missing its required command/stage — all surface as parse errors via `Expected X, got Y`.
+
+## Best practices
+
+The language is designed around a small number of [house-style](https://github.com/Angriff36/Manifest) principles. Following them keeps programs deterministic and reviewable.
+
+- **Determinism over convenience.** Identical IR plus identical runtime context must produce identical results. Avoid leaning on ambient state; pass variability through `context.`.
+- **Explicitness over inference.** Guards and policies should reference the spec-guaranteed bindings (`self.`, `user.`, `context.`) rather than implicit values. Prefer `self.` to `this.`.
+- **Let constraints carry intent.** Give every constraint a message and an appropriate severity (`block` to stop, `warn` to flag, `ok` to annotate). Use `code` and `messageTemplate` when downstream tools consume the failure.
+- **Keep authorization at the entity boundary.** Name your policies (`policy canApprove execute: …`) so denials are legible, and use `default policy` for the baseline.
+- **Name events in past tense** on a stable channel string (`"billing.invoice.published"`); reactions and webhooks bind to those names.
+- **Model money and quantities with `decimal`/`money`**, never `number`, so scale is explicit and exact.
+- **Split large programs with `module` and `use`.** Group related entities, keep files focused, and let `use` wire shared value objects and enums.
+- **Treat the IR as the contract.** Don't hand-edit generated projections to "fix" behavior — change the `.manifest` source and regenerate. Generated code must not diverge from IR semantics.
+
+## A complete example
+
+```manifest
+use "./shared/money.manifest"
+
+module billing {
+  enum InvoiceStatus { draft, sent = "Sent", paid(2), void(3) }
+
+  entity Invoice {
+    property required id: string
+    property status: InvoiceStatus = draft
+    property total: money(12, 2) = 0
+    property private notes: string = ""
+
+    computed isOverdue: boolean = status == sent and now() > dueDate
+    property dueDate: datetime
+
+    hasMany lines: InvoiceLine
+
+    constraint positiveTotal: total >= 0 "Total cannot be negative"
+
+    policy canSend execute: user.role == "billing" or user.role == "admin"
+    default policy read: true
+
+    command send() {
+      guard self.total > 0
+      guard self.status == draft
+      mutate status = sent
+      emit invoiceSent { invoiceId: self.id }
+    }
+
+    versionProperty version: number
+    transition status from "draft" to ["sent", "void"]
+    timestamps
+  }
+
+  event invoiceSent: "billing.invoice.sent" { invoiceId: string }
+
+  on invoiceSent run Notifier.email resolve self.invoiceId
+}
+
+store Invoice in postgres { table: "invoices" }
+```
+
+Compile it with `manifest compile`, inspect the IR, and project it to any target — see [Projections](/integration/projections) and the [CLI reference](/cli/commands).
