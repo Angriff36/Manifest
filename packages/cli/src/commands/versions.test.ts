@@ -95,7 +95,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('save creates version and list shows it', async () => {
     const { versionsSaveCommand, versionsListCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir, tag: '0.1.0' });
     restoreOutput();
     const cap2 = captureOutput();
@@ -109,7 +109,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('show displays version metadata', async () => {
     const { versionsSaveCommand, versionsShowCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir, tag: '1.0.0', label: 'Initial' });
     restoreOutput();
     const cap2 = captureOutput();
@@ -124,7 +124,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('show resolves version by tag', async () => {
     const { versionsSaveCommand, versionsShowCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir, tag: 'release' });
     restoreOutput();
     const cap2 = captureOutput();
@@ -137,7 +137,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('show exits with error for nonexistent version', async () => {
     const { versionsSaveCommand, versionsShowCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     captureOutput();
@@ -151,10 +151,10 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('save with auto-tag generates semver tag', async () => {
     const { versionsSaveCommand, versionsListCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir, autoTag: true });
     restoreOutput();
-    const cap2 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifest2Path, { store: storeDir, autoTag: true });
     restoreOutput();
     const cap3 = captureOutput();
@@ -178,7 +178,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('diff compares two versions', async () => {
     const { versionsSaveCommand, versionsDiffCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     await versionsSaveCommand(manifest2Path, { store: storeDir });
     restoreOutput();
@@ -193,7 +193,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('diff reports no changes for identical versions', async () => {
     const { versionsSaveCommand, versionsDiffCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
@@ -207,7 +207,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('diff outputs JSON when --json', async () => {
     const { versionsSaveCommand, versionsDiffCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     await versionsSaveCommand(manifest2Path, { store: storeDir });
     restoreOutput();
@@ -223,7 +223,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('diff --breaking shows breaking change analysis', async () => {
     const { versionsSaveCommand, versionsDiffCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifest2Path, { store: storeDir });
     // Remove entity to create breaking change
     await versionsSaveCommand(manifestPath, { store: storeDir });
@@ -238,7 +238,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('changelog generates between versions', async () => {
     const { versionsSaveCommand, versionsChangelogCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir, tag: '1.0.0' });
     await versionsSaveCommand(manifest2Path, { store: storeDir, tag: '1.1.0' });
     restoreOutput();
@@ -254,7 +254,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('changelog warns with insufficient versions', async () => {
     const { versionsSaveCommand, versionsChangelogCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const cap2 = captureOutput();
@@ -267,7 +267,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('tag applies tag to version', async () => {
     const { versionsSaveCommand, versionsTagCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const cap2 = captureOutput();
@@ -280,7 +280,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('rollback outputs the IR for a version', async () => {
     const { versionsSaveCommand, versionsRollbackCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const cap2 = captureOutput();
@@ -295,7 +295,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('rollback writes IR to output file', async () => {
     const { versionsSaveCommand, versionsRollbackCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const outputPath = path.join(tmpDir, 'rollback.json');
@@ -312,7 +312,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('verify checks integrity of latest version', async () => {
     const { versionsSaveCommand, versionsVerifyCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const cap2 = captureOutput();
@@ -325,7 +325,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('verify --all checks all versions', async () => {
     const { versionsSaveCommand, versionsVerifyCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     await versionsSaveCommand(manifest2Path, { store: storeDir });
     restoreOutput();
@@ -341,7 +341,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('verify checks a specific version', async () => {
     const { versionsSaveCommand, versionsVerifyCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     await versionsSaveCommand(manifest2Path, { store: storeDir });
     restoreOutput();
@@ -357,7 +357,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('verify --json outputs structured results', async () => {
     const { versionsSaveCommand, versionsVerifyCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     const cap2 = captureOutput();
@@ -397,7 +397,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('diff exits on nonexistent version', async () => {
     const { versionsSaveCommand, versionsDiffCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     captureOutput();
@@ -411,7 +411,7 @@ describe('CLI versions command', () => {
   // --------------------------------------------------------------------------
   it('tag exits on nonexistent version', async () => {
     const { versionsSaveCommand, versionsTagCommand } = await import('./versions.js');
-    const cap1 = captureOutput();
+    captureOutput();
     await versionsSaveCommand(manifestPath, { store: storeDir });
     restoreOutput();
     captureOutput();

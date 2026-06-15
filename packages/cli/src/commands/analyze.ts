@@ -17,7 +17,7 @@ import path from 'node:path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
-import type { IR, IREntity, IRCommand, IRStore } from '@angriff36/manifest/ir';
+import type { IR, IREntity, IRStore } from '@angriff36/manifest/ir';
 import {
   getProjection,
   listProjections,
@@ -115,7 +115,7 @@ export interface AnalyzeReport {
   }>;
 }
 
-export interface AnalyzeResult extends AnalyzeReport {}
+export type AnalyzeResult = AnalyzeReport;
 
 // ---------- Constants ----------
 

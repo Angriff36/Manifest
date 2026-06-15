@@ -50,7 +50,6 @@ export async function loadWasmModule(wasmBytes: BufferSource): Promise<WasmModul
   // Dynamic imports for the AssemblyScript loader.
   // The AssemblyScript runtime is loaded only when WASM is requested.
   // The runtime package is optional to keep base bundle small.
-  // @ts-ignore - optional dependency, may not be installed
   const asLoader = await importAssemblyLoader();
   if (!asLoader) {
     throw new Error('AssemblyScript loader is not available');
@@ -82,7 +81,6 @@ async function importAssemblyLoader(): Promise<{
 } | null> {
   try {
     // The AssemblyScript runtime is required for hosted classes / strings.
-    // @ts-ignore - optional dependency
     const mod = await import('@assemblyscript/loader');
     if (mod && typeof mod.instantiate === 'function') {
       return mod as { instantiate: <T>(bytes: BufferSource, imports: Record<string, unknown>) => Promise<{ exports: T }> };

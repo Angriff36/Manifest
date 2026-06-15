@@ -73,7 +73,6 @@ function buildProductIR(): IR {
 let tmpDir: string;
 const originalCwd = process.cwd();
 let originalExit: typeof process.exit;
-let exitCode: number | undefined;
 
 beforeAll(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-loadtest-'));

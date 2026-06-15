@@ -205,10 +205,10 @@ function evaluateRule(
 /** Get a value at a dotted path in an object */
 function getPath(obj: unknown, path: string): unknown {
   const parts = path.split('.');
-  let current: any = obj;
+  let current: unknown = obj;
   for (const part of parts) {
     if (current == null) return undefined;
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
   return current;
 }

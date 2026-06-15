@@ -168,7 +168,7 @@ function emitPropertyColumn(
   const colName = options.columnMappings?.[entity.name]?.[prop.name] ?? prop.name;
 
   // Build the column builder call
-  let builder = colType.builder;
+  const builder = colType.builder;
 
   // Build params for the builder call
   const builderParams: string[] = [`"${colName}"`];

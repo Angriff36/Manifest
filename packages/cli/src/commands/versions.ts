@@ -14,8 +14,6 @@ import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
-import type { IRDiffReport, MigrationReport } from '@angriff36/manifest/ir-diff';
-import type { BreakingChangeReport } from '@angriff36/manifest/breaking-change';
 import type {
   IRVersionIndex,
   IRVersionMeta,

@@ -90,9 +90,9 @@ function forceSimulation(
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const a = nodes[i], b = nodes[j];
-        let dx = b.x - a.x;
-        let dy = b.y - a.y;
-        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const force = -800 / (dist * dist);
         const fx = (dx / dist) * force * alpha;
         const fy = (dy / dist) * force * alpha;
@@ -108,9 +108,9 @@ function forceSimulation(
       const a = nodeMap.get(edge.source);
       const b = nodeMap.get(edge.target);
       if (!a || !b) continue;
-      let dx = b.x - a.x;
-      let dy = b.y - a.y;
-      let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       const idealDist = 180;
       const force = (dist - idealDist) * 0.05 * alpha;
       const fx = (dx / dist) * force;

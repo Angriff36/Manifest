@@ -14,7 +14,6 @@
  */
 
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
 import ora from 'ora';

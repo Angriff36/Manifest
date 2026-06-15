@@ -51,7 +51,7 @@ export class MongoDBOutboxStore implements OutboxStore {
   private async init(config: MongoDBOutboxStoreConfig): Promise<void> {
     let MongoClient: unknown;
     try {
-      // @ts-ignore -- 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
+      // 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
       const mod = await import('mongodb');
       MongoClient = mod.MongoClient;
     } catch {

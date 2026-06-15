@@ -16,7 +16,6 @@ import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import { loadCompiler } from './validate-ai.js';
-import { bundledSchemaPath } from '../utils/schema.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -75,7 +74,7 @@ export async function buildSystemPrompt(): Promise<string> {
   let schemaContent = '';
   let semanticsContent = '';
   let builtinsContent = '';
-  let adaptersContent = '';
+  let _adaptersContent = '';
 
   try {
     schemaContent = await fs.readFile(schemaPath, 'utf-8');
@@ -96,7 +95,7 @@ export async function buildSystemPrompt(): Promise<string> {
   }
 
   try {
-    adaptersContent = await fs.readFile(adaptersPath, 'utf-8');
+    _adaptersContent = await fs.readFile(adaptersPath, 'utf-8');
   } catch {
     // Adapters file not found, continue without it
   }
@@ -909,7 +908,6 @@ async function generateFromPrompt(
   const systemPrompt = await buildSystemPrompt();
 
   let attempt = 0;
-  let lastError = '';
 
   while (attempt < maxRetries) {
     attempt++;
@@ -968,7 +966,6 @@ async function generateFromPrompt(
       }
 
       // Build retry prompt with errors
-      lastError = validation.errors.join('; ');
       spinner.warn(`Attempt ${attempt} failed: ${validation.errors.length} error(s)`);
 
       if (options.verbose) {
@@ -980,17 +977,13 @@ async function generateFromPrompt(
         console.log('');
       }
 
-      // For retry, add the errors to the prompt
-      const errorPrompt = `${systemPrompt}\n\nPrevious attempt failed with errors:\n${validation.errors.map(e => `  - ${e}`).join('\n')}\n\nUser request:\n${prompt}\n\nPlease fix these errors and generate valid Manifest source.`;
-
       // Update prompt for next iteration (will be used if not last attempt)
       if (attempt < maxRetries) {
-        const combinedPrompt = errorPrompt;
         if (process.env.ANTHROPIC_API_KEY || options.apiKey) {
           // Use Anthropic for retry
           const retryPrompt = `${systemPrompt}\n\nUser request:\n${prompt}\n\nIMPORTANT: Your previous output had these errors:\n${validation.errors.map(e => `  - ${e}`).join('\n')}\n\nFix these issues and provide valid Manifest source code.`;
           // Update for next call
-          (prompt as any) = retryPrompt; // This won't actually work, need to refactor
+          prompt = retryPrompt; // This won't actually work, need to refactor
         }
       }
 

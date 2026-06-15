@@ -75,7 +75,7 @@ export class RedisOutboxStore implements OutboxStore {
   private async init(config: RedisOutboxStoreConfig): Promise<void> {
     let Redis: unknown;
     try {
-      // @ts-ignore -- 'ioredis' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
+      // 'ioredis' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
       const mod = await import('ioredis');
       Redis = mod.Redis;
     } catch {
@@ -188,12 +188,12 @@ export class RedisOutboxStore implements OutboxStore {
     if (!results || results.length === 0) return [];
 
     // Parse results: XREADGROUP returns [[streamName, [[entryId, fields...]]]]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     for (const result of results) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       for (const [streamId, entries] of result) {
         if (streamId === this.streamKey) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           for (const [id, fields] of entries) {
             out.push(this.streamFieldsToEntry(id, fields as Record<string, string>));
           }
@@ -204,7 +204,7 @@ export class RedisOutboxStore implements OutboxStore {
     // Update claimed status atomically
     for (const entry of out) {
       // Store the stream entry ID for ACK
-      (entry as any)._streamId = entry.entryId;
+      (entry as OutboxEntry & { _streamId?: string })._streamId = entry.entryId;
       // In our implementation, we update the attempts field on claim
       // The stream is immutable, so we use a separate hash for mutable state
       await this.client.hset(
@@ -289,7 +289,7 @@ export class RedisOutboxStore implements OutboxStore {
     const info: any = await this.client.xinfo('CONSUMERS', this.streamKey, this.consumerGroup);
     const result: Record<string, number> = {};
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     for (const consumer of info) {
       const name = consumer.name as string;
       const pending = consumer.pending as number;
@@ -328,7 +328,7 @@ export class RedisOutboxStore implements OutboxStore {
       entry.lastError = fields.lastError;
     }
     // Store stream ID for later ACK
-    (entry as any)._streamId = streamId;
+    (entry as OutboxEntry & { _streamId?: string })._streamId = streamId;
     return entry;
   }
 

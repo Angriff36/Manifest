@@ -2,6 +2,13 @@ import { DocumentSymbol, SymbolKind, Range } from 'vscode-languageserver';
 import type { ManifestProgram, EntityNode, CommandNode, PolicyNode, ConstraintNode, EnumNode, StoreNode, OutboxEventNode, ModuleNode, PropertyNode, ComputedPropertyNode, RelationshipNode, RoleNode, ReactionNode } from '@angriff36/manifest/types';
 import { toLspPosition } from '../position-utils.js';
 
+/** Saga AST shape (not yet part of the published @angriff36/manifest types). */
+interface SagaNode {
+  name: string;
+  position?: { line: number; column: number };
+  steps: { name: string; command: string; position?: { line: number; column: number } }[];
+}
+
 /**
  * Build hierarchical DocumentSymbol[] from a ManifestProgram AST.
  * Provides the Outline view in IDEs.
@@ -50,7 +57,7 @@ export function getDocumentSymbols(program: ManifestProgram): DocumentSymbol[] {
   }
 
   // Sagas (if present in AST)
-  for (const saga of (program as any).sagas ?? []) {
+  for (const saga of (program as { sagas?: SagaNode[] }).sagas ?? []) {
     symbols.push(sagaSymbol(saga));
   }
 
@@ -82,7 +89,7 @@ function moduleSymbol(mod: ModuleNode): DocumentSymbol {
   for (const store of mod.stores) children.push(storeSymbol(store));
   for (const event of mod.events) children.push(eventSymbol(event));
   for (const reaction of mod.reactions) children.push(reactionSymbol(reaction));
-  for (const saga of (mod as any).sagas ?? []) children.push(sagaSymbol(saga));
+  for (const saga of (mod as { sagas?: SagaNode[] }).sagas ?? []) children.push(sagaSymbol(saga));
   for (const role of mod.roles) children.push(roleSymbol(role));
 
   return DocumentSymbol.create(mod.name, 'module', SymbolKind.Module, range, range, children);
@@ -176,7 +183,7 @@ function reactionSymbol(reaction: ReactionNode): DocumentSymbol {
   );
 }
 
-function sagaSymbol(saga: { name: string; position?: { line: number; column: number }; steps: { name: string; command: string; position?: { line: number; column: number } }[] }): DocumentSymbol {
+function sagaSymbol(saga: SagaNode): DocumentSymbol {
   const range = makeRange(saga.position, saga.name);
   const children = saga.steps.map(step => {
     const stepRange = makeRange(step.position, step.name);

@@ -333,7 +333,7 @@ export class MongoDBStore<T extends EntityInstance> implements Store<T> {
   private async init(config: MongoDBConfig): Promise<void> {
     let MongoClient: unknown;
     try {
-      // @ts-ignore -- 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
+      // 'mongodb' is an optional peer dependency, resolved at runtime via dynamic import; its absence is handled by the catch below.
       const mod = await import('mongodb');
       MongoClient = mod.MongoClient;
     } catch {
@@ -518,7 +518,7 @@ export class DynamoDBStore<T extends EntityInstance = EntityInstance> implements
   }
 
   private itemToEntity(item: Record<string, unknown>): T {
-    const { pk, sk, ...rest } = item;
+    const { pk: _pk, sk: _sk, ...rest } = item;
     return rest as T;
   }
 
@@ -661,7 +661,7 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
     // ioredis is loaded lazily; for tests, the client is injected differently
     // This constructor expects to work with or without ioredis installed
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy optional native dep; sync constructor cannot use dynamic import
       const Redis = require('ioredis');
       this.client = new Redis(config.url || 'redis://localhost:6379');
     } catch {
@@ -810,7 +810,7 @@ export class TursoStore<T extends EntityInstance = EntityInstance> implements St
     } else {
       // Client is created via @libsql/client dynamically
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy optional native dep; sync constructor cannot use dynamic import
         const libsql = require('@libsql/client');
         this.client = libsql.createClient({
           url: config.url,

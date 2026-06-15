@@ -126,7 +126,7 @@ export class AgentRuntime {
         // runCommand signature: (name, input, options?)
         const result = await this.engine.runCommand(command, { ...parameters, ...(entityId ? { entityId } : {}) }, {
           ...(entityId ? { instanceId: entityId } : {}),
-          ...(context ? { causationId: (context as any).causationId } : {}),
+          ...(context ? { causationId: (context as { causationId?: string }).causationId } : {}),
         });
         return this.formatResultForLLM(result);
       }
@@ -134,7 +134,7 @@ export class AgentRuntime {
       case this.builtinToolNames.GET_INSTANCES: {
         const { entity, limit = 20 } = args as { entity?: string; limit?: number };
         if (!entity) return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required argument: entity' };
-        const instances = await this.engine.getAllInstances(entity as any);
+        const instances = await this.engine.getAllInstances(entity);
         return { success: true, code: 'SUCCESS', message: `${instances.length} instances found`, data: instances.slice(0, limit as number) };
       }
 
@@ -147,7 +147,7 @@ export class AgentRuntime {
         if (!entity || !entityId) {
           return { success: false, code: 'MISSING_ARGUMENT', message: 'Missing required arguments: entity, entityId' };
         }
-        const inst = await this.engine.getInstance(entity as any, entityId as any);
+        const inst = await this.engine.getInstance(entity, entityId);
         if (!inst) return { success: false, code: 'INSTANCE_NOT_FOUND', message: `Instance not found: ${entityId}` };
         const entityDef = this.ir.entities.find((e) => e.name === entity);
         if (!entityDef) return { success: false, code: 'ENTITY_NOT_FOUND', message: `Entity not found: ${entity}` };
@@ -181,7 +181,7 @@ export class AgentRuntime {
       { ...(parameters as Record<string, unknown>), ...(entityId ? { entityId } : {}) },
       {
         ...(entityId ? { instanceId: entityId } : {}),
-        ...(context ? { causationId: (context as any).causationId } : {}),
+        ...(context ? { causationId: (context as { causationId?: string }).causationId } : {}),
       }
     );
 

@@ -36,7 +36,7 @@ import { join } from 'path';
 // Adjust these paths to match your project
 import { compileToIR } from '../../src/manifest/ir-compiler.js';
 import { RuntimeEngine, type RuntimeOptions, type EntityInstance } from '../../src/manifest/runtime-engine.js';
-import type { IR, IREntity, IRCommand, IRStore, IREvent, IRPolicy } from '../../src/manifest/ir.js';
+import type { IR, IREntity } from '../../src/manifest/ir.js';
 
 // ============================================================================
 // TEST FRAMEWORK
@@ -238,22 +238,6 @@ function findEntity(ir: IR, name: string): IREntity | undefined {
   return ir.entities.find(e => e.name === name);
 }
 
-function findCommand(ir: IR, name: string): IRCommand | undefined {
-  return ir.commands.find(c => c.name === name);
-}
-
-function findPolicy(ir: IR, name: string): IRPolicy | undefined {
-  return ir.policies.find(p => p.name === name);
-}
-
-function findStore(ir: IR, entityName: string): IRStore | undefined {
-  return ir.stores.find(s => s.entity === entityName);
-}
-
-function findEvent(ir: IR, name: string): IREvent | undefined {
-  return ir.events.find(e => e.name === name);
-}
-
 function getDefaultValue(typeName: string): unknown {
   switch (typeName) {
     case 'string': return 'test';
@@ -401,9 +385,9 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) findRoutes(join(dir, entry.name));
           else if (entry.name === 'route.ts') routeFiles.push(join(dir, entry.name));
         }
-      } catch {}
+      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
     }
-    
+
     findRoutes(apiDir);
     
     if (routeFiles.length === 0) return { passed: false, message: 'No route.ts files found' };
@@ -435,7 +419,7 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch {}
+      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
     }
     
     scan(apiDir);
@@ -467,7 +451,7 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch {}
+      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
     }
     
     scan(apiDir);
@@ -503,7 +487,7 @@ describe('2. Route Generation Verification', async () => {
           if (entry.isDirectory()) scan(join(dir, entry.name));
         }
         checkRouteFile(dir);
-      } catch {}
+      } catch { /* best-effort directory walk: ignore unreadable dirs */ }
     }
     
     scan(apiDir);

@@ -27,6 +27,10 @@ export default tseslint.config(
       // Git worktrees managed by Claude Code tooling — never linted.
       '.claude/worktrees/**',
       '.worktrees/**',
+      // Git-ignored scratch directory (temporary generate/diff experiments).
+      // ESLint flat config does not read .gitignore, so this must be listed
+      // explicitly or it lints throwaway files that aren't part of the repo.
+      '.tmp/**',
     ],
   },
   // Default rule set for everything else.
@@ -86,6 +90,22 @@ export default tseslint.config(
             '**/version.ts', // Source of truth for version
             '**/zipExporter.ts', // Default version for generated projects
             '**/templates.ts', // Placeholder versions for templates
+            // OpenAPI generator: the version literals here are the OpenAPI
+            // spec format version ("3.1.0") and the generated document's
+            // default info.version ("1.0.0") — neither is the Manifest
+            // package version, so importing ./version would be wrong.
+            '**/projections/openapi/generator.ts',
+            // The following version literals are NOT the Manifest package
+            // version, so importing ./version would be incorrect:
+            //  - ir-version-store.ts: the initial semver tag ("0.1.0")
+            //    assigned to a user's IR artifact when no prior tag exists.
+            //  - mcp-server/src/index.ts: the MCP server's own advertised
+            //    version (a separate package).
+            //  - assembly/index.ts: the WASM runtime version constant
+            //    (AssemblyScript cannot import the TS ./version module).
+            '**/ir-version-store.ts',
+            '**/mcp-server/src/index.ts',
+            '**/assembly/index.ts',
           ],
           versionImportPath: './version',
         },
@@ -100,6 +120,33 @@ export default tseslint.config(
     files: ['**/*.test.ts', '**/*.test.tsx', '**/test-*.ts', '**/*.bench.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  // Projection boundary: generated code is a *view* of the IR, never of the
+  // runtime. Projections must depend on IR and shared projection utilities
+  // only — importing the runtime engine would couple code generation to
+  // runtime internals and erode the IR-first contract (see CLAUDE.md
+  // "Module Boundaries"). IR types and shared helpers are unaffected; this
+  // rule blocks the runtime-engine module specifically.
+  {
+    files: ['src/manifest/projections/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/runtime-engine',
+                '**/runtime-engine.js',
+                '@angriff36/manifest/runtime-engine',
+              ],
+              message:
+                'Projections are views of the IR and must not import the runtime engine. Depend on IR types instead (see CLAUDE.md "Module Boundaries").',
+            },
+          ],
+        },
+      ],
     },
   }
 );

@@ -312,7 +312,7 @@ export async function watchCommand(
       const fullPath = path.resolve(watchRoot, filename);
       debouncedRebuild(fullPath);
     });
-  } catch (err) {
+  } catch (_err) {
     // Fallback: recursive fs.watch is not supported on all platforms (Linux < 5.9).
     // Use polling-based fs.watchFile on each discovered manifest file.
     spinner.warn('Recursive fs.watch not supported — falling back to polling');

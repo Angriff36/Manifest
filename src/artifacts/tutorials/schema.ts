@@ -52,11 +52,12 @@ export function validateTutorialJson(data: unknown): {
     t.steps.forEach((step: unknown, i: number) => {
       const stepErrors = validateStepShape(step, i);
       errors.push(...stepErrors);
-      if (step && typeof step === 'object' && typeof (step as any).id === 'string') {
-        if (stepIds.has((step as any).id)) {
-          errors.push(`Step ${i}: duplicate step id "${(step as any).id}"`);
+      if (step && typeof step === 'object' && typeof (step as Record<string, unknown>).id === 'string') {
+        const stepId = (step as Record<string, unknown>).id as string;
+        if (stepIds.has(stepId)) {
+          errors.push(`Step ${i}: duplicate step id "${stepId}"`);
         }
-        stepIds.add((step as any).id);
+        stepIds.add(stepId);
       }
     });
   }

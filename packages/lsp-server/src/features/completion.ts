@@ -296,7 +296,7 @@ function addEnumNames(items: CompletionItem[], program: ManifestProgram) {
   }
 }
 
-function addMemberCompletions(items: CompletionItem[], objectName: string, ir: IR, program: ManifestProgram) {
+function addMemberCompletions(items: CompletionItem[], objectName: string, ir: IR, _program: ManifestProgram) {
   // self. / this. → current entity properties (we suggest all entity properties)
   if (objectName === 'self' || objectName === 'this') {
     for (const entity of ir.entities) {

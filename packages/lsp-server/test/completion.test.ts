@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { CompletionItemKind } from 'vscode-languageserver';
 import { getCompletions, findTokenAtPosition } from '../src/features/completion.js';
 import { compileDocument } from '../src/compiler-bridge.js';
 

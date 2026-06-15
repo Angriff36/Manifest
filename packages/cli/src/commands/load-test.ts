@@ -11,7 +11,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import type { IR, IREntity, IRCommand, IRProperty, IRType } from '@angriff36/manifest/ir';
+import type { IR, IREntity, IRCommand, IRProperty } from '@angriff36/manifest/ir';
 
 // ---------- Internal types ----------
 
@@ -163,14 +163,6 @@ function parseDurationOrNumber(raw: string): number {
     return parseFloat(raw.slice(0, -1)) * 60 * 1000;
   }
   return parseFloat(raw);
-}
-
-function durationToMs(raw: string): number {
-  if (raw.endsWith('ms')) return parseInt(raw.slice(0, -2), 10);
-  if (raw.endsWith('s')) return parseInt(raw.slice(0, -1), 10) * 1000;
-  if (raw.endsWith('m')) return parseInt(raw.slice(0, -1), 10) * 60 * 1000;
-  if (raw.endsWith('h')) return parseInt(raw.slice(0, -1), 10) * 60 * 60 * 1000;
-  return parseInt(raw, 10);
 }
 
 // ---------- IR loading (mirrors seed.ts) ----------

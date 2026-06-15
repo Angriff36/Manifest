@@ -354,7 +354,6 @@ function markCoverage(
 
       // Constraint failures
       if (tc.expectedConstraintFailures) {
-        const entity = tc.entity ?? '__global__';
         for (const cf of tc.expectedConstraintFailures) {
           // Match by constraint name prefix — severity suffix handled below
           exercisedConstraints.add(cf.constraintName);

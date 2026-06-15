@@ -337,7 +337,7 @@ function parseJSONBool(input: string, pos: i32): EvalValue | null {
   return null;
 }
 
-function parseJSONNull(input: string, pos: i32): EvalValue | null {
+function parseJSONNull(_input: string, _pos: i32): EvalValue | null {
   return EvalValue.nullValue();
 }
 
@@ -467,7 +467,7 @@ function parseRawJSONValue(input: string, pos: i32): RawValueResult | null {
 }
 
 function parseRawJSONNumber(input: string, pos: i32): RawNumberResult | null {
-  let start = pos;
+  const start = pos;
   let end = pos;
   if (input.charCodeAt(pos) === 0x2D) end++;
   while (end < input.length) {
@@ -1083,7 +1083,6 @@ function parseExpression(input: string, pos: i32): ExprNode | null {
 function parseExprObject(input: string, pos: i32): ExprNode | null {
   // input[pos] === '{'
   pos++;
-  const node = new ExprNode();
   let depth = 1;
   let inString = false;
   let escape = false;

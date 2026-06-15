@@ -10,35 +10,47 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
-import { createInterface, Interface, ReadLine } from 'node:readline';
-import { fileURLToPath } from 'node:url';
-import { resolve, dirname } from 'node:path';
+import { createInterface, Interface } from 'node:readline';
+import type { IR, IREntity, IRCommand } from '@angriff36/manifest/ir';
+import type { RuntimeEngine } from '@angriff36/manifest';
+
+type CompileToIR = (
+  source: string,
+  options?: { sourcePath?: string },
+) => Promise<{ ir: IR | null; diagnostics: Array<{ severity: string; message: string }> }>;
+
+type RuntimeEngineConstructor = new (
+  ir: IR,
+  context?: REPLUserContext,
+) => RuntimeEngine;
 
 // Import from the main Manifest package
-async function loadCompiler() {
+async function loadCompiler(): Promise<{ compileToIR: CompileToIR }> {
   const module = await import('@angriff36/manifest/ir-compiler');
   return {
-    compileToIR: (module as any).compileToIR,
+    compileToIR: module.compileToIR as CompileToIR,
   };
 }
 
-async function loadRuntime() {
+async function loadRuntime(): Promise<{ RuntimeEngine: RuntimeEngineConstructor }> {
   const module = await import('@angriff36/manifest');
   return {
-    RuntimeEngine: (module as any).RuntimeEngine,
+    RuntimeEngine: module.RuntimeEngine as RuntimeEngineConstructor,
   };
+}
+
+interface REPLUserContext {
+  user?: { id: string; role?: string };
+  tenantId?: string;
+  context?: Record<string, unknown>;
 }
 
 interface REPLContext {
-  ir: any;
-  runtime: any;
+  ir: IR;
+  runtime: RuntimeEngine;
   manifestPath: string;
   jsonMode: boolean;
-  userContext: {
-    user?: { id: string; role?: string };
-    tenantId?: string;
-    context?: Record<string, unknown>;
-  };
+  userContext: REPLUserContext;
 }
 
 interface REPLCommand {
@@ -77,7 +89,7 @@ async function getManifestFiles(source: string): Promise<string[]> {
 /**
  * Compile a manifest file to IR
  */
-async function compileManifest(filePath: string, spinner: Ora): Promise<any> {
+async function compileManifest(filePath: string, spinner: Ora): Promise<IR> {
   const { compileToIR } = await loadCompiler();
 
   spinner.text = `Compiling ${path.relative(process.cwd(), filePath)}`;
@@ -85,7 +97,7 @@ async function compileManifest(filePath: string, spinner: Ora): Promise<any> {
   const result = await compileToIR(source, { sourcePath: filePath });
 
   if (result.diagnostics && result.diagnostics.length > 0) {
-    const errors = result.diagnostics.filter((d: any) => d.severity === 'error');
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
     if (errors.length > 0) {
       spinner.fail(`Compilation failed with ${errors.length} error(s)`);
       for (const error of errors) {
@@ -95,6 +107,10 @@ async function compileManifest(filePath: string, spinner: Ora): Promise<any> {
     }
   }
 
+  if (!result.ir) {
+    throw new Error('Compilation produced no IR');
+  }
+
   spinner.succeed(`Compiled ${path.relative(process.cwd(), filePath)}`);
   return result.ir;
 }
@@ -102,28 +118,35 @@ async function compileManifest(filePath: string, spinner: Ora): Promise<any> {
 /**
  * Create a RuntimeEngine instance from IR
  */
-async function createRuntime(ir: any, context: any): Promise<any> {
+async function createRuntime(ir: IR, context: REPLUserContext): Promise<RuntimeEngine> {
   const { RuntimeEngine } = await loadRuntime();
   return new RuntimeEngine(ir, context);
 }
 
 /**
- * Format output based on JSON mode setting
+ * Extract a human-readable message from an unknown thrown value.
  */
-function formatOutput(data: any, jsonMode: boolean): string {
-  if (jsonMode) {
-    return JSON.stringify(data, null, 2);
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+/**
+ * Read an optional `description` field that may exist on runtime IR objects
+ * but is not declared on the static IR types.
+ */
+function optionalDescription(obj: unknown): string | undefined {
+  if (obj && typeof obj === 'object' && 'description' in obj) {
+    const value = (obj as { description?: unknown }).description;
+    return typeof value === 'string' ? value : undefined;
   }
-  if (typeof data === 'object' && data !== null) {
-    return JSON.stringify(data, null, 2);
-  }
-  return String(data);
+  return undefined;
 }
 
 /**
  * Colorize JSON output for better readability
  */
-function colorizeJSON(obj: any): string {
+function colorizeJSON(obj: unknown): string {
   const json = JSON.stringify(obj, null, 2);
   return json
     .replace(/(".*?"): ("(.*?)"|(\d+)|(true|false|null))/g, (match, key, value, num, bool) => {
@@ -180,7 +203,7 @@ const listCommand: REPLCommand = {
   handler: async (_args: string[], context: REPLContext) => {
     const entities = context.ir.entities || [];
     if (context.jsonMode) {
-      return JSON.stringify(entities.map((e: any) => ({
+      return JSON.stringify(entities.map((e: IREntity) => ({
         name: e.name,
         properties: e.properties.length,
         commands: e.commands.length,
@@ -207,7 +230,7 @@ const inspectCommand: REPLCommand = {
       return chalk.red('Error: Entity name required\nUsage: inspect <entity-name>');
     }
 
-    const entity = context.ir.entities.find((e: any) => e.name === entityName);
+    const entity = context.ir.entities.find((e: IREntity) => e.name === entityName);
     if (!entity) {
       return chalk.red(`Error: Entity '${entityName}' not found`);
     }
@@ -221,7 +244,8 @@ const inspectCommand: REPLCommand = {
     // Properties
     output += chalk.bold('Properties:') + '\n';
     for (const prop of entity.properties) {
-      const required = prop.required ? '' : chalk.gray('?');
+      const isRequired = (prop as { required?: unknown }).required;
+      const required = isRequired ? '' : chalk.gray('?');
       const typeName = prop.type?.name || prop.type || 'unknown';
       const nullable = prop.type?.nullable ? '?' : '';
       output += `  ${chalk.yellow(prop.name)}${required}: ${chalk.white(typeName + nullable)}\n`;
@@ -247,9 +271,9 @@ const inspectCommand: REPLCommand = {
     if (entity.commands.length > 0) {
       output += '\n' + chalk.bold('Commands:') + '\n';
       for (const cmd of entity.commands) {
-        const command = context.ir.commands.find((c: any) => c.name === cmd && c.entity === entityName);
+        const command = context.ir.commands.find((c: IRCommand) => c.name === cmd && c.entity === entityName);
         if (command) {
-          output += `  ${chalk.green(cmd)}${chalk.gray(' - ' + (command.description || 'No description'))}\n`;
+          output += `  ${chalk.green(cmd)}${chalk.gray(' - ' + (optionalDescription(command) || 'No description'))}\n`;
         } else {
           output += `  ${chalk.green(cmd)}\n`;
         }
@@ -267,7 +291,7 @@ const inspectCommand: REPLCommand = {
     return output;
   },
   completer: (_args: string[], context: REPLContext) => {
-    return context.ir.entities.map((e: any) => e.name);
+    return context.ir.entities.map((e: IREntity) => e.name);
   },
 };
 
@@ -281,7 +305,7 @@ const showCommand: REPLCommand = {
       return chalk.red('Error: Entity name required\nUsage: show <entity-name>');
     }
 
-    const entity = context.ir.entities.find((e: any) => e.name === entityName);
+    const entity = context.ir.entities.find((e: IREntity) => e.name === entityName);
     if (!entity) {
       return chalk.red(`Error: Entity '${entityName}' not found`);
     }
@@ -311,7 +335,7 @@ const showCommand: REPLCommand = {
     return output;
   },
   completer: (_args: string[], context: REPLContext) => {
-    return context.ir.entities.map((e: any) => e.name);
+    return context.ir.entities.map((e: IREntity) => e.name);
   },
 };
 
@@ -325,7 +349,7 @@ const getCommand: REPLCommand = {
       return chalk.red('Error: Entity name and ID required\nUsage: get <entity-name> <id>');
     }
 
-    const entity = context.ir.entities.find((e: any) => e.name === entityName);
+    const entity = context.ir.entities.find((e: IREntity) => e.name === entityName);
     if (!entity) {
       return chalk.red(`Error: Entity '${entityName}' not found`);
     }
@@ -343,7 +367,7 @@ const getCommand: REPLCommand = {
     return `\n${chalk.cyan(entityName)} ${chalk.green(id)}:\n${colorizeJSON(instance)}`;
   },
   completer: (_args: string[], context: REPLContext) => {
-    return context.ir.entities.map((e: any) => e.name);
+    return context.ir.entities.map((e: IREntity) => e.name);
   },
 };
 
@@ -367,12 +391,6 @@ const runCommand: REPLCommand = {
         return chalk.red('Error: Invalid JSON input\nUsage: run <entity> <command> {"key": "value"}');
       }
     }
-
-    // Merge with user context
-    const runtimeContext = {
-      ...context.userContext,
-      source: 'cli',
-    };
 
     const result = await context.runtime.runCommand(commandName, input, {
       entityName,
@@ -415,10 +433,10 @@ const runCommand: REPLCommand = {
   },
   completer: (args: string[], context: REPLContext) => {
     if (args.length === 0 || args.length === 1) {
-      return context.ir.entities.map((e: any) => e.name);
+      return context.ir.entities.map((e: IREntity) => e.name);
     }
     const [entityName] = args;
-    const entity = context.ir.entities.find((e: any) => e.name === entityName);
+    const entity = context.ir.entities.find((e: IREntity) => e.name === entityName);
     if (entity && args.length === 2) {
       return entity.commands;
     }
@@ -438,7 +456,7 @@ const cmdsCommand: REPLCommand = {
     }
 
     // Group by entity
-    const byEntity: Record<string, any[]> = {};
+    const byEntity: Record<string, IRCommand[]> = {};
     for (const cmd of commands) {
       const entity = cmd.entity || '(global)';
       if (!byEntity[entity]) byEntity[entity] = [];
@@ -450,8 +468,9 @@ const cmdsCommand: REPLCommand = {
       output += chalk.cyan(entity) + ':\n';
       for (const cmd of cmds) {
         output += `  ${chalk.green(cmd.name)}`;
-        if (cmd.description) {
-          output += chalk.gray(` - ${cmd.description}`);
+        const description = optionalDescription(cmd);
+        if (description) {
+          output += chalk.gray(` - ${description}`);
         }
         output += '\n';
       }
@@ -467,7 +486,7 @@ const cmdsCommand: REPLCommand = {
 const evalCommand: REPLCommand = {
   name: 'eval',
   description: 'Evaluate a Manifest expression (use `:eval` for inline evaluation)',
-  handler: async (args: string[], context: REPLContext) => {
+  handler: async (args: string[], _context: REPLContext) => {
     const expr = args.join(' ');
     if (!expr) {
       return chalk.red('Error: Expression required\nUsage: eval <expression>');
@@ -477,8 +496,8 @@ const evalCommand: REPLCommand = {
       // For now, we'll just return the expression as-is
       // Full expression evaluation would require parsing the expression
       return chalk.gray(`Expression evaluation not yet implemented for: ${expr}`);
-    } catch (err: any) {
-      return chalk.red(`Error evaluating expression: ${err.message}`);
+    } catch (err: unknown) {
+      return chalk.red(`Error evaluating expression: ${errorMessage(err)}`);
     }
   },
 };
@@ -532,8 +551,9 @@ const policiesCommand: REPLCommand = {
     let output = '\n' + chalk.bold('Policies:') + '\n\n';
     for (const policy of policies) {
       output += `  ${chalk.cyan(policy.name)}`;
-      if (policy.description) {
-        output += chalk.gray(` - ${policy.description}`);
+      const description = optionalDescription(policy);
+      if (description) {
+        output += chalk.gray(` - ${description}`);
       }
       output += '\n';
     }
@@ -663,9 +683,9 @@ const reloadCommand: REPLCommand = {
       context.ir = ir;
       context.runtime = await createRuntime(ir, context.userContext);
       return chalk.green('Manifest reloaded successfully');
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.fail('Reload failed');
-      return chalk.red(`Error: ${err.message}`);
+      return chalk.red(`Error: ${errorMessage(err)}`);
     }
   },
 };
@@ -788,9 +808,6 @@ async function replLoop(context: REPLContext): Promise<void> {
   console.log(chalk.gray('Type `help` for available commands, `exit` to quit'));
   console.log('');
 
-  // Set up prompt
-  const prompt = chalk.cyan('manifest') + chalk.gray('>') + ' ';
-
   rl.prompt();
 
   for await (const line of rl) {
@@ -818,8 +835,8 @@ async function replLoop(context: REPLContext): Promise<void> {
         console.log(chalk.yellow(`Unknown command: ${command}`));
         console.log(chalk.gray('Type `help` for available commands'));
       }
-    } catch (err: any) {
-      console.error(chalk.red(`Error: ${err.message || err}`));
+    } catch (err: unknown) {
+      console.error(chalk.red(`Error: ${errorMessage(err)}`));
     }
 
     rl.prompt();
@@ -852,7 +869,7 @@ export async function replCommand(source: string | undefined, options: {
     const ir = await compileManifest(manifestPath, spinner);
 
     // Build user context
-    const userContext: any = {
+    const userContext: REPLUserContext = {
       user: options.user ? { id: options.user, role: 'user' } : { id: 'repl-user', role: 'user' },
     };
 
@@ -884,9 +901,9 @@ export async function replCommand(source: string | undefined, options: {
 
     // Start REPL loop
     await replLoop(replContext);
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail('Failed to load manifest');
-    console.error(chalk.red(err.message || err));
+    console.error(chalk.red(errorMessage(err)));
     process.exit(1);
   }
 }

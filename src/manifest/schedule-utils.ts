@@ -69,13 +69,13 @@ export function isValidCronExpression(cronExpression: string): boolean {
     if (field === '*') continue;
 
     // Check for valid cron patterns
-    if (!/^[\d,\/-]+$/.test(field)) {
+    if (!/^[\d,/-]+$/.test(field)) {
       return false;
     }
 
     // Basic validation - could be more thorough
     // For now, just ensure numbers are reasonable
-    const parts = field.split(/[,\/-]/);
+    const parts = field.split(/[,/-]/);
     for (const part of parts) {
       if (part === '') continue;
       const num = parseInt(part, 10);

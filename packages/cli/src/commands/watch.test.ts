@@ -4,7 +4,7 @@
  * Tests the manifest watch command for file watching and incremental rebuild.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -164,7 +164,7 @@ describe('Watch Command - Debounce behavior', () => {
     let buildCount = 0;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const debouncedRebuild = (file: string) => {
+    const debouncedRebuild = (_file: string) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         buildCount++;

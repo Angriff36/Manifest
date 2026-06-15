@@ -35,7 +35,7 @@ interface TestEntity extends EntityInstance {
 // In-memory mock of DynamoDB DocumentClient
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type Item = Record<string, any>;
 
 class MockDynamoDB {
@@ -92,7 +92,7 @@ class MockDynamoDB {
     constructor(public input: { TransactItems: unknown[] }) {}
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   async send(command: any): Promise<any> {
     const Ctor = command.constructor.name;
     switch (Ctor) {

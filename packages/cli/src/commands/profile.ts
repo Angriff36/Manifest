@@ -8,9 +8,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
-import ora, { Ora } from 'ora';
+import ora from 'ora';
 import type { IR } from '@angriff36/manifest/ir';
-import type { RuntimeEngine } from '@angriff36/manifest/runtime-engine';
 import type {
   CommandProfile,
   ProfileSummary,

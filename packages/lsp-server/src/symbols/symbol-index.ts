@@ -1,5 +1,11 @@
 import type { ManifestProgram, Position } from '@angriff36/manifest/types';
 
+/** Saga AST shape (not yet part of the published @angriff36/manifest types). */
+interface SagaNode {
+  name: string;
+  position?: Position;
+}
+
 export interface SymbolEntry {
   name: string;
   kind: 'entity' | 'enum' | 'command' | 'property' | 'computed' | 'relationship' | 'policy' | 'constraint' | 'store' | 'event' | 'module' | 'reaction' | 'saga' | 'role' | 'parameter';
@@ -26,7 +32,7 @@ export function buildSymbolIndex(program: ManifestProgram): SymbolEntry[] {
     for (const reaction of mod.reactions) {
       symbols.push({ name: reaction.event, kind: 'reaction', position: reaction.position, container: mod.name });
     }
-    for (const saga of (mod as any).sagas ?? []) {
+    for (const saga of (mod as { sagas?: SagaNode[] }).sagas ?? []) {
       symbols.push({ name: saga.name, kind: 'saga', position: saga.position, container: mod.name });
     }
     for (const role of mod.roles) {
@@ -44,7 +50,7 @@ export function buildSymbolIndex(program: ManifestProgram): SymbolEntry[] {
   for (const reaction of program.reactions) {
     symbols.push({ name: reaction.event, kind: 'reaction', position: reaction.position });
   }
-  for (const saga of (program as any).sagas ?? []) {
+  for (const saga of (program as { sagas?: SagaNode[] }).sagas ?? []) {
     symbols.push({ name: saga.name, kind: 'saga', position: saga.position });
   }
   for (const role of program.roles) {

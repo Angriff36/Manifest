@@ -285,26 +285,22 @@ function parseGeneratedFixtures(output: string): string[] {
  */
 async function validateAndCompileFixture(
   source: string,
-  spinner: Ora,
-  options: GenTestsOptions
+  _spinner: Ora,
+  _options: GenTestsOptions
 ): Promise<{ ir: unknown; diagnostics?: unknown }> {
   const { compileToIR } = await loadCompiler();
 
-  try {
-    const result = await compileToIR(source, { sourcePath: '<generated>' });
+  const result = await compileToIR(source, { sourcePath: '<generated>' });
 
-    if (result.diagnostics && result.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
-      const errors = result.diagnostics.filter((d: { severity: string }) => d.severity === 'error');
-      throw new Error(`Compilation failed: ${errors.map((e: { message: string }) => e.message).join(', ')}`);
-    }
-
-    return {
-      ir: result.ir,
-      diagnostics: result.diagnostics,
-    };
-  } catch (error) {
-    throw error;
+  if (result.diagnostics && result.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
+    const errors = result.diagnostics.filter((d: { severity: string }) => d.severity === 'error');
+    throw new Error(`Compilation failed: ${errors.map((e: { message: string }) => e.message).join(', ')}`);
   }
+
+  return {
+    ir: result.ir,
+    diagnostics: result.diagnostics,
+  };
 }
 
 /**
