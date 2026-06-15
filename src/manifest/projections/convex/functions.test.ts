@@ -89,6 +89,16 @@ describe('convex.mutations — governance', () => {
     expect(code.indexOf('checkRole(userRole')).toBeLessThan(code.indexOf('doc.status === "open"'));
   });
 
+  it('policyMode skip omits policy checks but keeps guards', () => {
+    const ir = govIR();
+    const res = new ConvexProjection().generate(ir, { surface: 'convex.mutations', options: { policyMode: 'skip' } });
+    const code = res.artifacts[0].code;
+    expect(code).not.toContain('checkRole('); // policy/auth omitted
+    expect(code).not.toContain('ROLE_PERMISSIONS'); // helper not emitted (unused)
+    expect(code).toContain('if (!((doc.status === "open")))'); // guard still enforced
+    expect(code).toContain('policyMode: skip');
+  });
+
   it('fails CLOSED on an unresolvable guard (throws + diagnostic, never passes)', () => {
     const ir = govIR();
     // a lambda guard the resolver cannot map

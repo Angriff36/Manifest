@@ -183,12 +183,14 @@ function renderChecks(
 }
 
 /** Collect the policy/guard/constraint checks for a command, in runtime order. */
-function commandChecks(ir: IR, cmd: IRCommand): CheckSpec[] {
+function commandChecks(ir: IR, cmd: IRCommand, policyMode: 'enforce' | 'skip'): CheckSpec[] {
   const checks: CheckSpec[] = [];
-  for (const pName of cmd.policies ?? []) {
-    const policy: IRPolicy | undefined = ir.policies.find(p => p.name === pName);
-    if (!policy) continue;
-    checks.push({ expr: policy.expression, message: policy.message ?? `Policy ${pName} denied`, code: 'CONVEX_UNRESOLVED_POLICY', label: `policy '${pName}'` });
+  if (policyMode !== 'skip') {
+    for (const pName of cmd.policies ?? []) {
+      const policy: IRPolicy | undefined = ir.policies.find(p => p.name === pName);
+      if (!policy) continue;
+      checks.push({ expr: policy.expression, message: policy.message ?? `Policy ${pName} denied`, code: 'CONVEX_UNRESOLVED_POLICY', label: `policy '${pName}'` });
+    }
   }
   for (let i = 0; i < cmd.guards.length; i++) {
     checks.push({ expr: cmd.guards[i], message: `Guard ${i} failed`, code: 'CONVEX_UNRESOLVED_GUARD', label: `guard[${i}]` });
@@ -321,7 +323,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
       docLines.push(`      ${a.target}: ${code}`);
     }
 
-    const checks = renderChecks(entity.name, commandChecks(ir, cmd), scope);
+    const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
     diagnostics.push(...checks.diagnostics);
     const events = renderEvents(options, entity.name, cmd.emits ?? [], '_id');
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
@@ -352,7 +354,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
   }
 
   // Non-create: command params are destructured locals; self.x → doc.x.
-  const checks = renderChecks(entity.name, commandChecks(ir, cmd), { selfVar: 'doc', locals: paramNames });
+  const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), { selfVar: 'doc', locals: paramNames });
   diagnostics.push(...checks.diagnostics);
 
   const updateLines: string[] = [];
@@ -404,19 +406,31 @@ export function generateMutations(ir: IR, rawOptions: Record<string, unknown> | 
     diagnostics.push(...m.diagnostics);
   }
 
+  // Emit helpers only when the generated mutations actually reference them
+  // (a policyMode:'skip' build may use neither), so there is no dead code.
+  const body = blocks.join('\n\n');
+  const helpers: string[] = [];
+  if (/\bcheckRole\(/.test(body)) {
+    helpers.push(
+      `// Role hierarchy from IR (effective permissions after inheritance).\n` +
+      `const ROLE_PERMISSIONS: Record<string, string[]> = ${roleMapLiteral(ir)};\n\n` +
+      `function checkRole(userRole: string, action: string): boolean {\n` +
+      `  const perms = ROLE_PERMISSIONS[userRole];\n` +
+      `  return perms ? (perms.includes(action) || perms.includes("all")) : false;\n` +
+      `}`,
+    );
+  }
+  if (/\bflag\(/.test(body)) {
+    helpers.push(`// Feature toggle (configurable). Not an authorization gate.\nfunction flag(_name?: string): boolean { return true; }`);
+  }
+
+  const policyNote = options.policyMode === 'skip' ? ' (policyMode: skip — authorization policies omitted)' : '';
   const code =
-    `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.\n\n` +
+    `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation } from "./_generated/server";\n` +
     `import { v } from "convex/values";\n\n` +
-    `// Role hierarchy from IR (effective permissions after inheritance).\n` +
-    `const ROLE_PERMISSIONS: Record<string, string[]> = ${roleMapLiteral(ir)};\n\n` +
-    `function checkRole(userRole: string, action: string): boolean {\n` +
-    `  const perms = ROLE_PERMISSIONS[userRole];\n` +
-    `  return perms ? (perms.includes(action) || perms.includes("all")) : false;\n` +
-    `}\n\n` +
-    `// Feature toggle (configurable). Not an authorization gate.\n` +
-    `function flag(_name?: string): boolean { return true; }\n\n` +
-    `${blocks.join('\n\n')}\n`;
+    (helpers.length ? helpers.join('\n\n') + '\n\n' : '') +
+    `${body}\n`;
 
   return { code, diagnostics };
 }

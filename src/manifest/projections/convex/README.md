@@ -58,6 +58,12 @@ mutations + 843 queries, zero type errors).
 The schema surface emits a system `events` table by default
 (`emitEventsTable: false` to suppress, `eventsTable` to rename).
 
+**Dev/demo builds:** `policyMode: 'skip'` omits the authorization-policy checks
+(the role/`checkRole` gating) while still enforcing guards and constraints — for
+local backends with no auth context configured. Default is `'enforce'`; keep it
+for production. When skipped, the role map / `checkRole` helpers are not emitted
+(no dead code).
+
 ## Usage
 
 ```ts

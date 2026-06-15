@@ -462,17 +462,6 @@ export default http;
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Role hierarchy from IR (effective permissions after inheritance).
-const ROLE_PERMISSIONS: Record<string, string[]> = {};
-
-function checkRole(userRole: string, action: string): boolean {
-  const perms = ROLE_PERMISSIONS[userRole];
-  return perms ? (perms.includes(action) || perms.includes("all")) : false;
-}
-
-// Feature toggle (configurable). Not an authorization gate.
-function flag(_name?: string): boolean { return true; }
-
 export const Task_updateStatus = mutation({
   args: {
     docId: v.id("tasks"),

@@ -100,6 +100,15 @@ export interface ConvexProjectionOptions {
 
   /** Name of the system events table. Default `"events"`. */
   eventsTable?: string;
+
+  /**
+   * Authorization-policy enforcement in generated mutations. Default
+   * `'enforce'`. Set to `'skip'` for dev/demo builds that have no auth context
+   * configured: the role/policy (authorization) checks are omitted, while
+   * guards and constraints (state validation) are still enforced. Production
+   * builds should keep the default `'enforce'`.
+   */
+  policyMode?: 'enforce' | 'skip';
 }
 
 /**
@@ -110,6 +119,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   referenceMode: 'convexId' as ReferenceMode,
   emitEventsTable: true,
   eventsTable: 'events',
+  policyMode: 'enforce' as 'enforce' | 'skip',
 } as const;
 
 /**
@@ -126,7 +136,7 @@ export const CONVEX_DEFAULT_NAMING: NamingConventionInput = {
  * Single trust boundary: after this, the projection trusts the contents.
  */
 export function normalizeOptions(raw: Record<string, unknown> | undefined): Required<
-  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable'>
+  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'policyMode'>
 > & Pick<ConvexProjectionOptions, 'naming'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
@@ -138,6 +148,7 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Requ
     references: input.references ?? {},
     emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
+    policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
     // Absent → Convex-idiomatic default applied by the generator.
     naming: input.naming,
   };

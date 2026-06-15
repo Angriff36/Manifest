@@ -4,6 +4,19 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.2] - 2026-06-15
+
+### Added
+
+- **Convex `convex.mutations` — `policyMode` option.** New option
+  (`'enforce'` | `'skip'`, default `'enforce'`). `'skip'` omits the
+  authorization-policy (role / `checkRole`) checks from generated mutations
+  while still enforcing guards and constraints — for dev/demo backends that have
+  no auth context configured, so they no longer require hand-editing the
+  generated files. When skipped, the `ROLE_PERMISSIONS` map and `checkRole`
+  helper are not emitted (no dead code). Production builds keep the default
+  `'enforce'`. The helper emission is now usage-driven in all modes.
+
 ## [2.10.1] - 2026-06-15
 
 ### Fixed
