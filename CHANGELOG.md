@@ -4,6 +4,35 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.6.0] - 2026-06-15
+
+### Added
+
+- **Cross-file entity composition (U4).** `compileProjectToIR` now resolves
+  `extends`/`mixin` bases declared in a different file of the same compile unit.
+  A project-wide composition index is built before per-file compilation and
+  threaded into each file; local entities take precedence, each file still emits
+  only its own entities, and cross-file duplicates/unknown bases are still
+  diagnosed. This lets multi-file projects DRY shared infra fields into a base
+  mixin instead of re-declaring them per entity.
+- **Configurable governed-write receiver (U13).** The `direct-writes` and
+  `unregistered-entity-write` detectors now accept `writeReceiver` on
+  `DetectorContext` (default `prisma`), surfaced as `--write-receiver <name>` on
+  `enforce-surface` and `audit-governance`. Consumers that re-export their ORM
+  client under another name (e.g. `database.user.create`) get governed-write
+  detection without forking the detector.
+- **react-query projection options (D23).** Four data-driven options, each
+  defaulting to the previous output: `entityRoutes` (per-entity read/write route
+  bases with original casing), `readEnvelope` (per-entity list/detail/fallback
+  keys, fixing irregular plurals), `fetchAdapter` (import a host `apiFetch` for
+  auth/credentials instead of the inline helper), and `commandEnvelope` (type
+  mutations as `CommandEnvelope<T>` = `{ success, result, events }`).
+
+### Notes
+
+- All changes are backward-compatible: defaults reproduce prior behavior
+  byte-for-byte. Full suite green (2992 passed); typecheck and lint clean.
+
 ## [2.5.1] - 2026-06-15
 
 ### Changed
