@@ -40,6 +40,7 @@ import {
 import { resolveConvexValidator } from './type-mapping.js';
 import { resolveTableName } from '../shared/naming.js';
 import { generateQueries, generateMutations } from './functions.js';
+import { generateCrons, generateHttp, generateSagas } from './orchestration.js';
 
 // ============================================================================
 // Surface identifiers
@@ -48,7 +49,10 @@ import { generateQueries, generateMutations } from './functions.js';
 const SURFACE_SCHEMA = 'convex.schema' as const;
 const SURFACE_QUERIES = 'convex.queries' as const;
 const SURFACE_MUTATIONS = 'convex.mutations' as const;
-const SURFACES = [SURFACE_SCHEMA, SURFACE_QUERIES, SURFACE_MUTATIONS] as const;
+const SURFACE_CRONS = 'convex.crons' as const;
+const SURFACE_HTTP = 'convex.http' as const;
+const SURFACE_SAGAS = 'convex.sagas' as const;
+const SURFACES = [SURFACE_SCHEMA, SURFACE_QUERIES, SURFACE_MUTATIONS, SURFACE_CRONS, SURFACE_HTTP, SURFACE_SAGAS] as const;
 
 // ============================================================================
 // Store target classification (identical policy to the Prisma projection)
@@ -384,6 +388,18 @@ export class ConvexProjection implements ProjectionTarget {
     if (request.surface === SURFACE_MUTATIONS) {
       const { code, diagnostics } = generateMutations(ir, request.options);
       return { artifacts: [{ id: SURFACE_MUTATIONS, pathHint: 'convex/mutations.ts', contentType: 'typescript', code }], diagnostics };
+    }
+    if (request.surface === SURFACE_CRONS) {
+      const { code, diagnostics } = generateCrons(ir, request.options);
+      return { artifacts: [{ id: SURFACE_CRONS, pathHint: 'convex/crons.ts', contentType: 'typescript', code }], diagnostics };
+    }
+    if (request.surface === SURFACE_HTTP) {
+      const { code, diagnostics } = generateHttp(ir, request.options);
+      return { artifacts: [{ id: SURFACE_HTTP, pathHint: 'convex/http.ts', contentType: 'typescript', code }], diagnostics };
+    }
+    if (request.surface === SURFACE_SAGAS) {
+      const { code, diagnostics } = generateSagas(ir, request.options);
+      return { artifacts: [{ id: SURFACE_SAGAS, pathHint: 'convex/sagas.ts', contentType: 'typescript', code }], diagnostics };
     }
     if (request.surface !== SURFACE_SCHEMA) {
       return {

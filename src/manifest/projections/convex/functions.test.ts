@@ -24,8 +24,11 @@ const queries = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'conv
 const mutations = (ir: IR) => new ConvexProjection().generate(ir, { surface: 'convex.mutations' });
 
 describe('ConvexProjection — surfaces', () => {
-  it('declares schema, queries and mutations surfaces', () => {
-    expect(new ConvexProjection().surfaces).toEqual(['convex.schema', 'convex.queries', 'convex.mutations']);
+  it('declares schema, queries and mutations among its surfaces', () => {
+    const s = new ConvexProjection().surfaces;
+    expect(s).toContain('convex.schema');
+    expect(s).toContain('convex.queries');
+    expect(s).toContain('convex.mutations');
   });
 });
 

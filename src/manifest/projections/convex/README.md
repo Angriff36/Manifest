@@ -12,7 +12,24 @@ Design spec: `docs/superpowers/specs/2026-06-15-convex-projection-design.md`.
 | `convex.schema` | `convex/schema.ts` (`defineSchema`/`defineTable` + `convex/values` validators) | ✅ Phase 1 |
 | `convex.queries` | `convex/queries.ts` (`list`/`get`/`listBy<Field>` reactive reads) | ✅ Phase 2 |
 | `convex.mutations` | `convex/mutations.ts` (governed `mutation` per command) | ✅ Phase 2 |
-| `convex.crons` / sagas / webhooks | `convex/crons.ts` etc. | ⏳ Phase 3 |
+| `convex.crons` | `convex/crons.ts` (`cronJobs()` scheduling command mutations) | ✅ Phase 3 |
+| `convex.http` | `convex/http.ts` (`httpRouter`/`httpAction` webhooks → commands) | ✅ Phase 3 |
+| `convex.sagas` | `convex/sagas.ts` (orchestrator `action`s + compensation) | ✅ Phase 3 |
+
+## Orchestration surfaces (Phase 3)
+
+- **`convex.crons`** — each IR schedule → `crons.cron(id, "<cron>", api.mutations.<E>_<cmd>, params)`
+  or `crons.interval(id, { minutes }, ...)`; params resolved from the schedule AST.
+- **`convex.http`** — each IR webhook → `http.route({ path, method, handler: httpAction })`
+  that reads `request.json()`, maps `transform` params against `body`, and
+  `ctx.runMutation`s the command.
+- **`convex.sagas`** — each IR saga → an orchestrator `action` that runs steps
+  via `ctx.runMutation`, tracks completed steps, and (when `onFailure:
+  compensate`) runs each completed step's compensating command in reverse.
+  `onFailure: abort` rethrows without compensation. Step argument mapping is not
+  in the saga IR, so a single `input` payload is forwarded to each step.
+
+All three typecheck against real `convex@1.41`.
 
 ## Functions surfaces (Phase 2)
 
