@@ -19,25 +19,39 @@ unit tests, `pnpm test` green).
 
 ## 2. North-star architecture (all phases)
 
-Convex write governance uses **runtime delegation** (decided; the alternative —
-re-rendering guards/policies as inline TS — violates the projection boundary
-rule "projections are tooling, not semantics" and duplicates the runtime). Every
-existing write-capable projection (express/nextjs/hono) already delegates writes
-to `runtime.runCommand(...)` and only reads touch the DB directly. Convex follows
-the same contract.
+**Governance-lane decision (revised after reviewing Hermes' PoC):** the write-
+governance approach is decided **per phase**, and it only bites at Phase 2
+(command → mutation). Phase 1 (schema) is identical either way.
+
+Two lanes were considered:
+- **Runtime delegation** — mutations call the Manifest `RuntimeEngine`. This is
+  how express/nextjs/hono work, but those run in a *Node server you control*.
+- **Inline codegen** — guards/policies/constraints are rendered as TS directly
+  in each Convex function, with no runtime dependency.
+
+Convex functions execute in **Convex's own managed runtime**, not a server we
+own, so importing the full Manifest runtime + a `ctx.db`-backed store into every
+mutation is heavy and of uncertain feasibility. Hermes' PoC already proves the
+**inline-codegen** path compiles. **Decision: Phase 2 uses inline codegen**, with
+the governance-rendering isolated behind a clean seam so a future runtime-
+delegation variant can be swapped in without touching schema/query emission.
+This keeps generated Convex code self-contained (Convex-idiomatic) while still
+honouring IR semantics — the projection renders the IR's guards/policies/
+constraints faithfully and does not invent new ones.
 
 Surfaces (mirroring `prisma` + `prisma-store` + `nextjs`):
 
 | Surface | Output | Analogous to | Phase |
 |---|---|---|---|
 | `convex.schema` | `convex/schema.ts` (`defineSchema`/`defineTable` + `v.*`) | prisma.schema | **1** |
-| `convex.functions` | `convex/<entity>.ts` (`query` reads + `mutation` writes → runtime) | nextjs routes | 2 |
-| `convex.store` | `ConvexStore` runtime adapter over `ctx.db` | prisma-store | 3 |
-| `convex.crons` + sagas/webhooks | `convex/crons.ts` etc. | nextjs.schedule | 4 |
+| `convex.functions` | `convex/<entity>.ts` (`query` reads + `mutation` writes, inline IR-governance) | nextjs routes | 2 |
+| `convex.crons` + sagas/webhooks | `convex/crons.ts` etc. | nextjs.schedule | 3 |
 
-Reactions are **not** re-generated per target. They fire through the existing
-runtime reaction engine inside the governed mutation (Phase 2/3); Convex
-reactivity then delivers the resulting query updates. No outbox table.
+Reactions are rendered inline: a governed mutation emits its event row then runs
+the IR's matched reactions (resolve + params from the reaction AST) before
+returning. Convex reactivity delivers the resulting query updates to clients —
+**no outbox/SSE table needed**. (The PoC stubbed non-`create` reactions; this
+projection completes them.)
 
 ## 3. Phase 1 — `convex.schema` (this spec)
 
@@ -154,11 +168,16 @@ Mirror Prisma exactly:
 
 ### 3.10 Table naming
 
-Default: table name = entity IR name **verbatim** (back-compatible, like Prisma).
-Options bag provides:
+Default: **Convex-idiomatic** pluralized camelCase (e.g. `CateringEvent` →
+`cateringEvents`, `Dish` → `dishes`). This intentionally differs from Prisma's
+verbatim default because Convex convention is plural camelCase table keys, and it
+keeps output diffable against the PoC. Resolution order:
 - `tableMappings: { Entity: "physical_name" }` (explicit override, always wins).
-- `naming: 'snake_case' | { table, column, pluralizeTables }` (convention; only
-  changes the physical table key). Same shape/semantics as Prisma's `naming`.
+- `naming` convention (reuse `shared/naming` where it fits; Convex needs
+  lower-camel-first + pluralize, so a small `convexTableName(entityName)` helper
+  owns the default — irregular plurals fall back to `tableMappings`).
+- All `v.id("...")` reference targets resolve through the **same** table-name
+  function so references always point at the real emitted table key.
 
 ### 3.11 Options surface (`ConvexProjectionOptions`)
 
@@ -215,10 +234,36 @@ defaulted object (single trust boundary), exactly like Prisma.
 - Spec/impl aligned; deferred behavior (referential actions, functions, store)
   explicitly marked as Phase 2+.
 
+## 5b. Validation & collaboration (projection-from-source)
+
+This is being built **independently and in parallel** with Hermes' proof-of-concept
+generator, for blind-spot coverage and pattern comparison. Merge strategy:
+whichever generator compiles + runs against real Convex tooling wins as the base;
+good ideas are cherry-picked from the other.
+
+Non-negotiable for an apples-to-apples comparison: **generate from the same IR,
+not hand-modeled entities.** Source of truth for validation runs is capsule's
+merged IR at `C:/Projects/capsule-pro/manifest/ir/kitchen.ir.json` (the
+`compileProjectToIR` output — 210+ entities, the same source Hermes projects
+from). The projection itself is generic over any `IR`; the conformance fixture is
+a small purpose-built `.manifest`, but the **integration/validation pass** runs
+the projection over `kitchen.ir.json` and:
+
+1. Typechecks the emitted `convex/schema.ts` against real Convex packages
+   (`convex/server`, `convex/values`) — ideally `npx convex dev` / `tsc` in a
+   scratch Convex app — to catch validator/signature bugs the unit tests can't.
+2. Diffs structure against Hermes' PoC output to surface divergences (enum union
+   handling, reference/`v.id` shape, tenancy, index naming).
+
+Validator mapping is grounded in current Convex docs (confirmed: `v.id(table)`,
+`v.null()`, `v.int64()`=Int64, `v.number()`=Float64, `v.boolean()`, `v.string()`,
+`v.bytes()`, `.index("by_x", ["x"])`). Pull Convex docs via Context7
+(`/get-convex/convex-backend`) whenever an emission detail is uncertain rather
+than guessing. (`manifest-lab` with Hermes' generator lives on the user's other
+machine — `ssh oc@100.86.15.13` — available if a direct side-by-side is needed.)
+
 ## 6. Out of scope for Phase 1 (roadmap)
 
-- `convex.functions` (queries + governed mutations) — Phase 2.
-- `ConvexStore` runtime adapter — Phase 3 (pins exact store interface from
-  `prisma-store/persistence.ts`).
-- Schedules → `convex/crons.ts`, sagas, webhooks, client/types/hooks — Phase 4.
+- `convex.functions` (queries + inline-governed mutations + complete reactions) — Phase 2.
+- Schedules → `convex/crons.ts`, sagas, webhooks, client/types/hooks — Phase 3.
 - Release (`cut-release`) — after the phase(s) the user chooses to ship together.
