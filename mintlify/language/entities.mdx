@@ -19,6 +19,19 @@ entity Product {
 }
 ```
 
+### External entities
+
+Prefix the declaration with `external` to mark an entity as owned by another system or file. The compiler records `external: true` on the IR, and persistence projections (Prisma, Drizzle, Kysely, Convex, prisma-store) skip it — they emit no table or model for it, only honoring relationships that point at it. Use this to reference data managed outside the current program.
+
+```manifest
+external entity ImportedUser {
+  property required id: string
+  property email: string
+}
+```
+
+`external` is a contextual modifier rather than a reserved word, so a property may still be named `external` (`property external: string`).
+
 ## Properties
 
 Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.

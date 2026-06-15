@@ -136,6 +136,19 @@ Sub-blocks an entity may contain: `property`, `computed`/`derived`, relationship
 Events declared *inside* an entity are dropped with a warning. Declare `event` at the top level or inside a `module`.
 </Warning>
 
+### External entities
+
+Prefix an entity with `external` to mark it as one owned by another system or file. The compiler sets `external: true` on the IR, and persistence projections (Prisma, Drizzle, Kysely, Convex, prisma-store) **skip** it rather than emitting a table or model for it — useful for referencing a table managed elsewhere.
+
+```manifest
+external entity ImportedUser {
+  property required id: string
+  property email: string
+}
+```
+
+`external` is a contextual modifier, not a reserved word, so `property external: string` still parses as an ordinary property.
+
 ## Types
 
 | Category | Type names |
@@ -280,7 +293,6 @@ The parser rejects these outright — they are common mistakes, not features:
 
 - **No entity generics.** `entity Paginated<T>` is invalid; type parameters exist only inside property types like `array<T>`.
 - **No `import` statements.** Cross-file composition is `use "./file.manifest"` only. There is no `import { X } from "…"`.
-- **No `external entity` keyword.** `external` is not a lexer keyword and the parser has no `external` branch, so `external entity X {}` does not parse. (`external` exists only as an *IR-level* entity flag that persistence projections honor by skipping the entity; it is not authored in source.)
 - **No `policy` clause inside a command body.** Declare authorization at the entity level (`policy … execute: …`) or as a top-level `policy`.
 - **Reserved words as identifiers.** A keyword used as a declaration name produces *"Reserved word 'X' cannot be used as an identifier."*
 - **`value` blocks** may contain properties only — no commands, computed, or constraints.
