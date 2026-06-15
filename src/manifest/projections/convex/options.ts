@@ -98,7 +98,11 @@ export interface ConvexProjectionOptions {
    */
   emitEventsTable?: boolean;
 
-  /** Name of the system events table. Default `"events"`. */
+  /**
+   * Name of the system events table. Default `"manifestEvents"`. If the
+   * resolved name collides with an entity's table, it is deterministically
+   * suffixed to stay unique (with a diagnostic).
+   */
   eventsTable?: string;
 
   /**
@@ -118,7 +122,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   output: 'convex/schema.ts',
   referenceMode: 'convexId' as ReferenceMode,
   emitEventsTable: true,
-  eventsTable: 'events',
+  eventsTable: 'manifestEvents',
   policyMode: 'enforce' as 'enforce' | 'skip',
 } as const;
 

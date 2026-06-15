@@ -145,6 +145,36 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('tenantId: args.tenantId');
   });
 
+  it('threads source tenantId into tenant-scoped reaction creates', () => {
+    const ir = emptyIR();
+    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.entities = [
+      entity('Event', [prop('tenantId', 'string', ['required']), prop('title', 'string', ['required'])]),
+      entity('Board', [prop('tenantId', 'string', ['required']), prop('name', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('Event'), durable('Board')];
+    ir.reactions = [{ event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'name', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'title' } }] }] as IRReactionRule[];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }], emits: ['EventCreated'] }];
+    const code = mutations(ir).artifacts[0].code;
+    // tenantId auto-threaded from the source event into the Board insert
+    expect(code).toContain('await ctx.db.insert("boards", { tenantId: payload.tenantId, name: payload.title })');
+  });
+
+  it('does not inject tenantId when the reaction target is not tenant-scoped', () => {
+    const ir = emptyIR();
+    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.entities = [
+      entity('Event', [prop('tenantId', 'string', ['required'])]),
+      entity('Log', [prop('msg', 'string', ['required'])]), // no tenantId
+    ];
+    ir.stores = [durable('Event'), durable('Log')];
+    ir.reactions = [{ event: 'EventCreated', targetEntity: 'Log', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'msg', expression: { kind: 'literal', value: { kind: 'string', value: 'hi' } } }] }] as IRReactionRule[];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [], guards: [], constraints: [], actions: [], emits: ['EventCreated'] }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('await ctx.db.insert("logs", { msg: "hi" })');
+    expect(code).not.toContain('tenantId: payload.tenantId');
+  });
+
   it('completes non-create reactions (no TODO stubs) and emits event rows', () => {
     const ir = emptyIR();
     ir.entities = [entity('Event', [prop('title', 'string', ['required'])]), entity('Board', [prop('name', 'string', ['required'])])];
@@ -152,7 +182,7 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     ir.reactions = [{ event: 'EventCreated', targetEntity: 'Board', targetCommand: 'create', resolve: { kind: 'literal', value: { kind: 'null' } }, params: [{ name: 'name', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'title' } }] }] as IRReactionRule[];
     ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }], emits: ['EventCreated'] }];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('await ctx.db.insert("events", {'); // event row
+    expect(code).toContain('await ctx.db.insert("manifestEvents", {'); // event row (namespaced system table)
     expect(code).toContain('await ctx.db.insert("boards", { name: payload.title })'); // reaction create with resolved param
     expect(code).not.toContain('TODO');
   });

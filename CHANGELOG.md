@@ -4,7 +4,28 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.10.2] - 2026-06-15
+## [2.10.3] - 2026-06-15
+
+### Added
+
+- **Convex reactions — automatic tenant propagation.** A reaction fires within
+  its source entity's tenant, so when it creates a tenant-scoped target entity
+  the projection now threads the source `tenantId` (available as
+  `payload.<tenantProp>`) into the generated insert, unless an explicit reaction
+  param already sets it. This lets reactions fully populate tenant-scoped tables
+  (e.g. the auto-created battle board / prep list) without the tenant value
+  having to be authored into every reaction. Non-tenant-scoped targets are
+  unaffected.
+
+### Fixed
+
+- **Convex schema — system events table name collision.** The default events
+  table was `"events"`, which collides with the table of an entity named
+  `Event` (both become the `events` `defineSchema` key, silently clobbering the
+  entity table). The default is now `"manifestEvents"`, and the resolved name is
+  deterministically suffixed (with a `CONVEX_EVENTS_TABLE_COLLISION` diagnostic)
+  if a configured name still collides with an entity table. Schema and functions
+  generators resolve the name through one shared helper so they always agree.
 
 ### Added
 

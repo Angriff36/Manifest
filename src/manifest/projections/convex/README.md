@@ -55,8 +55,12 @@ over `.withIndex`, FK args typed `v.id`). Reads are not governed.
 Generated functions were typechecked against real `convex@1.41` (1043
 mutations + 843 queries, zero type errors).
 
-The schema surface emits a system `events` table by default
-(`emitEventsTable: false` to suppress, `eventsTable` to rename).
+The schema surface emits a system `manifestEvents` table by default
+(`emitEventsTable: false` to suppress, `eventsTable` to rename). The name is
+collision-aware: if it would clash with an entity's table it is deterministically
+suffixed (with a diagnostic). Reactions that create a tenant-scoped target
+automatically thread the source entity's `tenantId` (`payload.<tenantProp>`)
+into the insert, unless an explicit reaction param already sets it.
 
 **Dev/demo builds:** `policyMode: 'skip'` omits the authorization-policy checks
 (the role/`checkRole` gating) while still enforcing guards and constraints — for

@@ -110,6 +110,23 @@ export function isPersistentEntity(entity: IREntity, ir: IR): boolean {
   return !!store && isPersistent(store.target);
 }
 
+/**
+ * Resolve the system events-table name, guaranteed not to collide with any
+ * persistent entity's table (a `defineSchema` key collision would silently
+ * clobber the entity table). Deterministically suffixes `_` on collision.
+ * Shared by the schema and functions generators so they always agree.
+ */
+export function resolveEventsTableName(ir: IR, options: NormalizedOptions): string {
+  const taken = new Set<string>();
+  for (const entity of ir.entities) {
+    if (!isPersistentEntity(entity, ir)) continue;
+    taken.add(resolveConvexTableName(entity.name, options));
+  }
+  let name = options.eventsTable;
+  while (taken.has(name)) name += '_';
+  return name;
+}
+
 // ============================================================================
 // Enum emission
 // ============================================================================
@@ -429,7 +446,14 @@ export class ConvexProjection implements ProjectionTarget {
     const entityBlockCount = blocks.length;
 
     if (options.emitEventsTable) {
-      const t = options.eventsTable;
+      const t = resolveEventsTableName(ir, options);
+      if (t !== options.eventsTable) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'CONVEX_EVENTS_TABLE_COLLISION',
+          message: `Events table '${options.eventsTable}' collides with an entity table; using '${t}'. Set the 'eventsTable' option to choose a non-colliding name.`,
+        });
+      }
       blocks.push(
         `  ${t}: defineTable({\n` +
         `    type: v.string(),\n` +

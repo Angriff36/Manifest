@@ -476,7 +476,7 @@ export const Task_updateStatus = mutation({
     };
     await ctx.db.patch(docId, updates);
     const payload: Record<string, any> = { ...doc, ...updates };
-    await ctx.db.insert("events", { type: "TaskStatusUpdated", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
+    await ctx.db.insert("manifestEvents", { type: "TaskStatusUpdated", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
     return { ...doc, ...updates };
   },
 });
@@ -495,7 +495,7 @@ export const Task_assignTask = mutation({
     };
     await ctx.db.patch(docId, updates);
     const payload: Record<string, any> = { ...doc, ...updates };
-    await ctx.db.insert("events", { type: "TaskAssigned", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
+    await ctx.db.insert("manifestEvents", { type: "TaskAssigned", entity: "Task", entityId: docId, payload: {}, createdAt: Date.now() });
     return { ...doc, ...updates };
   },
 });
@@ -544,7 +544,7 @@ export const getUser = query({
 export const listRecentEvents = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("events").order("desc").take(50);
+    return await ctx.db.query("manifestEvents").order("desc").take(50);
   },
 });
 ",
@@ -576,7 +576,7 @@ export default defineSchema({
     email: v.string(),
     role: v.string(),
   }),
-  events: defineTable({
+  manifestEvents: defineTable({
     type: v.string(),
     entity: v.string(),
     entityId: v.string(),

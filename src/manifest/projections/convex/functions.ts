@@ -20,6 +20,7 @@ import {
   collectFkTargets,
   buildValidator,
   isPersistentEntity,
+  resolveEventsTableName,
   type NormalizedOptions,
 } from './generator.js';
 import { resolveConvexValidator } from './type-mapping.js';
@@ -119,7 +120,7 @@ export function generateQueries(ir: IR, rawOptions: Record<string, unknown> | un
       `export const listRecentEvents = query({\n` +
       `  args: {},\n` +
       `  handler: async (ctx) => {\n` +
-      `    return await ctx.db.query("${options.eventsTable}").order("desc").take(50);\n` +
+      `    return await ctx.db.query("${resolveEventsTableName(ir, options)}").order("desc").take(50);\n` +
       `  },\n});`,
     );
   }
@@ -209,10 +210,13 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
   const matched = (ir.reactions ?? []).filter((r: IRReactionRule) => emits.includes(r.event));
   if (matched.length === 0) return { lines, diagnostics };
   lines.push('    // Reactions');
+  const tenantProp = ir.tenant?.property;
   matched.forEach((reaction, idx) => {
     const targetTable = resolveConvexTableName(reaction.targetEntity, options);
+    const targetEntity = ir.entities.find(e => e.name === reaction.targetEntity);
     const scope: RenderScope = { selfVar: 'doc', globals: ['payload', 'user', 'context', 'args'] };
     const paramEntries: string[] = [];
+    const paramNamesSeen = new Set<string>();
     for (const p of reaction.params ?? []) {
       const { code, unresolved } = renderExpression(p.expression, scope);
       if (unresolved.length) {
@@ -220,6 +224,14 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
         continue;
       }
       paramEntries.push(`${p.name}: ${code}`);
+      paramNamesSeen.add(p.name);
+    }
+    // Tenant propagation: a reaction fires within the source entity's tenant, so
+    // when it creates a tenant-scoped target, thread the source tenantId
+    // (available as payload.<tenantProp>) unless an explicit param already set it.
+    const targetIsTenantScoped = !!tenantProp && !!targetEntity?.properties.some(p => p.name === tenantProp);
+    if (reaction.targetCommand === 'create' && targetIsTenantScoped && !paramNamesSeen.has(tenantProp!)) {
+      paramEntries.unshift(`${tenantProp}: payload.${tenantProp}`);
     }
     if (reaction.targetCommand === 'create') {
       lines.push(`    await ctx.db.insert("${targetTable}", { ${paramEntries.join(', ')} });`);
@@ -240,10 +252,9 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
 }
 
 /** Render the event-row inserts for a command's emits. */
-function renderEvents(options: Normalized, entityName: string, emits: string[], idVar: string): string[] {
-  const table = options.eventsTable;
+function renderEvents(eventsTable: string, entityName: string, emits: string[], idVar: string): string[] {
   return emits.map(ev =>
-    `    await ctx.db.insert("${table}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(entityName)}, entityId: ${idVar}, payload: {}, createdAt: Date.now() });`,
+    `    await ctx.db.insert("${eventsTable}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(entityName)}, entityId: ${idVar}, payload: {}, createdAt: Date.now() });`,
   );
 }
 
@@ -325,7 +336,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
 
     const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
     diagnostics.push(...checks.diagnostics);
-    const events = renderEvents(options, entity.name, cmd.emits ?? [], '_id');
+    const events = renderEvents(resolveEventsTableName(ir, options), entity.name, cmd.emits ?? [], '_id');
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
     diagnostics.push(...reactions.diagnostics);
     const tail = [...events, ...reactions.lines].join('\n');
@@ -368,7 +379,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     updateLines.push(`      ${a.target}: ${code}`);
   }
 
-  const events = renderEvents(options, entity.name, cmd.emits ?? [], 'docId');
+  const events = renderEvents(resolveEventsTableName(ir, options), entity.name, cmd.emits ?? [], 'docId');
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
   diagnostics.push(...reactions.diagnostics);
 
