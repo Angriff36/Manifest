@@ -113,6 +113,17 @@ export function generateQueries(ir: IR, rawOptions: Record<string, unknown> | un
     }
   }
 
+  // Convenience: recent rows from the system events table (when emitted).
+  if (options.emitEventsTable) {
+    blocks.push(
+      `export const listRecentEvents = query({\n` +
+      `  args: {},\n` +
+      `  handler: async (ctx) => {\n` +
+      `    return await ctx.db.query("${options.eventsTable}").order("desc").take(50);\n` +
+      `  },\n});`,
+    );
+  }
+
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} query function(s).\n\n` +
     `import { query } from "./_generated/server";\n` +
@@ -261,68 +272,56 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
   const paramNames = (cmd.parameters ?? []).map(p => p.name);
 
   if (isCreate) {
+    // Unified create model. Every stored field must be reachable so the insert
+    // satisfies the schema: it is either (a) set by a `mutate` action, (b) filled
+    // from its default, or (c) exposed as a mutation argument the caller provides.
+    // Command parameters that feed actions (and are not themselves fields) are
+    // also exposed as args. All expressions resolve against `args`.
     const params = cmd.parameters ?? [];
+    const scope: RenderScope = { selfVar: 'args' };
     const argLines: string[] = [];
+    const argNames = new Set<string>();
     const docLines: string[] = [];
 
-    if (params.length > 0) {
-      // Param-style create: args ARE the command parameters; guards reference
-      // them (scope self/bare → args.x); mutate actions map params → fields.
-      const scope: RenderScope = { selfVar: 'args' };
-      for (const p of params) {
-        const validator = paramValidator(p.type.name);
-        argLines.push(`    ${p.name}: ${p.required ? validator : `v.optional(${validator})`}`);
-      }
-      for (const a of cmd.actions ?? []) {
-        if (a.kind !== 'mutate' || !a.target) continue;
-        const { code, unresolved } = renderExpression(a.expression, scope);
-        if (unresolved.length) {
-          diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_ACTION', entity: entity.name, message: `create action '${a.target}' unresolved (${unresolved.join('; ')}); omitted.` });
-          continue;
-        }
-        docLines.push(`      ${a.target}: ${code}`);
-      }
-      // Fallback: no mutate actions → persist params under their own names.
-      if (docLines.length === 0) for (const p of params) docLines.push(`      ${p.name}: args.${p.name}`);
+    // Fields set by mutate actions (mapped from params); not exposed as args.
+    const mutates = (cmd.actions ?? []).filter(a => a.kind === 'mutate' && a.target);
+    const targetSet = new Set(mutates.map(a => a.target as string));
 
-      const checks = renderChecks(entity.name, commandChecks(ir, cmd), scope);
-      diagnostics.push(...checks.diagnostics);
-      const events = renderEvents(options, entity.name, cmd.emits ?? [], '_id');
-      const reactions = renderReactions(ir, options, cmd.emits ?? []);
-      diagnostics.push(...reactions.diagnostics);
-      const tail = [...events, ...reactions.lines].join('\n');
-      const payloadBinding = /\bpayload\b/.test(tail) ? `    const payload: Record<string, any> = { _id, ...doc };\n` : '';
-      const bodyText = [...checks.lines, tail].join('\n');
-
-      const body =
-        `export const ${name} = mutation({\n` +
-        `  args: {\n${argLines.join(',\n')}\n  },\n` +
-        `  handler: async (ctx, args) => {\n` +
-        (authBindings(bodyText).join('\n') ? authBindings(bodyText).join('\n') + '\n' : '') +
-        `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
-        (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
-        `    const _id = await ctx.db.insert("${table}", doc as any);\n` +
-        payloadBinding +
-        (tail ? tail + '\n' : '') +
-        `    return { _id, ...doc };\n` +
-        `  },\n});`;
-      return { code: body, diagnostics };
-    }
-
-    // Property-style create: no command parameters; args/doc derive from the
-    // entity's own properties (bare/self refs resolve to doc.x).
+    // Entity properties → args (unless action-set) + doc lines (with defaults).
     for (const p of entity.properties) {
-      if (p.name === 'id') continue;
+      if (p.name === 'id' || targetSet.has(p.name)) continue;
       const { validator, diagnostics: vd } = buildValidator(entity, p, ir, options, fkTargets.get(p.name));
       diagnostics.push(...vd);
       if (!validator) continue;
-      const required = p.modifiers.includes('required');
-      argLines.push(`    ${p.name}: ${required ? validator : `v.optional(${validator})`}`);
-      if (!required && p.defaultValue) docLines.push(`      ${p.name}: args.${p.name} ?? ${defaultToTs(p.defaultValue)}`);
-      else docLines.push(`      ${p.name}: args.${p.name}`);
+      // Required AND no default → required arg; otherwise optional (caller may
+      // omit; default fills in).
+      const required = p.modifiers.includes('required') && !p.defaultValue;
+      if (!argNames.has(p.name)) {
+        argLines.push(`    ${p.name}: ${required ? validator : `v.optional(${validator})`}`);
+        argNames.add(p.name);
+      }
+      docLines.push(`      ${p.name}: args.${p.name}${p.defaultValue ? ` ?? ${defaultToTs(p.defaultValue)}` : ''}`);
     }
 
-    const checks = renderChecks(entity.name, commandChecks(ir, cmd), { selfVar: 'doc' });
+    // Command params that are not entity fields (they feed actions) → args.
+    for (const p of params) {
+      if (argNames.has(p.name)) continue;
+      const validator = paramValidator(p.type.name);
+      argLines.push(`    ${p.name}: ${p.required ? validator : `v.optional(${validator})`}`);
+      argNames.add(p.name);
+    }
+
+    // mutate actions → doc fields (param → field mapping).
+    for (const a of mutates) {
+      const { code, unresolved } = renderExpression(a.expression, scope);
+      if (unresolved.length) {
+        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_ACTION', entity: entity.name, message: `create action '${a.target}' unresolved (${unresolved.join('; ')}); omitted.` });
+        continue;
+      }
+      docLines.push(`      ${a.target}: ${code}`);
+    }
+
+    const checks = renderChecks(entity.name, commandChecks(ir, cmd), scope);
     diagnostics.push(...checks.diagnostics);
     const events = renderEvents(options, entity.name, cmd.emits ?? [], '_id');
     const reactions = renderReactions(ir, options, cmd.emits ?? []);

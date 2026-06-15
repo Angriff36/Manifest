@@ -119,6 +119,22 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('yieldQuantity: args.yieldQty'); // action maps param→field
   });
 
+  it('exposes required non-param fields as args and fills defaults (insert completeness)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Event', [
+      prop('tenantId', 'string', ['required']),      // required, no default, not a param → required arg
+      { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'string', value: 'draft' } }, // default → optional arg + ?? default
+    ])];
+    ir.stores = [durable('Event')];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }], guards: [], constraints: [], actions: [], emits: [] }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('tenantId: v.string()');          // required field exposed as required arg
+    expect(code).toContain('status: v.optional(v.string())'); // defaulted field is optional arg
+    expect(code).toContain('title: v.string()');              // required command param exposed
+    expect(code).toContain('status: args.status ?? "draft"'); // default guaranteed into doc
+    expect(code).toContain('tenantId: args.tenantId');
+  });
+
   it('completes non-create reactions (no TODO stubs) and emits event rows', () => {
     const ir = emptyIR();
     ir.entities = [entity('Event', [prop('title', 'string', ['required'])]), entity('Board', [prop('name', 'string', ['required'])])];
