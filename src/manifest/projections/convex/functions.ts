@@ -43,14 +43,40 @@ function persistentEntities(ir: IR): IREntity[] {
   return ir.entities.filter(e => isPersistentEntity(e, ir));
 }
 
-/** Render an IR default value to a TS literal. */
-function defaultToTs(value: IRValue): string {
+/**
+ * Render an IR default value to a TS literal that satisfies a Convex validator.
+ *
+ * Two of the projection's type mappings are *representational*: `int`/`bigint`
+ * map to `v.int64()` (a JS `bigint`) and `decimal`/`money` map to `v.string()`
+ * (lossless decimal transport — Convex has no native Decimal). A structurally
+ * faithful render of an IR `number` default (`1`) is the WRONG runtime type for
+ * those validators — Convex rejects a JS number where it expects a bigint or a
+ * string — so the create-mutation default fill would fail schema validation at
+ * insert time. Coerce numeric leaves to the validator's representation.
+ *
+ * `validator` is the field's resolved expression (possibly `v.optional`/
+ * `v.array`-wrapped); detection is structural so per-property `typeMappings`
+ * overrides are honored. Arrays share their element validator, so it propagates
+ * to elements; objects carry heterogeneous members the field validator does not
+ * describe, so their members are rendered structurally (no coercion).
+ */
+function defaultToTs(value: IRValue, validator?: string): string {
   switch (value.kind) {
     case 'string': return JSON.stringify(value.value);
-    case 'number': return String(value.value);
+    case 'number':
+      // int64 wants a bigint literal; a non-integer default on an int field is
+      // an authoring contradiction — surface it as a type error, don't truncate.
+      if (validator && /\bv\.int64\(\)/.test(validator) && Number.isInteger(value.value)) {
+        return `${value.value}n`;
+      }
+      // decimal/money (and stringId FKs) transport as strings.
+      if (validator && /\bv\.string\(\)/.test(validator)) {
+        return JSON.stringify(String(value.value));
+      }
+      return String(value.value);
     case 'boolean': return String(value.value);
     case 'null': return 'null';
-    case 'array': return `[${value.elements.map(defaultToTs).join(', ')}]`;
+    case 'array': return `[${value.elements.map(el => defaultToTs(el, validator)).join(', ')}]`;
     case 'object': return `{${Object.entries(value.properties).map(([k, v]) => `${JSON.stringify(k)}: ${defaultToTs(v)}`).join(', ')}}`;
   }
 }
@@ -313,7 +339,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
         argLines.push(`    ${p.name}: ${required ? validator : `v.optional(${validator})`}`);
         argNames.add(p.name);
       }
-      docLines.push(`      ${p.name}: args.${p.name}${p.defaultValue ? ` ?? ${defaultToTs(p.defaultValue)}` : ''}`);
+      docLines.push(`      ${p.name}: args.${p.name}${p.defaultValue ? ` ?? ${defaultToTs(p.defaultValue, validator)}` : ''}`);
     }
 
     // Command params that are not entity fields (they feed actions) → args.

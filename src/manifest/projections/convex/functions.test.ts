@@ -145,6 +145,21 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('tenantId: args.tenantId');
   });
 
+  it('renders int64/decimal defaults in the validator representation, not raw numbers', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Event', [
+      { name: 'guestCount', type: { name: 'int', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'number', value: 1 } },
+      { name: 'deposit', type: { name: 'money', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'number', value: 0 } },
+      { name: 'seatCounts', type: { name: 'array', nullable: false, generic: { name: 'int', nullable: false } }, modifiers: ['required'], defaultValue: { kind: 'array', elements: [{ kind: 'number', value: 2 }, { kind: 'number', value: 4 }] } },
+    ])];
+    ir.stores = [durable('Event')];
+    ir.commands = [{ name: 'create', entity: 'Event', parameters: [], guards: [], constraints: [], actions: [], emits: [] }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('guestCount: args.guestCount ?? 1n');       // int64 → bigint literal (not `1`)
+    expect(code).toContain('deposit: args.deposit ?? "0"');            // money transports as v.string() → quoted
+    expect(code).toContain('seatCounts: args.seatCounts ?? [2n, 4n]'); // array<int> propagates int64 coercion
+  });
+
   it('threads source tenantId into tenant-scoped reaction creates', () => {
     const ir = emptyIR();
     ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };

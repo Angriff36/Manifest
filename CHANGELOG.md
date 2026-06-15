@@ -4,6 +4,23 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.4] - 2026-06-15
+
+### Fixed
+
+- **Convex create mutations — defaults now match the field's validator type.**
+  `int`/`bigint` map to `v.int64()` (a JS `bigint`) and `decimal`/`money` map to
+  `v.string()` (lossless decimal transport), but the create-mutation default
+  fill rendered IR `number` defaults structurally — e.g. `guestCount` defaulting
+  to `1` (a JS number) where the schema validator expects a `bigint`, or a
+  `money` field defaulting to `0` where it expects a string. Convex rejected
+  these at insert time. The default renderer is now validator-aware: it emits
+  `1n` for `v.int64()` fields and a quoted string for `v.string()` fields, and
+  propagates the coercion through `v.array(...)` (an `array<int>` default
+  `[2, 4]` → `[2n, 4n]`). Detection is structural, so per-property `typeMappings`
+  overrides are honored. A non-integer default on an integer field is left
+  un-coerced so the type mismatch surfaces rather than being silently truncated.
+
 ## [2.10.3] - 2026-06-15
 
 ### Added
