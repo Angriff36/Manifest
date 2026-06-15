@@ -6079,6 +6079,397 @@ export function ManifestQueryProvider({ children }: { children: ReactNode }) {
 }
 `;
 
+exports[`projection snapshots > remix > generated artifacts match snapshot 1`] = `
+{
+  "remix.client": "// Auto-generated client utilities for Manifest
+// DO NOT EDIT - This file is generated from .manifest source
+
+import { json, redirect } from "@remix-run/node";
+import type { ManifestActionResult } from "~/types/manifest-generated";
+
+/**
+ * Standardized success response helper for Remix routes.
+ */
+export function manifestSuccessResponse(
+  data: unknown,
+  init?: ResponseInit
+) {
+  return json(data, init);
+}
+
+/**
+ * Standardized error response helper for Remix routes.
+ */
+export function manifestErrorResponse(
+  error: string | { error: string; diagnostics: unknown[] },
+  status: number,
+  init?: ResponseInit
+) {
+  const body = typeof error === "string" ? { error, diagnostics: [] } : error;
+  return json(body, { ...init, status });
+}
+
+/**
+ * Normalize command result from Manifest runtime.
+ */
+export function normalizeCommandResult(
+  entityName: string,
+  commandName: string,
+  result: unknown
+): ManifestActionResult {
+  // Type assertion for runtime result
+  const r = result as ManifestActionResult | { success?: boolean; data?: unknown; error?: string };
+
+  if ("success" in r && typeof r.success === "boolean") {
+    return r as ManifestActionResult;
+  }
+
+  // Legacy format without explicit success field
+  return {
+    success: !r.error,
+    data: r.data,
+    error: r.error,
+    events: [],
+    diagnostics: [],
+  };
+}
+",
+  "remix.detail:Task": "// Auto-generated Remix route for Task detail view
+// Generated from Manifest IR - DO NOT EDIT
+
+import { LoaderFunctionArgs, json, useRouteError, type Route } from "@remix-run/node";
+import { database } from "~/utils/database.server";
+import { authenticator } from "~/utils/auth.server";
+
+type Route = typeof import("@remix-run/react/routes").GenericRoute;
+
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  try {
+  const session = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/login",
+  });
+  if (!session?.user?.id) {
+    throw redirect("/login", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const userMapping = await database.userTenantMapping.findUnique({
+    where: { userId },
+  });
+
+  if (!userMapping) {
+    return json(
+      { error: "User not mapped to tenant", diagnostics: [] },
+      { status: 400 }
+    );
+  }
+
+  const { tenantId } = userMapping;
+
+    const { id } = params;
+
+    if (!id) {
+      return json(
+        { error: "Missing id parameter", diagnostics: [] },
+        { status: 400 }
+      );
+    }
+
+    const task = await database.task.findFirst({
+      where: {
+        id,
+        tenantId
+      },
+    });
+
+    if (!task) {
+      return json(
+        { error: "Task not found", diagnostics: [] },
+        { status: 404 }
+      );
+    }
+
+    return json({ task });
+  } catch (error) {
+    console.error(\`Error fetching \${delegateName}:\`, error);
+    return json(
+      { error: "Internal server error", diagnostics: [] },
+      { status: 500 }
+    );
+  }
+}
+
+export default function TaskDetailRoute() {
+  // This is a placeholder - implement your UI in the component
+  // Loader data is available via useLoaderData<typeof loader>()
+  return <div>TODO: Implement Task detail view</div>;
+}
+
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Route error for Task:", error);
+
+  return (
+    <div className="error-container">
+      <h1>Something went wrong</h1>
+      <p>Please try again later.</p>
+    </div>
+  );
+}
+",
+  "remix.detail:User": "// Auto-generated Remix route for User detail view
+// Generated from Manifest IR - DO NOT EDIT
+
+import { LoaderFunctionArgs, json, useRouteError, type Route } from "@remix-run/node";
+import { database } from "~/utils/database.server";
+import { authenticator } from "~/utils/auth.server";
+
+type Route = typeof import("@remix-run/react/routes").GenericRoute;
+
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  try {
+  const session = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/login",
+  });
+  if (!session?.user?.id) {
+    throw redirect("/login", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const userMapping = await database.userTenantMapping.findUnique({
+    where: { userId },
+  });
+
+  if (!userMapping) {
+    return json(
+      { error: "User not mapped to tenant", diagnostics: [] },
+      { status: 400 }
+    );
+  }
+
+  const { tenantId } = userMapping;
+
+    const { id } = params;
+
+    if (!id) {
+      return json(
+        { error: "Missing id parameter", diagnostics: [] },
+        { status: 400 }
+      );
+    }
+
+    const user = await database.user.findFirst({
+      where: {
+        id,
+        tenantId
+      },
+    });
+
+    if (!user) {
+      return json(
+        { error: "User not found", diagnostics: [] },
+        { status: 404 }
+      );
+    }
+
+    return json({ user });
+  } catch (error) {
+    console.error(\`Error fetching \${delegateName}:\`, error);
+    return json(
+      { error: "Internal server error", diagnostics: [] },
+      { status: 500 }
+    );
+  }
+}
+
+export default function UserDetailRoute() {
+  // This is a placeholder - implement your UI in the component
+  // Loader data is available via useLoaderData<typeof loader>()
+  return <div>TODO: Implement User detail view</div>;
+}
+
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Route error for User:", error);
+
+  return (
+    <div className="error-container">
+      <h1>Something went wrong</h1>
+      <p>Please try again later.</p>
+    </div>
+  );
+}
+",
+  "remix.list:Task": "// Auto-generated Remix route for Task list view
+// Generated from Manifest IR - DO NOT EDIT
+
+import { LoaderFunctionArgs, json, useRouteError, type Route } from "@remix-run/node";
+import { database } from "~/utils/database.server";
+import { authenticator } from "~/utils/auth.server";
+
+type Route = typeof import("@remix-run/react/routes").GenericRoute;
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  try {
+  const session = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/login",
+  });
+  if (!session?.user?.id) {
+    throw redirect("/login", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const userMapping = await database.userTenantMapping.findUnique({
+    where: { userId },
+  });
+
+  if (!userMapping) {
+    return json(
+      { error: "User not mapped to tenant", diagnostics: [] },
+      { status: 400 }
+    );
+  }
+
+  const { tenantId } = userMapping;
+
+const tasks = await database.task.findMany({
+    where: {
+        tenantId
+      },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+    return json({ tasks });
+  } catch (error) {
+    console.error(\`Error fetching tasks:\`, error);
+    return json(
+      { error: "Internal server error", diagnostics: [] },
+      { status: 500 }
+    );
+  }
+}
+
+export default function TaskListRoute() {
+  // This is a placeholder - implement your UI in the component
+  // Loader data is available via useLoaderData<typeof loader>()
+  return <div>TODO: Implement Task list view</div>;
+}
+
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Route error for Task:", error);
+
+  return (
+    <div className="error-container">
+      <h1>Something went wrong</h1>
+      <p>Please try again later.</p>
+    </div>
+  );
+}
+",
+  "remix.list:User": "// Auto-generated Remix route for User list view
+// Generated from Manifest IR - DO NOT EDIT
+
+import { LoaderFunctionArgs, json, useRouteError, type Route } from "@remix-run/node";
+import { database } from "~/utils/database.server";
+import { authenticator } from "~/utils/auth.server";
+
+type Route = typeof import("@remix-run/react/routes").GenericRoute;
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  try {
+  const session = await authenticator.isAuthenticated(request, {
+    failureRedirect: "/login",
+  });
+  if (!session?.user?.id) {
+    throw redirect("/login", { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const userMapping = await database.userTenantMapping.findUnique({
+    where: { userId },
+  });
+
+  if (!userMapping) {
+    return json(
+      { error: "User not mapped to tenant", diagnostics: [] },
+      { status: 400 }
+    );
+  }
+
+  const { tenantId } = userMapping;
+
+const users = await database.user.findMany({
+    where: {
+        tenantId
+      },
+    orderBy: {
+      id: "desc",
+    },
+  });
+
+    return json({ users });
+  } catch (error) {
+    console.error(\`Error fetching users:\`, error);
+    return json(
+      { error: "Internal server error", diagnostics: [] },
+      { status: 500 }
+    );
+  }
+}
+
+export default function UserListRoute() {
+  // This is a placeholder - implement your UI in the component
+  // Loader data is available via useLoaderData<typeof loader>()
+  return <div>TODO: Implement User list view</div>;
+}
+
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  console.error("Route error for User:", error);
+
+  return (
+    <div className="error-container">
+      <h1>Something went wrong</h1>
+      <p>Please try again later.</p>
+    </div>
+  );
+}
+",
+  "remix.types": "// Auto-generated TypeScript types from Manifest IR
+// DO NOT EDIT - This file is generated from .manifest source
+
+import type {
+  ManifestLoaderData,
+  ManifestActionResult,
+  ManifestDiagnostic,
+} from "~/utils/manifest-types";
+
+export interface Task {
+  id: string;
+  title?: string;
+  status?: string;
+  priority?: int | null;
+  assigneeId?: string | null;
+  createdAt: Date;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+}
+",
+}
+`;
+
 exports[`projection snapshots > routes > generated artifacts match snapshot 1`] = `
 {
   "routes.manifest": "{

@@ -31,6 +31,7 @@ import { MaterializedViewsProjection } from './materialized-views/generator.js';
 import { ElasticsearchProjection } from './elasticsearch/generator.js';
 import { TerraformProjection } from './terraform/generator.js';
 import { AnalyticsProjection } from './analytics/generator.js';
+import { RemixProjection } from './remix/generator.js';
 import { SvelteKitProjection } from './sveltekit/generator.js';
 import { KyselyProjection } from './kysely/generator.js';
 import { DynamoDBProjection } from './dynamodb/generator.js';
@@ -108,6 +109,9 @@ export function registerBuiltinProjections(): void {
   // Analytics tracking-plan projection (Segment/Mixpanel/Amplitude/Snowplow)
   registerProjection(new AnalyticsProjection());
 
+  // Remix projection (loaders, actions, route modules)
+  registerProjection(new RemixProjection());
+
   // SvelteKit projection (server routes, load functions, client utilities)
   registerProjection(new SvelteKitProjection());
 
@@ -158,6 +162,7 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new ElasticsearchProjection(),
     new TerraformProjection(),
     new AnalyticsProjection(),
+    new RemixProjection(),
     new SvelteKitProjection(),
     new KyselyProjection(),
     new DynamoDBProjection(),
