@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.5.1] - 2026-06-15
+
+### Changed
+
+- [chore] 2.5.x dev batch: cycle-check tooling + CLI/LSP/store/projection refinements
+- [feat] prisma projection: emit enum blocks + type enum-valued columns (D22)
+
 ## [2.5.0] - 2026-06-14
 
 ### Changed
