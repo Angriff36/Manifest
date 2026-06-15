@@ -29,6 +29,13 @@ export interface PrismaModelMeta {
   /** Prisma compound-unique accessor for composite PKs (e.g. `tenantId_id`). */
   whereAccessor: string;
   hasDeletedAt: boolean;
+  /**
+   * Status-based soft-delete (alternative to a `deletedAt` timestamp column).
+   * When set, delete() transitions the named physical column to `deletedValue`
+   * instead of stamping a timestamp or hard-deleting, and reads exclude rows
+   * already at that value. Independent of `hasDeletedAt` (both may apply).
+   */
+  softDeleteStatus?: { column: string; deletedValue: string };
   /** When true, create() uses `tenant: { connect: { id } }` instead of scalar tenantId. */
   requiresTenantConnect?: boolean;
   versionProperty?: string;

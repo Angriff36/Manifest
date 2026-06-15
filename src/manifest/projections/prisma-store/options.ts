@@ -12,6 +12,13 @@ export type PrismaStoreProjectionOptions = PrismaProjectionOptions & {
   storeImportPath?: string;
   /** Import path for metadata module in registry artifact. */
   metadataImportPath?: string;
+  /**
+   * Per-entity status-based soft-delete. Keyed by entity name. `field` is the IR
+   * property name of the status column; `deletedValue` is the sentinel that means
+   * "deleted". Lets an entity that soft-deletes via a status transition (instead
+   * of a `deletedAt` timestamp) use the generic store.
+   */
+  softDelete?: Record<string, { field: string; deletedValue: string }>;
 };
 
 export const PRISMA_STORE_DEFAULTS = {
@@ -33,5 +40,6 @@ export function normalizeStoreOptions(
     registryOutput: input.registryOutput ?? PRISMA_STORE_DEFAULTS.registryOutput,
     storeImportPath: input.storeImportPath ?? PRISMA_STORE_DEFAULTS.storeImportPath,
     metadataImportPath: input.metadataImportPath ?? PRISMA_STORE_DEFAULTS.metadataImportPath,
+    softDelete: input.softDelete ?? {},
   };
 }

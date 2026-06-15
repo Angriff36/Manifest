@@ -168,6 +168,11 @@ export class GenericPrismaStore implements Store<EntityInstance> {
     if (this.meta.hasDeletedAt) {
       where[this.deletedAtField()?.name ?? 'deletedAt'] = null;
     }
+    // Status-based soft-delete: exclude rows already at the deleted status.
+    if (this.meta.softDeleteStatus) {
+      const { column, deletedValue } = this.meta.softDeleteStatus;
+      where[column] = { not: deletedValue };
+    }
     return where;
   }
 
@@ -227,7 +232,14 @@ export class GenericPrismaStore implements Store<EntityInstance> {
 
   async delete(id: string): Promise<boolean> {
     try {
-      if (this.meta.hasDeletedAt) {
+      if (this.meta.softDeleteStatus) {
+        // Status-based soft-delete: transition the status column to the deleted
+        // sentinel rather than stamping a timestamp or removing the row.
+        await this.delegate.update({
+          where: this.whereUnique(id),
+          data: { [this.meta.softDeleteStatus.column]: this.meta.softDeleteStatus.deletedValue },
+        });
+      } else if (this.meta.hasDeletedAt) {
         await this.delegate.update({
           where: this.whereUnique(id),
           data: { [this.deletedAtField()?.name ?? 'deletedAt']: new Date() },

@@ -172,4 +172,55 @@ describe('GenericPrismaStore tenant column resolution', () => {
     expect(updateArgs.data.deleted_at).toBeInstanceOf(Date);
     expect(updateArgs.data.deletedAt).toBeUndefined();
   });
+
+  // Status-based soft-delete (D27): some entities mark deletion by transitioning
+  // a status column (e.g. status = 'deleted') rather than stamping a deletedAt
+  // timestamp. With softDeleteStatus configured, delete() sets the status value
+  // and reads exclude rows already at that status.
+  describe('status-based soft-delete', () => {
+    function statusMeta(): PrismaModelMetadata {
+      return {
+        Widget: {
+          accessor: 'widget',
+          dbName: null,
+          pgSchema: null,
+          pkFields: ['id'],
+          whereAccessor: 'id',
+          hasDeletedAt: false,
+          softDeleteStatus: { column: 'status', deletedValue: 'deleted' },
+          fields: [
+            { name: 'id', irName: 'id', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: true },
+            { name: 'status', irName: 'status', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: true, isUpdatedAt: false, isId: false },
+            { name: 'tenantId', irName: 'tenantId', type: 'String', isEnum: false, isList: false, optional: false, hasDefault: false, isUpdatedAt: false, isId: false },
+          ],
+        },
+      };
+    }
+
+    it('soft-deletes by setting the status column to the deleted value (no hard delete)', async () => {
+      const delegate = mockDelegate();
+      const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', statusMeta());
+
+      const ok = await store.delete('w1');
+      expect(ok).toBe(true);
+
+      // Updates status, never calls deleteMany.
+      const updateArgs = delegate.update.mock.calls[0][0] as { data: Record<string, unknown> };
+      expect(updateArgs.data.status).toBe('deleted');
+      expect(delegate.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('excludes status-deleted rows from getAll and getById reads', async () => {
+      const delegate = mockDelegate();
+      const store = new GenericPrismaStore({ widget: delegate }, 'Widget', 'tenant-1', statusMeta());
+
+      await store.getAll();
+      const findManyArgs = delegate.findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+      expect(findManyArgs.where.status).toEqual({ not: 'deleted' });
+
+      await store.getById('w1');
+      const findFirstArgs = delegate.findFirst.mock.calls[0][0] as { where: Record<string, unknown> };
+      expect(findFirstArgs.where.status).toEqual({ not: 'deleted' });
+    });
+  });
 });

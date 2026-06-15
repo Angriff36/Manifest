@@ -136,6 +136,26 @@ export function buildPrismaModelMetadata(
       f => f.irName === 'deletedAt' || f.name === 'deletedAt' || f.name === 'deleted_at',
     );
 
+    // Status-based soft-delete (opt-in per entity): resolve the configured IR
+    // field to its physical column so the store transitions/filters the right one.
+    let softDeleteStatus: { column: string; deletedValue: string } | undefined;
+    const softCfg = options.softDelete?.[entity.name];
+    if (softCfg) {
+      const statusField = fields.find(f => f.irName === softCfg.field || f.name === softCfg.field);
+      if (statusField) {
+        softDeleteStatus = { column: statusField.name, deletedValue: softCfg.deletedValue };
+      } else {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'PRISMA_STORE_SOFT_DELETE_FIELD_MISSING',
+          entity: entity.name,
+          message:
+            `softDelete is configured for '${entity.name}' but no property '${softCfg.field}' ` +
+            'exists in store metadata; status-based soft-delete will not be emitted.',
+        });
+      }
+    }
+
     metadata[entity.name] = {
       accessor: resolveAccessor(entity.name, options),
       dbName: dbNameDiffers ? dbName : null,
@@ -143,6 +163,7 @@ export function buildPrismaModelMetadata(
       pkFields,
       whereAccessor,
       hasDeletedAt,
+      ...(softDeleteStatus ? { softDeleteStatus } : {}),
       ...(entity.versionProperty ? { versionProperty: entity.versionProperty } : {}),
       fields,
     };

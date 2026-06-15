@@ -97,4 +97,53 @@ describe('PrismaStoreProjection', () => {
     const result = p.generate(ir, { surface: 'prisma-store.metadata' });
     expect(result.artifacts[0].code).toMatch(/PRISMA_MODEL_METADATA[^=]*=\s*\{\s*\}/);
   });
+
+  it('emits status-based soft-delete metadata when configured (D27)', () => {
+    const statusEntity: IREntity = {
+      name: 'Plan',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [],
+      relationships: [],
+      commands: [],
+      constraints: [],
+      policies: [],
+    };
+    const ir: IR = {
+      ...emptyIR(),
+      entities: [statusEntity],
+      stores: [durableStore('Plan')],
+    };
+    const p = new PrismaStoreProjection();
+    const result = p.generate(ir, {
+      surface: 'prisma-store.metadata',
+      options: { softDelete: { Plan: { field: 'status', deletedValue: 'deleted' } } },
+    });
+
+    const code = result.artifacts[0].code;
+    expect(code).toContain('"softDeleteStatus"');
+    expect(code).toContain('"column": "status"');
+    expect(code).toContain('"deletedValue": "deleted"');
+  });
+
+  it('warns when softDelete references a missing property', () => {
+    const ir: IR = {
+      ...emptyIR(),
+      entities: [widgetEntity()],
+      stores: [durableStore('Widget')],
+    };
+    const p = new PrismaStoreProjection();
+    const result = p.generate(ir, {
+      surface: 'prisma-store.metadata',
+      options: { softDelete: { Widget: { field: 'nope', deletedValue: 'deleted' } } },
+    });
+
+    expect(result.artifacts[0].code).not.toContain('softDeleteStatus');
+    expect(
+      result.diagnostics.some(d => d.code === 'PRISMA_STORE_SOFT_DELETE_FIELD_MISSING'),
+    ).toBe(true);
+  });
 });
