@@ -1,10 +1,10 @@
 ---
-title: "Modules: multi-file projects and imports"
-description: "Organize Manifest programs across multiple files using use declarations and import statements, with cycle detection, topological sort, and IR merging."
+title: "Modules: multi-file projects"
+description: "Organize Manifest programs across multiple files using use declarations, with cycle detection, topological sort, and IR merging."
 sidebarTitle: "Modules"
 ---
 
-Manifest supports multi-file projects through `use` declarations and `import` statements. The module resolver discovers all referenced files, detects cycles, sorts them topologically, and merges the compiled IR into a single deterministic output. This lets you split large programs into focused files without sacrificing whole-program validation.
+Manifest supports multi-file projects through `use` declarations. The module resolver discovers all referenced files, detects cycles, sorts them topologically, and merges the compiled IR into a single deterministic output. This lets you split large programs into focused files without sacrificing whole-program validation.
 
 ## Use declarations
 
@@ -19,40 +19,16 @@ use "./domains/product.manifest"
 
 The resolver walks `use` declarations recursively to discover the full file graph. A `use` path must be relative and end in `.manifest` — absolute paths and extensions other than `.manifest` produce a parse error.
 
-## Import statements
-
-For selective imports, use the `import` syntax to bring specific symbols into scope:
-
-```manifest
-import { Status, Priority } from "./shared/types.manifest"
-
-entity Article {
-  property required title: string
-  property status: Status = draft
-  property priority: Priority = medium
-}
-```
-
-Import statements support aliasing:
-
-```manifest
-import { User as Customer } from "./shared/user.manifest"
-
-entity Order {
-  property required buyer: Customer
-}
-```
-
-The resolver validates import specifiers against the source file's exported symbols (entities, enums, and value objects). Importing a symbol that does not exist, or importing a symbol of the wrong kind, produces a compile error diagnostic.
+`use` is the only cross-file mechanism. There is no `import` keyword — every declaration in a `use`d file is brought into the merged program, namespaced by its source file path (see [Namespace isolation](#namespace-isolation)).
 
 ## Compilation pipeline
 
 <Steps>
   <Step title="Resolution">
-    Walk all `use` and `import` declarations starting from the entry file. Build a complete dependency graph using BFS discovery.
+    Walk all `use` declarations starting from the entry file. Build a complete dependency graph using BFS discovery.
   </Step>
   <Step title="Cycle detection">
-    Detect circular imports (A imports B imports A) using DFS with grey/black coloring. Circular dependencies produce a compile error diagnostic listing the cycle path.
+    Detect circular dependencies (A uses B uses A) using DFS with grey/black coloring. Circular dependencies produce a compile error diagnostic listing the cycle path.
   </Step>
   <Step title="Topological sort">
     Kahn's algorithm determines the compilation order — dependencies compile before dependents. Ties are broken alphabetically for deterministic output.
@@ -98,10 +74,10 @@ domains/order.manifest ->  Order entity ->  domains/order.Order
 domains/product.manifest -> Order entity -> domains/product.Order
 ```
 
-When using `import { X }` syntax, the imported symbol is available without the module prefix in the importing file. The `use` syntax makes all declarations available but with the module prefix for disambiguation.
+The `use` syntax makes all declarations from the referenced file available, with the module prefix available for disambiguation.
 
 <Note>
-Cross-file validation catches ambiguous references when two modules export the same symbol name. Use the module prefix or an import alias to disambiguate.
+Cross-file validation catches ambiguous references when two modules export the same symbol name. Use the module prefix to disambiguate.
 </Note>
 
 ## Cross-file validation
@@ -109,7 +85,7 @@ Cross-file validation catches ambiguous references when two modules export the s
 After merging, the compiler validates cross-file references and produces error diagnostics with file paths and line numbers:
 
 - Entity types referenced in properties must exist in the merged IR
-- Enum members used as default values must be declared in an imported or used file
+- Enum members used as default values must be declared in a `use`d file
 - Event names referenced in `emit` actions must be declared somewhere in the project
 - Store declarations must reference entities that exist in the merged IR
 

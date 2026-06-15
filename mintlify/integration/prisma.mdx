@@ -91,7 +91,7 @@ export default defineConfig({
 | `entity X { ... }` + `store X in durable` (or `postgres` / `supabase`) | Emits a Prisma `model` |
 | `entity X { ... }` + `store X in memory` (or `localStorage`) | **Skipped** with `PRISMA_SKIPPED_NON_DURABLE` info |
 | `entity X { ... }` with no `store` declaration | **Skipped** with `PRISMA_SKIPPED_NO_STORE` info |
-| `external entity X { ... }` | **Skipped** with `PRISMA_SKIPPED_EXTERNAL` info |
+| Entity marked `external` in IR (`external: true`) | **Skipped** with `PRISMA_SKIPPED_EXTERNAL` info |
 | `property` entries | Emitted as Prisma fields |
 | `computed` entries | **Never emitted** — derived values must not become columns |
 
@@ -568,5 +568,5 @@ for (const artifact of result.artifacts) {
 ## Related
 
 - [Stores](/language/stores) — the `durable` store target the projection emits for
-- [Entities](/language/entities) — the `external entity` marker the projection skips
+- [Entities](/language/entities) — entity declarations; the projection skips entities marked `external` in IR
 - [Projections overview](/integration/projections) — projection pattern, contract, and the Next.js projection

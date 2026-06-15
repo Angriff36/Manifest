@@ -19,25 +19,6 @@ entity Product {
 }
 ```
 
-## External entities
-
-Prefix the `entity` keyword with `external` to declare that an entity is **referenced but not persisted by this manifest**:
-
-```manifest
-external entity ImportedUser {
-  property required id: string
-  property required email: string
-}
-```
-
-`external` is a binary marker. Default (absent) means owned. Storage projections (e.g. the [Prisma projection](/integration/prisma)) **skip external entities entirely** — no model is emitted, no table is created. Other projections may use the flag as they see fit, or ignore it.
-
-The IR carries this as a sparse-optional field: `IREntity.external?: boolean`. When absent the entity is owned (the default); when present and `true` the entity is external. Legacy IR fixtures stay byte-identical because the field is only emitted when set.
-
-<Note>
-`external` means exactly "skip this entity in storage projections". It does not affect runtime semantics, command execution, or any other downstream tool. The marker is intentionally narrow — if a future case needs "external but generate types", that will be a separate flag, not a redefinition of this one.
-</Note>
-
 ## Properties
 
 Every property has a type. Supported types are `string`, `number`, `boolean`, and `timestamp`. A property without a default is `undefined` unless the caller supplies a value at creation time.
@@ -53,7 +34,7 @@ Place modifiers between the `property` keyword and the name:
 | `readonly`   | Prevents mutation after creation (enforced by convention; scanner warns on violation). |
 | `unique`     | Signals to adapters that values must be unique within the entity collection. |
 | `encrypted`  | Declares the property for field-level encryption. The runtime encrypts at store-write boundaries and decrypts on read. Requires an `EncryptionProvider` in runtime options. |
-| `masked`     | Applies dynamic data masking to the property value on read. Supports strategies: `redact`, `partial`, `tokenize`, `email`, `phone`, `ssn`, `creditCard`. An optional `unmaskPolicy` expression can bypass masking for authorized users. |
+| `masked`     | Applies dynamic data masking to the property value on read. Write `masked` alone for the default `redact` strategy, or `masked(strategy, ...numbers)` to pick a strategy with optional numeric parameters. Strategies are exactly: `redact`, `partial`, `email`, `phone`, `last4`. Add a trailing `unmask when <expr>` clause to bypass masking for authorized readers. |
 | `searchable` | Declares the property for full-text search indexing (string-only). Adds a `search(text, query)` built-in with AND-semantics whole-word matching. Projections emit platform-specific full-text indexes (e.g., Prisma `@@fulltext`, Drizzle GIN tsvector). |
 | `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes. |
 | `indexed`    | Signals to adapters that the property should be indexed for faster lookups. Projections emit platform-specific index declarations. |

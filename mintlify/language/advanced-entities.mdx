@@ -1,10 +1,10 @@
 ---
-title: "Advanced entities: inheritance, mixins, and generics"
-description: "Extend entity types with single inheritance, mixin composition, and parameterized generic templates to build reusable, composable domain models."
+title: "Advanced entities: inheritance and mixins"
+description: "Extend entity types with single inheritance and mixin composition to build reusable, composable domain models."
 sidebarTitle: "Advanced entities"
 ---
 
-Manifest supports three patterns for structuring entity types beyond a flat declaration: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics. All three are compile-time features — the runtime sees a flattened entity with no inheritance metadata.
+Manifest supports two patterns for structuring entity types beyond a flat declaration: single inheritance with `extends` and composition with `mixin`. Both are compile-time features — the runtime sees a flattened entity with no inheritance metadata.
 
 ## Entity inheritance (`extends`)
 
@@ -40,7 +40,7 @@ Child entities can override inherited properties and commands by redeclaring the
 The compiler detects circular inheritance chains (e.g., `A extends B` and `B extends A`) and emits an error diagnostic. Cycles are also caught transitively (A → B → C → A).
 
 <Note>
-Only single inheritance is supported. An entity can extend exactly one parent. For sharing behavior across multiple entities, use mixins or generic templates.
+Only single inheritance is supported. An entity can extend exactly one parent. For sharing behavior across multiple entities, use mixins.
 </Note>
 
 ## Mixin composition
@@ -86,47 +86,11 @@ entity ArchivedDocument extends BaseEntity {
 
 Members are resolved in this order: entity's own declarations → applied mixins → inherited parent members. Conflicts (same name from multiple mixins) produce a compile error.
 
-## Generic / parameterized entities
-
-Generic entities define a template with type parameters that are instantiated at compile time. This lets you build reusable patterns like paginated collections, versioned records, or typed wrappers:
-
-```manifest
-entity Paginated<T> {
-  property required items: T[]
-  property total: number = 0
-  property page: number = 1
-  property pageSize: number = 20
-
-  computed hasNextPage: number = self.total > self.page * self.pageSize
-}
-```
-
-### Instantiation
-
-Generic entities are instantiated by providing concrete type arguments:
-
-```manifest
-entity ProductList : Paginated<Product> {
-  // additional members specific to product listings
-}
-```
-
-The compiler substitutes `T` with `Product` throughout the generic body, producing a concrete entity with fully resolved types.
-
-### Arity validation
-
-The compiler checks that the number of type arguments matches the generic's declaration. Providing too few or too many type arguments produces an error diagnostic.
-
-<Warning>
-Generic entity types are a compile-time-only feature. The IR contains the fully instantiated (monomorphized) entity — no type parameters survive into the runtime. This means you cannot create generic entity instances dynamically at runtime.
-</Warning>
-
 ## IR representation
 
-All three features are resolved at compile time. The emitted IR contains:
+Both features are resolved at compile time. The emitted IR contains:
 
 - **Inheritance**: A single flattened `IREntity` with all inherited members. The `extends` relationship is not preserved in the IR.
 - **Mixins**: Same as inheritance — members are inlined into the entity. Mixin names are not recorded.
-- **Generics**: The instantiated entity with concrete type substitutions. The generic template itself is not emitted to IR.
 
-This means downstream projections and the runtime engine see no inheritance, mixin, or generic metadata — they operate on flat, fully resolved entities only.
+This means downstream projections and the runtime engine see no inheritance or mixin metadata — they operate on flat, fully resolved entities only.

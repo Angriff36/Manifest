@@ -217,11 +217,14 @@ entity Order {
   property status: string = "pending"
   property providerRef: string = ""
 
-  webhook paymentCallback
-    method POST
-    url "/webhooks/payment"
-    signature "hmac-sha256" header "X-Signature"
-    command handlePayment
+  webhook paymentCallback "/webhooks/payment" run Order.handlePayment
+    method: POST
+    idempotencyHeader: "X-Idempotency-Key"
+    signature {
+      algorithm: "hmac-sha256"
+      header: "X-Signature"
+      secret: "context.webhookSecret"
+    }
 
   command handlePayment(providerRef: string, status: string) {
     guard status == "completed"
@@ -234,13 +237,14 @@ entity Order {
 
 ### Webhook configuration
 
+A webhook is declared as `webhook <name> "<path>" run [Entity.]<command>`, where the path string is the generated route and `run` names the command to invoke. The declaration may be followed by optional colon clauses:
+
 | Field | Description |
 |-------|-------------|
-| `method` | HTTP method (typically `POST`) |
-| `url` | Endpoint path for the generated route |
-| `signature` | Verification method and header name (e.g., `hmac-sha256` with `X-Signature` header) |
-| `command` | Entity command to invoke when the webhook fires |
-| `idempotency` | Optional idempotency key field from the payload for deduplication |
+| `method:` | HTTP method as an identifier (typically `POST`) |
+| `idempotencyHeader:` | Optional header name carrying an idempotency key for deduplication |
+| `transform:` | Optional `{ <param>: <expr>, ... }` block mapping request data onto command parameters |
+| `signature { ... }` | Optional verification block with `algorithm` (`hmac-sha256` or `hmac-sha512`), `header`, and `secret` (a context path string) |
 
 <Note>
 Webhook signature verification happens before the command is dispatched. If the signature is invalid, the request is rejected with a `401` response and no command runs. This prevents untrusted callers from triggering commands.

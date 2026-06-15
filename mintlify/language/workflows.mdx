@@ -8,26 +8,30 @@ Manifest provides two workflow primitives for coordinating execution across time
 
 ## Saga orchestration
 
-A saga declares a sequence of steps that execute across entities or services. Each step has a forward command and an optional compensate command for rollback. If any step fails, the saga runs compensate for all previously completed steps in reverse order.
+A saga declares a sequence of steps that execute across entities or services. Each step names a `command` and an optional `compensate` command for rollback. If any step fails, the saga runs compensate for all previously completed steps in reverse order.
 
 ### Declaring a saga
 
-Use the `saga` keyword at the program or module level:
+Use the `saga` keyword at the program or module level. Each `step` is a block naming its `command` and optional `compensate` as `Entity.command` references. The `on_failure` clause takes a single identifier — `compensate` (the default) or `abort` — and `emit` declares the saga's lifecycle events:
 
 ```manifest
 saga ProcessOrder {
-  step reserveInventory
-    forward Inventory.reserve with { orderId: self.id }
-    compensate Inventory.release with { orderId: self.id }
+  step reserveInventory {
+    command: Inventory.reserve
+    compensate: Inventory.release
+  }
 
-  step chargePayment
-    forward Payment.charge with { orderId: self.id, amount: self.total }
-    compensate Payment.refund with { orderId: self.id }
+  step chargePayment {
+    command: Payment.charge
+    compensate: Payment.refund
+  }
 
-  step shipOrder
-    forward Shipping.dispatch with { orderId: self.id }
+  step shipOrder {
+    command: Shipping.dispatch
+  }
 
-  on_failure emit OrderProcessingFailed
+  on_failure: "compensate"
+  emit OrderProcessingFailed
 }
 ```
 
@@ -35,13 +39,13 @@ saga ProcessOrder {
 
 <Steps>
   <Step title="Start">
-    The saga begins when the first step's forward command is invoked. The runtime creates a saga execution record tracking the current step index.
+    The saga begins when the first step's command is invoked. The runtime creates a saga execution record tracking the current step index.
   </Step>
-  <Step title="Execute forward">
-    Each step's forward command runs in sequence. If the command succeeds, the saga advances to the next step.
+  <Step title="Execute steps">
+    Each step's command runs in sequence. If the command succeeds, the saga advances to the next step.
   </Step>
   <Step title="On failure — compensate">
-    If any forward command fails, the saga enters compensation mode. It runs each completed step's compensate command in reverse order (last completed first).
+    If any step's command fails, the saga enters compensation mode. It runs each completed step's compensate command in reverse order (last completed first).
   </Step>
   <Step title="Complete or failed">
     After all steps complete (or all compensations run), the saga emits a completion or failure event.
@@ -57,8 +61,8 @@ Compensation is best-effort. If a compensate command itself fails, the saga logs
 | Event | When emitted |
 |-------|-------------|
 | `{SagaName}Started` | Saga execution begins |
-| `{SagaName}StepCompleted` | Each forward step succeeds |
-| `{SagaName}Completed` | All forward steps complete |
+| `{SagaName}StepCompleted` | Each step's command succeeds |
+| `{SagaName}Completed` | All steps complete |
 | `{SagaName}StepCompensated` | Each compensate step completes |
 | `{SagaName}Failed` | Saga enters compensation mode or compensation fails |
 
@@ -131,7 +135,7 @@ Scheduled commands can pass static parameters to the target command:
 entity Cache {
   schedule warmCache
     cron "0 */6 * * *"
-    run refresh with { keys: "all" }
+    run refresh(keys: "all")
 
   command refresh(keys: string) {
     // ...
@@ -159,12 +163,15 @@ entity DailyReconciliation {
 }
 
 saga ReconcileAccounts {
-  step fetchTransactions
-    forward Transaction.fetchPending
+  step fetchTransactions {
+    command: Transaction.fetchPending
+  }
 
-  step matchRecords
-    forward Ledger.match with { date: self.date }
+  step matchRecords {
+    command: Ledger.match
+  }
 
-  on_failure emit ReconciliationFailed
+  on_failure: "compensate"
+  emit ReconciliationFailed
 }
 ```

@@ -79,20 +79,21 @@ If a user's role does not match any declared role, the runtime returns `false` f
 
 ## Using roles in policies
 
-Reference roles in policy expressions via the `user.role` binding and the built-in permission functions:
+Reference roles in policy expressions via the `user.role` binding and the built-in permission functions. Authorization is declared at the entity level with named `policy <name> execute:` rules (or a `default policy`); command bodies do not accept a `policy` clause:
 
 ```manifest
 entity Document {
   default policy RequireAuth execute: user.id != null "Authentication required"
 
+  policy CanApprove execute: roleAllows(user.role, "approve") or user.role == "admin"
+  policy CanDelete execute: hasPermission(user, "delete")
+
   command approve() {
-    policy execute: roleAllows(user.role, "approve") or user.role == "admin"
     mutate status = "approved"
     emit DocumentApproved
   }
 
   command delete() {
-    policy execute: hasPermission(user, "delete")
     mutate status = "deleted"
     emit DocumentDeleted
   }
@@ -123,9 +124,9 @@ guard hasPermission(user, "delete")
 
 Checks whether a named role allows a specific action, without requiring a user object. Useful for checking whether a role would permit something before assigning it to a user.
 
-```typescript
-// Inside a policy expression:
-policy execute: roleAllows(user.role, "execute") or user.role == "admin"
+```manifest
+// As an entity-level policy:
+policy CanExecute execute: roleAllows(user.role, "execute") or user.role == "admin"
 ```
 
 ## Context-sensitive `role` keyword
@@ -195,26 +196,27 @@ entity Document {
 
   default policy RequireAuth execute: user.id != null "Authentication required"
 
+  policy CanRead execute: hasPermission(user, "read")
+  policy CanWrite execute: hasPermission(user, "write")
+  policy CanApprove execute: roleAllows(user.role, "execute")
+  policy CanDelete execute: hasPermission(user, "delete")
+
   command view() {
-    policy execute: hasPermission(user, "read")
     emit DocumentViewed
   }
 
   command edit(newTitle: string) {
-    policy execute: hasPermission(user, "write")
     mutate title = newTitle
     emit DocumentEdited
   }
 
   command approve() {
-    policy execute: roleAllows(user.role, "execute")
     guard self.status == "draft"
     mutate status = "approved"
     emit DocumentApproved
   }
 
   command delete() {
-    policy execute: hasPermission(user, "delete")
     mutate status = "deleted"
     emit DocumentDeleted
   }
