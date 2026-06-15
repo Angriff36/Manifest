@@ -150,6 +150,9 @@ export interface IREntity {
   timestamps?: boolean;
   /** Projection hint: generate SSE subscription surfaces for this entity. No runtime execution semantics. */
   realtime?: boolean;
+  /** When true, the entity is owned by another system/file (from `external entity`).
+   * Persistence projections (Prisma, Drizzle, Kysely, Convex, prisma-store) skip it. */
+  external?: boolean;
   /** Optional allowed state transitions for validation */
   transitions?: IRTransition[];
   /** Approval workflow declarations gating command execution */

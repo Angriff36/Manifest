@@ -80,6 +80,9 @@ export interface EnumNode extends ASTNode {
 export interface EntityNode extends ASTNode {
   type: 'Entity';
   name: string;
+  /** When true, the entity is a reference to one owned by another system/file
+   * (from the `external entity` modifier). Persistence projections skip it. */
+  external?: boolean;
   /** Parent entity name for inheritance (from `extends` keyword) */
   parent?: string;
   /** Mixin entity names for composition (from `mixin A, B` keywords) */

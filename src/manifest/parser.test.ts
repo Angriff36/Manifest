@@ -90,6 +90,47 @@ use "./types.manifest"
       expect(entity.properties).toHaveLength(0);
     });
 
+    it('should parse `external entity` and set external flag', () => {
+      const source = `
+external entity ImportedUser {
+  property required id: string
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities).toHaveLength(1);
+      const entity = result.program.entities[0];
+      expect(entity.name).toBe('ImportedUser');
+      expect(entity.external).toBe(true);
+    });
+
+    it('should not set external flag for a plain entity', () => {
+      const result = new Parser().parse('entity Plain { property id: string }');
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.entities[0].external).toBeUndefined();
+    });
+
+    it('should keep `external` usable as a property name (contextual keyword)', () => {
+      const result = new Parser().parse('entity Link { property external: string }');
+      expect(result.errors).toHaveLength(0);
+      const entity = result.program.entities[0];
+      expect(entity.external).toBeUndefined();
+      expect(entity.properties[0].name).toBe('external');
+    });
+
+    it('should parse `external entity` inside a module', () => {
+      const source = `
+module ext {
+  external entity RemoteOrder {
+    property required id: string
+  }
+}
+`;
+      const result = new Parser().parse(source);
+      expect(result.errors).toHaveLength(0);
+      expect(result.program.modules[0].entities[0].external).toBe(true);
+    });
+
     it('should parse entity with properties', () => {
       const source = `
 entity User {

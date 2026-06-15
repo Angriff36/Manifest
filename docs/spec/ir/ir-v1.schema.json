@@ -406,6 +406,10 @@
           "type": "boolean",
           "description": "Projection hint: generate SSE subscription surfaces for this entity. No runtime execution semantics."
         },
+        "external": {
+          "type": "boolean",
+          "description": "When true, the entity is a reference to one owned by another system/file (from the `external entity` modifier). Persistence projections skip it."
+        },
         "transitions": {
           "type": "array",
           "items": {

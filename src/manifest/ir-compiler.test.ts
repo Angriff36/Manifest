@@ -40,6 +40,18 @@ describe('IRCompiler', () => {
       expect(result.ir?.provenance.compiledAt).toBeDefined();
     });
 
+    it('should propagate the `external` flag from `external entity` into IR', async () => {
+      const result = await compileToIR('external entity ImportedUser { property required id: string }');
+      const entity = result.ir?.entities.find(e => e.name === 'ImportedUser');
+      expect(entity?.external).toBe(true);
+    });
+
+    it('should omit `external` for a plain entity', async () => {
+      const result = await compileToIR('entity Plain { property required id: string }');
+      const entity = result.ir?.entities.find(e => e.name === 'Plain');
+      expect(entity?.external).toBeUndefined();
+    });
+
     it('should generate content hash for source', async () => {
       const compiler = new IRCompiler();
       const source = 'entity User {}';

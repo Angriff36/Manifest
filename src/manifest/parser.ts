@@ -50,6 +50,7 @@ export class Parser {
         }
         else if (this.check('KEYWORD', 'module')) program.modules.push(this.parseModule());
         else if (this.check('KEYWORD', 'entity')) program.entities.push(this.parseEntity());
+        else if (this.check('IDENTIFIER', 'external') && this.peekIsKeyword(1, 'entity')) program.entities.push(this.parseEntity());
         else if (this.check('KEYWORD', 'enum')) program.enums.push(this.parseEnum());
         else if (this.check('IDENTIFIER', 'value') || this.check('KEYWORD', 'value')) {
           program.values.push(this.parseValueObject());
@@ -119,6 +120,7 @@ export class Parser {
       this.skipNL();
       if (this.check('PUNCTUATION', '}')) break;
       if (this.check('KEYWORD', 'entity')) entities.push(this.parseEntity());
+      else if (this.check('IDENTIFIER', 'external') && this.peekIsKeyword(1, 'entity')) entities.push(this.parseEntity());
       else if (this.check('KEYWORD', 'enum')) enums.push(this.parseEnum());
       else if (this.check('KEYWORD', 'async')) {
         this.advance(); // consume 'async'
@@ -146,6 +148,14 @@ export class Parser {
   }
 
   private parseEntity(): EntityNode {
+    // Optional contextual `external` modifier: `external entity X { ... }`.
+    // Kept as a contextual identifier (not a reserved word) so that property
+    // names like `property external: string` continue to parse.
+    let external = false;
+    if (this.check('IDENTIFIER', 'external')) {
+      this.advance(); // consume 'external'
+      external = true;
+    }
     this.consume('KEYWORD', 'entity');
     const name = this.consumeIdentifier().value;
     
@@ -325,6 +335,7 @@ export class Parser {
       versionProperty, versionAtProperty,
       ...(timestamps ? { timestamps } : {}),
       ...(realtime ? { realtime } : {}),
+      ...(external ? { external } : {}),
     };
   }
 
@@ -1719,6 +1730,8 @@ export class Parser {
   }
 
   private check(type: string, value?: string) { const t = this.current(); return t && t.type === type && (value === undefined || t.value === value); }
+  /** Lookahead: true if the token `offset` positions ahead is a keyword with the given value. */
+  private peekIsKeyword(offset: number, value: string) { const t = this.tokens[this.pos + offset]; return !!t && t.type === 'KEYWORD' && t.value === value; }
   private consume(type: string, value?: string) { if (this.check(type, value)) return this.advance(); throw new Error(`Expected ${value || type}, got ${this.current()?.value || 'EOF'}`); }
 
   /**
