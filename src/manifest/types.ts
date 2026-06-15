@@ -304,9 +304,20 @@ export interface TenantNode extends ASTNode {
   contextPath: string;
 }
 
+/**
+ * A role permission action. `all` is the wildcard and `read`/`write`/`delete`/
+ * `execute` are the conventional actions with built-in semantics; any other
+ * identifier is a custom, capability-style permission token (e.g. `salesAccess`)
+ * matched exactly by the engine. The string union preserves autocomplete for the
+ * well-known values while permitting custom tokens.
+ */
+export type RolePermissionAction =
+  | 'read' | 'write' | 'delete' | 'execute' | 'all'
+  | (string & {});
+
 export interface RolePermissionNode {
   kind: 'allow' | 'deny';
-  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  action: RolePermissionAction;
   target?: string;
 }
 

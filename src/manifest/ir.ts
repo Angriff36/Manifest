@@ -444,8 +444,18 @@ export interface IRPolicy {
   message?: string;
 }
 
+/**
+ * IR role permission action. `all` is the wildcard and `read`/`write`/`delete`/
+ * `execute` are the conventional actions with built-in semantics (command-
+ * execution RBAC checks `execute`/`all`). Any other identifier is a custom,
+ * capability-style permission token, opaque to the engine and matched exactly.
+ */
+export type IRRolePermissionAction =
+  | 'read' | 'write' | 'delete' | 'execute' | 'all'
+  | (string & {});
+
 export interface IRRolePermission {
-  action: 'read' | 'write' | 'delete' | 'execute' | 'all';
+  action: IRRolePermissionAction;
   target?: string;
 }
 

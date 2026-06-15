@@ -103,6 +103,48 @@ describe('Validate Command – valid IR', () => {
     }
   });
 
+  it('accepts custom (capability-style) role permission actions', async () => {
+    // Roles may use custom permission tokens beyond read/write/delete/execute/all
+    // (e.g. salesAccess) for capability-based RBAC. These must validate.
+    const filePath = await createTempIR(makeValidIR({
+      roles: [
+        {
+          name: 'Sales',
+          allow: [{ action: 'salesAccess' }, { action: 'read' }],
+          deny: [{ action: 'adminAccess' }],
+          effectivePermissions: [{ action: 'read' }, { action: 'salesAccess' }],
+        },
+      ],
+    }));
+    try {
+      const { outputs, exited } = await runValidate(filePath);
+      expect(exited).toBe(false);
+      expect(outputs.join(' ')).toMatch(/valid/i);
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+
+  it('rejects a non-identifier role permission action', async () => {
+    // A custom action must still be a valid identifier (no spaces/punctuation).
+    const filePath = await createTempIR(makeValidIR({
+      roles: [
+        {
+          name: 'Broken',
+          allow: [{ action: 'not a valid action!' }],
+          deny: [],
+          effectivePermissions: [],
+        },
+      ],
+    }));
+    try {
+      const { exited } = await runValidate(filePath);
+      expect(exited).toBe(true);
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+
   it('passes when optional irHash is present in provenance', async () => {
     const filePath = await createTempIR(makeValidIR({
       provenance: {

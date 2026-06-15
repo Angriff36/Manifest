@@ -4,6 +4,21 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.0] - 2026-06-15
+
+### Changed
+
+- **Custom (capability-style) role permission actions.** `IRRolePermission.action`
+  was constrained to the enum `read|write|delete|execute|all`, so roles modelling
+  capability-based RBAC (e.g. `allow salesAccess`, `allow financeAccess`) failed
+  `manifest validate` / `validate-ai` / `doctor` even though the parser, IR
+  compiler, and runtime already handle them as opaque permission tokens
+  (`all` remains the wildcard; command-execution RBAC still checks `execute`/`all`).
+  The IR schema now accepts any identifier action (`^[A-Za-z_][A-Za-z0-9_]*$`),
+  and the `RolePermissionAction` / `IRRolePermissionAction` types are widened to
+  `… | (string & {})` to keep autocomplete for the well-known values. The five
+  conventional actions are unchanged. Non-identifier actions are still rejected.
+
 ## [2.7.0] - 2026-06-15
 
 ### Added

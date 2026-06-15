@@ -1730,7 +1730,9 @@
       "properties": {
         "action": {
           "type": "string",
-          "enum": ["read", "write", "delete", "execute", "all"]
+          "minLength": 1,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "description": "Permission action. `all` is the wildcard and `read`/`write`/`delete`/`execute` are the conventional actions with built-in semantics (command-execution RBAC checks `execute`/`all`). Any other identifier is a custom, capability-style permission token, opaque to the engine and matched exactly (e.g. `salesAccess`)."
         },
         "target": {
           "type": "string",
