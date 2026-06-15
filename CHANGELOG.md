@@ -4,7 +4,25 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.10.0] - 2026-06-15
+## [2.10.1] - 2026-06-15
+
+### Fixed
+
+- **Convex `convex.mutations` — create-mutation field completeness.** Running the
+  generated backend (`npx convex dev`) revealed that create mutations exposed
+  only the command *parameters* as args, so required entity fields with neither a
+  parameter nor a default (e.g. `tenantId`, `eventDate`, `eventType`) could never
+  be provided and `ctx.db.insert` failed schema validation. The create model is
+  now completeness-guaranteeing: every stored field is reachable — set by a
+  `mutate` action, filled from its default (`args.x ?? default`, undefined-safe),
+  or exposed as a mutation argument (required when required-and-no-default, else
+  optional). Command parameters that feed actions remain exposed.
+
+### Added
+
+- **Convex `convex.queries` — `listRecentEvents`.** A convenience query returning
+  the 50 most recent rows from the system events table (emitted when
+  `emitEventsTable` is on).
 
 ### Added
 
