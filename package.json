@@ -46,6 +46,10 @@
       "types": "./dist/manifest/projections/prisma-store/generator.d.ts",
       "import": "./dist/manifest/projections/prisma-store/generator.js"
     },
+    "./projections/convex": {
+      "types": "./dist/manifest/projections/convex/generator.d.ts",
+      "import": "./dist/manifest/projections/convex/generator.js"
+    },
     "./stores/prisma-generic": {
       "types": "./dist/manifest/stores/prisma-generic/index.d.ts",
       "import": "./dist/manifest/stores/prisma-generic/index.js"

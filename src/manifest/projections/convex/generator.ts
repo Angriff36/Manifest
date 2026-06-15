@@ -1,0 +1,406 @@
+/**
+ * Convex schema projection.
+ *
+ * Consumes Manifest IR + projection config and emits a `convex/schema.ts`
+ * string (`defineSchema` / `defineTable` + `convex/values` validators) as a
+ * single `ProjectionArtifact`.
+ *
+ * Boundary rules (mirrors the Prisma projection):
+ *   - Relational/document interpretation starts HERE. No Convex concept (table
+ *     name, validator, index, reference shape) lives in Manifest core grammar
+ *     or IR — all of it arrives via projection options.
+ *   - The projection carries NO knowledge of any specific application. Anything
+ *     resembling an app-specific string in this file is a bug.
+ *   - `computed` properties are derived and MUST NEVER become fields. We do this
+ *     structurally by iterating `entity.properties` only, never
+ *     `entity.computedProperties`.
+ *   - The IR `id` property maps to Convex's built-in document `_id` and is NOT
+ *     emitted as a field.
+ *   - Entities with `external: true` are skipped. Stores with target `memory` /
+ *     `localStorage` are skipped. Targets `durable` / `postgres` / `supabase`
+ *     are emission targets. Entities with no store entry are skipped (no
+ *     implicit ownership — this also naturally excludes mixin entities).
+ *   - Unknown `type.name` produces a hard error diagnostic. No fallback.
+ */
+
+import type { IR, IREntity, IREnum, IRProperty, IRRelationship, IRStore } from '../../ir';
+import type {
+  ProjectionArtifact,
+  ProjectionDiagnostic,
+  ProjectionRequest,
+  ProjectionResult,
+  ProjectionTarget,
+} from '../interface';
+
+import {
+  normalizeOptions,
+  CONVEX_DEFAULT_NAMING,
+  type IndexEntry,
+} from './options.js';
+import { resolveConvexValidator } from './type-mapping.js';
+import { resolveTableName } from '../shared/naming.js';
+
+// ============================================================================
+// Surface identifiers
+// ============================================================================
+
+const SURFACE_SCHEMA = 'convex.schema' as const;
+const SURFACES = [SURFACE_SCHEMA] as const;
+
+// ============================================================================
+// Store target classification (identical policy to the Prisma projection)
+// ============================================================================
+
+const PERSISTENT_TARGETS: ReadonlySet<IRStore['target']> = new Set([
+  'durable',
+  'postgres',
+  'supabase',
+]);
+
+function isPersistent(target: IRStore['target']): boolean {
+  return PERSISTENT_TARGETS.has(target);
+}
+
+// ============================================================================
+// Naming
+// ============================================================================
+
+type NormalizedOptions = ReturnType<typeof normalizeOptions>;
+
+/** Resolve the Convex table key for an entity (override → convention). */
+function resolveConvexTableName(entityName: string, options: NormalizedOptions): string {
+  const override = options.tableMappings[entityName];
+  if (override) return override;
+  return resolveTableName(entityName, options.naming ?? CONVEX_DEFAULT_NAMING);
+}
+
+// ============================================================================
+// Enum emission
+// ============================================================================
+
+/** Enum value names (handles both string and `{ name }` IR forms). */
+function enumValueNames(enumDef: IREnum): string[] {
+  return enumDef.values.map(v => (typeof v === 'string' ? v : v.name));
+}
+
+/** `v.union(v.literal("a"), v.literal("b"))`, or `v.literal("a")` for a single value. */
+function enumValidatorMembers(enumDef: IREnum): string[] {
+  return enumValueNames(enumDef).map(name => `v.literal(${JSON.stringify(name)})`);
+}
+
+// ============================================================================
+// Per-property field emission
+// ============================================================================
+
+interface FieldEmission {
+  /** Field line body without indentation/trailing comma, e.g. `status: v.string()`. Null if unmappable. */
+  line: string | null;
+  diagnostics: ProjectionDiagnostic[];
+}
+
+/**
+ * Build a validator expression for a property, applying enum/array/nullable
+ * wrapping. Returns `undefined` (with a diagnostic) for unmappable types.
+ */
+function buildValidator(
+  entity: IREntity,
+  prop: IRProperty,
+  ir: IR,
+  options: NormalizedOptions,
+  fkTargetTable: string | undefined,
+): { validator: string | undefined; diagnostics: ProjectionDiagnostic[] } {
+  const diagnostics: ProjectionDiagnostic[] = [];
+
+  // A property that backs a belongsTo/ref relationship is retyped as a typed
+  // reference (convexId mode): the declared scalar (string/uuid) becomes
+  // v.id("<targetTable>"), preserving the property's own optional/nullable.
+  if (fkTargetTable) {
+    const nullableRef = prop.type.nullable === true;
+    const refValidator = nullableRef
+      ? `v.union(v.id(${JSON.stringify(fkTargetTable)}), v.null())`
+      : `v.id(${JSON.stringify(fkTargetTable)})`;
+    return { validator: refValidator, diagnostics };
+  }
+
+  // array<T> / T[] → v.array(<element>)
+  const isArray = prop.type.name === 'array' && !!prop.type.generic;
+  const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
+
+  const typeOverrides = options.typeMappings[entity.name];
+  const hasOverride = typeOverrides !== undefined
+    && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
+
+  const enumDef = ir.enums?.find(e => e.name === effectiveTypeName);
+
+  let base: string | undefined;
+  const nullable = prop.type.nullable === true;
+  // Collect union members so enum + nullable compose into ONE flat union.
+  const members: string[] = [];
+
+  if (enumDef && !hasOverride) {
+    members.push(...enumValidatorMembers(enumDef));
+  } else {
+    base = resolveConvexValidator(effectiveTypeName, typeOverrides, prop.name);
+    if (!base) {
+      if (effectiveTypeName === 'number' && !hasOverride) {
+        diagnostics.push({
+          severity: 'error',
+          code: 'CONVEX_AMBIGUOUS_NUMBER',
+          entity: entity.name,
+          message:
+            `Property '${entity.name}.${prop.name}' is typed 'number', which is ambiguous ` +
+            `(Manifest does not distinguish integers from real numbers from money). Pick a precise ` +
+            `type in the .manifest source: 'int'/'bigint' for counts and ids, 'float' for ` +
+            `measurements where rounding is acceptable, 'money'/'decimal' for exact-decimal values. ` +
+            `Or supply a 'typeMappings.${entity.name}.${prop.name}' override.`,
+        });
+      } else {
+        diagnostics.push({
+          severity: 'error',
+          code: 'CONVEX_UNKNOWN_TYPE',
+          entity: entity.name,
+          message:
+            `Property '${entity.name}.${prop.name}' has unknown type '${effectiveTypeName}' with no ` +
+            `'typeMappings.${entity.name}.${prop.name}' override. Add a mapping or use a known type.`,
+        });
+      }
+      return { validator: undefined, diagnostics };
+    }
+    members.push(base);
+  }
+
+  if (nullable) members.push('v.null()');
+
+  let validator: string;
+  if (members.length === 1) {
+    validator = members[0];
+  } else {
+    validator = `v.union(${members.join(', ')})`;
+  }
+
+  if (isArray) validator = `v.array(${validator})`;
+
+  return { validator, diagnostics };
+}
+
+function emitPropertyField(
+  entity: IREntity,
+  prop: IRProperty,
+  ir: IR,
+  options: NormalizedOptions,
+  fkTargetTable: string | undefined,
+): FieldEmission {
+  const { validator, diagnostics } = buildValidator(entity, prop, ir, options, fkTargetTable);
+  if (!validator) return { line: null, diagnostics };
+
+  const required = prop.modifiers.includes('required');
+  const wrapped = required ? validator : `v.optional(${validator})`;
+  return { line: `${prop.name}: ${wrapped}`, diagnostics };
+}
+
+// ============================================================================
+// Reference (FK) emission
+// ============================================================================
+
+/** Resolve the single non-tenant FK column for a belongsTo/ref relationship. */
+function resolveReferenceField(
+  entity: IREntity,
+  rel: IRRelationship,
+  tenantProp: string | undefined,
+  options: NormalizedOptions,
+): string {
+  const override = options.references[entity.name]?.[rel.name];
+  if (override) return override;
+  const fields = rel.foreignKey?.fields ?? [];
+  const nonTenant = fields.find(f => f !== tenantProp);
+  return nonTenant ?? `${rel.name}Id`;
+}
+
+// ============================================================================
+// Index collection
+// ============================================================================
+
+interface IndexDef {
+  name: string;
+  fields: string[];
+}
+
+function indexEntryToDef(entry: IndexEntry): IndexDef {
+  if (Array.isArray(entry)) {
+    return { name: `by_${entry.join('_')}`, fields: entry };
+  }
+  return { name: entry.name ?? `by_${entry.fields.join('_')}`, fields: entry.fields };
+}
+
+// ============================================================================
+// Per-entity table emission
+// ============================================================================
+
+interface TableEmission {
+  block: string | null;
+  diagnostics: ProjectionDiagnostic[];
+}
+
+function emitTable(entity: IREntity, ir: IR, options: NormalizedOptions): TableEmission {
+  const diagnostics: ProjectionDiagnostic[] = [];
+  const tableName = resolveConvexTableName(entity.name, options);
+  const tenantProp = ir.tenant?.property;
+
+  const fieldLines: string[] = [];
+  const emittedFieldNames = new Set<string>();
+  const indexes: IndexDef[] = [];
+  const indexNames = new Set<string>();
+
+  const addIndex = (def: IndexDef): void => {
+    if (indexNames.has(def.name)) return;
+    indexNames.add(def.name);
+    indexes.push(def);
+  };
+
+  // Map FK column name → target table for belongsTo/ref relationships. In
+  // convexId mode, a property whose name matches an FK column is retyped to a
+  // v.id reference. Skipped entirely in stringId mode (properties keep scalars).
+  const fkTargets = new Map<string, string>();
+  if (options.referenceMode === 'convexId') {
+    for (const rel of entity.relationships) {
+      if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
+      const fkField = resolveReferenceField(entity, rel, tenantProp, options);
+      fkTargets.set(fkField, resolveConvexTableName(rel.target, options));
+    }
+  }
+
+  // Properties (skip computed structurally by only reading `properties`; skip
+  // the IR `id` — Convex's document `_id` is identity).
+  for (const prop of entity.properties) {
+    if (prop.name === 'id') continue;
+    const { line, diagnostics: d } = emitPropertyField(entity, prop, ir, options, fkTargets.get(prop.name));
+    diagnostics.push(...d);
+    if (line) {
+      fieldLines.push(line);
+      emittedFieldNames.add(prop.name);
+      if (prop.modifiers.includes('indexed')) {
+        addIndex({ name: `by_${prop.name}`, fields: [prop.name] });
+      }
+    }
+  }
+
+  // Tenant index (the tenant column is a regular property; index it for scoped reads).
+  if (tenantProp && emittedFieldNames.has(tenantProp)) {
+    addIndex({ name: `by_${tenantProp}`, fields: [tenantProp] });
+  }
+
+  // References from belongsTo/ref relationships.
+  for (const rel of entity.relationships) {
+    if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
+    const fkField = resolveReferenceField(entity, rel, tenantProp, options);
+    if (!emittedFieldNames.has(fkField)) {
+      const targetTable = resolveConvexTableName(rel.target, options);
+      const ref = options.referenceMode === 'stringId'
+        ? 'v.string()'
+        : `v.id(${JSON.stringify(targetTable)})`;
+      fieldLines.push(`${fkField}: v.optional(${ref})`);
+      emittedFieldNames.add(fkField);
+    }
+    addIndex({ name: `by_${fkField}`, fields: [fkField] });
+    if (rel.onDelete || rel.onUpdate) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'CONVEX_REFERENTIAL_ACTION_DEFERRED',
+        entity: entity.name,
+        message:
+          `Relationship '${entity.name}.${rel.name}' declares a referential action ` +
+          `(onDelete/onUpdate). Convex has no schema-level cascade; this becomes cascade ` +
+          `logic in the delete command (functions surface, Phase 2).`,
+      });
+    }
+  }
+
+  // Consumer-supplied composite/named indexes.
+  for (const entry of options.indexes[entity.name] ?? []) {
+    addIndex(indexEntryToDef(entry));
+  }
+
+  if (fieldLines.length === 0) {
+    // A persistent entity with no emittable fields is unusual but not fatal;
+    // Convex requires at least an empty object — emit it and warn.
+    diagnostics.push({
+      severity: 'warning',
+      code: 'CONVEX_EMPTY_TABLE',
+      entity: entity.name,
+      message: `Entity '${entity.name}' produced no schema fields; emitting an empty table.`,
+    });
+  }
+
+  const fieldsBlock = fieldLines.map(l => `    ${l},`).join('\n');
+  let block = `  ${tableName}: defineTable({\n${fieldsBlock}${fieldsBlock ? '\n' : ''}  })`;
+  for (const idx of indexes) {
+    const cols = idx.fields.map(f => JSON.stringify(f)).join(', ');
+    block += `\n    .index(${JSON.stringify(idx.name)}, [${cols}])`;
+  }
+  return { block, diagnostics };
+}
+
+// ============================================================================
+// Projection target
+// ============================================================================
+
+export class ConvexProjection implements ProjectionTarget {
+  readonly name = 'convex';
+  readonly description =
+    'Convex schema projection (defineSchema/defineTable + convex/values validators, ' +
+    'enum unions, v.id references, indexes).';
+  readonly surfaces = SURFACES;
+
+  generate(ir: IR, request: ProjectionRequest): ProjectionResult {
+    if (request.surface !== SURFACE_SCHEMA) {
+      return {
+        artifacts: [],
+        diagnostics: [{
+          severity: 'info',
+          code: 'CONVEX_UNSUPPORTED_SURFACE',
+          message: `Convex projection does not support surface '${request.surface}'. Supported: ${SURFACES.join(', ')}.`,
+        }],
+      };
+    }
+
+    const options = normalizeOptions(request.options);
+    const diagnostics: ProjectionDiagnostic[] = [];
+    const blocks: string[] = [];
+
+    for (const entity of ir.entities) {
+      if ((entity as { external?: boolean }).external === true) continue;
+      const store = ir.stores.find(s => s.entity === entity.name);
+      if (!store || !isPersistent(store.target)) continue;
+
+      const { block, diagnostics: d } = emitTable(entity, ir, options);
+      diagnostics.push(...d);
+      if (block) blocks.push(block);
+    }
+
+    if (blocks.length === 0) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_EMPTY_SCHEMA',
+        message: 'No persistent entities found; emitted an empty Convex schema.',
+      });
+    }
+
+    const code =
+      `// GENERATED by the Manifest → Convex projection. DO NOT EDIT.\n` +
+      `// ${blocks.length} table(s) from ${ir.entities.length} entit(y/ies).\n\n` +
+      `import { defineSchema, defineTable } from "convex/server";\n` +
+      `import { v } from "convex/values";\n\n` +
+      `export default defineSchema({\n` +
+      `${blocks.join(',\n')}${blocks.length ? ',\n' : ''}` +
+      `});\n`;
+
+    const artifact: ProjectionArtifact = {
+      id: 'convex.schema',
+      pathHint: options.output,
+      contentType: 'typescript',
+      code,
+    };
+
+    return { artifacts: [artifact], diagnostics };
+  }
+}
