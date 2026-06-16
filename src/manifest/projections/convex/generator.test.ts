@@ -141,18 +141,17 @@ describe('ConvexProjection — type mapping', () => {
     return schemaCode(ir, opts);
   }
 
-  it('maps int/bigint to v.int64() (lossless)', () => {
-    expect(oneFieldSchema('int')).toContain('f: v.int64()');
-    expect(oneFieldSchema('bigint')).toContain('f: v.int64()');
-  });
-
-  it('maps float to v.number()', () => {
+  it('maps all numeric types to v.number() (runtime treats them as JS numbers)', () => {
+    expect(oneFieldSchema('int')).toContain('f: v.number()');
+    expect(oneFieldSchema('bigint')).toContain('f: v.number()');
     expect(oneFieldSchema('float')).toContain('f: v.number()');
+    expect(oneFieldSchema('decimal')).toContain('f: v.number()');
+    expect(oneFieldSchema('money')).toContain('f: v.number()');
   });
 
-  it('maps decimal/money to lossless v.string()', () => {
-    expect(oneFieldSchema('decimal')).toContain('f: v.string()');
-    expect(oneFieldSchema('money')).toContain('f: v.string()');
+  it('lets a per-property typeMappings override opt back into lossless transport', () => {
+    expect(oneFieldSchema('money', { typeMappings: { T: { f: 'v.string()' } } })).toContain('f: v.string()');
+    expect(oneFieldSchema('bigint', { typeMappings: { T: { f: 'v.int64()' } } })).toContain('f: v.int64()');
   });
 
   it('maps temporal types to v.number() (epoch ms)', () => {

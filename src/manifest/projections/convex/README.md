@@ -82,9 +82,7 @@ const result = projection.generate(ir, { surface: 'convex.schema', options });
 |---|---|---|
 | `string`, `text`, `uuid` | `v.string()` | |
 | `boolean`, `bool` | `v.boolean()` | |
-| `int`, `bigint` | `v.int64()` | bigint — lossless for ids/counts |
-| `float` | `v.number()` | author accepted rounding |
-| `decimal`, `money` | `v.string()` | **lossless** exact-decimal transport |
+| `int`, `bigint`, `float`, `decimal`, `money` | `v.number()` | matches Manifest runtime (all numerics are JS numbers); opt into `v.int64()`/`v.string()` per property for lossless transport |
 | `date`, `datetime`, `time`, `duration` | `v.number()` | epoch ms (Convex-idiomatic) |
 | `json` | `v.any()` | |
 | `bytes` | `v.bytes()` | |

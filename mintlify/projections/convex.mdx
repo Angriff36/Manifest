@@ -63,9 +63,7 @@ The IR `type.name` string maps to a `convex/values` validator through `DEFAULT_T
 | --- | --- | --- |
 | `string`, `text`, `uuid` | `v.string()` | |
 | `boolean`, `bool` | `v.boolean()` | |
-| `int`, `bigint` | `v.int64()` | Convex Int64 (JS bigint), lossless for ids and counts. |
-| `float` | `v.number()` | Convex Float64; author accepted rounding. |
-| `decimal`, `money` | `v.string()` | Lossless exact-decimal transport (Convex has no native decimal). Override to `v.number()` per property if ergonomics are preferred over exactness. |
+| `int`, `bigint`, `float`, `decimal`, `money` | `v.number()` | Convex Float64. Matches Manifest runtime semantics, which treat every numeric type as an ordinary JS number — decimal/money precision and integer width are projection metadata, not runtime-enforced. Storing them as `v.int64()` (bigint) or `v.string()` (text) would diverge from the runtime and break generated guard/mutation arithmetic (mixed bigint/number throws; string operands concatenate or compare lexically). Opt into `v.int64()` / `v.string()` per property via `typeMappings` where lossless transport is genuinely required. |
 | `date`, `datetime`, `time`, `duration` | `v.number()` | Epoch milliseconds, the Convex-idiomatic timestamp. Override to `v.string()` for ISO-8601. |
 | `json` | `v.any()` | |
 | `bytes` | `v.bytes()` | |

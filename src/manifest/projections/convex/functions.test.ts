@@ -124,7 +124,7 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     }];
     const code = mutations(ir).artifacts[0].code;
     expect(code).toContain('export const Recipe_create = mutation({');
-    expect(code).toContain('yieldQty: v.int64()'); // arg is the PARAM
+    expect(code).toContain('yieldQty: v.number()'); // arg is the PARAM (numeric → v.number())
     expect(code).toContain('(args.yieldQty > 0)'); // guard against param
     expect(code).toContain('yieldQuantity: args.yieldQty'); // action maps param→field
   });
@@ -145,7 +145,7 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('tenantId: args.tenantId');
   });
 
-  it('renders int64/decimal defaults in the validator representation, not raw numbers', () => {
+  it('renders numeric defaults as plain numbers (int/money/array<int> all v.number())', () => {
     const ir = emptyIR();
     ir.entities = [entity('Event', [
       { name: 'guestCount', type: { name: 'int', nullable: false }, modifiers: ['required'], defaultValue: { kind: 'number', value: 1 } },
@@ -155,9 +155,9 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     ir.stores = [durable('Event')];
     ir.commands = [{ name: 'create', entity: 'Event', parameters: [], guards: [], constraints: [], actions: [], emits: [] }];
     const code = mutations(ir).artifacts[0].code;
-    expect(code).toContain('guestCount: args.guestCount ?? 1n');       // int64 → bigint literal (not `1`)
-    expect(code).toContain('deposit: args.deposit ?? "0"');            // money transports as v.string() → quoted
-    expect(code).toContain('seatCounts: args.seatCounts ?? [2n, 4n]'); // array<int> propagates int64 coercion
+    expect(code).toContain('guestCount: args.guestCount ?? 1');     // int → plain number (no bigint literal)
+    expect(code).toContain('deposit: args.deposit ?? 0');           // money → plain number (no string transport)
+    expect(code).toContain('seatCounts: args.seatCounts ?? [2, 4]'); // array<int> stays plain numbers
   });
 
   it('binds reaction payload to the runtime contract (result + _subject)', () => {

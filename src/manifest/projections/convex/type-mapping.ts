@@ -10,16 +10,18 @@
  * validator expression, e.g. `"v.number()"`). Anything not in this table and
  * not overridden produces a hard diagnostic — no fallback, no guessing.
  *
- * Numeric safety (mirrors the Prisma projection's stance):
- *   - `number` is INTENTIONALLY ABSENT. It is ambiguous between integers, real
- *     numbers, and money; mapping it silently would reintroduce the rounding
- *     bug Manifest exists to prevent. Bare `number` → hard CONVEX_AMBIGUOUS_NUMBER.
- *   - `int`/`bigint` → `v.int64()` (Convex Int64 / JS bigint) — lossless for
- *     ids and counts.
- *   - `float` → `v.number()` (Convex Float64) — author accepted rounding.
- *   - `decimal`/`money` → `v.string()` — LOSSLESS exact-decimal transport
- *     (Convex has no native decimal). Override to `v.number()` per property if
- *     ergonomics are preferred over exactness.
+ * Numeric mapping — aligned with Manifest runtime semantics:
+ *   - `number` is INTENTIONALLY ABSENT. Bare `number` → hard
+ *     CONVEX_AMBIGUOUS_NUMBER so authors pick a precise name.
+ *   - `int`/`bigint`/`float`/`decimal`/`money` all → `v.number()` (Convex
+ *     Float64). The Manifest reference runtime treats every numeric type as an
+ *     ordinary JS number — decimal/money precision and integer width are
+ *     projection metadata, NOT runtime-enforced. Emitting `v.int64()` (bigint)
+ *     or `v.string()` (text transport) here would diverge from that and break
+ *     generated guard/mutation arithmetic at runtime (mixed bigint/number throws;
+ *     string operands concatenate or compare lexically). A consumer that truly
+ *     needs lossless decimal or 64-bit width can opt in per-property via
+ *     `typeMappings` (`"v.int64()"` / `"v.string()"`).
  *
  * Temporal values map to `v.number()` (epoch milliseconds), the Convex-idiomatic
  * timestamp representation. Override to `v.string()` for ISO-8601 storage.
@@ -33,16 +35,15 @@ export const DEFAULT_TYPE_MAPPING: Readonly<Record<string, string>> = Object.fre
   boolean: 'v.boolean()',
   // `number` is intentionally omitted — see header.
 
-  // Integer-family → Convex Int64 (bigint), lossless.
-  int: 'v.int64()',
-  bigint: 'v.int64()',
-
-  // Real-number-family → Convex Float64. Author opted into rounding.
+  // All numeric types → Convex Float64, matching Manifest runtime semantics
+  // (the runtime treats int/bigint/float/decimal/money as ordinary JS numbers).
+  // Keeps generated arithmetic correct; per-property typeMappings can opt back
+  // into v.int64()/v.string() where lossless transport is genuinely required.
+  int: 'v.number()',
+  bigint: 'v.number()',
   float: 'v.number()',
-
-  // Exact-decimal-family → lossless string transport (Convex has no Decimal).
-  decimal: 'v.string()',
-  money: 'v.string()',
+  decimal: 'v.number()',
+  money: 'v.number()',
 
   // Temporal → epoch milliseconds (Convex-idiomatic).
   date: 'v.number()',
