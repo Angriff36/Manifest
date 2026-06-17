@@ -33,8 +33,27 @@ All three typecheck against real `convex@1.41`.
 
 ## Functions surfaces (Phase 2)
 
-`convex.queries` emits reactive reads (`list<E>`, `get<E>`, `list<E>By<Field>`
-over `.withIndex`, FK args typed `v.id`). Reads are not governed.
+`convex.queries` emits reactive reads (`list<E>`, `get<E>`, `list<E>By<Field…>`
+over `.withIndex`, FK args typed `v.id`). Reads are not governed, but `list`/`get`
+are **tenant-scoped + soft-delete-filtered by default** (see below).
+
+- **Index parity:** every schema index gets a matching read — `indexed`
+  properties, the tenant column, every reference FK (in BOTH `convexId` and
+  `stringId` modes), and composite `options.indexes` entries
+  (`list<E>By<A>And<B>`, multi-arg `.eq` chain). The single-field/reference set
+  is derived from the same helper the schema uses (`collectReferenceFields`), so
+  the two surfaces cannot drift.
+- **Events table:** when emitted, `listRecentEvents` plus indexed lookups
+  `listEventsByType` / `listEventsByEntity` / `listEventsByEntityId`.
+- **Read filtering (field-aware, default on):** `list<E>` / `get<E>` are scoped
+  to the current tenant — the tenant id is read from `ctx.auth.<tenantProp>`,
+  **never a client arg**, so an un-scoped list fails closed (no auth → no rows)
+  rather than leaking across tenants. `get<E>` returns `null` on a tenant
+  mismatch or a soft-deleted row. `list<E>By<Field…>` reads drop soft-deleted
+  rows and apply the auth tenant filter unless the index already constrains the
+  tenant column. Toggle with `includeTenantFilter` / `includeSoftDeleteFilter`;
+  override names with `tenantIdProperty` / `deletedAtProperty`. Mirrors the
+  Next.js projection.
 
 `convex.mutations` emits one `mutation` per IR command:
 - **Governance is inline and FAIL CLOSED.** Each command runs its policies →
@@ -117,7 +136,9 @@ Override per property: `typeMappings: { Entity: { prop: "v.number()" } }`.
 ## Options
 
 See `options.ts` (`ConvexProjectionOptions`): `output`, `tableMappings`,
-`typeMappings`, `indexes`, `references`, `referenceMode`, `naming`.
+`typeMappings`, `indexes`, `references`, `referenceMode`, `naming`,
+`emitEventsTable`, `eventsTable`, `policyMode`, `includeTenantFilter`,
+`includeSoftDeleteFilter`, `tenantIdProperty`, `deletedAtProperty`.
 
 ## Validation
 

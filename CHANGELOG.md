@@ -4,6 +4,42 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.11.0] - 2026-06-17
+
+### Added
+
+- **Convex projection — generated reads now cover every schema index, including
+  composites and the events table.** The `convex.queries` surface previously
+  emitted `list<Entity>By<Field>` only for the single-column indexes it derived
+  on its own, which diverged from the schema surface. Reads are now derived
+  from the same index set the schema emits: multi-field `options.indexes`
+  entries produce `list<Entity>By<A>And<B>` (a multi-arg `.eq` chain over
+  `.withIndex`), and the system events table gains `listEventsByType` /
+  `listEventsByEntity` / `listEventsByEntityId` alongside `listRecentEvents`.
+
+- **Convex projection — tenant-scoped, soft-delete-filtered reads by default.**
+  Generated `list<Entity>` / `get<Entity>` previously returned every row across
+  all tenants and never excluded soft-deleted rows — the read-isolation gap the
+  Convex design spec flagged as "filterable" but never implemented (the Next.js
+  projection already filtered). Both filters are field-aware (a clause is
+  emitted only when the entity declares the column) and on by default. The
+  tenant id is read from the authenticated identity (`ctx.auth.<tenantProp>`),
+  never from a client argument, so an un-scoped `list<Entity>()` fails closed
+  (no auth wired → no rows) rather than leaking across tenants; `get<Entity>`
+  returns `null` on a tenant mismatch or a soft-deleted row. New options:
+  `includeTenantFilter`, `includeSoftDeleteFilter`, `tenantIdProperty`,
+  `deletedAtProperty`.
+
+### Fixed
+
+- **Convex projection — schema↔query index parity.** The schema surface emits a
+  `by_<fk>` index for every `belongsTo` / `ref` relationship regardless of
+  `referenceMode`, but the query surface derived its foreign-key fields from a
+  helper that returns nothing in `stringId` mode — so a `stringId` build (e.g.
+  `EventProfitability.eventId`) shipped a `by_eventId` schema index with no
+  matching `listEventProfitabilityByEventId` read. The two surfaces now derive
+  index fields from one shared helper, so they can no longer disagree.
+
 ## [2.10.7] - 2026-06-16
 
 ### Fixed

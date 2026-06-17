@@ -113,6 +113,37 @@ export interface ConvexProjectionOptions {
    * builds should keep the default `'enforce'`.
    */
   policyMode?: 'enforce' | 'skip';
+
+  /**
+   * Scope the unfiltered `list<Entity>` / `get<Entity>` reads to the current
+   * tenant. Default `true`. Field-aware: only applied to entities that actually
+   * declare the tenant column. The tenant id is derived from the authenticated
+   * identity (`ctx.auth.<tenantProp>`), never from a client argument — so an
+   * un-scoped `list<Entity>()` cannot return rows across tenants. Mirrors the
+   * Next.js projection's `includeTenantFilter`.
+   */
+  includeTenantFilter?: boolean;
+
+  /**
+   * Exclude soft-deleted rows (`<deletedAtProperty> != null`) from generated
+   * reads. Default `true`. Field-aware: only applied to entities that declare
+   * the soft-delete column. Mirrors the Next.js projection's
+   * `includeSoftDeleteFilter`.
+   */
+  includeSoftDeleteFilter?: boolean;
+
+  /**
+   * Override the tenant property name used for read scoping. Defaults to the
+   * IR's declared tenant property (`ir.tenant.property`) when omitted.
+   */
+  tenantIdProperty?: string;
+
+  /**
+   * Soft-delete property name. Default `"deletedAt"`. A read excludes rows
+   * whose value for this property is non-null when `includeSoftDeleteFilter`
+   * is on and the entity declares the column.
+   */
+  deletedAtProperty?: string;
 }
 
 /**
@@ -124,6 +155,9 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   emitEventsTable: true,
   eventsTable: 'manifestEvents',
   policyMode: 'enforce' as 'enforce' | 'skip',
+  includeTenantFilter: true,
+  includeSoftDeleteFilter: true,
+  deletedAtProperty: 'deletedAt',
 } as const;
 
 /**
@@ -140,8 +174,8 @@ export const CONVEX_DEFAULT_NAMING: NamingConventionInput = {
  * Single trust boundary: after this, the projection trusts the contents.
  */
 export function normalizeOptions(raw: Record<string, unknown> | undefined): Required<
-  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'policyMode'>
-> & Pick<ConvexProjectionOptions, 'naming'> {
+  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'policyMode' | 'includeTenantFilter' | 'includeSoftDeleteFilter' | 'deletedAtProperty'>
+> & Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
     output: input.output ?? CONVEX_PROJECTION_DEFAULTS.output,
@@ -153,6 +187,10 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Requ
     emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
     policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
+    includeTenantFilter: input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,
+    includeSoftDeleteFilter: input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,
+    deletedAtProperty: input.deletedAtProperty ?? CONVEX_PROJECTION_DEFAULTS.deletedAtProperty,
+    tenantIdProperty: input.tenantIdProperty,
     // Absent → Convex-idiomatic default applied by the generator.
     naming: input.naming,
   };

@@ -48,6 +48,126 @@ describe('convex.queries', () => {
     expect(code).toContain('customerId: v.id("customers")'); // FK query arg typed
     expect(code).toContain('.withIndex("by_customerId"');
   });
+
+  it('emits listBy for a reference FK index in stringId mode (schema/query parity)', () => {
+    // Regression: the schema surface emits `by_<fk>` for every belongsTo/ref
+    // regardless of referenceMode, but the query surface used to derive FK
+    // index fields from collectFkTargets — which is empty in stringId mode — so
+    // a `by_eventId` index shipped with no matching listEventProfitabilityByEventId.
+    const ir = emptyIR();
+    ir.entities = [
+      entity('EventProfitability', [prop('amount', 'money', ['required'])],
+        [{ name: 'event', kind: 'belongsTo', target: 'CateringEvent', foreignKey: { fields: ['eventId'] } }]),
+      entity('CateringEvent', [prop('name', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('EventProfitability'), durable('CateringEvent')];
+    const proj = new ConvexProjection();
+    const options = { referenceMode: 'stringId' as const };
+    const schema = proj.generate(ir, { surface: 'convex.schema', options }).artifacts[0].code;
+    const code = proj.generate(ir, { surface: 'convex.queries', options }).artifacts[0].code;
+    // schema produced the index...
+    expect(schema).toContain('eventId: v.optional(v.string())'); // stringId column
+    expect(schema).toContain('.index("by_eventId", ["eventId"])');
+    // ...and the query surface now exposes it (string arg, not v.id, in stringId mode)
+    expect(code).toContain('export const listEventProfitabilityByEventId = query({');
+    expect(code).toContain('eventId: v.string()');
+    expect(code).toContain('.withIndex("by_eventId"');
+  });
+
+  it('emits listBy for a single-field option index (custom index name honored)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Order', [prop('sku', 'string', ['required'])])];
+    ir.stores = [durable('Order')];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { indexes: { Order: [{ fields: ['sku'], name: 'by_sku' }] } },
+    }).artifacts[0].code;
+    expect(code).toContain('export const listOrderBySku = query({');
+    expect(code).toContain('.withIndex("by_sku"');
+  });
+
+  it('every single-column schema index has a matching listBy query (no surface drift)', () => {
+    const ir = emptyIR();
+    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.entities = [
+      entity('EventProfitability', [prop('tenantId', 'string', ['required']), prop('period', 'string', ['indexed'])],
+        [{ name: 'event', kind: 'belongsTo', target: 'CateringEvent', foreignKey: { fields: ['eventId'] } }]),
+      entity('CateringEvent', [prop('name', 'string', ['required'])]),
+    ];
+    ir.stores = [durable('EventProfitability'), durable('CateringEvent')];
+    const proj = new ConvexProjection();
+    const options = { referenceMode: 'stringId' as const };
+    const code = proj.generate(ir, { surface: 'convex.queries', options }).artifacts[0].code;
+    expect(code).toContain('listEventProfitabilityByPeriod');   // indexed modifier
+    expect(code).toContain('listEventProfitabilityByTenantId'); // tenant column
+    expect(code).toContain('listEventProfitabilityByEventId');  // reference FK (the bug)
+  });
+
+  it('emits a composite read for a multi-field option index (schema/query parity)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Order', [prop('tenantId', 'string', ['required']), prop('createdAt', 'datetime', ['required'])])];
+    ir.stores = [durable('Order')];
+    const proj = new ConvexProjection();
+    const options = { indexes: { Order: [['tenantId', 'createdAt']] } };
+    const schema = proj.generate(ir, { surface: 'convex.schema', options }).artifacts[0].code;
+    const code = proj.generate(ir, { surface: 'convex.queries', options }).artifacts[0].code;
+    expect(schema).toContain('.index("by_tenantId_createdAt", ["tenantId", "createdAt"])');
+    // the composite index now has a matching multi-arg read
+    expect(code).toContain('export const listOrderByTenantIdAndCreatedAt = query({');
+    expect(code).toContain('q.eq("tenantId", tenantId).eq("createdAt", createdAt)');
+  });
+
+  it('exposes the system events-table indexes as reads', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
+    ir.stores = [durable('Task')];
+    const code = queries(ir).artifacts[0].code;
+    expect(code).toContain('export const listEventsByType = query({');
+    expect(code).toContain('export const listEventsByEntity = query({');
+    expect(code).toContain('export const listEventsByEntityId = query({');
+    expect(code).toContain('.withIndex("by_entityId"');
+  });
+});
+
+describe('convex.queries — tenant + soft-delete read filtering', () => {
+  it('scopes list/get to the auth tenant and excludes soft-deleted rows (field-aware, default on)', () => {
+    const ir = emptyIR();
+    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.entities = [entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')])];
+    ir.stores = [durable('Invoice')];
+    const code = queries(ir).artifacts[0].code;
+    // list is tenant-scoped from auth (NOT a client arg) + drops soft-deleted
+    expect(code).toContain('const __tenant = (ctx as any).auth?.tenantId ?? null;');
+    expect(code).toContain('.withIndex("by_tenantId", (q) => q.eq("tenantId", __tenant))');
+    expect(code).toContain('rows = rows.filter((d) => (d as any).deletedAt == null);');
+    // get returns null on tenant mismatch / soft-deleted
+    expect(code).toContain('if (doc && (doc as any).tenantId !== __tenant) return null;');
+    expect(code).toContain('if (doc && (doc as any).deletedAt != null) return null;');
+    // list() must NOT accept a client-supplied tenant
+    expect(code).not.toMatch(/list Invoice[\s\S]*?args:\s*\{\s*tenantId/);
+  });
+
+  it('leaves reads unfiltered for entities without tenant/soft-delete columns', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Lookup', [prop('code', 'string', ['required'])])];
+    ir.stores = [durable('Lookup')];
+    const code = queries(ir).artifacts[0].code;
+    expect(code).toContain('return await ctx.db.query("lookups").collect();'); // plain list
+    expect(code).toContain('return await ctx.db.get(id);'); // plain get
+  });
+
+  it('respects opt-out: includeTenantFilter/includeSoftDeleteFilter = false', () => {
+    const ir = emptyIR();
+    ir.tenant = { property: 'tenantId', type: { name: 'string', nullable: false }, contextPath: 'context.tenantId' };
+    ir.entities = [entity('Invoice', [prop('tenantId', 'string', ['required']), prop('deletedAt', 'datetime')])];
+    ir.stores = [durable('Invoice')];
+    const code = new ConvexProjection().generate(ir, {
+      surface: 'convex.queries',
+      options: { includeTenantFilter: false, includeSoftDeleteFilter: false },
+    }).artifacts[0].code;
+    expect(code).toContain('return await ctx.db.query("invoices").collect();'); // back to plain list
+    expect(code).not.toContain('__tenant');
+  });
 });
 
 describe('convex.mutations — governance', () => {

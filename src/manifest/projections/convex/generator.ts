@@ -83,17 +83,22 @@ export function resolveConvexTableName(entityName: string, options: NormalizedOp
 
 /**
  * Map FK column name → target Convex table for an entity's belongsTo/ref
- * relationships (convexId mode only; empty in stringId mode). Shared by the
- * schema generator (to retype FK-backing properties) and the functions
- * generator (to type create-mutation args / reference queries).
+ * relationships, REGARDLESS of `referenceMode`. The schema surface emits a
+ * `by_<fk>` index for every reference whether the column is rendered as a
+ * `v.id(...)` (convexId) or a `v.string()` (stringId), so index DERIVATION must
+ * see all references in both modes. Shared by the schema generator (index
+ * emission) and the functions generator (reference-query derivation) so the two
+ * surfaces cannot disagree about which references are indexed.
+ *
+ * Contrast {@link collectFkTargets}, which is convexId-only because it drives
+ * `v.id(...)` *typing* of the column / query arg, not index existence.
  */
-export function collectFkTargets(
+export function collectReferenceFields(
   entity: IREntity,
   ir: IR,
   options: NormalizedOptions,
 ): Map<string, string> {
   const map = new Map<string, string>();
-  if (options.referenceMode !== 'convexId') return map;
   const tenantProp = ir.tenant?.property;
   for (const rel of entity.relationships) {
     if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
@@ -101,6 +106,21 @@ export function collectFkTargets(
     map.set(fkField, resolveConvexTableName(rel.target, options));
   }
   return map;
+}
+
+/**
+ * Map FK column name → target Convex table for an entity's belongsTo/ref
+ * relationships (convexId mode only; empty in stringId mode). Shared by the
+ * schema generator (to retype FK-backing properties to `v.id`) and the functions
+ * generator (to type create-mutation args / reference query args as `v.id`).
+ */
+export function collectFkTargets(
+  entity: IREntity,
+  ir: IR,
+  options: NormalizedOptions,
+): Map<string, string> {
+  if (options.referenceMode !== 'convexId') return new Map();
+  return collectReferenceFields(entity, ir, options);
 }
 
 /** True when an entity owns a persistent (emittable) store and is not external. */
@@ -273,12 +293,12 @@ function resolveReferenceField(
 // Index collection
 // ============================================================================
 
-interface IndexDef {
+export interface IndexDef {
   name: string;
   fields: string[];
 }
 
-function indexEntryToDef(entry: IndexEntry): IndexDef {
+export function indexEntryToDef(entry: IndexEntry): IndexDef {
   if (Array.isArray(entry)) {
     return { name: `by_${entry.join('_')}`, fields: entry };
   }

@@ -18,6 +18,8 @@ import { normalizeOptions } from './options.js';
 import {
   resolveConvexTableName,
   collectFkTargets,
+  collectReferenceFields,
+  indexEntryToDef,
   buildValidator,
   isPersistentEntity,
   resolveEventsTableName,
@@ -118,6 +120,93 @@ function paramValidator(type: { name: string; generic?: { name: string } }): str
 // Queries
 // ---------------------------------------------------------------------------
 
+function capWord(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+interface QueryIndexField {
+  /** Column being matched (also the arg name). */
+  name: string;
+  /** Target table when the column is a convexId reference (→ `v.id(...)` arg). */
+  fkTarget?: string;
+}
+
+interface QueryIndexSpec {
+  /** Columns the index covers, in order (single-field or composite). */
+  fields: QueryIndexField[];
+  /** Schema index name to read via `withIndex(...)`. */
+  indexName: string;
+}
+
+/**
+ * The indexes an entity exposes as reads, derived to match EXACTLY what the
+ * schema surface emits (`generator.ts#emitTable`): `indexed`-modifier properties,
+ * the tenant column, every belongsTo/ref FK (in BOTH reference modes), and every
+ * `options.indexes` entry (single-field AND composite). Single-field specs are
+ * deduped by column in schema order; composite specs by index name. The result
+ * guarantees every schema index has a corresponding `list<Entity>By<Field...>`
+ * query — the two surfaces can no longer drift (closing both the stringId-mode
+ * FK gap and the composite-index gap).
+ */
+function collectQueryIndexSpecs(ir: IR, entity: IREntity, options: Normalized): QueryIndexSpec[] {
+  const specs: QueryIndexSpec[] = [];
+  const seenSingle = new Set<string>();
+  const seenName = new Set<string>();
+  // convexId-only targets: present → arg typed `v.id(target)`; absent → `v.string()`.
+  const fkTargets = collectFkTargets(entity, ir, options);
+  const mkField = (name: string): QueryIndexField => ({ name, fkTarget: fkTargets.get(name) });
+
+  const addSingle = (field: string, indexName: string): void => {
+    if (field === 'id' || seenSingle.has(field)) return;
+    seenSingle.add(field);
+    seenName.add(indexName);
+    specs.push({ fields: [mkField(field)], indexName });
+  };
+
+  for (const p of entity.properties) {
+    if (p.modifiers.includes('indexed')) addSingle(p.name, `by_${p.name}`);
+  }
+  const tenantProp = ir.tenant?.property;
+  if (tenantProp && entity.properties.some(p => p.name === tenantProp)) addSingle(tenantProp, `by_${tenantProp}`);
+  for (const fk of collectReferenceFields(entity, ir, options).keys()) addSingle(fk, `by_${fk}`);
+  for (const entry of options.indexes[entity.name] ?? []) {
+    const def = indexEntryToDef(entry);
+    if (def.fields.length === 1) {
+      addSingle(def.fields[0], def.name);
+    } else if (def.fields.length > 1 && !seenName.has(def.name)) {
+      seenName.add(def.name);
+      specs.push({ fields: def.fields.map(mkField), indexName: def.name });
+    }
+  }
+  return specs;
+}
+
+/** Resolved read-side tenant + soft-delete filtering for an entity (field-aware). */
+interface ReadFilter {
+  hasTenant: boolean;
+  tenantProp: string | undefined;
+  /** The `by_<tenantProp>` index exists in the schema (IR-declared tenant). */
+  tenantIndexed: boolean;
+  hasSoftDelete: boolean;
+  deletedProp: string;
+}
+
+function resolveReadFilter(ir: IR, entity: IREntity, options: Normalized): ReadFilter {
+  const tenantProp = options.tenantIdProperty ?? ir.tenant?.property;
+  const hasTenant = options.includeTenantFilter && !!tenantProp
+    && entity.properties.some(p => p.name === tenantProp);
+  const deletedProp = options.deletedAtProperty;
+  const hasSoftDelete = options.includeSoftDeleteFilter
+    && entity.properties.some(p => p.name === deletedProp);
+  return {
+    hasTenant,
+    tenantProp: hasTenant ? tenantProp : undefined,
+    tenantIndexed: hasTenant && tenantProp === ir.tenant?.property,
+    hasSoftDelete,
+    deletedProp,
+  };
+}
+
 export function generateQueries(ir: IR, rawOptions: Record<string, unknown> | undefined): FunctionsResult {
   const options = normalizeOptions(rawOptions);
   const diagnostics: ProjectionDiagnostic[] = [];
@@ -125,58 +214,117 @@ export function generateQueries(ir: IR, rawOptions: Record<string, unknown> | un
 
   for (const entity of persistentEntities(ir)) {
     const table = resolveConvexTableName(entity.name, options);
-    const fkTargets = collectFkTargets(entity, ir, options);
+    const rf = resolveReadFilter(ir, entity, options);
 
-    // list<Entity>
-    blocks.push(
-      `export const list${entity.name} = query({\n` +
-      `  args: {},\n` +
-      `  handler: async (ctx) => {\n` +
-      `    return await ctx.db.query("${table}").collect();\n` +
-      `  },\n});`,
-    );
-
-    // get<Entity> by Convex _id
-    blocks.push(
-      `export const get${entity.name} = query({\n` +
-      `  args: { id: v.id("${table}") },\n` +
-      `  handler: async (ctx, { id }) => {\n` +
-      `    return await ctx.db.get(id);\n` +
-      `  },\n});`,
-    );
-
-    // list<Entity>By<Field> for indexed + reference fields
-    const tenantProp = ir.tenant?.property;
-    const indexFields = new Set<string>();
-    for (const p of entity.properties) {
-      if (p.name !== 'id' && p.modifiers.includes('indexed')) indexFields.add(p.name);
-    }
-    if (tenantProp && entity.properties.some(p => p.name === tenantProp)) indexFields.add(tenantProp);
-    for (const fk of fkTargets.keys()) indexFields.add(fk);
-
-    for (const field of indexFields) {
-      const cap = field.charAt(0).toUpperCase() + field.slice(1);
-      const target = fkTargets.get(field);
-      const argType = target ? `v.id("${target}")` : 'v.string()';
+    // list<Entity> — tenant-scoped + soft-delete-filtered by default. The tenant
+    // id comes from the authenticated identity (never a client arg), so an
+    // un-scoped list cannot leak rows across tenants.
+    if (!rf.hasTenant && !rf.hasSoftDelete) {
       blocks.push(
-        `export const list${entity.name}By${cap} = query({\n` +
-        `  args: { ${field}: ${argType} },\n` +
-        `  handler: async (ctx, { ${field} }) => {\n` +
-        `    return await ctx.db.query("${table}").withIndex("by_${field}", (q) => q.eq("${field}", ${field})).collect();\n` +
+        `export const list${entity.name} = query({\n` +
+        `  args: {},\n` +
+        `  handler: async (ctx) => {\n` +
+        `    return await ctx.db.query("${table}").collect();\n` +
         `  },\n});`,
       );
+    } else {
+      const lines: string[] = [];
+      if (rf.hasTenant) lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+      if (rf.hasTenant && rf.tenantIndexed) {
+        lines.push(`    let rows = await ctx.db.query("${table}").withIndex("by_${rf.tenantProp}", (q) => q.eq("${rf.tenantProp}", __tenant)).collect();`);
+      } else {
+        lines.push(`    let rows = await ctx.db.query("${table}").collect();`);
+        if (rf.hasTenant) lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
+      }
+      if (rf.hasSoftDelete) lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
+      lines.push(`    return rows;`);
+      blocks.push(
+        `export const list${entity.name} = query({\n` +
+        `  args: {},\n` +
+        `  handler: async (ctx) => {\n${lines.join('\n')}\n  },\n});`,
+      );
+    }
+
+    // get<Entity> by Convex _id — returns null on tenant mismatch / soft-deleted.
+    if (!rf.hasTenant && !rf.hasSoftDelete) {
+      blocks.push(
+        `export const get${entity.name} = query({\n` +
+        `  args: { id: v.id("${table}") },\n` +
+        `  handler: async (ctx, { id }) => {\n` +
+        `    return await ctx.db.get(id);\n` +
+        `  },\n});`,
+      );
+    } else {
+      const lines: string[] = [`    const doc = await ctx.db.get(id);`];
+      if (rf.hasTenant) {
+        lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+        lines.push(`    if (doc && (doc as any).${rf.tenantProp} !== __tenant) return null;`);
+      }
+      if (rf.hasSoftDelete) lines.push(`    if (doc && (doc as any).${rf.deletedProp} != null) return null;`);
+      lines.push(`    return doc;`);
+      blocks.push(
+        `export const get${entity.name} = query({\n` +
+        `  args: { id: v.id("${table}") },\n` +
+        `  handler: async (ctx, { id }) => {\n${lines.join('\n')}\n  },\n});`,
+      );
+    }
+
+    // list<Entity>By<Field...> — one per schema index (indexed, tenant, every
+    // reference FK in both modes, single-field AND composite option indexes).
+    // Soft-delete + (auth-derived) tenant filters apply unless the index itself
+    // already constrains the tenant column.
+    for (const spec of collectQueryIndexSpecs(ir, entity, options)) {
+      const names = spec.fields.map(f => f.name);
+      const suffix = spec.fields.map(f => capWord(f.name)).join('And');
+      const argList = spec.fields.map(f => `${f.name}: ${f.fkTarget ? `v.id("${f.fkTarget}")` : 'v.string()'}`).join(', ');
+      const destructure = `{ ${names.join(', ')} }`;
+      const eqChain = spec.fields.map(f => `.eq("${f.name}", ${f.name})`).join('');
+      const applyTenant = rf.hasTenant && !!rf.tenantProp && !names.includes(rf.tenantProp);
+
+      if (!applyTenant && !rf.hasSoftDelete) {
+        blocks.push(
+          `export const list${entity.name}By${suffix} = query({\n` +
+          `  args: { ${argList} },\n` +
+          `  handler: async (ctx, ${destructure}) => {\n` +
+          `    return await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();\n` +
+          `  },\n});`,
+        );
+      } else {
+        const lines: string[] = [];
+        if (applyTenant) lines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`);
+        lines.push(`    let rows = await ctx.db.query("${table}").withIndex("${spec.indexName}", (q) => q${eqChain}).collect();`);
+        if (applyTenant) lines.push(`    rows = rows.filter((d) => (d as any).${rf.tenantProp} === __tenant);`);
+        if (rf.hasSoftDelete) lines.push(`    rows = rows.filter((d) => (d as any).${rf.deletedProp} == null);`);
+        lines.push(`    return rows;`);
+        blocks.push(
+          `export const list${entity.name}By${suffix} = query({\n` +
+          `  args: { ${argList} },\n` +
+          `  handler: async (ctx, ${destructure}) => {\n${lines.join('\n')}\n  },\n});`,
+        );
+      }
     }
   }
 
-  // Convenience: recent rows from the system events table (when emitted).
+  // System events table reads (when emitted): recent feed + the three indexed
+  // lookups (by_type / by_entity / by_entityId) the schema declares on it.
   if (options.emitEventsTable) {
+    const ev = resolveEventsTableName(ir, options);
     blocks.push(
       `export const listRecentEvents = query({\n` +
       `  args: {},\n` +
       `  handler: async (ctx) => {\n` +
-      `    return await ctx.db.query("${resolveEventsTableName(ir, options)}").order("desc").take(50);\n` +
+      `    return await ctx.db.query("${ev}").order("desc").take(50);\n` +
       `  },\n});`,
     );
+    for (const field of ['type', 'entity', 'entityId']) {
+      blocks.push(
+        `export const listEventsBy${capWord(field)} = query({\n` +
+        `  args: { ${field}: v.string() },\n` +
+        `  handler: async (ctx, { ${field} }) => {\n` +
+        `    return await ctx.db.query("${ev}").withIndex("by_${field}", (q) => q.eq("${field}", ${field})).collect();\n` +
+        `  },\n});`,
+      );
+    }
   }
 
   const code =
