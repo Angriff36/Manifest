@@ -456,3 +456,54 @@ describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)',
     expect(code).not.toContain('__after');   // no post-action var introduced
   });
 });
+
+describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.x run cmd`)', () => {
+  it('renders an indexed query + per-row runMutation loop for a fan-out reaction', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('status', 'string', ['required'])]),
+      entity('Child', [prop('parentId', 'string', ['required']), prop('status', 'string', ['required'])],
+        [{ name: 'parent', kind: 'belongsTo', target: 'Parent', foreignKey: { fields: ['parentId'] } }]),
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    ir.commands = [
+      { name: 'deactivate', entity: 'Parent', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: ['ParentDeactivated'] },
+      { name: 'deactivate', entity: 'Child', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: [] },
+    ];
+    ir.reactions = [{
+      event: 'ParentDeactivated', targetEntity: 'Child', targetCommand: 'deactivate',
+      fanOut: { matchField: 'parentId', matchSource: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'id' } },
+    }] as IRReactionRule[];
+    const code = mutations(ir).artifacts[0].code;
+    // the sibling-mutation dispatch import is emitted only when runMutation is used
+    expect(code).toContain('import { api } from "./_generated/api";');
+    // indexed FK field → withIndex by_parentId; matchSource self.id → payload.id
+    expect(code).toContain('withIndex("by_parentId", (q) => q.eq("parentId", payload.id))');
+    // per-match governed dispatch (target's own mutation, with its docId)
+    expect(code).toContain('for (const __row of fanRows0) {');
+    expect(code).toContain('ctx.runMutation(api.mutations.Child_deactivate, { docId: (__row as any)._id }');
+    // a fan-out reaction must NOT render the single-target resolve/patch path
+    expect(code).not.toContain('reactionTarget0');
+  });
+
+  it('renders a fallback filter (not withIndex) when the match field is not indexed', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Parent', [prop('status', 'string', ['required'])]),
+      entity('Child', [prop('owner', 'string', ['required'])]), // 'owner' is not indexed / not an FK
+    ];
+    ir.stores = [durable('Parent'), durable('Child')];
+    ir.commands = [
+      { name: 'deactivate', entity: 'Parent', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'inactive' } } }], emits: ['ParentDeactivated'] },
+    ];
+    ir.reactions = [{
+      event: 'ParentDeactivated', targetEntity: 'Child', targetCommand: 'deactivate',
+      fanOut: { matchField: 'owner', matchSource: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'id' } },
+    }] as IRReactionRule[];
+    const res = mutations(ir);
+    const code = res.artifacts[0].code;
+    expect(code).toContain('.filter((q) => q.eq(q.field("owner"), payload.id))');
+    expect(code).not.toContain('withIndex("by_owner"');
+    expect(res.diagnostics.some(d => d.code === 'CONVEX_FANOUT_UNINDEXED')).toBe(true);
+  });
+});

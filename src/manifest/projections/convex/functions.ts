@@ -416,6 +416,48 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
   matched.forEach((reaction, idx) => {
     const targetTable = resolveConvexTableName(reaction.targetEntity, options);
     const targetEntity = ir.entities.find(e => e.name === reaction.targetEntity);
+
+    // Fan-out reaction: dispatch the command on every target row where
+    // row.<matchField> == matchSource. matchSource + params resolve against the
+    // event payload (self === payload, matching the reference runtime). Each
+    // match runs the GENERATED target mutation via ctx.runMutation, so the
+    // target command's own governance/actions run — exactly what hand-written
+    // after-emit middleware does. Prefer the schema index (FK/indexed fields
+    // carry by_<field>); fall back to a table-scan filter otherwise.
+    if (reaction.fanOut) {
+      const fanScope: RenderScope = { selfVar: 'payload', globals: ['user', 'context', 'args'] };
+      const src = renderExpression(reaction.fanOut.matchSource, fanScope);
+      if (src.unresolved.length) {
+        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_FANOUT', message: `fan-out reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} match source unresolved (${src.unresolved.join('; ')}); skipped.` });
+        return;
+      }
+      const fanParams: string[] = [];
+      for (const p of reaction.params ?? []) {
+        const r = renderExpression(p.expression, fanScope);
+        if (r.unresolved.length) {
+          diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_PARAM', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} param '${p.name}' unresolved (${r.unresolved.join('; ')}); omitted.` });
+          continue;
+        }
+        fanParams.push(`${p.name}: ${r.code}`);
+      }
+      const field = reaction.fanOut.matchField;
+      const isFk = !!targetEntity && collectReferenceFields(targetEntity, ir, options).has(field);
+      const targetProp = targetEntity?.properties.find(p => p.name === field);
+      const indexed = !!targetProp && (targetProp.modifiers.includes('indexed') || isFk);
+      if (!indexed) {
+        diagnostics.push({ severity: 'info', code: 'CONVEX_FANOUT_UNINDEXED', message: `fan-out ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} matches on non-indexed '${field}'; rendered an unindexed filter (mark '${reaction.targetEntity}.${field}' indexed for speed).` });
+      }
+      const queryExpr = indexed
+        ? `ctx.db.query("${targetTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
+        : `ctx.db.query("${targetTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
+      const rowsVar = `fanRows${idx}`;
+      lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
+      lines.push(`    for (const __row of ${rowsVar}) {`);
+      lines.push(`      await ctx.runMutation(api.mutations.${reaction.targetEntity}_${reaction.targetCommand}, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`);
+      lines.push(`    }`);
+      return;
+    }
+
     const scope: RenderScope = { selfVar: 'doc', globals: ['payload', 'user', 'context', 'args'] };
     const paramEntries: string[] = [];
     const paramNamesSeen = new Set<string>();
@@ -762,10 +804,15 @@ export function generateMutations(ir: IR, rawOptions: Record<string, unknown> | 
   }
 
   const policyNote = options.policyMode === 'skip' ? ' (policyMode: skip — authorization policies omitted)' : '';
+  // Fan-out reactions dispatch sibling mutations via ctx.runMutation, which
+  // needs the generated `api`. Only import it when actually used (no dead import).
+  const needsApi = /\bctx\.runMutation\b/.test(body);
   const code =
     `${GENERATED_HEADER}\n// ${blocks.length} mutation(s); roles: ${(ir.roles ?? []).length}; policies: ${ir.policies.length}.${policyNote}\n\n` +
     `import { mutation } from "./_generated/server";\n` +
-    `import { v } from "convex/values";\n\n` +
+    `import { v } from "convex/values";\n` +
+    (needsApi ? `import { api } from "./_generated/api";\n` : '') +
+    `\n` +
     (helpers.length ? helpers.join('\n\n') + '\n\n' : '') +
     `${body}\n`;
 

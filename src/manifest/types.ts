@@ -257,8 +257,15 @@ export interface ReactionNode extends ASTNode {
   event: string;
   targetEntity: string;
   targetCommand: string;
-  resolve: ExpressionNode;
+  /** Single-target resolution (absent for `fanOut` reactions). */
+  resolve?: ExpressionNode;
   params?: ReactionParamMapping[];
+  /**
+   * Fan-out: dispatch `targetCommand` on EVERY `targetEntity` row where
+   * `row.<matchField> == matchSource` (evaluated against the event payload),
+   * instead of one resolved target. The collection match replaces `resolve`.
+   */
+  fanOut?: { matchField: string; matchSource: ExpressionNode };
 }
 
 export interface SagaStepNode extends ASTNode {

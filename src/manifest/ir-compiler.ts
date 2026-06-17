@@ -932,7 +932,13 @@ export class IRCompiler {
       event: r.event,
       targetEntity: r.targetEntity,
       targetCommand: r.targetCommand,
-      resolve: this.transformExpression(r.resolve),
+      ...(r.resolve ? { resolve: this.transformExpression(r.resolve) } : {}),
+      ...(r.fanOut ? {
+        fanOut: {
+          matchField: r.fanOut.matchField,
+          matchSource: this.transformExpression(r.fanOut.matchSource),
+        },
+      } : {}),
       ...(params && params.length > 0 ? { params } : {}),
       ...(moduleName ? { module: moduleName } : {}),
       ...(entityName ? { entity: entityName } : {}),

@@ -3200,8 +3200,13 @@ export class RuntimeEngine {
           // Available bindings:
           //   payload  — event payload fields merged with subject metadata
           //   self     — alias for payload (convenient for member access)
+          const eventPayloadBase = typeof emitted.payload === 'object' && emitted.payload !== null ? emitted.payload as Record<string, unknown> : {};
           const enrichedPayload = {
-            ...(typeof emitted.payload === 'object' && emitted.payload !== null ? emitted.payload as Record<string, unknown> : {}),
+            ...eventPayloadBase,
+            // Alias the event source id to top-level `id` so reaction expressions
+            // like `self.id` / `payload.id` resolve (the Convex projection's
+            // reaction payload does the same). Only when the payload has no id.
+            ...(eventPayloadBase.id === undefined && emitted.subject?.id !== undefined ? { id: emitted.subject.id } : {}),
             _subject: emitted.subject,
             _eventName: emitted.name,
             _channel: emitted.channel,
@@ -3210,6 +3215,45 @@ export class RuntimeEngine {
             payload: enrichedPayload,
             self: enrichedPayload,
           };
+          // Fan-out reaction: dispatch the command on EVERY target row where
+          // row.<matchField> == matchSource (evaluated against the event payload),
+          // instead of one resolved target. The collection match replaces resolve.
+          if (reaction.fanOut) {
+            const matchValue = await this.evaluateExpression(reaction.fanOut.matchSource, reactionContext);
+            const fanInput: Record<string, unknown> = {};
+            if (reaction.params) {
+              for (const p of reaction.params) {
+                fanInput[p.name] = await this.evaluateExpression(p.expression, reactionContext);
+              }
+            }
+            const matchField = reaction.fanOut.matchField;
+            const matches = (await this.getAllInstancesRaw(reaction.targetEntity))
+              .filter(inst => (inst as Record<string, unknown>)[matchField] === matchValue);
+            for (const m of matches) {
+              if (this.reactionDepth >= RuntimeEngine.MAX_REACTION_DEPTH) {
+                throw new ManifestReactionDepthError(this.reactionDepth, reaction.event, `${reaction.targetEntity}.${reaction.targetCommand}`);
+              }
+              this.reactionDepth++;
+              try {
+                const fanResult = await this.runCommand(
+                  reaction.targetCommand,
+                  fanInput,
+                  {
+                    entityName: reaction.targetEntity,
+                    instanceId: String((m as Record<string, unknown>).id ?? ''),
+                    correlationId: workflowMeta.correlationId,
+                    causationId: emitted.name,
+                  },
+                );
+                if (fanResult.emittedEvents) emittedEvents.push(...fanResult.emittedEvents);
+              } finally {
+                this.reactionDepth--;
+              }
+            }
+            continue;
+          }
+          // Single-target reaction: fanOut reactions have no resolve and continue above.
+          if (!reaction.resolve) continue;
           const resolvedId = await this.evaluateExpression(reaction.resolve, reactionContext);
           // Evaluate param mappings
           const reactionInput: Record<string, unknown> = {};

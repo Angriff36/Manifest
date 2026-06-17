@@ -423,8 +423,19 @@ export class CodeGenerator {
     this.line(`// Reaction: on ${r.event} → ${r.targetEntity}.${r.targetCommand}`);
     this.line(`EventBus.subscribe('${r.event}', async (payload) => {`);
     this.in();
-    this.line(`const instanceId = ${this.genExpr(r.resolve)};`);
-    this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', instanceId, ${paramsStr});`);
+    if (r.fanOut) {
+      // Fan-out: run the command on every target row where row.<matchField> == matchSource.
+      const sourceExpr = this.genExpr(r.fanOut.matchSource);
+      this.line(`const __matches = await ${r.targetEntity}Store.query((row) => (row as any).${r.fanOut.matchField} === ${sourceExpr});`);
+      this.line(`for (const __m of __matches) {`);
+      this.in();
+      this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', (__m as any).id, ${paramsStr});`);
+      this.de();
+      this.line(`}`);
+    } else if (r.resolve) {
+      this.line(`const instanceId = ${this.genExpr(r.resolve)};`);
+      this.line(`await ${r.targetEntity}Store.runCommand('${r.targetCommand}', instanceId, ${paramsStr});`);
+    }
     this.de();
     this.line('});');
   }

@@ -1609,8 +1609,7 @@
       "required": [
         "event",
         "targetEntity",
-        "targetCommand",
-        "resolve"
+        "targetCommand"
       ],
       "properties": {
         "event": {
@@ -1627,7 +1626,23 @@
         },
         "resolve": {
           "$ref": "#/definitions/IRExpression",
-          "description": "Expression evaluated against event payload to resolve the target instance ID"
+          "description": "Expression evaluated against event payload to resolve the target instance ID. Absent for fanOut reactions (the collection match replaces single-target resolution)."
+        },
+        "fanOut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["matchField", "matchSource"],
+          "properties": {
+            "matchField": {
+              "type": "string",
+              "description": "Field on the target entity to match against matchSource"
+            },
+            "matchSource": {
+              "$ref": "#/definitions/IRExpression",
+              "description": "Expression evaluated against the event payload; the command runs on every target row where row.<matchField> == matchSource"
+            }
+          },
+          "description": "When present, dispatch targetCommand on every targetEntity row matching matchField == matchSource (a 1:N cascade), instead of one resolved target."
         },
         "params": {
           "type": "array",

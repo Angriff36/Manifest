@@ -1034,27 +1034,85 @@ export class Parser {
   }
 
   /**
-   * Lookahead to check if the current `on` keyword starts a reaction (`on Event run ...`)
-   * or a behavior (`on Event { ... }` / `on Event then ...`).
+   * Lookahead to check if the current `on` keyword starts a reaction
+   * (`on Event run ...` or `on Event fanOut ...`) or a behavior
+   * (`on Event { ... }` / `on Event then ...`).
    */
   private isReactionLookahead(): boolean {
-    // Current token is 'on'. Check if pos+1 is identifier and pos+2 is 'run'
+    // Current token is 'on'. A reaction is `on <Event> run|fanOut ...`.
     const eventToken = this.tokens[this.pos + 1];
-    const runToken = this.tokens[this.pos + 2];
-    return eventToken?.type === 'IDENTIFIER' && runToken?.type === 'KEYWORD' && runToken?.value === 'run';
+    const actionToken = this.tokens[this.pos + 2];
+    return eventToken?.type === 'IDENTIFIER'
+      && actionToken?.type === 'KEYWORD'
+      && (actionToken?.value === 'run' || actionToken?.value === 'fanOut');
   }
 
   /**
-   * Parses: on <EventName> run <EntityType>.<commandName>
-   *           resolve <expression>
-   *           params { <name>: <expression>, ... }
+   * Parses an optional `params { name: <expr>, ... }` clause shared by all
+   * reaction forms.
+   */
+  private parseReactionParams(): ReactionParamMapping[] | undefined {
+    if (!this.check('KEYWORD', 'params')) return undefined;
+    this.advance(); // consume 'params'
+    const params: ReactionParamMapping[] = [];
+    this.consume('PUNCTUATION', '{');
+    this.skipNL();
+    while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', '}')) break;
+      const name = this.consumeIdentifier().value;
+      this.consume('OPERATOR', ':');
+      const expression = this.parseExpr();
+      params.push({ name, expression });
+      if (this.check('PUNCTUATION', ',')) this.advance();
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', '}');
+    return params;
+  }
+
+  /**
+   * Parses a reaction. Two forms:
+   *
+   *   on <Event> run <EntityType>.<commandName>
+   *     resolve <expression>
+   *     params { <name>: <expression>, ... }
+   *
+   *   on <Event> fanOut <EntityType> where <matchField> = <sourceExpr>
+   *     run <commandName>
+   *     params { <name>: <expression>, ... }
+   *
+   * The fan-out form dispatches the command on EVERY target row where
+   * `row.<matchField> == <sourceExpr>` (evaluated against the event payload);
+   * the collection match replaces `resolve`.
    */
   private parseReaction(): ReactionNode {
     const position = this.current()?.position;
     this.consume('KEYWORD', 'on');
     const event = this.consumeIdentifier().value;
+
+    // Fan-out form: on <Event> fanOut <Target> where <field> = <source> run <cmd>
+    if (this.check('KEYWORD', 'fanOut')) {
+      this.advance(); // consume 'fanOut'
+      const targetEntity = this.consumeIdentifier().value;
+      this.consume('KEYWORD', 'where');
+      const matchField = this.consumeIdentifier().value;
+      this.consume('OPERATOR', '=');
+      const matchSource = this.parseExpr();
+      this.skipNL();
+      this.consume('KEYWORD', 'run');
+      const targetCommand = this.consumeIdentifier().value;
+      this.skipNL();
+      const params = this.parseReactionParams();
+      return {
+        type: 'Reaction', event, targetEntity, targetCommand,
+        fanOut: { matchField, matchSource },
+        ...(params ? { params } : {}), position,
+      };
+    }
+
+    // Single-target form: on <Event> run <EntityType>.<command> resolve <expr>
     this.consume('KEYWORD', 'run');
-    // Parse EntityType.commandName
     const targetEntity = this.consumeIdentifier().value;
     this.consume('OPERATOR', '.');
     const targetCommand = this.consumeIdentifier().value;
@@ -1065,26 +1123,7 @@ export class Parser {
     const resolve = this.parseExpr();
     this.skipNL();
 
-    // Parse optional 'params' clause
-    let params: ReactionParamMapping[] | undefined;
-    if (this.check('KEYWORD', 'params')) {
-      this.advance(); // consume 'params'
-      params = [];
-      this.consume('PUNCTUATION', '{');
-      this.skipNL();
-      while (!this.check('PUNCTUATION', '}') && !this.isEnd()) {
-        this.skipNL();
-        if (this.check('PUNCTUATION', '}')) break;
-        const name = this.consumeIdentifier().value;
-        this.consume('OPERATOR', ':');
-        const expression = this.parseExpr();
-        params.push({ name, expression });
-        if (this.check('PUNCTUATION', ',')) this.advance();
-        this.skipNL();
-      }
-      this.consume('PUNCTUATION', '}');
-    }
-
+    const params = this.parseReactionParams();
     return { type: 'Reaction', event, targetEntity, targetCommand, resolve, ...(params ? { params } : {}), position };
   }
 

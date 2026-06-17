@@ -75,6 +75,27 @@ params {
 
 Inside a `params` block, `event.*` references the event payload fields. The expression language supports the full set of operators: arithmetic, comparison, logical, conditional, and function calls.
 
+## Fan-out reactions (1:N cascades)
+
+A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on *every* related row, e.g. "when an event is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:
+
+```manifest
+on EventCancelled fanOut EventStaff where eventId = self.id
+  run unassign
+  params {
+    reason: "event cancelled"
+  }
+```
+
+This dispatches `EventStaff.unassign` on **every** `EventStaff` row where `row.eventId == self.id` (the source instance's id, read from the event payload). Each match runs the target command through the normal pipeline — its own guards, policies, actions, and emits fire — exactly like a hand-written after-emit handler, but declared.
+
+- `where <field> = <sourceExpr>` selects the collection; `<field>` is a property on the target entity (an indexed or foreign-key field is preferred — the Convex projection reads it via `withIndex`, falling back to a filter otherwise).
+- `<sourceExpr>` is evaluated against the event payload (`self.id` / `payload.*`), so it sees the source entity's id and any declared `emit Event { field }` values.
+- `params` maps the same way as a single-target reaction and is shared across all matches.
+- The reaction depth limit and `correlationId`/`causationId` propagation apply per dispatched command.
+
+Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, release every reservation, deactivate every child account, close every tip pool in a period, etc.
+
 ## Reaction scopes
 
 Reactions can be declared at three levels:

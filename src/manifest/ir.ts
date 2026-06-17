@@ -316,8 +316,15 @@ export interface IRReactionRule {
   event: string;
   targetEntity: string;
   targetCommand: string;
-  resolve: IRExpression;
+  /** Single-target resolution (absent for `fanOut` reactions). */
+  resolve?: IRExpression;
   params?: IRReactionParam[];
+  /**
+   * Fan-out match: dispatch `targetCommand` on every `targetEntity` row where
+   * `row.<matchField> == matchSource` (evaluated against the event payload).
+   * When present, `resolve` is unused — the collection match replaces it.
+   */
+  fanOut?: { matchField: string; matchSource: IRExpression };
   module?: string;
   entity?: string;
 }

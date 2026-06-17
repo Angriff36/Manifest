@@ -50,7 +50,7 @@ export const KEYWORDS = new Set([
   // computed property caching keywords
   'cache', 'request', 'session', 'ttl',
   // reaction keywords
-  'run', 'resolve', 'params',
+  'run', 'resolve', 'params', 'fanOut',
   // approval workflow keywords
   'approval', 'stages', 'timeout',
   // async command execution keyword

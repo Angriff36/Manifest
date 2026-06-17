@@ -1,0 +1,27 @@
+entity Parent {
+  property status: string = "active"
+
+  command deactivate() {
+    mutate status = "inactive"
+    emit ParentDeactivated
+  }
+}
+
+entity Child {
+  property parentId: string = ""
+  property status: string = "active"
+
+  command deactivate() {
+    mutate status = "inactive"
+  }
+}
+
+store Parent in memory
+store Child in memory
+
+event ParentDeactivated: "parent.deactivated" {
+  parentId: string
+}
+
+on ParentDeactivated fanOut Child where parentId = self.id
+  run deactivate
