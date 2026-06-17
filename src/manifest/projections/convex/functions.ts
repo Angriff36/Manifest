@@ -288,7 +288,7 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
       paramEntries.unshift(`${tenantProp}: payload.${tenantProp}`);
     }
     if (reaction.targetCommand === 'create') {
-      lines.push(`    await ctx.db.insert("${targetTable}", { ${paramEntries.join(', ')} });`);
+      lines.push(`    await ctx.db.insert("${targetTable}", { ${paramEntries.join(', ')} } as any);`);
     } else {
       const resolve = renderExpression(reaction.resolve, { selfVar: 'doc', globals: ['payload', 'user', 'context', 'args'] });
       const varName = `reactionTarget${idx}`;
@@ -298,7 +298,7 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
         diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_TARGET', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} target unresolved; skipped.` });
       } else {
         lines.push(`    const ${varName} = ${resolve.code};`);
-        lines.push(`    if (${varName}) await ctx.db.patch(${varName}, { ${paramEntries.join(', ')} });`);
+        lines.push(`    if (${varName}) await ctx.db.patch(${varName}, { ${paramEntries.join(', ')} } as any);`);
       }
     }
   });
@@ -463,11 +463,11 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     `  args: {\n${argLines.join(',\n')}\n  },\n` +
     `  handler: async (ctx, { docId${argDestructure} }) => {\n` +
     (authBindings(bodyText).join('\n') ? authBindings(bodyText).join('\n') + '\n' : '') +
-    `    const doc = await ctx.db.get(docId);\n` +
+    `    const doc = await ctx.db.get(docId) as Record<string, any> | null;\n` +
     `    if (!doc) throw new Error(${JSON.stringify(`${entity.name} not found`)});\n` +
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const updates = {\n${updateLines.join(',\n')}${updateLines.length ? '\n' : ''}    };\n` +
-    `    await ctx.db.patch(docId, updates);\n` +
+    `    await ctx.db.patch(docId, updates as any);\n` +
     payloadBinding +
     (tail ? tail + '\n' : '') +
     `    return { ...doc, ...updates };\n` +
