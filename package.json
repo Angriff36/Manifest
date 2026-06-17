@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "type": "module",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
