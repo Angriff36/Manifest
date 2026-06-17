@@ -4,7 +4,7 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.13.0] - 2026-06-17
+## [2.14.0] - 2026-06-17
 
 ### Added
 
@@ -33,6 +33,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   time, so a follow-on reaction reading `payload.<field>` resolves real values
   instead of `undefined`. Closes the gap consumers papered over with hand-written
   after-emit middleware.
+
+### Fixed
+
+- **Package builds handle the new aggregate expression kind.** The `IRExpression`
+  `aggregate` member added a case the MCP server's `explain` expression formatter
+  missed (it is not covered by `tsconfig.app.json`'s typecheck — only by the
+  `build:lib` / per-package builds that run at publish time), failing
+  `prepublishOnly` during the 2.13.0 release attempt.
+
+## [2.13.0] - 2026-06-17
+
+_Tagged but not published — the release workflow's publish step failed on the MCP
+build error above; nothing reached the registry. Superseded by 2.14.0 (same
+content, build fixed)._
 
 ## [2.12.0] - 2026-06-17
 
