@@ -453,11 +453,96 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
   return { lines, diagnostics };
 }
 
-/** Render the event-row inserts for a command's emits. */
-function renderEvents(eventsTable: string, entityName: string, emits: string[], idVar: string): string[] {
-  return emits.map(ev =>
-    `    await ctx.db.insert("${eventsTable}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(entityName)}, entityId: ${idVar}, payload: {}, createdAt: Date.now() });`,
-  );
+interface RenderedPayloadField {
+  name: string;
+  /** Rendered TS expression, already scoped to the post-action instance. */
+  code: string;
+}
+
+/**
+ * Render the G7 `emit Event { field: expr }` payload fields declared for ONE
+ * event, evaluated against the post-action instance scope (selfVar = the
+ * affected instance). Mirrors runtime-engine.ts G7 (eventPayload construction
+ * at emit time): declared fields are populated from `self.*` so the emitted
+ * event row — and the reactions/readers that consume it — see real values
+ * instead of `undefined`. Without this, a reaction on a MUTATE command reading
+ * an entity-owned field (e.g. `payload.invoiceId`) is a silent no-op, which is
+ * the gap capsule-pro papers over with hand-written after-emit middleware.
+ *
+ * Non-governance expressions: unresolved fields are omitted with a warning
+ * diagnostic (never a denying throw — that is reserved for guards/policies).
+ */
+function renderEmitPayloadFields(
+  cmd: IRCommand,
+  eventName: string,
+  scope: RenderScope,
+): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
+  const spec = cmd.emitPayloads?.find(ep => ep.eventName === eventName);
+  if (!spec) return { fields: [], diagnostics: [] };
+  const fields: RenderedPayloadField[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+  for (const f of spec.fields) {
+    const { code, unresolved } = renderExpression(f.expression, scope);
+    if (unresolved.length) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'CONVEX_UNRESOLVED_EMIT_PAYLOAD',
+        message: `emit payload field '${cmd.entity}.${eventName}.${f.name}' unresolved (${unresolved.join('; ')}); omitted.`,
+      });
+      continue;
+    }
+    fields.push({ name: f.name, code });
+  }
+  return { fields, diagnostics };
+}
+
+/**
+ * Union of G7 payload fields across ALL of a command's emits (deduped by field
+ * name), for the shared reaction-payload binding. Per-event rows carry their
+ * own precise fields (see {@link renderEvents}); the shared reaction payload is
+ * a benign superset — a reaction only reads the fields it references, so extra
+ * sibling-event fields are harmless. Correct for the common single-event case.
+ */
+function unionEmitPayloadFields(
+  cmd: IRCommand,
+  scope: RenderScope,
+): { fields: RenderedPayloadField[]; diagnostics: ProjectionDiagnostic[] } {
+  const seen = new Set<string>();
+  const fields: RenderedPayloadField[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+  for (const ev of cmd.emits ?? []) {
+    const r = renderEmitPayloadFields(cmd, ev, scope);
+    diagnostics.push(...r.diagnostics);
+    for (const f of r.fields) {
+      if (seen.has(f.name)) continue;
+      seen.add(f.name);
+      fields.push(f);
+    }
+  }
+  return { fields, diagnostics };
+}
+
+function payloadObjectLiteral(fields: RenderedPayloadField[]): string {
+  return fields.length ? `{ ${fields.map(f => `${f.name}: ${f.code}`).join(', ')} }` : '{}';
+}
+
+/** Render the event-row inserts for a command's emits, populating G7 payload fields. */
+function renderEvents(
+  eventsTable: string,
+  cmd: IRCommand,
+  idVar: string,
+  scope: RenderScope,
+): { lines: string[]; diagnostics: ProjectionDiagnostic[] } {
+  const lines: string[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+  for (const ev of cmd.emits ?? []) {
+    const { fields, diagnostics: d } = renderEmitPayloadFields(cmd, ev, scope);
+    diagnostics.push(...d);
+    lines.push(
+      `    await ctx.db.insert("${eventsTable}", { type: ${JSON.stringify(ev)}, entity: ${JSON.stringify(cmd.entity)}, entityId: ${idVar}, payload: ${payloadObjectLiteral(fields)}, createdAt: Date.now() });`,
+    );
+  }
+  return { lines, diagnostics };
 }
 
 /**
@@ -538,10 +623,17 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
 
     const checks = renderChecks(entity.name, commandChecks(ir, cmd, options.policyMode), scope);
     diagnostics.push(...checks.diagnostics);
-    const events = renderEvents(resolveEventsTableName(ir, options), entity.name, cmd.emits ?? [], '_id');
+    // G7 `emit Event { field: expr }`: populate each event-row payload (and the
+    // shared reaction payload below) with declared fields evaluated against the
+    // post-action instance. `doc` is the created instance, so `self.X` → doc.X.
+    const g7Scope: RenderScope = { selfVar: 'doc' };
+    const g7 = unionEmitPayloadFields(cmd, g7Scope);
+    diagnostics.push(...g7.diagnostics);
+    const events = renderEvents(resolveEventsTableName(ir, options), cmd, '_id', g7Scope);
+    diagnostics.push(...events.diagnostics);
     const reactions = renderReactions(ir, options, cmd.emits ?? []);
     diagnostics.push(...reactions.diagnostics);
-    const tail = [...events, ...reactions.lines].join('\n');
+    const tail = [...events.lines, ...reactions.lines].join('\n');
     // Reaction expressions resolve `payload` against the reference-runtime
     // contract (runtime-engine.ts): the emitted event payload is `{ ...input,
     // result }` and reactions additionally see `_subject` (the canonical
@@ -549,9 +641,10 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     // app-level `id` aliased to the Convex `_id` (convexId mode stores no `id`
     // scalar). Without these keys, IR expressions like `payload.result.id` /
     // `payload._subject.id` read through `undefined` and crash at runtime.
+    const g7Entries = g7.fields.map(f => `${f.name}: ${f.code}`).join(', ');
     const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: _id }`;
     const payloadBinding = /\bpayload\b/.test(tail)
-      ? `    const payload: Record<string, any> = { _id, id: _id, ...doc, result: { _id, id: _id, ...doc }, ${subjectLiteral} };\n`
+      ? `    const payload: Record<string, any> = { _id, id: _id, ...doc, result: { _id, id: _id, ...doc }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
       : '';
     const bodyText = [...checks.lines, tail].join('\n');
 
@@ -591,17 +684,31 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     updateLines.push(`      ${a.target}: ${code}`);
   }
 
-  const events = renderEvents(resolveEventsTableName(ir, options), entity.name, cmd.emits ?? [], 'docId');
+  // G7 `emit Event { field: expr }`: declared payload fields are evaluated
+  // against the POST-action instance (fetched doc + applied updates). Introduce
+  // `__after` ONLY when the command actually declares emit fields, so commands
+  // without G7 emit byte-identical output to before (no unused-var, no churn).
+  const hasG7 = !!(cmd.emitPayloads && cmd.emitPayloads.length > 0);
+  const g7Scope: RenderScope = { selfVar: hasG7 ? '__after' : 'doc', locals: paramNames };
+  const g7 = unionEmitPayloadFields(cmd, g7Scope);
+  diagnostics.push(...g7.diagnostics);
+  const useAfter = hasG7 && g7.fields.length > 0;
+  const afterLine = useAfter ? `    const __after: Record<string, any> = { ...doc, ...updates };\n` : '';
+  const events = renderEvents(resolveEventsTableName(ir, options), cmd, 'docId', g7Scope);
+  diagnostics.push(...events.diagnostics);
   const reactions = renderReactions(ir, options, cmd.emits ?? []);
   diagnostics.push(...reactions.diagnostics);
 
-  const tail = [...events, ...reactions.lines].join('\n');
+  const tail = [...events.lines, ...reactions.lines].join('\n');
   // Same reference-runtime payload contract as the create branch: `result` is
   // the affected entity (post-patch) with `id` aliased to the Convex `_id`, and
   // `_subject` carries the canonical entity/command/id metadata reactions read.
+  const g7Entries = g7.fields.map(f => `${f.name}: ${f.code}`).join(', ');
   const subjectLiteral = `_subject: { entity: ${JSON.stringify(entity.name)}, command: ${JSON.stringify(cmd.name)}, id: docId }`;
   const payloadBinding = /\bpayload\b/.test(tail)
-    ? `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`
+    ? (useAfter
+      ? `    const payload: Record<string, any> = { id: docId, ...__after, result: { id: docId, ...__after }${g7Entries ? `, ${g7Entries}` : ''}, ${subjectLiteral} };\n`
+      : `    const payload: Record<string, any> = { id: docId, ...doc, ...updates, result: { id: docId, ...doc, ...updates }, ${subjectLiteral} };\n`)
     : '';
   const argDestructure = paramNames.length ? `, ${paramNames.join(', ')}` : '';
   const bodyText = [...checks.lines, ...updateLines, tail].join('\n');
@@ -616,6 +723,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
     `    const updates = {\n${updateLines.join(',\n')}${updateLines.length ? '\n' : ''}    };\n` +
     `    await ctx.db.patch(docId, updates as any);\n` +
+    afterLine +
     payloadBinding +
     (tail ? tail + '\n' : '') +
     `    return { ...doc, ...updates };\n` +

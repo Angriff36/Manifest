@@ -375,3 +375,84 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).not.toContain('TODO');
   });
 });
+
+describe('convex.mutations — G7 emit payloads (`emit Event { field: expr }`)', () => {
+  it('populates the event-row payload with declared fields (create)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Payment', [prop('invoiceId', 'string', ['required']), prop('amount', 'money', ['required'])])];
+    ir.stores = [durable('Payment')];
+    ir.commands = [{
+      name: 'create', entity: 'Payment', parameters: [], guards: [], constraints: [], actions: [],
+      emits: ['PaymentProcessed'],
+      emitPayloads: [{ eventName: 'PaymentProcessed', fields: [
+        { name: 'invoiceId', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'invoiceId' } },
+        { name: 'amount', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'amount' } },
+      ] }],
+    }];
+    const code = mutations(ir).artifacts[0].code;
+    // event row now carries the declared payload (was `payload: {}` before G7)
+    expect(code).toContain('payload: { invoiceId: doc.invoiceId, amount: doc.amount }');
+  });
+
+  it('exposes a computed declared field to a reaction (the middleware-collapse case)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Line', [prop('qty', 'int', ['required']), prop('price', 'money', ['required'])]),
+      entity('Summary', [prop('amount', 'money', ['required'])]),
+    ];
+    ir.stores = [durable('Line'), durable('Summary')];
+    // `total` is NOT an entity field — it only exists because the command declares it.
+    ir.reactions = [{
+      event: 'LineCreated', targetEntity: 'Summary', targetCommand: 'create',
+      resolve: { kind: 'literal', value: { kind: 'null' } },
+      params: [{ name: 'amount', expression: { kind: 'member', object: { kind: 'identifier', name: 'payload' }, property: 'total' } }],
+    }] as IRReactionRule[];
+    ir.commands = [{
+      name: 'create', entity: 'Line', parameters: [], guards: [], constraints: [], actions: [],
+      emits: ['LineCreated'],
+      emitPayloads: [{ eventName: 'LineCreated', fields: [
+        { name: 'total', expression: { kind: 'binary', operator: '*', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'qty' }, right: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'price' } } },
+      ] }],
+    }];
+    const code = mutations(ir).artifacts[0].code;
+    // declared computed field lands in the shared reaction payload...
+    expect(code).toContain('total: (doc.qty * doc.price)');
+    // ...so the reaction reading payload.total resolves (no undefined no-op)
+    expect(code).toContain('amount: payload.total');
+  });
+
+  it('evaluates G7 fields against the post-action instance on a mutate command (non-create)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Counter', [prop('count', 'int', ['required'])])];
+    ir.stores = [durable('Counter')];
+    ir.commands = [{
+      name: 'increment', entity: 'Counter',
+      parameters: [{ name: 'by', type: { name: 'int', nullable: false }, required: true }],
+      guards: [], constraints: [],
+      actions: [{ kind: 'mutate', target: 'count', expression: { kind: 'binary', operator: '+', left: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'count' }, right: { kind: 'identifier', name: 'by' } } }],
+      emits: ['Counted'],
+      emitPayloads: [{ eventName: 'Counted', fields: [
+        { name: 'newCount', expression: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'count' } },
+      ] }],
+    }];
+    const code = mutations(ir).artifacts[0].code;
+    // __after holds the post-patch instance; G7 reads it (not the pre-patch doc)
+    expect(code).toContain('const __after: Record<string, any> = { ...doc, ...updates };');
+    expect(code).toContain('payload: { newCount: __after.count }');
+  });
+
+  it('does not introduce __after or populate payload when no emitPayloads are declared (no churn)', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Task', [prop('title', 'string', ['required'])])];
+    ir.stores = [durable('Task')];
+    ir.commands = [{
+      name: 'create', entity: 'Task',
+      parameters: [{ name: 'title', type: { name: 'string', nullable: false }, required: true }],
+      guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'title', expression: { kind: 'identifier', name: 'title' } }],
+      emits: ['TaskCreated'],
+    }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('payload: {}');   // empty payload, as before G7
+    expect(code).not.toContain('__after');   // no post-action var introduced
+  });
+});

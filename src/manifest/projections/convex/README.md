@@ -70,6 +70,14 @@ are **tenant-scoped + soft-delete-filtered by default** (see below).
 - Each mutation appends an **event row** (to the `events` table) and fires
   matched **reactions** (create-target → insert; other → resolve + patch — the
   PoC's `// TODO` stubs are completed).
+- **G7 emit payloads** (`emit Event { field: expr }`): declared event fields are
+  evaluated against the post-action instance and populated into each event row's
+  `payload` and the shared reaction payload — so a reaction on a MUTATE command
+  can read entity-owned/computed fields (`payload.invoiceId`, `payload.total`)
+  instead of finding them `undefined`. This is the fix that lets cross-entity
+  cascades be declared as reactions rather than hand-written as after-emit
+  middleware. Evaluated against `doc` (create) or a post-patch `{...doc,...updates}`
+  instance (non-create); opt-in — commands without `emitPayloads` are unchanged.
 
 Generated functions were typechecked against real `convex@1.41` (1043
 mutations + 843 queries, zero type errors).
