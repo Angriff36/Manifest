@@ -24,7 +24,7 @@ import {
   type NormalizedOptions,
 } from './generator.js';
 import { resolveConvexValidator } from './type-mapping.js';
-import { renderExpression, type RenderScope } from './expression.js';
+import { renderExpression, isNullLiteral, type RenderScope, type RenderResult } from './expression.js';
 
 type Normalized = NormalizedOptions;
 
@@ -79,6 +79,24 @@ function defaultToTs(value: IRValue, validator?: string): string {
     case 'array': return `[${value.elements.map(el => defaultToTs(el, validator)).join(', ')}]`;
     case 'object': return `{${Object.entries(value.properties).map(([k, v]) => `${JSON.stringify(k)}: ${defaultToTs(v)}`).join(', ')}}`;
   }
+}
+
+/**
+ * Render a mutate-action right-hand side, converting a literal-`null` assignment
+ * to a NON-nullable field into `undefined`. Convex rejects `null` for an
+ * `v.optional(T)` column but treats `undefined` as "unset" — so a DSL `= null`
+ * "clear"/"restore" must lower to field omission, not a rejected null write.
+ * Nullable fields (schema `v.union(T, v.null())`) keep `null`.
+ */
+function renderActionValue(entity: IREntity, target: string | undefined, expression: IRExpression, scope: RenderScope): RenderResult {
+  const res = renderExpression(expression, scope);
+  if (res.unresolved.length === 0 && target && isNullLiteral(expression)) {
+    const targetProp = entity.properties.find(p => p.name === target);
+    if (targetProp?.type.nullable !== true) {
+      return { code: 'undefined', unresolved: res.unresolved };
+    }
+  }
+  return res;
 }
 
 /**
@@ -362,7 +380,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
 
     // mutate actions → doc fields (param → field mapping).
     for (const a of mutates) {
-      const { code, unresolved } = renderExpression(a.expression, scope);
+      const { code, unresolved } = renderActionValue(entity, a.target, a.expression, scope);
       if (unresolved.length) {
         diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_ACTION', entity: entity.name, message: `create action '${a.target}' unresolved (${unresolved.join('; ')}); omitted.` });
         continue;
@@ -417,7 +435,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
   const updateLines: string[] = [];
   for (const a of cmd.actions ?? []) {
     if (a.kind !== 'mutate' || !a.target) continue;
-    const { code, unresolved } = renderExpression(a.expression, { selfVar: 'doc', locals: paramNames });
+    const { code, unresolved } = renderActionValue(entity, a.target, a.expression, { selfVar: 'doc', locals: paramNames });
     if (unresolved.length) {
       diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_ACTION', entity: entity.name, message: `action mutate '${a.target}' unresolved (${unresolved.join('; ')}); omitted.` });
       continue;

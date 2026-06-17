@@ -82,6 +82,11 @@ function renderLiteralValue(v: IRValue): string {
   }
 }
 
+/** True for an IR `null` literal. */
+export function isNullLiteral(e: IRExpression | undefined): boolean {
+  return !!e && e.kind === 'literal' && (e as { value?: { kind?: string } }).value?.kind === 'null';
+}
+
 /**
  * Render an IR expression to TypeScript. Collects unmappable nodes in
  * `unresolved` instead of guessing.
@@ -129,6 +134,13 @@ export function renderExpression(expr: IRExpression | undefined, scope: RenderSc
         if (e.operator === 'notContains') return `!${left}.includes(${right})`;
         // `a in [..]` semantics: membership → right.includes(left)
         if (e.operator === 'in') return `${right}.includes(${left})`;
+        // Null comparisons use LOOSE equality so they match both `null` and an
+        // absent field (Convex stores an unset optional as `undefined`, not
+        // `null`). Strict `===`/`!==` against null would miss unset fields and
+        // also fails to narrow `T | undefined` in generated TypeScript.
+        if ((e.operator === '==' || e.operator === '!=') && (isNullLiteral(e.left) || isNullLiteral(e.right))) {
+          return `(${left} ${e.operator} ${right})`;
+        }
         const jsOp = BINARY_OP[e.operator];
         if (!jsOp) {
           unresolved.push(`binary operator '${e.operator}'`);

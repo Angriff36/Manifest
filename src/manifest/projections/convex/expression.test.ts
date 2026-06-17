@@ -50,6 +50,12 @@ describe('renderExpression — operators', () => {
     expect(renderExpression(bin('!=', self('status'), lit('draft')), DOC).code).toBe('(doc.status !== "draft")');
   });
 
+  it('uses LOOSE equality for null comparisons (match null and absent/undefined)', () => {
+    expect(renderExpression(bin('==', self('deletedAt'), lit(null)), DOC).code).toBe('(doc.deletedAt == null)');
+    expect(renderExpression(bin('!=', self('deletedAt'), lit(null)), DOC).code).toBe('(doc.deletedAt != null)');
+    expect(renderExpression(bin('==', lit(null), self('deletedAt')), DOC).code).toBe('(null == doc.deletedAt)');
+  });
+
   it('maps and/or to &&/||', () => {
     expect(renderExpression(bin('and', lit(true), lit(false)), DOC).code).toBe('(true && false)');
     expect(renderExpression(bin('or', lit(true), lit(false)), DOC).code).toBe('(true || false)');

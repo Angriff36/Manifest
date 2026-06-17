@@ -160,6 +160,26 @@ describe('convex.mutations — create (param-style) & reactions', () => {
     expect(code).toContain('seatCounts: args.seatCounts ?? [2, 4]'); // array<int> stays plain numbers
   });
 
+  it('lowers a `= null` clear to `undefined` for a non-nullable field; keeps null when nullable', () => {
+    const ir = emptyIR();
+    ir.entities = [entity('Ticket', [
+      prop('deletedAt', 'datetime'),            // optional, NOT nullable → clear becomes unset
+      prop('archivedAt', 'datetime', [], true), // nullable → a real null is valid, keep it
+    ])];
+    ir.stores = [durable('Ticket')];
+    ir.commands = [{
+      name: 'restore', entity: 'Ticket', parameters: [], guards: [], constraints: [],
+      actions: [
+        { kind: 'mutate', target: 'deletedAt', expression: { kind: 'literal', value: { kind: 'null' } } },
+        { kind: 'mutate', target: 'archivedAt', expression: { kind: 'literal', value: { kind: 'null' } } },
+      ],
+      emits: [],
+    }];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('deletedAt: undefined'); // non-nullable clear → unset (Convex rejects null here)
+    expect(code).toContain('archivedAt: null');     // nullable field keeps a real null
+  });
+
   it('binds reaction payload to the runtime contract (result + _subject)', () => {
     const ir = emptyIR();
     ir.entities = [
