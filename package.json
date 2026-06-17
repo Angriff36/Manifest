@@ -241,7 +241,7 @@
     "lint": "eslint .",
     "check:cycles": "dpdm -T --no-tree --no-warning --exit-code circular:1 src/manifest/runtime-engine.ts src/manifest/compiler.ts",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.lib.json && tsc --noEmit -p tsconfig.node.json && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run typecheck",
     "test": "vitest run",
     "test:postgres": "vitest run src/manifest/audit/sinks/postgres.live.test.ts src/manifest/outbox/stores/postgres.live.test.ts --fileParallelism=false",
     "test:watch": "vitest",
