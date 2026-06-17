@@ -4,6 +4,20 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.7] - 2026-06-16
+
+### Fixed
+
+- **Convex projection — generated mutations now pass `convex dev`'s typecheck
+  end to end.** Two residual mismatches against Convex's generated dataModel
+  remained after 2.10.6: a guard comparing an enum-typed argument to a
+  non-member string literal (e.g. `args.status === ""`), and reaction `patch`
+  calls whose target id rendered as a plain string rather than a Convex `Id`.
+  The create-mutation handler now types its `args` loosely (consistent with the
+  already structurally-typed `doc`), and reaction `patch` targets are cast at
+  the db boundary. Verified against a 212-entity / 1054-command program: the
+  generated backend typechecks with zero errors.
+
 ## [2.10.6] - 2026-06-16
 
 ### Fixed

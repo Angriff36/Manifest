@@ -298,7 +298,7 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
         diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_TARGET', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} target unresolved; skipped.` });
       } else {
         lines.push(`    const ${varName} = ${resolve.code};`);
-        lines.push(`    if (${varName}) await ctx.db.patch(${varName}, { ${paramEntries.join(', ')} } as any);`);
+        lines.push(`    if (${varName}) await ctx.db.patch(${varName} as any, { ${paramEntries.join(', ')} } as any);`);
       }
     }
   });
@@ -410,7 +410,7 @@ function generateMutation(ir: IR, options: Normalized, cmd: IRCommand): { code: 
     const body =
       `export const ${name} = mutation({\n` +
       `  args: {\n${argLines.join(',\n')}\n  },\n` +
-      `  handler: async (ctx, args) => {\n` +
+      `  handler: async (ctx, args: any) => {\n` +
       (authBindings(bodyText).join('\n') ? authBindings(bodyText).join('\n') + '\n' : '') +
       `    const doc: Record<string, any> = {\n${docLines.join(',\n')}\n    };\n` +
       (checks.lines.length ? checks.lines.join('\n') + '\n' : '') +
