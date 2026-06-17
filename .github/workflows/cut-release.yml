@@ -57,9 +57,27 @@ jobs:
       - name: Resolve and bump version
         id: ver
         run: |
+          # SOURCE OF TRUTH for the current released version is the latest git
+          # TAG, NOT package.json. A clone that forgot to pull a prior
+          # "[release]" commit leaves package.json stale, which would otherwise
+          # cause a wrong bump or a version collision (the recurring drift bug).
+          # For a patch/minor/major bump we first align package.json to the
+          # latest vX.Y.Z tag, so npm computes the next version from the
+          # authoritative base regardless of what package.json currently says.
+          #
           # --ignore-scripts: the package.json `version` lifecycle echoes npm
           # lifecycle banners into stdout, which breaks GITHUB_OUTPUT parsing.
-          NEW_VERSION=$(npm version "${{ inputs.version }}" --no-git-tag-version --ignore-scripts)
+          INPUT="${{ inputs.version }}"
+          if printf '%s' "$INPUT" | grep -qE '^(patch|minor|major)$'; then
+            LATEST=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+            if [ -n "$LATEST" ]; then
+              echo "Latest released tag: $LATEST (aligning package.json before bump)"
+              npm version "${LATEST#v}" --no-git-tag-version --allow-same-version --ignore-scripts >/dev/null
+            fi
+            NEW_VERSION=$(npm version "$INPUT" --no-git-tag-version --ignore-scripts)
+          else
+            NEW_VERSION=$(npm version "$INPUT" --no-git-tag-version --ignore-scripts --allow-same-version)
+          fi
           node scripts/sync-version.mjs
           VER="${NEW_VERSION#v}"
           echo "version=$VER" >> "$GITHUB_OUTPUT"

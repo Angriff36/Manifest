@@ -4,6 +4,45 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.10.6] - 2026-06-16
+
+### Fixed
+
+- **Convex projection — numeric types now match runtime semantics.** `int`,
+  `bigint`, `decimal`, and `money` mapped to `v.int64()` / `v.string()`, but the
+  Manifest reference runtime treats every numeric type as an ordinary JS number
+  (precision/scale and integer width are projection metadata, not runtime-
+  enforced). The divergence broke generated guard/mutation arithmetic at
+  runtime: `bigint + number` throws, and string-transported money concatenates
+  on `+` and compares lexically. All numeric types now map to `v.number()`;
+  per-property `typeMappings` can opt back into `v.int64()` / `v.string()` where
+  lossless transport is genuinely required.
+
+- **Convex projection — `= null` clears no longer rejected; null comparisons
+  match absent fields.** A DSL `= null` clear (restore/reopen) rendered as
+  `{ field: null }`, which Convex rejects for a `v.optional(T)` column. A
+  literal-null assignment to a non-nullable field now lowers to `undefined`
+  (Convex unsets it); nullable fields keep a real null. Guard `== null` /
+  `!= null` now use loose equality so they match both null and an unset
+  (`undefined`) field, and narrow `T | undefined` in the generated TypeScript.
+
+- **Convex projection — consistent db-boundary casts.** The create insert
+  already cast its structurally-built doc; the non-create patch, fetched doc,
+  and reaction insert/patch were left strict, producing the bulk of the
+  projection's type errors against Convex's generated dataModel (enum-union
+  assignment, possibly-undefined access, status no-overlap). All db boundaries
+  are now consistent (fetched doc typed `Record<string, any>`, payloads cast
+  `as any`). Runtime behavior is unchanged; this only stops `convex dev`'s tsc
+  gate from failing on generated standalone mutation code.
+
+### Changed
+
+- **`cut-release` workflow derives the release version from the latest git
+  tag.** The bump base is now the latest `vX.Y.Z` tag rather than
+  `package.json`, so a stale local `package.json` (a clone that did not pull a
+  prior `[release]` commit) can no longer cause a wrong bump or a version
+  collision.
+
 ## [2.10.5] - 2026-06-15
 
 ### Fixed
