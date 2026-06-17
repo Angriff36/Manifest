@@ -1739,6 +1739,11 @@ export class Parser {
     if (this.check('STRING')) return { type: 'Literal', value: this.advance().value, dataType: 'string' };
     if (this.check('KEYWORD', 'true') || this.check('KEYWORD', 'false')) return { type: 'Literal', value: this.advance().value === 'true', dataType: 'boolean' };
     if (this.check('KEYWORD', 'null')) { this.advance(); return { type: 'Literal', value: null, dataType: 'null' }; }
+    // Aggregate count expression — `count(Entity where field == value, ...)`.
+    // `count` is a contextual keyword (NOT reserved): recognized only when it
+    // starts the unambiguous aggregate shape `count ( <Entity> where`. Any other
+    // `count(...)` parses as an ordinary function call below / in parsePostfix.
+    if (this.isAggregateCountLookahead()) return this.parseAggregateCount();
     if (this.check('PUNCTUATION', '[')) { this.advance(); const els: ExpressionNode[] = []; while (!this.check('PUNCTUATION', ']') && !this.isEnd()) { els.push(this.parseExpr()); if (this.check('PUNCTUATION', ',')) this.advance(); } this.consume('PUNCTUATION', ']'); return { type: 'Array', elements: els }; }
     // Object literal: allow both identifiers AND keywords as unquoted keys (e.g., { entity: 1, command: 2 })
     if (this.check('PUNCTUATION', '{')) { this.advance(); this.skipNL(); const props: { key: string; value: ExpressionNode }[] = []; while (!this.check('PUNCTUATION', '}') && !this.isEnd()) { this.skipNL(); if (this.check('PUNCTUATION', '}')) break; const key = this.check('STRING') ? this.advance().value : this.consumeIdentifierOrKeyword().value; this.consume('OPERATOR', ':'); props.push({ key, value: this.parseExpr() }); if (this.check('PUNCTUATION', ',')) this.advance(); this.skipNL(); } this.consume('PUNCTUATION', '}'); return { type: 'Object', properties: props }; }
@@ -1766,6 +1771,57 @@ export class Parser {
     }
     if (this.check('IDENTIFIER') || this.check('KEYWORD', 'user') || this.check('KEYWORD', 'self') || this.check('KEYWORD', 'context')) return { type: 'Identifier', name: this.advance().value };
     throw new Error(`Unexpected: ${this.current()?.value || 'EOF'}`);
+  }
+
+  /**
+   * True when the upcoming tokens form the aggregate-count shape
+   * `count ( <Entity> where ...` — the only form in which the otherwise-free
+   * identifier `count` is treated as the aggregate operator.
+   */
+  private isAggregateCountLookahead(): boolean {
+    if (!this.check('IDENTIFIER', 'count')) return false;
+    const t1 = this.tokens[this.pos + 1];
+    const t2 = this.tokens[this.pos + 2];
+    const t3 = this.tokens[this.pos + 3];
+    return !!t1 && t1.type === 'PUNCTUATION' && t1.value === '('
+      && !!t2 && t2.type === 'IDENTIFIER'
+      && !!t3 && t3.type === 'KEYWORD' && t3.value === 'where';
+  }
+
+  /**
+   * Parses `count(Entity where field == value, field2 == value2, ...)`.
+   * Every predicate is a pure equality (`==`); predicates are ANDed. At least
+   * one predicate (the foreign-key match) is required — a zero-predicate count
+   * would be an unbounded table scan, the analytics/reporting smell this
+   * primitive deliberately avoids.
+   */
+  private parseAggregateCount(): ExpressionNode {
+    const position = this.current()?.position;
+    this.advance(); // consume 'count'
+    this.consume('PUNCTUATION', '(');
+    const entity = this.consumeIdentifier().value;
+    this.consume('KEYWORD', 'where');
+    const predicates: { field: string; value: ExpressionNode }[] = [];
+    this.skipNL();
+    while (!this.check('PUNCTUATION', ')') && !this.isEnd()) {
+      this.skipNL();
+      if (this.check('PUNCTUATION', ')')) break;
+      const field = this.consumeIdentifier().value;
+      this.consume('OPERATOR', '==');
+      const value = this.parseExpr();
+      predicates.push({ field, value });
+      if (this.check('PUNCTUATION', ',')) this.advance();
+      this.skipNL();
+    }
+    this.consume('PUNCTUATION', ')');
+    if (predicates.length === 0) {
+      this.errors.push({
+        message: `count(${entity} where ...) requires at least one equality predicate (the foreign-key match)`,
+        position,
+        severity: 'error',
+      });
+    }
+    return { type: 'AggregateCount', entity, predicates, position };
   }
 
   private check(type: string, value?: string) { const t = this.current(); return t && t.type === type && (value === undefined || t.value === value); }

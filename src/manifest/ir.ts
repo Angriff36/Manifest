@@ -505,7 +505,8 @@ export type IRExpression =
   | { kind: 'conditional'; condition: IRExpression; consequent: IRExpression; alternate: IRExpression }
   | { kind: 'array'; elements: IRExpression[] }
   | { kind: 'object'; properties: { key: string; value: IRExpression }[] }
-  | { kind: 'lambda'; params: string[]; body: IRExpression };
+  | { kind: 'lambda'; params: string[]; body: IRExpression }
+  | { kind: 'aggregate'; op: 'count'; entity: string; predicates: { field: string; value: IRExpression }[] };
 
 export interface IRDiagnostic {
   severity: 'error' | 'warning' | 'info';

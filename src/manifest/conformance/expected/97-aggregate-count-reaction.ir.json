@@ -1,0 +1,239 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "d3620455d807f1751f52e926d71e5d213e05db4889184077498081fd7ce2722a",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Schedule",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "shiftCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "syncShiftCount"
+      ],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "ScheduleShift",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": [
+            "required"
+          ]
+        },
+        {
+          "name": "scheduleId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "assign"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Schedule",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "ScheduleShift",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "ScheduleShiftCreated",
+      "channel": "scheduleShift.created",
+      "payload": []
+    }
+  ],
+  "commands": [
+    {
+      "name": "syncShiftCount",
+      "entity": "Schedule",
+      "parameters": [
+        {
+          "name": "shiftCount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "shiftCount",
+          "expression": {
+            "kind": "identifier",
+            "name": "shiftCount"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "assign",
+      "entity": "ScheduleShift",
+      "parameters": [
+        {
+          "name": "scheduleId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "scheduleId",
+          "expression": {
+            "kind": "identifier",
+            "name": "scheduleId"
+          }
+        }
+      ],
+      "emits": [
+        "ScheduleShiftCreated"
+      ],
+      "emitPayloads": [
+        {
+          "eventName": "ScheduleShiftCreated",
+          "fields": [
+            {
+              "name": "scheduleId",
+              "expression": {
+                "kind": "member",
+                "object": {
+                  "kind": "identifier",
+                  "name": "self"
+                },
+                "property": "scheduleId"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "policies": [],
+  "reactions": [
+    {
+      "event": "ScheduleShiftCreated",
+      "targetEntity": "Schedule",
+      "targetCommand": "syncShiftCount",
+      "resolve": {
+        "kind": "member",
+        "object": {
+          "kind": "identifier",
+          "name": "self"
+        },
+        "property": "scheduleId"
+      },
+      "params": [
+        {
+          "name": "shiftCount",
+          "expression": {
+            "kind": "aggregate",
+            "op": "count",
+            "entity": "ScheduleShift",
+            "predicates": [
+              {
+                "field": "scheduleId",
+                "value": {
+                  "kind": "member",
+                  "object": {
+                    "kind": "identifier",
+                    "name": "self"
+                  },
+                  "property": "scheduleId"
+                }
+              },
+              {
+                "field": "status",
+                "value": {
+                  "kind": "literal",
+                  "value": {
+                    "kind": "string",
+                    "value": "active"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

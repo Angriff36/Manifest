@@ -96,6 +96,68 @@ This dispatches `EventStaff.unassign` on **every** `EventStaff` row where `row.e
 
 Fan-out is the declarative replacement for the common "query children by FK, loop, dispatch" middleware pattern: cancel every line item, release every reservation, deactivate every child account, close every tip pool in a period, etc.
 
+## Aggregate count expressions
+
+A reaction often needs to **recompute a stored count on a parent** after a child event — "how many children reference this parent?" — the pattern behind hand-written "count children where the foreign key equals the parent, then patch the parent" after-emit middleware. The `count(...)` aggregate makes that declarative. It is an expression, so it can appear anywhere a reaction param value does:
+
+```manifest
+entity Schedule {
+  property required id: string
+  property shiftCount: number = 0
+
+  command syncShiftCount(shiftCount: number) {
+    mutate shiftCount = shiftCount
+  }
+}
+
+entity ScheduleShift {
+  property required id: string
+  property scheduleId: string = ""
+  command assign(scheduleId: string) {
+    mutate scheduleId = scheduleId
+    emit ScheduleShiftCreated { scheduleId: self.scheduleId }
+  }
+}
+
+event ScheduleShiftCreated: "scheduleShift.created" {}
+
+on ScheduleShiftCreated run Schedule.syncShiftCount
+  resolve self.scheduleId
+  params {
+    shiftCount: count(ScheduleShift where scheduleId == self.scheduleId)
+  }
+```
+
+When a `ScheduleShift` is assigned, the reaction resolves its parent `Schedule` (`self.scheduleId` is the event payload value), counts `ScheduleShift` rows whose `scheduleId` equals that value, and stores the result via `syncShiftCount`.
+
+### Syntax
+
+```
+count(<Entity> where <field> == <value>, <field2> == <value2>, ...)
+```
+
+- `<Entity>` is the counted collection. Predicate values (`<value>`) are expressions evaluated in the reaction's context — the event payload, just like other params (`self.*` / `payload.*`).
+- Predicates are **pure equality**, ANDed together. A second predicate adds a filter — e.g. counting only in-progress tasks:
+
+```manifest
+params {
+  currentTaskCount: count(PrepTask where stationId == self.stationId, status == "in_progress")
+}
+```
+
+- `count` is a **contextual** operator, not a reserved word: it is recognized only in the `count(<Entity> where ...)` shape, so a property still be named `count`.
+- At least one predicate (the foreign-key match) is required. There is **no** group-by, join, multi-hop traversal, or arbitrary SQL — `count` only. Scope is deliberately narrow.
+
+### Projection notes
+
+The runtime evaluates `count` by scanning the entity's collection and counting rows matching every predicate (deterministic — count is order-independent). The Convex projection reads via the counted entity's `by_<field>` index on the foreign-key predicate when one exists (the `belongsTo`/`ref` FK or an `indexed` field), applying any remaining predicates — plus the entity's tenant and soft-delete filters — as post-read `.filter`s, then `.length`. With no indexed predicate it falls back to a table scan and emits an `info` diagnostic.
+
+### What this does NOT replace
+
+`count(...)` covers the **per-parent** recompute (one parent's count, updated by the child event that points at it). It does not cover:
+
+- **Tenant-wide reconcile** (recompute *every* parent on each event) or **dual-target updates** (a reassignment that moves a child from parent A to parent B needs both updated). These are multi-step / conditional fan-out — model them as sagas, actions, or keep the hand middleware. They are intentional scope boundaries, not gaps in `count`.
+
 ## Reaction scopes
 
 Reactions can be declared at three levels:

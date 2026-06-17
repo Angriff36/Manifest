@@ -155,6 +155,19 @@ function translateNode(
       });
       return 'NULL';
     }
+
+    case 'aggregate': {
+      // A cross-entity count is a correlated subquery, not a plain SELECT
+      // expression; the materialized-view projection does not resolve child
+      // columns, so this is emitted as a loud (non-silent) NULL.
+      diagnostics.push({
+        severity: 'error',
+        code: 'UNSUPPORTED_AGGREGATE',
+        message: `Aggregate count over '${expr.entity}' is not supported in materialized views for entity '${entityName}' (cross-entity subquery).`,
+        entity: entityName,
+      });
+      return 'NULL';
+    }
   }
 }
 

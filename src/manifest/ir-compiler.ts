@@ -1413,6 +1413,18 @@ export class IRCompiler {
           body: this.transformExpression(lam.body),
         };
       }
+      case 'AggregateCount': {
+        const ac = expr as { entity: string; predicates: { field: string; value: ExpressionNode }[] };
+        return {
+          kind: 'aggregate',
+          op: 'count' as const,
+          entity: ac.entity,
+          predicates: ac.predicates.map(p => ({
+            field: p.field,
+            value: this.transformExpression(p.value),
+          })),
+        };
+      }
       default:
         return { kind: 'literal', value: { kind: 'null' } };
     }

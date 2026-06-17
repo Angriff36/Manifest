@@ -420,7 +420,8 @@ export type ExpressionNode =
   | ConditionalNode
   | ArrayNode
   | ObjectNode
-  | LambdaNode;
+  | LambdaNode
+  | AggregateCountNode;
 
 export interface LiteralNode extends ASTNode {
   type: 'Literal';
@@ -528,6 +529,23 @@ export interface LambdaNode extends ASTNode {
   type: 'Lambda';
   parameters: string[];
   body: ExpressionNode;
+}
+
+/**
+ * Aggregate count expression: `count(Entity where field == value, ...)`.
+ *
+ * Counts the rows of `entity` matching every (ANDed) equality predicate. Each
+ * predicate is a pure equality — `<field>` is a property on the counted entity,
+ * `<value>` is an arbitrary expression evaluated in the surrounding context
+ * (reaction params: the event payload, same as `self.*`). Count only; no
+ * group-by, joins, or arbitrary SQL. Deterministic: count is order-independent.
+ */
+export interface AggregateCountNode extends ASTNode {
+  type: 'AggregateCount';
+  /** Entity whose rows are counted. */
+  entity: string;
+  /** ANDed equality predicates (field on the counted entity == value). */
+  predicates: { field: string; value: ExpressionNode }[];
 }
 
 export interface UseNode extends ASTNode {

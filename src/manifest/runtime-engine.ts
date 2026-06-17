@@ -3885,6 +3885,30 @@ export class RuntimeEngine {
         };
       }
 
+      case 'aggregate': {
+        // count(Entity where field == value, ...) — count rows of `entity`
+        // matching every ANDed equality predicate. Predicate values resolve in
+        // the surrounding context (reaction params: the event payload). Count
+        // is order-independent, so this is deterministic for a given store
+        // snapshot regardless of row ordering.
+        if (expr.op !== 'count') return undefined;
+        // Resolve predicate values once (they do not depend on the counted row).
+        const resolved = await Promise.all(
+          expr.predicates.map(async p => ({ field: p.field, value: await this.evaluateExpression(p.value, context) })),
+        );
+        const rows = await this.getAllInstancesRaw(expr.entity);
+        let count = 0;
+        for (const row of rows) {
+          const r = row as Record<string, unknown>;
+          let match = true;
+          for (const pred of resolved) {
+            if (r[pred.field] !== pred.value) { match = false; break; }
+          }
+          if (match) count++;
+        }
+        return count;
+      }
+
       default:
         return undefined;
     }

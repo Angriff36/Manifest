@@ -12,7 +12,7 @@
  * silent pass.
  */
 
-import type { IR, IRCommand, IRConstraint, IREntity, IRExpression, IRPolicy, IRReactionRule, IRValue } from '../../ir';
+import type { IR, IRCommand, IRConstraint, IREntity, IRExpression, IRPolicy, IRReactionParam, IRReactionRule, IRValue } from '../../ir';
 import type { ProjectionDiagnostic } from '../interface';
 import { normalizeOptions } from './options.js';
 import {
@@ -413,9 +413,87 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
   if (matched.length === 0) return { lines, diagnostics };
   lines.push('    // Reactions');
   const tenantProp = ir.tenant?.property;
+  // Count vars + the shared tenant binding are handler-scoped (one handler per
+  // command, so all matched reactions share a scope); dedupe across reactions.
+  let countCounter = 0;
+  let tenantEmitted = false;
+
+  /**
+   * Render ONE reaction param. An aggregate-count param lowers to a read block
+   * (preLines) that counts rows of the param's entity matching its ANDed equality
+   * predicates, then binds the param to that count variable. The foreign-key (or
+   * any indexed) predicate drives a `withIndex` read; remaining predicates,
+   * soft-delete, and tenant scope are applied as JS `.filter`s — mirroring the
+   * hardened read surface. Any other param renders as a single expression.
+   * Returns `entry: null` when the value cannot be resolved (caller omits it).
+   */
+  const buildParam = (p: IRReactionParam, scope: RenderScope, label: string): { preLines: string[]; entry: string | null } => {
+    const e = p.expression;
+    if (e.kind === 'aggregate' && e.op === 'count') {
+      const childEntity = ir.entities.find(en => en.name === e.entity);
+      if (!childEntity) {
+        diagnostics.push({ severity: 'error', code: 'CONVEX_AGGREGATE_UNKNOWN_ENTITY', message: `${label} param '${p.name}' counts unknown entity '${e.entity}'; omitted.` });
+        return { preLines: [], entry: null };
+      }
+      const childTable = resolveConvexTableName(e.entity, options);
+      const rf = resolveReadFilter(ir, childEntity, options);
+      const refFields = collectReferenceFields(childEntity, ir, options);
+      const isIndexedField = (field: string): boolean => {
+        const prop = childEntity.properties.find(pp => pp.name === field);
+        return !!prop && (prop.modifiers.includes('indexed') || refFields.has(field));
+      };
+      const renderVal = (val: IRExpression): RenderResult => {
+        const r = renderExpression(val, scope);
+        if (r.unresolved.length) {
+          diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_AGGREGATE_PREDICATE', message: `${label} param '${p.name}' count predicate value unresolved (${r.unresolved.join('; ')}).` });
+        }
+        return r;
+      };
+
+      const indexedPred = e.predicates.find(pr => isIndexedField(pr.field));
+      const remaining = indexedPred ? e.predicates.filter(pr => pr !== indexedPred) : e.predicates;
+      const rowsVar = `__count${countCounter}_rows`;
+      const countVar = `__count${countCounter}`;
+      countCounter++;
+      const preLines: string[] = [];
+
+      let queryHead: string;
+      if (indexedPred) {
+        const v = renderVal(indexedPred.value);
+        queryHead = `ctx.db.query("${childTable}").withIndex("by_${indexedPred.field}", (q) => q.eq("${indexedPred.field}", ${v.code}))`;
+      } else {
+        queryHead = `ctx.db.query("${childTable}")`;
+        diagnostics.push({ severity: 'info', code: 'CONVEX_AGGREGATE_UNINDEXED', message: `${label} param '${p.name}' counts '${e.entity}' with no indexed/foreign-key predicate; rendered a table scan (mark an equality field indexed for speed).` });
+      }
+      preLines.push(`    const ${rowsVar} = await ${queryHead}.collect();`);
+
+      const filters: string[] = [];
+      for (const pr of remaining) {
+        const v = renderVal(pr.value);
+        filters.push(`(d as any).${pr.field} === ${v.code}`);
+      }
+      if (rf.hasSoftDelete) filters.push(`(d as any).${rf.deletedProp} == null`);
+      if (rf.hasTenant && rf.tenantProp) {
+        if (!tenantEmitted) { preLines.push(`    const __tenant = (ctx as any).auth?.${rf.tenantProp} ?? null;`); tenantEmitted = true; }
+        filters.push(`(d as any).${rf.tenantProp} === __tenant`);
+      }
+      const chain = filters.length ? filters.map(f => `.filter((d) => ${f})`).join('') : '';
+      preLines.push(`    const ${countVar} = ${rowsVar}${chain}.length;`);
+      return { preLines, entry: `${p.name}: ${countVar}` };
+    }
+
+    const { code, unresolved } = renderExpression(e, scope);
+    if (unresolved.length) {
+      diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_PARAM', message: `${label} param '${p.name}' unresolved (${unresolved.join('; ')}); omitted.` });
+      return { preLines: [], entry: null };
+    }
+    return { preLines: [], entry: `${p.name}: ${code}` };
+  };
+
   matched.forEach((reaction, idx) => {
     const targetTable = resolveConvexTableName(reaction.targetEntity, options);
     const targetEntity = ir.entities.find(e => e.name === reaction.targetEntity);
+    const label = `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand}`;
 
     // Fan-out reaction: dispatch the command on every target row where
     // row.<matchField> == matchSource. matchSource + params resolve against the
@@ -428,29 +506,28 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
       const fanScope: RenderScope = { selfVar: 'payload', globals: ['user', 'context', 'args'] };
       const src = renderExpression(reaction.fanOut.matchSource, fanScope);
       if (src.unresolved.length) {
-        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_FANOUT', message: `fan-out reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} match source unresolved (${src.unresolved.join('; ')}); skipped.` });
+        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_FANOUT', message: `fan-out ${label} match source unresolved (${src.unresolved.join('; ')}); skipped.` });
         return;
       }
       const fanParams: string[] = [];
+      const fanPreLines: string[] = [];
       for (const p of reaction.params ?? []) {
-        const r = renderExpression(p.expression, fanScope);
-        if (r.unresolved.length) {
-          diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_PARAM', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} param '${p.name}' unresolved (${r.unresolved.join('; ')}); omitted.` });
-          continue;
-        }
-        fanParams.push(`${p.name}: ${r.code}`);
+        const r = buildParam(p, fanScope, label);
+        fanPreLines.push(...r.preLines);
+        if (r.entry) fanParams.push(r.entry);
       }
       const field = reaction.fanOut.matchField;
       const isFk = !!targetEntity && collectReferenceFields(targetEntity, ir, options).has(field);
       const targetProp = targetEntity?.properties.find(p => p.name === field);
       const indexed = !!targetProp && (targetProp.modifiers.includes('indexed') || isFk);
       if (!indexed) {
-        diagnostics.push({ severity: 'info', code: 'CONVEX_FANOUT_UNINDEXED', message: `fan-out ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} matches on non-indexed '${field}'; rendered an unindexed filter (mark '${reaction.targetEntity}.${field}' indexed for speed).` });
+        diagnostics.push({ severity: 'info', code: 'CONVEX_FANOUT_UNINDEXED', message: `fan-out ${label} matches on non-indexed '${field}'; rendered an unindexed filter (mark '${reaction.targetEntity}.${field}' indexed for speed).` });
       }
       const queryExpr = indexed
         ? `ctx.db.query("${targetTable}").withIndex("by_${field}", (q) => q.eq("${field}", ${src.code}))`
         : `ctx.db.query("${targetTable}").filter((q) => q.eq(q.field("${field}"), ${src.code}))`;
       const rowsVar = `fanRows${idx}`;
+      for (const pl of fanPreLines) lines.push(pl);
       lines.push(`    const ${rowsVar} = await ${queryExpr}.collect();`);
       lines.push(`    for (const __row of ${rowsVar}) {`);
       lines.push(`      await ctx.runMutation(api.mutations.${reaction.targetEntity}_${reaction.targetCommand}, { docId: (__row as any)._id${fanParams.length ? ', ' + fanParams.join(', ') : ''} } as any);`);
@@ -460,15 +537,12 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
 
     const scope: RenderScope = { selfVar: 'doc', globals: ['payload', 'user', 'context', 'args'] };
     const paramEntries: string[] = [];
+    const paramPreLines: string[] = [];
     const paramNamesSeen = new Set<string>();
     for (const p of reaction.params ?? []) {
-      const { code, unresolved } = renderExpression(p.expression, scope);
-      if (unresolved.length) {
-        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_PARAM', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} param '${p.name}' unresolved (${unresolved.join('; ')}); omitted.` });
-        continue;
-      }
-      paramEntries.push(`${p.name}: ${code}`);
-      paramNamesSeen.add(p.name);
+      const r = buildParam(p, scope, label);
+      paramPreLines.push(...r.preLines);
+      if (r.entry) { paramEntries.push(r.entry); paramNamesSeen.add(p.name); }
     }
     // Tenant propagation: a reaction fires within the source entity's tenant, so
     // when it creates a tenant-scoped target, thread the source tenantId
@@ -477,6 +551,7 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
     if (reaction.targetCommand === 'create' && targetIsTenantScoped && !paramNamesSeen.has(tenantProp!)) {
       paramEntries.unshift(`${tenantProp}: payload.${tenantProp}`);
     }
+    for (const pl of paramPreLines) lines.push(pl);
     if (reaction.targetCommand === 'create') {
       lines.push(`    await ctx.db.insert("${targetTable}", { ${paramEntries.join(', ')} } as any);`);
     } else {
@@ -485,7 +560,7 @@ function renderReactions(ir: IR, options: Normalized, emits: string[]): { lines:
       if (reaction.resolve?.kind === 'literal' && reaction.resolve.value.kind === 'null') {
         lines.push(`    // reaction ${reaction.event} → ${reaction.targetEntity}.${reaction.targetCommand} (resolve: null — no target id)`);
       } else if (resolve.unresolved.length) {
-        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_TARGET', message: `reaction ${reaction.event}→${reaction.targetEntity}.${reaction.targetCommand} target unresolved; skipped.` });
+        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_REACTION_TARGET', message: `${label} target unresolved; skipped.` });
       } else {
         lines.push(`    const ${varName} = ${resolve.code};`);
         lines.push(`    if (${varName}) await ctx.db.patch(${varName} as any, { ${paramEntries.join(', ')} } as any);`);

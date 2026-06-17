@@ -1425,6 +1425,47 @@
               "$ref": "#/definitions/IRExpression"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "entity",
+            "predicates"
+          ],
+          "properties": {
+            "kind": {
+              "const": "aggregate"
+            },
+            "op": {
+              "const": "count"
+            },
+            "entity": {
+              "type": "string",
+              "description": "Entity whose rows are counted."
+            },
+            "predicates": {
+              "type": "array",
+              "description": "ANDed equality predicates: counted row.<field> == <value>. At least one (the foreign-key match) is expected.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["field", "value"],
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "description": "Property on the counted entity."
+                  },
+                  "value": {
+                    "$ref": "#/definitions/IRExpression",
+                    "description": "Expression evaluated in the surrounding context (reaction params: the event payload)."
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },

@@ -4,6 +4,36 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.13.0] - 2026-06-17
+
+### Added
+
+- **Reactions — aggregate count expressions (`count(Entity where fk == value, ...)`).**
+  A reaction can now recompute and store a child count on a parent after a child
+  event, the declarative replacement for hand-written "count children where the
+  foreign key equals the parent, then patch the parent" after-emit middleware.
+  `count(<Entity> where <field> == <value>, ...)` counts rows of `<Entity>`
+  matching every ANDed **equality** predicate; predicate values resolve against
+  the reaction's event payload like any param. The runtime scans the collection
+  (deterministic); the Convex projection reads via the foreign-key predicate's
+  `by_<field>` index, applies remaining predicates plus tenant/soft-delete
+  filters, and binds `.length` to the param. Scope is deliberately narrow — count
+  only, no group-by/joins/multi-hop. Retires capsule-pro's per-parent
+  `schedule-shift-count` and `prep-task-station-count` middleware.
+
+- **Reactions — fan-out (`on E fanOut T where f = self.x run cmd`).** A 1:N
+  cascade: dispatch a command on *every* target row matching a foreign-key
+  predicate, replacing the "query children by FK, loop, dispatch" middleware
+  pattern (cancel every line item, release every reservation, …). The Convex
+  projection reads via `withIndex` on the FK and dispatches each match through
+  the generated target mutation.
+
+- **Reactions — single follow-on (`emit Event { field: expr }` payloads).** An
+  emitted event can carry explicitly-declared payload fields computed at emit
+  time, so a follow-on reaction reading `payload.<field>` resolves real values
+  instead of `undefined`. Closes the gap consumers papered over with hand-written
+  after-emit middleware.
+
 ## [2.12.0] - 2026-06-17
 
 _Auto-generated stub — expand with real release notes._

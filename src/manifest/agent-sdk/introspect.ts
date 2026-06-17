@@ -55,6 +55,8 @@ export function formatExpression(expr: IRExpression): string {
       return `{${expr.properties.map((p) => `${p.key}: ${formatExpression(p.value)}`).join(', ')}}`;
     case 'lambda':
       return `(${expr.params.join(',')}) => ${formatExpression(expr.body)}`;
+    case 'aggregate':
+      return `count(${expr.entity} where ${expr.predicates.map((p) => `${p.field} == ${formatExpression(p.value)}`).join(', ')})`;
   }
 }
 

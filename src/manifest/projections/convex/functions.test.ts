@@ -507,3 +507,95 @@ describe('convex.mutations — fan-out reactions (`on E fanOut T where f = self.
     expect(res.diagnostics.some(d => d.code === 'CONVEX_FANOUT_UNINDEXED')).toBe(true);
   });
 });
+
+describe('convex.mutations — aggregate count reactions (`count(E where fk == v, ...)`)', () => {
+  it('renders an indexed count + JS filters for remaining predicates, bound to the param (prep-task-station-count shape)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Station', [prop('currentTaskCount', 'number')]),
+      entity('PrepTask', [prop('stationId', 'string', ['required']), prop('status', 'string', ['required'])],
+        [{ name: 'station', kind: 'belongsTo', target: 'Station', foreignKey: { fields: ['stationId'] } }]),
+    ];
+    ir.stores = [durable('Station'), durable('PrepTask')];
+    ir.commands = [
+      { name: 'claim', entity: 'PrepTask', parameters: [], guards: [], constraints: [], actions: [{ kind: 'mutate', target: 'status', expression: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } } }], emits: ['PrepTaskClaimed'] },
+    ];
+    ir.reactions = [{
+      event: 'PrepTaskClaimed', targetEntity: 'Station', targetCommand: 'syncTaskCount',
+      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'stationId' },
+      params: [{
+        name: 'currentTaskCount',
+        expression: {
+          kind: 'aggregate', op: 'count', entity: 'PrepTask',
+          predicates: [
+            { field: 'stationId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'stationId' } },
+            { field: 'status', value: { kind: 'literal', value: { kind: 'string', value: 'in_progress' } } },
+          ],
+        },
+      }],
+    }] as IRReactionRule[];
+    const code = mutations(ir).artifacts[0].code;
+    // FK predicate (stationId) drives the index; self.stationId → doc.stationId (single-target scope)
+    expect(code).toContain('withIndex("by_stationId", (q) => q.eq("stationId", doc.stationId))');
+    // remaining equality predicate (status) applied as a JS filter, then counted
+    expect(code).toContain('.filter((d) => (d as any).status === "in_progress")');
+    expect(code).toContain('.length;');
+    // the count variable is bound to the reaction param and patched onto the parent
+    expect(code).toContain('currentTaskCount: __count0');
+    expect(code).toContain('ctx.db.patch(reactionTarget0 as any, { currentTaskCount: __count0 } as any)');
+  });
+
+  it('renders a single-predicate indexed count (schedule-shift-count shape)', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Schedule', [prop('shiftCount', 'number')]),
+      entity('ScheduleShift', [prop('scheduleId', 'string', ['required'])],
+        [{ name: 'schedule', kind: 'belongsTo', target: 'Schedule', foreignKey: { fields: ['scheduleId'] } }]),
+    ];
+    ir.stores = [durable('Schedule'), durable('ScheduleShift')];
+    ir.commands = [
+      { name: 'assign', entity: 'ScheduleShift', parameters: [], guards: [], constraints: [], actions: [], emits: ['ScheduleShiftCreated'] },
+    ];
+    ir.reactions = [{
+      event: 'ScheduleShiftCreated', targetEntity: 'Schedule', targetCommand: 'syncShiftCount',
+      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId' },
+      params: [{
+        name: 'shiftCount',
+        expression: { kind: 'aggregate', op: 'count', entity: 'ScheduleShift',
+          predicates: [{ field: 'scheduleId', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'scheduleId' } }] },
+      }],
+    }] as IRReactionRule[];
+    const code = mutations(ir).artifacts[0].code;
+    expect(code).toContain('withIndex("by_scheduleId", (q) => q.eq("scheduleId", doc.scheduleId))');
+    // single predicate → no extra filter chain, just .length
+    expect(code).toContain('__count0_rows.length;');
+    expect(code).toContain('shiftCount: __count0');
+  });
+
+  it('renders a table scan + diagnostic when no predicate field is indexed', () => {
+    const ir = emptyIR();
+    ir.entities = [
+      entity('Owner', [prop('tally', 'number')]),
+      entity('Thing', [prop('bucket', 'string', ['required'])]), // 'bucket' is not indexed / not an FK
+    ];
+    ir.stores = [durable('Owner'), durable('Thing')];
+    ir.commands = [
+      { name: 'ping', entity: 'Thing', parameters: [], guards: [], constraints: [], actions: [], emits: ['ThingPinged'] },
+    ];
+    ir.reactions = [{
+      event: 'ThingPinged', targetEntity: 'Owner', targetCommand: 'syncTally',
+      resolve: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'bucket' },
+      params: [{
+        name: 'tally',
+        expression: { kind: 'aggregate', op: 'count', entity: 'Thing',
+          predicates: [{ field: 'bucket', value: { kind: 'member', object: { kind: 'identifier', name: 'self' }, property: 'bucket' } }] },
+      }],
+    }] as IRReactionRule[];
+    const res = mutations(ir);
+    const code = res.artifacts[0].code;
+    // no index → plain query (no withIndex), predicate applied as a JS filter
+    expect(code).not.toContain('withIndex(');
+    expect(code).toContain('.filter((d) => (d as any).bucket === doc.bucket)');
+    expect(res.diagnostics.some(d => d.code === 'CONVEX_AGGREGATE_UNINDEXED')).toBe(true);
+  });
+});

@@ -787,6 +787,12 @@ export class CodeGenerator {
         return `{ ${e.properties.map((p) => `${p.key}: ${this.genExpr(p.value)}`).join(', ')} }`;
       case 'Lambda':
         return `(${e.parameters.join(', ')}) => ${this.genExpr(e.body)}`;
+      case 'AggregateCount': {
+        const pred = e.predicates.length
+          ? e.predicates.map(p => `(row as any).${p.field} === ${this.genExpr(p.value)}`).join(' && ')
+          : 'true';
+        return `(await ${e.entity}Store.query((row) => ${pred})).length`;
+      }
       default:
         return '/* ? */';
     }

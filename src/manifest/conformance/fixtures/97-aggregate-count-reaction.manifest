@@ -1,0 +1,37 @@
+// Aggregate count reaction: recompute a parent's child count after a child event.
+// The declarative replacement for hand-written "count children where FK == parent,
+// then patch parent" after-emit middleware (capsule-pro's schedule-shift-count /
+// prep-task-station-count). `count(E where fk == value, status == "x", ...)` counts
+// rows of E matching every ANDed equality predicate; pure equality only — no
+// group-by, joins, or arbitrary SQL.
+entity Schedule {
+  property required id: string
+  property shiftCount: number = 0
+
+  command syncShiftCount(shiftCount: number) {
+    mutate shiftCount = shiftCount
+  }
+
+  store in memory
+}
+
+entity ScheduleShift {
+  property required id: string
+  property scheduleId: string = ""
+  property status: string = "active"
+
+  command assign(scheduleId: string) {
+    mutate scheduleId = scheduleId
+    emit ScheduleShiftCreated { scheduleId: self.scheduleId }
+  }
+
+  store in memory
+}
+
+event ScheduleShiftCreated: "scheduleShift.created" {}
+
+on ScheduleShiftCreated run Schedule.syncShiftCount
+  resolve self.scheduleId
+  params {
+    shiftCount: count(ScheduleShift where scheduleId == self.scheduleId, status == "active")
+  }
