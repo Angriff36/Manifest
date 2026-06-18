@@ -767,6 +767,26 @@ export class RuntimeEngine {
   /** Track instances that were just created (to prevent version increment on subsequent mutate actions) */
   private justCreatedInstanceIds: Set<string> = new Set();
 
+  /**
+   * Command-scoped write buffer. While set, mutate/compute actions apply their
+   * changes to an in-memory working copy (`instance`) and accumulate a single
+   * store-form `patch` instead of issuing one store read + write per action.
+   * The buffer is flushed in one `store.update` at the end of the action loop,
+   * then cleared — so a command that mutates N fields performs one read and one
+   * write rather than N. Scoped to the command's target instance only; nested
+   * (reaction/fan-out) commands save and restore the outer buffer.
+   */
+  private commandBuffer:
+    | {
+        entityName: string;
+        id: string;
+        /** Decrypted working copy; null until first loaded from the store. */
+        instance: EntityInstance | null;
+        /** Accumulated store-form (encrypted) field changes to flush once. */
+        patch: Partial<EntityInstance>;
+      }
+    | null = null;
+
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
 
@@ -1760,6 +1780,13 @@ export class RuntimeEngine {
 
   /** Internal read path: tenant filter + decryption, NO masking. */
   private async getInstanceRaw(entityName: string, id: string): Promise<EntityInstance | undefined> {
+    // Command working copy: during command execution, reads of the target
+    // instance return the in-memory copy carrying this command's mutations,
+    // so guards/computes/refreshes see pending changes without a store read.
+    const buf = this.commandBuffer;
+    if (buf && buf.entityName === entityName && buf.id === id && buf.instance) {
+      return buf.instance;
+    }
     const store = this.stores.get(entityName);
     if (!store) return undefined;
     const inst = await store.getById(id);
@@ -2036,11 +2063,21 @@ export class RuntimeEngine {
     const store = this.stores.get(entityName);
     if (!store || !entity) return undefined;
 
-    const rawExisting = await store.getById(id);
-    if (!rawExisting) return undefined;
+    // During command execution the target instance is buffered: load it from
+    // the store at most once, then mutate the in-memory working copy.
+    const buf = this.commandBuffer;
+    const buffering = !!buf && buf.entityName === entityName && buf.id === id;
 
-    // Decrypt existing instance so constraint/transition checks see plaintext
-    const existing = await this.decryptProperties(entityName, rawExisting);
+    let existing: EntityInstance;
+    if (buffering && buf!.instance) {
+      existing = buf!.instance;
+    } else {
+      const rawExisting = await store.getById(id);
+      if (!rawExisting) return undefined;
+      // Decrypt existing instance so constraint/transition checks see plaintext
+      existing = await this.decryptProperties(entityName, rawExisting);
+      if (buffering) buf!.instance = existing;
+    }
 
     const ownsEvalBudget = this.initEvalBudget();
     try {
@@ -2132,6 +2169,14 @@ export class RuntimeEngine {
 
       // Encrypt fields before store write, decrypt result before returning
       const encryptedData = await this.encryptProperties(entityName, data);
+      if (buffering) {
+        // Batched path: advance the working copy and accumulate the patch. The
+        // single store.update runs once when the command flushes the buffer, so
+        // a command mutating N fields persists once rather than N times.
+        buf!.instance = mergedData;
+        Object.assign(buf!.patch, encryptedData);
+        return mergedData;
+      }
       const result = await store.update(id, encryptedData);
       return result ? await this.decryptProperties(entityName, result) : result;
     } finally {
@@ -3072,54 +3117,81 @@ export class RuntimeEngine {
     const beforeActionResult = await this.runMiddleware('before-action', command, evalContext, input, options);
     if (beforeActionResult) return beforeActionResult;
 
-    this.profilingBridge.startPhase('actionExecution');
-    for (const action of command.actions) {
-      const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
-
-      // Check for transition validation errors after mutate/compute actions
-      if (this.lastTransitionError) {
-        return {
-          success: false,
-          error: this.lastTransitionError,
-          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-          emittedEvents: [],
-        };
-      }
-
-      // Check for concurrency conflict after mutate/compute actions
-      // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
-      if (this.lastConcurrencyConflict) {
-        const conflict: ConcurrencyConflict = this.lastConcurrencyConflict;
-        this.lastConcurrencyConflict = null;
-        return {
-          success: false,
-          error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
-          concurrencyConflict: conflict,
-          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-          emittedEvents: [],
-        };
-      }
-
-      if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
-        const currentInstance = await this.getInstanceRaw(options.entityName, options.instanceId);
-        // Enrich re-fetched instance with _entity for relationship resolution
-        const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
-        // Refresh both self/this bindings and spread instance properties into evalContext
-        evalContext.self = enriched;
-        evalContext.this = enriched;
-        Object.assign(evalContext, enriched);
-        Object.assign(evalContext, input);
-      }
-      result = actionResult;
+    // Open a command-scoped write buffer so mutate/compute actions batch into a
+    // single store.update (flushed once below) instead of one read+write each.
+    // Seeded with the already-loaded instance so no extra read is incurred.
+    // Nested (reaction) commands save and restore the outer buffer.
+    const prevBuffer = this.commandBuffer;
+    if (options.entityName && options.instanceId) {
+      this.commandBuffer = {
+        entityName: options.entityName,
+        id: options.instanceId,
+        instance: (autoCreatedInstance ?? instance) ?? null,
+        patch: {},
+      };
     }
-    this.profilingBridge.endPhase('actionExecution');
+    try {
+      this.profilingBridge.startPhase('actionExecution');
+      for (const action of command.actions) {
+        const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
 
-    if (autoCreatedInstance && options.entityName) {
-      const currentInstance = await this.getInstanceRaw(options.entityName, autoCreatedInstance.id);
-      autoCreatedInstance = currentInstance ?? autoCreatedInstance;
-      result = autoCreatedInstance;
+        // Check for transition validation errors after mutate/compute actions.
+        // Returning here skips the flush below: a failed command persists nothing.
+        if (this.lastTransitionError) {
+          return {
+            success: false,
+            error: this.lastTransitionError,
+            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
+
+        // Check for concurrency conflict after mutate/compute actions
+        // Per spec: "Commands receiving a ConcurrencyConflict MUST NOT apply mutations"
+        if (this.lastConcurrencyConflict) {
+          const conflict: ConcurrencyConflict = this.lastConcurrencyConflict;
+          this.lastConcurrencyConflict = null;
+          return {
+            success: false,
+            error: `Concurrency conflict on ${conflict.entityType}#${conflict.entityId}: expected version ${conflict.expectedVersion}, actual ${conflict.actualVersion}`,
+            concurrencyConflict: conflict,
+            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
+
+        if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
+          const currentInstance = await this.getInstanceRaw(options.entityName, options.instanceId);
+          // Enrich re-fetched instance with _entity for relationship resolution
+          const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
+          // Refresh both self/this bindings and spread instance properties into evalContext
+          evalContext.self = enriched;
+          evalContext.this = enriched;
+          Object.assign(evalContext, enriched);
+          Object.assign(evalContext, input);
+        }
+        result = actionResult;
+      }
+      this.profilingBridge.endPhase('actionExecution');
+
+      if (autoCreatedInstance && options.entityName) {
+        const currentInstance = await this.getInstanceRaw(options.entityName, autoCreatedInstance.id);
+        autoCreatedInstance = currentInstance ?? autoCreatedInstance;
+        result = autoCreatedInstance;
+      }
+
+      // Flush the accumulated field changes in a single store write. Runs before
+      // event emission and reaction dispatch so emitted events and any reactions
+      // observe the final committed command state.
+      const cb = this.commandBuffer;
+      if (cb && Object.keys(cb.patch).length > 0) {
+        const cbStore = this.stores.get(cb.entityName);
+        if (cbStore) await cbStore.update(cb.id, cb.patch);
+      }
+    } finally {
+      this.commandBuffer = prevBuffer;
     }
 
     this.profilingBridge.startPhase('eventEmission');
