@@ -4,6 +4,29 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.15.0] - 2026-06-18
+
+### Changed
+
+- **Runtime — command persistence is now batched into a single store write.**
+  A command that mutated N fields previously issued N `store.update` writes plus
+  ~2N reads (one `getById` + one context refresh per `mutate`/`compute` action).
+  Against a pooled connection this made multi-field updates take seconds and grow
+  with field/reaction count. The runtime now loads the target instance once,
+  advances an in-memory working copy as actions run, accumulates one patch, and
+  flushes a single `store.update` at the end of the action loop — before event
+  emission and reaction dispatch, so emitted events and reactions still observe
+  the final committed state. A command touching N fields now performs one read
+  and one write regardless of N.
+
+- **Runtime — failed commands are now atomic.** A `mutate`/`compute` action that
+  trips a state-transition or concurrency check aborts the command without
+  flushing, so a failed command persists **nothing** instead of leaving partial
+  per-field writes from the actions that ran before the failure. Commands that
+  succeed are unaffected. The entity flush and outbox/saga enqueue remain
+  separate operations (the store interface exposes no transaction handle); the
+  single entity write is atomic for its row.
+
 ## [2.14.0] - 2026-06-17
 
 ### Added
