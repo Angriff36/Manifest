@@ -1921,6 +1921,9 @@ export class RuntimeEngine {
     for (const prop of entity.properties) {
       if (prop.defaultValue) {
         defaults[prop.name] = this.irValueToJs(prop.defaultValue);
+      } else if (prop.autoNow) {
+        // `= now()` / `= today()` default: stamp current time on create.
+        defaults[prop.name] = this.getNow();
       } else {
         defaults[prop.name] = this.getDefaultForType(prop.type);
       }

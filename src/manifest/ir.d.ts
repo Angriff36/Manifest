@@ -47,6 +47,8 @@ export interface IRProperty {
     name: string;
     type: IRType;
     defaultValue?: IRValue;
+    /** Set when the property default is a current-time call (`= now()` / `= today()`). */
+    autoNow?: boolean;
     modifiers: PropertyModifier[];
 }
 export type PropertyModifier = 'required' | 'unique' | 'indexed' | 'private' | 'readonly' | 'optional';

@@ -550,6 +550,11 @@ export class IRCompiler {
       ? this.transformTenant(program.tenant)
       : undefined;
 
+    // Static guard: a `create` command that leaves a non-null, default-less field
+    // unset is guaranteed to fail at persist time (the `createdAt must not be null`
+    // class). Flag it at compile time so it surfaces in the IDE/LSP and CLI validate.
+    this.checkRequiredFieldsSetOnCreate(entities, commands, tenant);
+
     const provenance = await createProvenance(source);
     const irWithoutHash: IR = {
       version: '1.0',
@@ -745,6 +750,9 @@ export class IRCompiler {
     };
   }
 
+  /** Nullary builtins recognized as a "current time on create" default. */
+  private static readonly AUTO_NOW_FNS = new Set(['now', 'today']);
+
   private transformProperty(p: PropertyNode): IRProperty {
     const prop: IRProperty = {
       name: p.name,
@@ -752,6 +760,22 @@ export class IRCompiler {
       defaultValue: p.defaultValue ? this.transformExprToValue(p.defaultValue) : undefined,
       modifiers: p.modifiers as PropertyModifier[],
     };
+    // A default like `= now()` is a call expression — transformExprToValue can't
+    // represent it as a static IRValue, so it would otherwise be silently dropped
+    // (the original `createdAt must not be null` bug). Lower recognized current-time
+    // calls to `autoNow`; surface anything else instead of dropping it on the floor.
+    if (p.defaultValue && prop.defaultValue === undefined) {
+      const call = p.defaultValue as { type?: string; callee?: { type?: string; name?: string }; arguments?: unknown[] };
+      const fn = call.type === 'Call' && call.callee?.type === 'Identifier' ? call.callee.name : undefined;
+      if (fn && IRCompiler.AUTO_NOW_FNS.has(fn) && (call.arguments?.length ?? 0) === 0) {
+        prop.autoNow = true;
+      } else {
+        this.emitDiagnostic(
+          'warning',
+          `Property '${p.name}': default expression is not a supported default and has no effect at runtime. Supported call defaults: ${[...IRCompiler.AUTO_NOW_FNS].map(f => `${f}()`).join(', ')}. Use a literal default or set the value in the command.`,
+        );
+      }
+    }
     // Invariant: 'masked' ∈ modifiers ⇔ maskStrategy present (bare masked ⇒ redact)
     if (p.modifiers.includes('masked')) {
       prop.maskStrategy = this.transformMaskStrategy(p);
@@ -1132,6 +1156,85 @@ export class IRCompiler {
     }
   }
 
+  /**
+   * Flag `create` commands that leave a storage-required field unset. The runtime
+   * treats a command literally named `create` as instance creation
+   * (`commandName === 'create'`), and persists every non-null property — so a
+   * non-null, default-less property the command never sets becomes an explicit
+   * `null` write that the store rejects. That failure only ever surfaced at
+   * runtime against a real DB; this surfaces it as a compile-time warning
+   * (warning, not error, because the runtime also merges arbitrary caller input
+   * on create, so the field is not *provably* unset).
+   *
+   * Excluded (supplied by the runtime/store, not the command body): `id`,
+   * composite-key columns, relationship foreign keys, the tenant property,
+   * optimistic-concurrency version fields, and auto timestamps. Properties with a
+   * literal default or `autoNow` are already covered.
+   */
+  /**
+   * Types the runtime fills with a non-null zero value when a create command
+   * leaves them unset (mirrors `getDefaultForType` in the runtime engine). Every
+   * other non-null type fills with `null`, which a non-null store column rejects —
+   * those are the only guaranteed-failure cases this check flags.
+   */
+  private static readonly ZERO_FILLABLE_TYPES = new Set(['string', 'number', 'boolean', 'list', 'array', 'map']);
+
+  private checkRequiredFieldsSetOnCreate(
+    entities: IREntity[],
+    commands: IRCommand[],
+    tenant: IRTenant | undefined,
+  ): void {
+    for (const entity of entities) {
+      const createCmd = commands.find(
+        c => c.name === 'create' && c.entity === entity.name && c.module === entity.module,
+      );
+      if (!createCmd) continue;
+
+      // Fields the command itself produces.
+      const produced = new Set<string>();
+      for (const a of createCmd.actions) {
+        if (a.target && (a.kind === 'mutate' || a.kind === 'compute' || a.kind === 'persist')) {
+          produced.add(a.target);
+        }
+      }
+
+      // Fields supplied/managed outside the command body.
+      const auto = new Set<string>(['id']);
+      if (tenant?.property) auto.add(tenant.property);
+      if (entity.versionProperty) auto.add(entity.versionProperty);
+      if (entity.versionAtProperty) auto.add(entity.versionAtProperty);
+      if (entity.timestamps) {
+        auto.add('createdAt');
+        auto.add('updatedAt');
+      }
+      for (const k of entity.key ?? []) auto.add(k);
+      for (const r of entity.relationships) {
+        for (const fk of r.foreignKey?.fields ?? []) auto.add(fk);
+      }
+
+      const qualified = entity.module ? `${entity.module}.${entity.name}` : entity.name;
+      for (const prop of entity.properties) {
+        if (prop.type.nullable) continue; // nullable column: a null write is legal
+        // Types the runtime zero-fills (string→"", number→0, …) persist fine even
+        // when unset; only types that fill with null are guaranteed to fail.
+        if (IRCompiler.ZERO_FILLABLE_TYPES.has(prop.type.name)) continue;
+        if (prop.defaultValue !== undefined) continue;
+        if (prop.autoNow) continue;
+        if (auto.has(prop.name)) continue;
+        if (produced.has(prop.name)) continue;
+        // Warning, not error: the runtime merges caller-supplied input on create,
+        // so the compiler cannot *prove* the field is unset — but a non-null field
+        // with no default that the command body never sets is the exact shape that
+        // persists `null` and is rejected by a non-null store column (the
+        // `createdAt must not be null` class). Surfaces in the IDE/LSP and validate.
+        this.emitDiagnostic(
+          'warning',
+          `Command '${qualified}.create' creates '${entity.name}' but never sets non-null field '${prop.name}' (type '${prop.type.name}', no default). If no caller supplies it, persisting writes null and a non-null store column rejects it. Add 'mutate ${prop.name} = ...', give '${prop.name}' a default (e.g. '= now()'), or make it optional ('${prop.name}: ${prop.type.name}?').`,
+        );
+      }
+    }
+  }
+
   private transformParameter(p: ParameterNode): IRParameter {
     return {
       name: p.name,
@@ -1438,6 +1541,15 @@ export class IRCompiler {
     if (expr.type === 'Literal') {
       const lit = expr as { value: string | number | boolean | null; dataType: string };
       return this.literalToValue(lit.value, lit.dataType);
+    }
+    // Negative/positive numeric literal defaults (e.g. `= -1`) parse as a unary op
+    // over a number literal; fold them so the default is a real static value.
+    if (expr.type === 'UnaryOp') {
+      const u = expr as { operator: string; operand: ExpressionNode };
+      const inner = this.transformExprToValue(u.operand);
+      if (inner?.kind === 'number' && (u.operator === '-' || u.operator === '+')) {
+        return { kind: 'number', value: u.operator === '-' ? -inner.value : inner.value };
+      }
     }
     if (expr.type === 'Array') {
       const arr = expr as { elements: ExpressionNode[] };

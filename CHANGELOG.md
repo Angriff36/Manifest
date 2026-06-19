@@ -4,6 +4,34 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.16.0] - 2026-06-19
+
+### Added
+
+- **`now()` / `today()` property defaults now work (`autoNow`).** A
+  `property createdAt: datetime = now()` previously compiled to **no default** —
+  any call-expression default was silently dropped, because `transformExprToValue`
+  only handled literals. At runtime the field was then null-filled, so persisting
+  to a non-null store column (e.g. Prisma `created_at`) failed with
+  `Argument createdAt must not be null`. These defaults now lower to a new
+  `IRProperty.autoNow` flag: the runtime stamps the current time on create, and the
+  Prisma projection emits `@default(now())`. Negative numeric literal defaults
+  (`= -1`), also previously dropped, now fold to a real static default.
+
+- **Compile-time diagnostics for guaranteed-null persistence.** Two new compiler
+  warnings surface failures that previously only appeared at runtime against a real
+  database — both flow through the LSP (in-editor squiggles) and `manifest compile`:
+  - A `create` command that leaves a **non-null, default-less** property unset, for
+    the types the runtime null-fills (datetime/date/time/enum/custom). Types that
+    zero-fill non-null (string/number/boolean/list/map) are not flagged. Excludes
+    runtime/store-managed fields (`id`, composite keys, relationship FKs, the tenant
+    property, version fields, and auto timestamps).
+  - An unsupported call-expression default (e.g. `= uuid()`) that would otherwise be
+    dropped without a trace.
+
+  These are warnings, not hard errors: the runtime merges arbitrary caller-supplied
+  input on create, so the compiler cannot *prove* a field is unset.
+
 ## [2.15.0] - 2026-06-18
 
 ### Changed

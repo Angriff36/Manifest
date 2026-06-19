@@ -328,6 +328,12 @@ function emitPropertyLine(
     attrs.push(`@db.${dbAttr}`);
   }
 
+  // `= now()` / `= today()` default: emit a store-level `@default(now())` so the
+  // column is populated even when a row is inserted without the field.
+  if (prop.autoNow && !fieldAttrHasDefault) {
+    attrs.push('@default(now())');
+  }
+
   // IR-level default: only emit if fieldAttributes didn't supply a @default override.
   if (prop.defaultValue && !fieldAttrHasDefault) {
     if (isEnum && prop.defaultValue.kind === 'string') {

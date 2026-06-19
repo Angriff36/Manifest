@@ -540,6 +540,10 @@
         "defaultValue": {
           "$ref": "#/definitions/IRValue"
         },
+        "autoNow": {
+          "type": "boolean",
+          "description": "Property default is a current-time call (= now()/= today()); runtime stamps current time on create."
+        },
         "modifiers": {
           "type": "array",
           "items": {

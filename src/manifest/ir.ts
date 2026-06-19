@@ -163,6 +163,13 @@ export interface IRProperty {
   name: string;
   type: IRType;
   defaultValue?: IRValue;
+  /**
+   * Set when the property default is a current-time call (`= now()` / `= today()`).
+   * The runtime stamps it with the current time on create; projections emit a
+   * store-level default (e.g. Prisma `@default(now())`). Dynamic defaults cannot
+   * be a static `defaultValue`, so they are lowered to this flag instead.
+   */
+  autoNow?: boolean;
   modifiers: PropertyModifier[];
   /**
    * Read-time masking strategy. Invariant: present ⇔ 'masked' ∈ modifiers.
