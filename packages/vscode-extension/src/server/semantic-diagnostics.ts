@@ -80,9 +80,51 @@ export function getSemanticDiagnostics(
       analyzeCommandMutations(source, diagnostics, entity, properties, command);
       analyzeEmittedEvents(source, diagnostics, entity, command, events);
     }
+
+    analyzeCreateRequiredFields(source, diagnostics, entity);
   }
 
   return diagnostics;
+}
+
+/**
+ * Flag a `create` command that leaves a non-null date/time field unset with no
+ * default — the `createdAt must not be null` class. Persisting writes null and a
+ * non-null store column rejects it. Surfaced as an error (red) because this is the
+ * exact shape that only ever blew up at runtime against a real DB.
+ */
+function analyzeCreateRequiredFields(
+  source: string,
+  diagnostics: Diagnostic[],
+  entity: EntityNode,
+): void {
+  const create = entity.commands.find((command) => command.name === 'create');
+  if (!create) return;
+
+  const set = new Set(
+    create.actions
+      .filter((action) => action.kind === 'mutate' || action.kind === 'compute')
+      .map((action) => action.target)
+      .filter((target): target is string => Boolean(target)),
+  );
+  const hasTimestamps = (entity as { timestamps?: boolean }).timestamps === true;
+
+  for (const property of entity.properties) {
+    if (!isDateLike(property.dataType)) continue;
+    if (property.dataType.nullable) continue;
+    if (property.modifiers.includes('optional')) continue;
+    if (property.defaultValue !== undefined) continue; // includes `= now()`
+    if (property.name === 'id') continue;
+    if (hasTimestamps && (property.name === 'createdAt' || property.name === 'updatedAt')) continue;
+    if (set.has(property.name)) continue;
+
+    diagnostics.push(error(
+      source,
+      'manifest.createMissingRequiredField',
+      property.name,
+      `${entity.name}.create never sets non-null field '${property.name}' (${property.dataType.name}, no default). Persisting writes null and a non-null store column rejects it. Add 'mutate ${property.name} = now()' (or a default '= now()'), or make it optional ('${property.name}: ${property.dataType.name}?').`,
+    ));
+  }
 }
 
 function analyzeCommandMutations(
@@ -232,6 +274,21 @@ function warn(
     source: 'manifest',
     code,
     data: fix ? { fix } : undefined,
+  };
+}
+
+function error(
+  source: string,
+  code: string,
+  token: string,
+  message: string,
+): Diagnostic {
+  return {
+    range: findTokenRange(source, token),
+    message,
+    severity: DiagnosticSeverity.Error,
+    source: 'manifest',
+    code,
   };
 }
 

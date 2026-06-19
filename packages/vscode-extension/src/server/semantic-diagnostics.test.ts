@@ -60,6 +60,34 @@ describe('Manifest VS Code semantic diagnostics', () => {
   it('can be disabled for cheap edit loops', () => {
     expect(getSemanticDiagnostics(parseProgram(), source, { enabled: false })).toEqual([]);
   });
+
+  it('errors when create leaves a non-null date field unset (createdAt-class)', () => {
+    const src = `entity Ticket {
+  property required id: string
+  property openedAt: datetime
+  command create(id: string) { mutate id = id }
+}`;
+    const compiler = new ManifestCompiler();
+    const { program } = compiler.parse(src);
+    const diagnostics = getSemanticDiagnostics(program, src, { enabled: true });
+    const hit = diagnostics.find((d) => d.code === 'manifest.createMissingRequiredField');
+    expect(hit).toBeDefined();
+    expect(hit!.severity).toBe(DiagnosticSeverity.Error);
+    expect(hit!.message).toContain('openedAt');
+  });
+
+  it('does NOT error when the date field has an `= now()` default or is mutated', () => {
+    const src = `entity Ticket {
+  property required id: string
+  property openedAt: datetime = now()
+  property closedAt: datetime
+  command create(id: string, closedAt: datetime) { mutate id = id mutate closedAt = closedAt }
+}`;
+    const compiler = new ManifestCompiler();
+    const { program } = compiler.parse(src);
+    const diagnostics = getSemanticDiagnostics(program, src, { enabled: true });
+    expect(diagnostics.filter((d) => d.code === 'manifest.createMissingRequiredField')).toEqual([]);
+  });
 });
 
 describe('Manifest VS Code completions', () => {
