@@ -4,6 +4,24 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.16.1] - 2026-06-19
+
+### Added
+
+- **Compile warning for duplicate event names.** Two declarations of the same event
+  name collide in the event registry (one shadows the other); the compiler now warns.
+  Surfaces in `manifest compile` and the LSP.
+
+### Notes
+
+- Investigated two further audit categories and deliberately did **not** add them as
+  compiler diagnostics, to avoid false positives: *mutate-to-undeclared-field* (the
+  runtime supports dynamic instance fields via the `EntityInstance` index signature,
+  so such a write is valid, not a silent no-op — a lint smell, not a guaranteed error)
+  and *event-never-emitted* (events are routinely emitted by reactions and hand-written
+  runtime middleware the compiler cannot see). Both remain appropriate for an external
+  audit script.
+
 ## [2.16.0] - 2026-06-19
 
 ### Added

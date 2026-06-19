@@ -555,6 +555,9 @@ export class IRCompiler {
     // class). Flag it at compile time so it surfaces in the IDE/LSP and CLI validate.
     this.checkRequiredFieldsSetOnCreate(entities, commands, tenant);
 
+    // Static guard: duplicate event names collide in the event registry.
+    this.checkEventDeclarations(events);
+
     const provenance = await createProvenance(source);
     const irWithoutHash: IR = {
       version: '1.0',
@@ -1232,6 +1235,26 @@ export class IRCompiler {
           `Command '${qualified}.create' creates '${entity.name}' but never sets non-null field '${prop.name}' (type '${prop.type.name}', no default). If no caller supplies it, persisting writes null and a non-null store column rejects it. Add 'mutate ${prop.name} = ...', give '${prop.name}' a default (e.g. '= now()'), or make it optional ('${prop.name}: ${prop.type.name}?').`,
         );
       }
+    }
+  }
+
+  /**
+   * Flag duplicate event names — two declarations of the same event name collide in
+   * the event registry (one shadows the other). Warning, not error: surfaces in the
+   * IDE/lint without breaking a build.
+   *
+   * Deliberately NOT checked: event-never-emitted (events are routinely emitted by
+   * reactions and hand-written runtime middleware the compiler cannot see) and
+   * mutate-to-undeclared-field (the runtime supports dynamic instance fields, so such
+   * a write is valid, not a no-op — it is a lint smell, not a guaranteed error).
+   */
+  private checkEventDeclarations(events: IREvent[]): void {
+    const seen = new Set<string>();
+    for (const e of events) {
+      if (seen.has(e.name)) {
+        this.emitDiagnostic('warning', `Duplicate event name '${e.name}': declared more than once, so one declaration shadows the other in the event registry. Rename one.`);
+      }
+      seen.add(e.name);
     }
   }
 

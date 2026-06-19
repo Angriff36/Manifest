@@ -121,3 +121,26 @@ store Ticket in memory`);
     expect(diagnostics.filter(d => d.severity === 'warning')).toEqual([]);
   });
 });
+
+describe('duplicate event names', () => {
+  it('warns when the same event name is declared twice', async () => {
+    const { diagnostics } = await compileToIR(`entity A {
+  property required id: string
+}
+event Thing: "a.thing" {}
+event Thing: "b.thing" {}
+store A in memory`);
+    const warn = diagnostics.find(d => d.severity === 'warning' && /Duplicate event name 'Thing'/.test(d.message));
+    expect(warn).toBeDefined();
+  });
+
+  it('does NOT warn on distinct event names', async () => {
+    const { diagnostics } = await compileToIR(`entity A {
+  property required id: string
+}
+event One: "a.one" {}
+event Two: "a.two" {}
+store A in memory`);
+    expect(diagnostics.filter(d => /Duplicate event name/.test(d.message))).toEqual([]);
+  });
+});
