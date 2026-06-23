@@ -1,7 +1,21 @@
 {
   "name": "@angriff36/manifest",
   "version": "2.17.0",
+  "description": "A formal domain modeling language with a deterministic reference runtime: define entities, commands, guards, policies, and events that compile to an executable IR, with projections to Next.js, Prisma, Convex, and more.",
+  "keywords": [
+    "dsl",
+    "domain-modeling",
+    "ir",
+    "compiler",
+    "runtime",
+    "code-generation",
+    "projections",
+    "business-rules",
+    "state-machine",
+    "manifest"
+  ],
   "type": "module",
+  "license": "MIT",
   "private": false,
   "main": "./dist/manifest/runtime-engine.js",
   "types": "./dist/manifest/runtime-engine.d.ts",
@@ -201,8 +215,8 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "bin": {
     "manifest": "./packages/cli/dist/index.js",

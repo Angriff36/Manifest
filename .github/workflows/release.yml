@@ -28,7 +28,7 @@ jobs:
           echo "pkg_version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
           if [ "$TAG_VERSION" = "$PKG_VERSION" ]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "Tag matches package.json ($PKG_VERSION) — will publish to GitHub Packages"
+            echo "Tag matches package.json ($PKG_VERSION) — will publish to npm"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             echo "Tag v$TAG_VERSION does not match package.json ($PKG_VERSION) — release notes only, skip publish"
@@ -66,7 +66,7 @@ jobs:
           echo "" >> release-notes.md
           echo "---" >> release-notes.md
           echo "" >> release-notes.md
-          echo "Install: \`npm install @angriff36/manifest@$VER\` (GitHub Packages registry)." >> release-notes.md
+          echo "Install: \`npm install @angriff36/manifest@$VER\`" >> release-notes.md
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
@@ -77,13 +77,12 @@ jobs:
           generate_release_notes: false
 
   publish:
-    name: Publish to GitHub Packages
+    name: Publish to npm
     needs: resolve
     if: needs.resolve.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
 
     steps:
       - uses: actions/checkout@v5
@@ -93,11 +92,11 @@ jobs:
         with:
           version: 9
 
-      - name: Setup Node.js (with GitHub Packages registry)
+      - name: Setup Node.js (with npm registry)
         uses: actions/setup-node@v5
         with:
           node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
+          registry-url: 'https://registry.npmjs.org'
           scope: '@angriff36'
           cache: 'pnpm'
 
@@ -121,10 +120,10 @@ jobs:
       - name: Run test suite
         run: pnpm test -- --run
 
-      - name: Publish to GitHub Packages
+      - name: Publish to npm
         run: |
           set +e
-          out="$(pnpm publish --no-git-checks 2>&1)"
+          out="$(pnpm publish --no-git-checks --access public 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
@@ -135,4 +134,4 @@ jobs:
             exit "$code"
           fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -87,11 +87,17 @@ export function getSemanticDiagnostics(
   return diagnostics;
 }
 
+// Types the runtime fills with a non-null zero value when a create command leaves
+// them unset (mirrors getDefaultForType in the runtime engine). Every other non-null
+// type fills with null, which a non-null store column rejects — those are the cases
+// this flags. Kept in sync with IRCompiler.ZERO_FILLABLE_TYPES.
+const ZERO_FILLABLE_TYPES = new Set(['string', 'number', 'boolean', 'list', 'array', 'map']);
+
 /**
- * Flag a `create` command that leaves a non-null date/time field unset with no
- * default — the `createdAt must not be null` class. Persisting writes null and a
- * non-null store column rejects it. Surfaced as an error (red) because this is the
- * exact shape that only ever blew up at runtime against a real DB.
+ * Flag a `create` command that leaves a non-null field unset with no default, for the
+ * types the runtime null-fills (datetime/date/time/enum/custom) — the `createdAt must
+ * not be null` class. Persisting writes null and a non-null store column rejects it.
+ * Surfaced as an error (red): this is the shape that only ever blew up at runtime.
  */
 function analyzeCreateRequiredFields(
   source: string,
@@ -110,8 +116,8 @@ function analyzeCreateRequiredFields(
   const hasTimestamps = (entity as { timestamps?: boolean }).timestamps === true;
 
   for (const property of entity.properties) {
-    if (!isDateLike(property.dataType)) continue;
     if (property.dataType.nullable) continue;
+    if (ZERO_FILLABLE_TYPES.has(property.dataType.name)) continue; // zero-filled non-null → fine
     if (property.modifiers.includes('optional')) continue;
     if (property.defaultValue !== undefined) continue; // includes `= now()`
     if (property.name === 'id') continue;
@@ -122,7 +128,7 @@ function analyzeCreateRequiredFields(
       source,
       'manifest.createMissingRequiredField',
       property.name,
-      `${entity.name}.create never sets non-null field '${property.name}' (${property.dataType.name}, no default). Persisting writes null and a non-null store column rejects it. Add 'mutate ${property.name} = now()' (or a default '= now()'), or make it optional ('${property.name}: ${property.dataType.name}?').`,
+      `${entity.name}.create never sets non-null field '${property.name}' (${property.dataType.name}, no default). Persisting writes null and a non-null store column rejects it. Set it with 'mutate ${property.name} = ...' (or a default), or make it optional ('${property.name}: ${property.dataType.name}?').`,
     ));
   }
 }

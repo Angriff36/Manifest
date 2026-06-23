@@ -9,7 +9,7 @@ name: Cut Release
 #   2. ensure a CHANGELOG.md section exists (stub from commit subjects if missing)
 #   3. build + typecheck + full test suite  ← gates BEFORE any push
 #   4. commit "[release] vX.Y.Z", tag vX.Y.Z, push main + tag
-#   5. publish @angriff36/manifest to GitHub Packages
+#   5. publish @angriff36/manifest to npm (public registry)
 #   6. create the GitHub Release with changelog notes
 #
 # Note: the tag is pushed with GITHUB_TOKEN, which intentionally does NOT
@@ -34,7 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -46,11 +45,11 @@ jobs:
         with:
           version: 9
 
-      - name: Setup Node.js (with GitHub Packages registry)
+      - name: Setup Node.js (with npm registry)
         uses: actions/setup-node@v5
         with:
           node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
+          registry-url: 'https://registry.npmjs.org'
           scope: '@angriff36'
           cache: 'pnpm'
 
@@ -128,10 +127,10 @@ jobs:
           git push origin main
           git push origin "v$VER"
 
-      - name: Publish to GitHub Packages
+      - name: Publish to npm
         run: |
           set +e
-          out="$(pnpm publish --no-git-checks 2>&1)"
+          out="$(pnpm publish --no-git-checks --access public 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
@@ -142,7 +141,7 @@ jobs:
             exit "$code"
           fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         run: |
@@ -151,7 +150,7 @@ jobs:
           echo "" >> release-notes.md
           echo "---" >> release-notes.md
           echo "" >> release-notes.md
-          echo "Install: \`npm install @angriff36/manifest@$VER\` (GitHub Packages registry)." >> release-notes.md
+          echo "Install: \`npm install @angriff36/manifest@$VER\`" >> release-notes.md
           gh release create "v$VER" --title "v$VER" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

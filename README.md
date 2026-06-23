@@ -13,6 +13,40 @@ Manifest is a **language for expressing domain models** with:
 
 The language compiles to an **Intermediate Representation (IR)** that serves as the canonical contract between the compiler and runtime. The runtime executes commands deterministically, enforcing guards and policies in strict order.
 
+## Installation
+
+```bash
+npm install @angriff36/manifest
+# or: pnpm add @angriff36/manifest
+```
+
+This installs the runtime/compiler library plus three CLIs: `manifest` (compile,
+validate, scan, projections), `manifest-mcp` (MCP server), and `manifest-lsp`
+(language server).
+
+```ts
+import { compileToIR } from '@angriff36/manifest/ir-compiler';
+import { RuntimeEngine } from '@angriff36/manifest';
+
+// .manifest source → IR (the canonical contract). compileToIR is async.
+const { ir, diagnostics } = await compileToIR(source);
+if (!ir || diagnostics.some((d) => d.severity === 'error')) {
+  throw new Error(diagnostics.map((d) => d.message).join('; '));
+}
+
+// Execute commands deterministically against the IR.
+const engine = new RuntimeEngine(ir);
+const result = await engine.runCommand('commandName', { /* input */ });
+```
+
+```bash
+npx manifest compile model.manifest      # source → IR
+npx manifest validate model.manifest     # diagnostics only
+```
+
+See [exports in `package.json`](package.json) for the full subpath list
+(`/compiler`, `/projections/nextjs`, `/projections/prisma`, `/audit`, `/outbox`, …).
+
 ## Key Capabilities
 
 ### ✅ Implemented
@@ -428,6 +462,8 @@ See `AGENTS.md` for detailed workflow requirements. Key points:
 - Document any nonconformance explicitly
 
 ## License & Status
+
+Licensed under the [MIT License](LICENSE).
 
 This is a language implementation project. The Runtime UI is a diagnostic and observability surface, not an end-user application.
 
