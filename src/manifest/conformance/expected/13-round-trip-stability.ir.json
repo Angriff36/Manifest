@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "440e80843daba19aaa613bc3d03c072b0b0879c22ab7c6c5c3951dd37f0cc639",
+    "irHash": "2c247d29ff2e41ddaf5a2151eaefeb1a3fb46768a38fefc23f4c5711bc8c502d",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -86,7 +86,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "status"
+          ]
         },
         {
           "name": "hasCustomer",
@@ -113,7 +115,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "customerId"
+          ]
         }
       ],
       "relationships": [],

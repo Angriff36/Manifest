@@ -49,7 +49,20 @@ interface GenerateOptions {
    * — the projection's normalizeOptions is the contract.
    */
   projectionOptionsFromConfig?: Record<string, unknown>;
+  /**
+   * `--check` drift mode: regenerate in memory and compare to the committed
+   * files without writing; exit non-zero if any generated file differs.
+   * `prettier --check` semantics.
+   */
+  check?: boolean;
 }
+
+// --check drift-mode state. Set once at the top of generateCommand and read in
+// writeProjectionResult. A CLI invocation runs a single command, so a
+// module-level flag is fine here and avoids threading the option through every
+// generation helper signature.
+let checkMode = false;
+const driftedFiles: string[] = [];
 
 // Local type aliases: use the real projection types from the main
 // package. The CLI is a thin wrapper — `projection.generate(ir, request)`
@@ -399,6 +412,17 @@ async function writeProjectionResult(
 
     // Use pathHint directly (it may include subdirectories)
     const outputPath = path.resolve(outputDir, artifact.pathHint);
+
+    if (checkMode) {
+      // --check: compare generated code to the committed file without writing.
+      // A missing file or any byte difference counts as drift.
+      const existing = await fs.readFile(outputPath, 'utf-8').catch(() => null);
+      if (existing !== artifact.code) {
+        driftedFiles.push(path.relative(process.cwd(), outputPath));
+      }
+      continue;
+    }
+
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, artifact.code, 'utf-8');
 
@@ -418,6 +442,10 @@ export async function generateCommand(
   options: GenerateOptions
 ): Promise<void> {
   const spinner = ora('Preparing to generate').start();
+
+  // --check drift mode: compare generated code to committed files, no writes.
+  checkMode = options.check ?? false;
+  driftedFiles.length = 0;
 
   try {
     // Get IR files
@@ -449,12 +477,25 @@ export async function generateCommand(
 
     // Summary
     console.log('');
-    if (errorCount === 0) {
-      spinner.succeed(`Generated code from ${successCount} IR file(s)`);
-    } else {
+    if (errorCount > 0) {
       spinner.warn(`Generated from ${successCount} file(s), ${errorCount} failed`);
       process.exit(1);
     }
+
+    if (checkMode) {
+      if (driftedFiles.length > 0) {
+        console.error(chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`));
+        for (const f of driftedFiles) {
+          console.error(chalk.red(`    • ${f}`));
+        }
+        console.error(chalk.red('  Run `manifest generate` (without --check) and commit the result.'));
+        process.exit(1);
+      }
+      spinner.succeed('No drift — generated code matches committed files.');
+      return;
+    }
+
+    spinner.succeed(`Generated code from ${successCount} IR file(s)`);
   } catch (error: unknown) {
     spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);

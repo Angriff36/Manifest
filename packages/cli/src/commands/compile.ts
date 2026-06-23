@@ -9,6 +9,7 @@ import path from 'path';
 import { glob } from 'glob';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
+import type { IR } from '@angriff36/manifest/ir';
 
 // Import from the main Manifest package
 async function loadCompiler() {
@@ -16,6 +17,7 @@ async function loadCompiler() {
   return {
     compileToIR: module.compileToIR,
     validateCommandIntentRegistry: module.validateCommandIntentRegistry,
+    computeIRHash: module.computeIRHash,
   };
 }
 
@@ -112,8 +114,38 @@ async function compileFileToIR(
   };
 }
 
+/**
+ * Idempotent provenance: if an existing output IR was produced from the SAME
+ * source (identical contentHash), reuse its compiledAt and recompute irHash so
+ * that re-running `manifest compile` on unchanged source is byte-identical
+ * (zero git drift). A fresh timestamp only lands when the source actually
+ * changed. compiledAt is part of the irHash input, so irHash is recomputed
+ * against the reused timestamp to stay consistent.
+ */
+async function stabilizeProvenance(ir: IR, outputPath: string): Promise<void> {
+  const priorRaw = await fs.readFile(outputPath, 'utf-8').catch(() => null);
+  if (!priorRaw) return;
+  let prior: { provenance?: { contentHash?: string; compiledAt?: string } };
+  try {
+    prior = JSON.parse(priorRaw);
+  } catch {
+    return;
+  }
+  if (
+    ir.provenance?.contentHash &&
+    prior.provenance?.contentHash === ir.provenance.contentHash &&
+    prior.provenance?.compiledAt
+  ) {
+    ir.provenance.compiledAt = prior.provenance.compiledAt;
+    const { computeIRHash } = await loadCompiler();
+    ir.provenance.irHash = await computeIRHash(ir);
+  }
+}
+
 async function writeCompiledFile(compiled: CompiledFile, options: CompileOptions, spinner: Ora): Promise<void> {
   await fs.mkdir(path.dirname(compiled.outputPath), { recursive: true });
+
+  await stabilizeProvenance(compiled.ir as IR, compiled.outputPath);
 
   const jsonContent = options.pretty
     ? JSON.stringify(compiled.ir, null, 2)
@@ -256,6 +288,7 @@ async function compileMerged(source: string | undefined, options: CompileOptions
       : path.resolve(process.cwd(), 'merged.ir.json');
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await stabilizeProvenance(result.ir as IR, outputPath);
     const jsonContent = options.pretty
       ? JSON.stringify(result.ir, null, 2)
       : JSON.stringify(result.ir);

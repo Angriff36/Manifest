@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "ca45e1a5b2d381b649009aeb38c6b280a071e0dc607f508e40f62d967e61b33b",
+    "irHash": "f7d35334925cd5ac7b50612047b17e7c52090db3c0df6d44fa557f3f69011102",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -82,7 +82,8 @@
             }
           },
           "dependencies": [
-            "now"
+            "now",
+            "baseTime"
           ]
         }
       ],

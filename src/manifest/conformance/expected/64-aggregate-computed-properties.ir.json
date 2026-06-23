@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "a72e28b08747cadedaf27686bd8a970bbe1eef3467cca5ba61b7aac30698b0eb",
+    "irHash": "501392b219ad2f1c53507f7d559fdaf54f1468d222f8ddd4a2f63d4814398fb0",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -88,6 +88,7 @@
           },
           "dependencies": [
             "sum",
+            "lineItems",
             "item"
           ]
         },
@@ -115,7 +116,8 @@
             ]
           },
           "dependencies": [
-            "count_of"
+            "count_of",
+            "lineItems"
           ]
         },
         {
@@ -157,6 +159,7 @@
           },
           "dependencies": [
             "avg",
+            "lineItems",
             "item"
           ]
         },
@@ -199,6 +202,7 @@
           },
           "dependencies": [
             "min_of",
+            "lineItems",
             "item"
           ]
         },
@@ -241,6 +245,7 @@
           },
           "dependencies": [
             "max_of",
+            "lineItems",
             "item"
           ]
         },
@@ -306,6 +311,7 @@
           },
           "dependencies": [
             "count_of",
+            "lineItems",
             "item"
           ]
         }

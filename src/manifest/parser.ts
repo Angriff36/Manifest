@@ -701,7 +701,23 @@ export class Parser {
           }
           break;
         case 'MemberAccess':
-          walk(e.object);
+          // self.X / this.X → X is an instance property the computed reads, so
+          // it is a real dependency (the runtime's stale-marking keys on the
+          // names of mutated properties). Previously the property was dropped,
+          // so `self.totalTax` never listed `totalTax` and caches went stale.
+          // Other bases (user.X, context.X, event.X, payload.X) recurse into
+          // the object so their non-instance property names aren't captured;
+          // a nested self.a.b recurses to capture `a`. Mirrors the self/this
+          // member check in checkComputedRefsInGuardsAndConstraints (ir-compiler).
+          if (
+            e.object.type === 'Identifier' &&
+            (e.object.name === 'self' || e.object.name === 'this') &&
+            typeof e.property === 'string'
+          ) {
+            deps.add(e.property);
+          } else {
+            walk(e.object);
+          }
           break;
         case 'BinaryOp':
           walk(e.left);

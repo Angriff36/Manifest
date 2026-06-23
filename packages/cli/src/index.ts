@@ -169,6 +169,7 @@ program
   .option('--database <path>', 'Database import path')
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
+  .option('--check', 'Compare generated code to committed files and exit non-zero on drift (writes nothing)')
   .action(async (ir, options = {}) => {
     // resolveNextJsProjectionOptions returns the user's raw nextjs options
     // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.

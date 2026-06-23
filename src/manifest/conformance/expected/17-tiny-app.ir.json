@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "0999c8547c9cf35e293a2ffd6cbb98d0ffad21e1842f2ce83016f290946e74a3",
+    "irHash": "c19c689b32a3709c4e4c9b81e7dc3e97a549bbfa0e60622d45ae3e6a508de360",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -160,7 +160,9 @@
             }
           },
           "dependencies": [
-            "now"
+            "now",
+            "createdAt",
+            "status"
           ]
         },
         {
@@ -206,7 +208,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "assigneeId"
+          ]
         },
         {
           "name": "isHighPriority",
@@ -255,7 +259,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "priority"
+          ]
         }
       ],
       "relationships": [],

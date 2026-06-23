@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "b0d9d9c9e81aba0f5b42464a5ea32d801edf5dc7b0375b1c64cc29018d84b9c5",
+    "irHash": "4a02cb686f0bb07758dd77aafb0960de883fadbde3b34ed7106b9fea4b6efd4c",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -74,7 +74,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "ownerId"
+          ]
         },
         {
           "name": "isOwnedAlias",
@@ -101,7 +103,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "ownerId"
+          ]
         },
         {
           "name": "contextValue",

@@ -330,3 +330,67 @@ describe('Compile Command - Conformance Fixtures', () => {
     }
   });
 });
+
+describe('Compile Command - Idempotent Provenance', () => {
+  it('reuses compiledAt + irHash when source is unchanged (byte-identical re-compile)', async () => {
+    const source = [
+      'entity Counter {',
+      '  property required id: string',
+      '  property count: number = 0',
+      '}',
+      '',
+    ].join('\n');
+    const filePath = await createTempManifest(source, 'counter.manifest');
+    const outputPath = filePath.replace(/\.manifest$/, '.ir.json');
+
+    try {
+      const { compileCommand } = await import('./compile.js');
+
+      await compileCommand(filePath, { pretty: true });
+      const first = await fs.readFile(outputPath, 'utf-8');
+
+      // Wait long enough that a fresh `new Date()` timestamp would differ —
+      // this makes the assertion deterministic: only provenance reuse keeps
+      // compiledAt stable across the two runs.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await compileCommand(filePath, { pretty: true });
+      const second = await fs.readFile(outputPath, 'utf-8');
+
+      expect(second).toBe(first); // byte-identical
+      const ir = JSON.parse(second);
+      const firstIr = JSON.parse(first);
+      expect(ir.provenance.compiledAt).toBe(firstIr.provenance.compiledAt);
+      expect(ir.provenance.irHash).toBe(firstIr.provenance.irHash);
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+
+  it('updates compiledAt when the source actually changes', async () => {
+    const sourceA = [
+      'entity Counter {',
+      '  property required id: string',
+      '  property count: number = 0',
+      '}',
+      '',
+    ].join('\n');
+    const filePath = await createTempManifest(sourceA, 'counter.manifest');
+    const outputPath = filePath.replace(/\.manifest$/, '.ir.json');
+
+    try {
+      const { compileCommand } = await import('./compile.js');
+      await compileCommand(filePath, { pretty: true });
+      const firstAt = JSON.parse(await fs.readFile(outputPath, 'utf-8')).provenance.compiledAt;
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await fs.writeFile(filePath, sourceA.replace('number = 0', 'number = 1'), 'utf-8');
+      await compileCommand(filePath, { pretty: true });
+      const secondAt = JSON.parse(await fs.readFile(outputPath, 'utf-8')).provenance.compiledAt;
+
+      expect(secondAt).not.toBe(firstAt);
+    } finally {
+      await cleanupTemp(filePath);
+    }
+  });
+});

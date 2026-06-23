@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "b9d730e954d699605b9ce429e2cadb739925b10a336f60a46e5f88bfaebee1ce",
+    "irHash": "a5fc06119bafe493e41339db8e0400e24cc2f2274de9ea8b35f5bf2c70864809",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -108,7 +108,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "role"
+          ]
         },
         {
           "name": "isEditor",
@@ -135,7 +137,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "role"
+          ]
         },
         {
           "name": "isAdmin",
@@ -162,7 +166,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "role"
+          ]
         },
         {
           "name": "canPublish",
@@ -212,7 +218,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "role"
+          ]
         }
       ],
       "relationships": [],
@@ -357,7 +365,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "status"
+          ]
         },
         {
           "name": "isDraft",
@@ -384,7 +394,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "status"
+          ]
         },
         {
           "name": "ageInDays",
@@ -424,7 +436,8 @@
             }
           },
           "dependencies": [
-            "now"
+            "now",
+            "createdAt"
           ]
         },
         {
@@ -477,7 +490,9 @@
             }
           },
           "dependencies": [
-            "now"
+            "isPublished",
+            "now",
+            "publishedAt"
           ]
         }
       ],
@@ -601,7 +616,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "status"
+          ]
         },
         {
           "name": "isHidden",
@@ -628,7 +645,9 @@
               }
             }
           },
-          "dependencies": []
+          "dependencies": [
+            "status"
+          ]
         },
         {
           "name": "ageInHours",
@@ -668,7 +687,8 @@
             }
           },
           "dependencies": [
-            "now"
+            "now",
+            "createdAt"
           ]
         }
       ],

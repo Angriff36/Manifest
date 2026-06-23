@@ -188,8 +188,30 @@ entity User {
       const entity = result.program.entities[0];
       expect(entity.computedProperties).toHaveLength(1);
       expect(entity.computedProperties[0].name).toBe('fullName');
-      // Dependencies only include non-reserved identifiers, self.* is not tracked
-      expect(entity.computedProperties[0].dependencies).toEqual([]);
+      // self.X references are tracked as dependencies (instance properties the
+      // computed reads) so the runtime can invalidate the cache when they change.
+      expect(entity.computedProperties[0].dependencies.sort()).toEqual(['firstName', 'lastName']);
+    });
+
+    it('tracks self.X/this.X computed deps but not user.X/context.X', () => {
+      const source = `
+entity Order {
+  property subtotal: number
+  property taxRate: number
+  computed tax: number = self.subtotal * self.taxRate
+  computed taxThis: number = this.subtotal * this.taxRate
+  computed auditor: string = user.name + " " + context.region
+}
+`;
+      const result = new Parser().parse(source);
+      const entity = result.program.entities[0];
+      const byName: Record<string, string[]> = Object.fromEntries(
+        entity.computedProperties.map(c => [c.name, c.dependencies]),
+      );
+      expect(byName.tax.sort()).toEqual(['subtotal', 'taxRate']);
+      expect(byName.taxThis.sort()).toEqual(['subtotal', 'taxRate']);
+      // user.X / context.X are not instance properties → not dependencies.
+      expect(byName.auditor).toEqual([]);
     });
 
     it('should parse entity with all relationship types', () => {

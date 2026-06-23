@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.17.0] - 2026-06-23
+
+### Changed
+
+- **Computed-property cache invalidation now follows `self.X` / `this.X` references (bug fix, behavior-changing).** `extractDependencies` only captured bare identifiers, so a computed like `computed tax = self.subtotal * self.taxRate` listed **no** dependencies — mutating `subtotal` or `taxRate` never marked the computed stale, so derived values silently went stale. `self.X` / `this.X` member references are now tracked (a bare `X` already was), matching the runtime's stale-marking which keys on mutated property names. `user.X` / `context.X` are correctly still excluded (not instance properties). Programs that relied on the stale behavior will now see correct, up-to-date computed values.
+
+### Added
+
+- **Idempotent compile output (stable `compiledAt`).** `manifest compile` stamped a fresh `compiledAt: new Date()` on every run, so regenerating unchanged source produced a fake git diff every time. When the output IR already exists with the same `contentHash`, the compiler now reuses its `compiledAt` and recomputes `irHash` against it — re-compiling unchanged source is byte-identical. Affects both single-file and `--merge` paths.
+
+- **`manifest generate --check` (drift mode).** Regenerates projection output in memory and compares it to the committed files without writing anything; exits non-zero and lists the drifted files if any generated code differs from what's committed (`prettier --check` semantics). Lets CI assert "committed code == freshly generated code" without per-projection drift scripts.
+
 ## [2.16.1] - 2026-06-19
 
 ### Added
