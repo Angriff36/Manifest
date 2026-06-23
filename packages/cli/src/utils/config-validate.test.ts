@@ -83,6 +83,43 @@ describe('validateConfig', () => {
     expect(result.diagnostics).toHaveLength(0);
   });
 
+  // Regression: PrismaStoreProjectionOptions previously used allOf with
+  // additionalProperties:false. Draft-07 evaluates additionalProperties per
+  // allOf branch, and each branch is blind to the other's properties — so a
+  // valid prisma-store config (inherited provider/naming + own accessorNames)
+  // was falsely rejected, and `softDelete` was missing entirely. The def is
+  // now flattened into one closed object. Guard against allOf sneaking back.
+  it('accepts a prisma-store config mixing inherited and own options + softDelete', async () => {
+    const config: ManifestConfig = {
+      projections: {
+        'prisma-store': {
+          options: {
+            provider: 'postgresql',
+            naming: 'snake_case',
+            accessorNames: { OrderLine: 'order_lines' },
+            metadataOutput: 'metadata.generated.ts',
+            registryOutput: 'registry.generated.ts',
+            storeImportPath: '@repo/store',
+            metadataImportPath: './metadata.generated.js',
+            softDelete: { Order: { field: 'status', deletedValue: 'deleted' } },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('rejects an unknown key inside prisma-store options (closedness preserved after flatten)', async () => {
+    const config = {
+      projections: { 'prisma-store': { options: { entityToPrismaModel: { A: 'a' } } } },
+    } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('entityToPrismaModel'))).toBe(true);
+  });
+
   it("accepts a global naming default (string shorthand)", async () => {
     const config: ManifestConfig = {
       naming: 'snake_case',

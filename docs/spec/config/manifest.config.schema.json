@@ -458,33 +458,145 @@
       }
     },
     "PrismaStoreProjectionOptions": {
-      "description": "Options for prisma-store.metadata and prisma-store.registry surfaces. Extends PrismaProjectionOptions for consistent naming with schema.prisma emission.",
-      "allOf": [
-        { "$ref": "#/definitions/PrismaProjectionOptions" },
-        {
+      "type": "object",
+      "description": "Options for prisma-store.metadata and prisma-store.registry surfaces. Mirrors the TypeScript PrismaStoreProjectionOptions = PrismaProjectionOptions & { ...own }. NOTE: draft-07 cannot express closed-set inheritance via allOf — each branch's additionalProperties is blind to the other branch's properties, so a composed schema falsely rejects inherited options (provider, naming, ...). The inherited PrismaProjectionOptions properties are therefore inlined here. Keep in sync with PrismaProjectionOptions.",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "description": "Optional Prisma datasource provider. When set, the projection emits a datasource block and a prisma.config.ts companion.",
+          "enum": ["postgresql", "mysql", "sqlite", "sqlserver", "mongodb", "cockroachdb"]
+        },
+        "output": {
+          "type": "string",
+          "description": "Path hint for the emitted schema.prisma artifact. Default: 'schema.prisma'."
+        },
+        "urlEnvVar": {
+          "type": "string",
+          "description": "Environment variable name for the database URL in the emitted prisma.config.ts companion. Default: 'DATABASE_URL'. Only relevant when provider is set."
+        },
+        "tableMappings": {
+          "description": "Per-entity table-name override. Emits @@map(\"...\").",
           "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "metadataOutput": {
-              "type": "string",
-              "description": "Path hint for emitted prisma-model-metadata.generated.ts.",
-              "default": "prisma-model-metadata.generated.ts"
-            },
-            "registryOutput": {
-              "type": "string",
-              "description": "Path hint for emitted prisma-store-registry.generated.ts.",
-              "default": "prisma-store-registry.generated.ts"
-            },
-            "accessorNames": {
-              "description": "Per-entity Prisma client delegate override.",
+          "additionalProperties": { "type": "string" }
+        },
+        "columnMappings": {
+          "description": "Per-entity, per-property column-name override. Emits @map(\"...\").",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "precision": {
+          "description": "Per-entity, per-property decimal precision and scale.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
-            },
-            "storeImportPath": { "type": "string" },
-            "metadataImportPath": { "type": "string" }
+              "required": ["precision", "scale"],
+              "additionalProperties": false,
+              "properties": {
+                "precision": { "type": "integer", "minimum": 1 },
+                "scale": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "indexes": {
+          "description": "Per-entity composite/named index definitions. Each entry is an array of column names or an object with fields and optional name.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                {
+                  "type": "object",
+                  "required": ["fields"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "name": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "typeMappings": {
+          "description": "Per-entity, per-property Prisma scalar override. Value is a literal Prisma scalar (e.g. 'Int', 'Decimal').",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "foreignKeys": {
+          "description": "Per-entity, per-relationship FK field name or structured config. Value is a plain string or an object with fields/references/onDelete/onUpdate.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["fields"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "references": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+                    "onDelete": { "type": "string" },
+                    "onUpdate": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "dbAttributes": {
+          "description": "Per-entity, per-property native @db.* attribute string (without the @db. prefix). Applied after the type scalar.",
+          "type": "object",
+          "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+        },
+        "fieldAttributes": {
+          "description": "Per-entity, per-property array of verbatim Prisma field attributes (e.g. '@unique', '@updatedAt').",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "naming": {
+          "$ref": "#/definitions/NamingConvention",
+          "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (model/field identifiers stay the IR name). Explicit tableMappings/columnMappings override it."
+        },
+        "accessorNames": {
+          "description": "Per-entity Prisma client delegate override (e.g. OrderLine -> order_lines).",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "metadataOutput": {
+          "type": "string",
+          "description": "Path hint for emitted prisma-model-metadata.generated.ts.",
+          "default": "prisma-model-metadata.generated.ts"
+        },
+        "registryOutput": {
+          "type": "string",
+          "description": "Path hint for emitted prisma-store-registry.generated.ts.",
+          "default": "prisma-store-registry.generated.ts"
+        },
+        "storeImportPath": { "type": "string", "description": "Import path for GenericPrismaStore in the registry artifact." },
+        "metadataImportPath": { "type": "string", "description": "Import path for the metadata module in the registry artifact." },
+        "softDelete": {
+          "description": "Per-entity status-based soft-delete. Keyed by entity name; `field` is the IR status property name and `deletedValue` the sentinel meaning deleted. Lets an entity that soft-deletes via a status transition (instead of a deletedAt timestamp) use the generic store.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "deletedValue"],
+            "properties": {
+              "field": { "type": "string" },
+              "deletedValue": { "type": "string" }
+            }
           }
         }
-      ]
+      }
     },
     "PrismaProjectionOptions": {
       "type": "object",
