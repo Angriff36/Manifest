@@ -1,4 +1,4 @@
-import type { IRCommand, IREntity, IRExpression, IRReactionRule } from './ir.js';
+import type { IRCommand, IRExpression, IRReactionRule } from './ir.js';
 
 export type ReactionCompletenessEmit = (
   severity: 'error' | 'warning' | 'info',
