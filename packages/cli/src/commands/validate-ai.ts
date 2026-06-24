@@ -9,7 +9,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import type { AnySchema } from 'ajv';
 import { loadCompiler } from './validate-ai-compiler.js';
 import { averageScore, formatReportText } from './validate-ai-report.js';
@@ -65,7 +65,7 @@ function printTextSummary(reports: ValidationReport[], minScore: number, verbose
 async function validateInput(
   input: { filePath: string; type: 'manifest-source' | 'ir-json' },
   schema: AnySchema,
-  spinner: ora.Ora | null,
+  spinner: Ora | null,
 ): Promise<ValidationReport> {
   if (spinner) {
     spinner.text = `Validating ${path.relative(process.cwd(), input.filePath)}`;
