@@ -1,5 +1,6 @@
 entity Parent {
   property status: string = "active"
+  hasMany children: Child
 
   command deactivate() {
     mutate status = "inactive"
@@ -10,6 +11,7 @@ entity Parent {
 entity Child {
   property parentId: string = ""
   property status: string = "active"
+  belongsTo parent: Parent
 
   command deactivate() {
     mutate status = "inactive"

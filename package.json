@@ -40,6 +40,14 @@
       "types": "./dist/manifest/ir-compiler.d.ts",
       "import": "./dist/manifest/ir-compiler.js"
     },
+    "./domain-completeness": {
+      "types": "./dist/manifest/domain-completeness.d.ts",
+      "import": "./dist/manifest/domain-completeness.js"
+    },
+    "./reaction-completeness": {
+      "types": "./dist/manifest/reaction-completeness.d.ts",
+      "import": "./dist/manifest/reaction-completeness.js"
+    },
     "./multi-compiler": {
       "types": "./dist/manifest/multi-compiler.d.ts",
       "import": "./dist/manifest/multi-compiler.js"

@@ -14,7 +14,7 @@ describe('compiler-bridge', () => {
     expect(result.program.entities[0].name).toBe('Order');
     expect(result.parseErrors).toHaveLength(0);
     expect(result.ir).not.toBeNull();
-    expect(result.irDiagnostics).toHaveLength(0);
+    expect(result.irDiagnostics.filter(d => d.severity === 'error')).toEqual([]);
   });
 
   it('returns parse errors for invalid source', async () => {

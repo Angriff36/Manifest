@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "d3620455d807f1751f52e926d71e5d213e05db4889184077498081fd7ce2722a",
+    "irHash": "ee4fac3a389de203294e507571cce842d856df539489ff682730ab68f2c14e3d",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -37,7 +37,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "shifts",
+          "kind": "hasMany",
+          "target": "ScheduleShift"
+        }
+      ],
       "commands": [
         "syncShiftCount"
       ],
@@ -83,7 +89,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "schedule",
+          "kind": "belongsTo",
+          "target": "Schedule"
+        }
+      ],
       "commands": [
         "assign"
       ],

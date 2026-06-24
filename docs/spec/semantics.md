@@ -162,12 +162,12 @@ not authoritative for Manifest semantics.
 
 Four primitive type names with fixed runtime representations:
 
-| Type | Representation |
-|---|---|
+| Type       | Representation                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------- |
 | `datetime` | finite number, epoch milliseconds UTC, within ±8,640,000,000,000,000 (the representable Date range) |
-| `duration` | finite number, milliseconds (may be negative) |
-| `date` | string `"YYYY-MM-DD"`, must be a valid calendar date (leap years honored; `"2026-02-30"` invalid) |
-| `time` | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` (no `24:00:00`, no leap seconds) |
+| `duration` | finite number, milliseconds (may be negative)                                                       |
+| `date`     | string `"YYYY-MM-DD"`, must be a valid calendar date (leap years honored; `"2026-02-30"` invalid)   |
+| `time`     | string `"HH:MM:SS"`, `00:00:00`–`23:59:59` (no `24:00:00`, no leap seconds)                         |
 
 **Write-time validation.** On create and update mutations in the reference runtime, properties of these four types are validated after guards, alongside entity constraints. A malformed value produces a blocking constraint outcome with code `E_TYPE_DATE`, `E_TYPE_TIME`, `E_TYPE_DATETIME`, or `E_TYPE_DURATION`, carrying the property name and offending value. `null`/`undefined` always passes this validation (nullability is enforced separately). Validation applies only to these four type names — no behavior change for any existing program.
 
@@ -189,13 +189,13 @@ entity Patient {
 
 The masked output is always a string; the input value is converted with `String(value)` before masking. `null`/`undefined` values pass through unmasked (nothing to leak).
 
-| Strategy | Transform |
-|---|---|
-| `redact` (default for bare `masked`) | `"***"` |
-| `partial(keepStart, keepEnd)` | keep first `keepStart` and last `keepEnd` characters; every middle character replaced by `*`. If `keepStart + keepEnd >= length`, the entire string is replaced by `*` per character. Written flat: `masked(partial, 0, 4)`. |
-| `email` | first character of the local part + `***@` + everything after the first `@`. If the string contains no `@` or the `@` is the first character, the value is fully redacted to `"***"`. |
-| `phone` | `***-***-` + last 4 digits of the digit-only form. If the value contains fewer than 4 digits, it is fully redacted to `"***"`. |
-| `last4` | `****` + last 4 characters. If the string has 4 or fewer characters, the result is `"****"`. |
+| Strategy                             | Transform                                                                                                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `redact` (default for bare `masked`) | `"***"`                                                                                                                                                                                                                      |
+| `partial(keepStart, keepEnd)`        | keep first `keepStart` and last `keepEnd` characters; every middle character replaced by `*`. If `keepStart + keepEnd >= length`, the entire string is replaced by `*` per character. Written flat: `masked(partial, 0, 4)`. |
+| `email`                              | first character of the local part + `***@` + everything after the first `@`. If the string contains no `@` or the `@` is the first character, the value is fully redacted to `"***"`.                                        |
+| `phone`                              | `***-***-` + last 4 digits of the digit-only form. If the value contains fewer than 4 digits, it is fully redacted to `"***"`.                                                                                               |
+| `last4`                              | `****` + last 4 characters. If the string has 4 or fewer characters, the result is `"****"`.                                                                                                                                 |
 
 Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"alice@example.com"` → `"a***@example.com"`; `phone` on `"555-867-5309"` → `"***-***-5309"`; `last4` on `"4111111111111111"` → `"****1111"`.
 
@@ -472,6 +472,89 @@ on <EventName> run <EntityType>.<commandName>
 ### Determinism
 - Given identical IR + identical runtime context + identical input, reactions MUST produce identical results in identical order.
 - Reaction evaluation order is fixed by IR declaration order. No priority or weighting.
+
+## User-Facing Boundary
+
+Manifest is not a form builder that exposes plumbing. Downstream products use it so
+**people never paste internal ids or platform fields** — they do normal work; the
+runtime supplies tenant scope, auth, parent links, audit metadata, and timestamps.
+
+**End users MUST NOT be required to provide:**
+
+- Tenant or organization scope (`tenantId`, `orgId`, …) — comes from login/session
+- Who is acting (`userId`, `createdById`, `updatedById`, `actorId`) — comes from auth
+- Parent record links (`{parent}Id`) — comes from "add child on this page" or automation
+- Fields copied from the parent record (e.g. venue on an event when creating a child board)
+- Timestamps and version fields the engine auto-fills
+- Request/tracing ids (`requestId`, `correlationId`, `causationId`)
+
+**Allowed user inputs** are business data: names, amounts, dates they pick, choices
+among real options (status, category, assignee when assignment is the feature).
+
+RBAC stays in policies and guards (`user.role`, `user.id`) — not in create forms.
+
+The compiler MUST reject create commands that violate this boundary. See § Domain Completeness.
+
+## Domain Completeness (Compile-Time Product Wiring)
+
+The compiler MUST enforce domain wiring so half-wired models fail at compile time, not in generated APIs with no product path. These rules implement the product-quality bar from Capsule-Pro `manifest/scripts/script-index.md` Part 1: no unwired entities, no required fields the runtime auto-provides, no child creates that demand parent IDs or parent-owned context with no supply path, and no reactions that silently no-op.
+
+### Unwired foreign keys (error)
+
+When entity `Child` declares a property or required command parameter `{parent}Id` that resolves to an existing entity `Parent` (camelCase stem match, e.g. `disciplinaryActionId` → `DisciplinaryAction`), the compiler MUST emit an **error** unless `Child` declares `belongsTo` or `ref` targeting `Parent` for that FK field.
+
+Cross-cutting ids (`tenantId`, `userId`, `ownerId`, etc.) are excluded.
+
+When this diagnostic fires, compilation MUST fail (`ir` is null), same as other error-severity diagnostics.
+
+### One-sided relationships (warning)
+
+When `Child` belongsTo `Parent` but `Parent` has no `hasMany`/`hasOne` back to `Child`, the compiler MUST emit a **warning**. Minimal relationship fixtures (e.g. conformance Author/Book) may omit the inverse side; product manifests SHOULD declare both sides.
+
+### Manual parent id on create (error)
+
+When `Child.create` requires a `{parent}Id` parameter and `Parent` has no nested command that creates `Child` with an implicit FK, and no event reaction supplies that parameter, the compiler MUST emit an **error**. Compilation MUST fail (`ir` is null).
+
+Exempt when an `on Event run Child.create` reaction includes the parent FK field in `params` (reaction-wired create path).
+
+### Auto-provided create parameters (error)
+
+When `Entity.create` requires a parameter the runtime or compiler auto-provides, the compiler MUST emit an **error**:
+
+- Tenant discriminator property when `tenant` is declared
+- `tenantId`, `orgId`, `organizationId` — scope from session/context (even when `tenant` block is absent)
+- `userId`, `createdById`, `updatedById`, `actorId` — acting user from auth/context
+- `requestId`, `correlationId`, `causationId` — tracing metadata, never end-user input
+- `createdAt` / `updatedAt` when entity `timestamps` is enabled
+- `versionProperty` / `versionAtProperty` when declared on the entity
+
+Business assignment fields (e.g. `ownerId`, `assigneeId`) MAY remain on create when
+choosing another user/record is the feature; they MUST NOT be used as a stand-in for
+"current user" or parent linkage.
+
+Callers must not be forced to supply values they cannot access or that the engine fills automatically.
+
+### Parent-context inferable fields (error)
+
+When `Child.create` requires a parameter whose name and scalar type match a property on a `belongsTo` parent (excluding identity, tenant, lifecycle, and generic child-specific fields such as `name`, `title`, `notes`), the compiler MUST emit an **error**. Such fields MUST be populated via parent-context propagation (create from the parent command), not re-entered by the user.
+
+### Unreachable persisted entities (error or warning)
+
+A persisted entity (has store) with no entity-scoped commands and not referenced as a relationship target MUST produce:
+
+- **error** when the entity has domain wiring signals (`belongsTo`/`ref`, or a `{entity}Id` FK that resolves to another declared entity) and no constraint-only fixture role
+- **warning** for property-only persisted fixtures used in language tests (no domain FK wiring)
+- **warning** when the entity exists only to test constraints (has constraint declarations, no commands)
+
+An entity with no store, no commands, and no relationship references SHOULD produce a **declared but unused** warning.
+
+### Reaction wiring (error)
+
+For each `on Event run Entity.command` reaction:
+
+- **Orphan event**: ERROR when no command emits that event.
+- **Invalid payload reference**: ERROR when `payload.X` references a field not present on the emitting command's parameters, the event's declared payload schema, enriched fields (`_subject`, `_eventName`, `_channel`), or (for create emitters) valid `payload.result.Y` entity properties.
+- **Non-create `payload.result.*` member access**: ERROR — non-create commands set `result` to the last action value, not the instance; use `payload._subject.id` or an input param instead.
 
 ## Expressions
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.

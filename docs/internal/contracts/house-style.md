@@ -42,6 +42,16 @@ Diagnostics MUST NOT alter execution behavior.
 The IR is immutable at runtime.
 All variability enters through runtime context, never by editing IR.
 
+User-facing boundary (product manifests).
+Manifest exists so end users never deal with language or platform internals.
+Create flows and forms MUST NOT require tenant ids, org ids, parent record ids,
+audit actor ids, request/correlation ids, timestamps, version counters, or other
+values the runtime derives from login, parent context, or the engine.
+RBAC and policies use `user.*` and `context.*` — callers do not paste those values.
+If a field is not a genuine business input (name, amount, date the user chose, etc.),
+it MUST NOT appear as a required create parameter. The compiler enforces this via
+§ Domain Completeness in `docs/spec/semantics.md`.
+
 Any change that makes an invalid program succeed is a language violation, not a UX improvement.
 
 That’s the contract. If Codex violates it, Codex is wrong. Not “needs a tweak”, not “almost there”. Wrong.

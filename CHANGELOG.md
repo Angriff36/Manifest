@@ -4,6 +4,24 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.0] - 2026-06-24
+
+### Added
+
+- **Domain completeness (compile-time product wiring).** The compiler now fails on half-wired models: `{parent}Id` without `belongsTo`/`ref`, manual parent FK on `create` with no nested parent command or reaction, context-injected create params (`tenantId`, `orgId`, `userId`, audit/tracing ids, timestamps, version fields), parent-owned fields duplicated on child create, persisted domain-wired entities with no commands, and unreachable reaction wiring. Documented in `docs/spec/semantics.md` § User-Facing Boundary and § Domain Completeness.
+
+- **Reaction completeness checks.** Orphan reactions (event nothing emits) and invalid `payload.*` references (including non-create `payload.result.*`) are compile errors; declared event payload fields are valid sources alongside emitter params.
+
+- **`@angriff36/manifest/domain-completeness` and `@angriff36/manifest/reaction-completeness` package exports** for CLI `validate-ai` and downstream tooling.
+
+- **`manifest validate-ai` domain category** — surfaces the same wiring checks on IR JSON with coded diagnostics (`DOMAIN_UNWIRED_FK`, `DOMAIN_ORPHAN_CREATE`, `REACTION_UNWIRED`).
+
+### Changed
+
+- **`validate-ai` command split** into focused modules (semantic checks, AJV formatting, report builder, file validation) for maintainability.
+
+- **Conformance expected IR/diagnostics** regenerated where compile now emits domain/reaction warnings.
+
 ## [2.17.0] - 2026-06-23
 
 ### Changed

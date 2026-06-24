@@ -242,6 +242,14 @@ Required behavior:
 
 ## Validation (Required)
 
+```bash
+pnpm test          # Conformance + runtime tests (must pass)
+pnpm run typecheck
+pnpm run lint
+```
+
+Domain completeness diagnostics enforce the **user-facing boundary** (see `docs/spec/semantics.md` § User-Facing Boundary): create flows must not ask for tenant/org/auth ids, parent ids, tracing ids, auto timestamps, or parent-owned context. The following MUST NOT compile (`ir` null): unwired `{parent}Id` without `belongsTo`; `Child.create` requiring manual parent FK with no nested parent command or reaction; context-injected create params (tenant, org, user/audit ids, tracing ids, timestamps, version fields); parent-inferable duplicate fields on child create; persisted domain-wired entities with no commands; orphan reactions and invalid reaction payload references. **Warnings** (compile succeeds): one-sided `belongsTo` without parent `hasMany`/`hasOne`; property-only persisted entities with no commands. See `docs/spec/semantics.md` § Domain Completeness.
+
 3. **If you built it, prove it works** - A fixture (conformance test) is not a demo.
    A demo is something a human can interact with. If you can't click through the
    flow successfully, it's not done.

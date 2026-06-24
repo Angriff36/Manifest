@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "688dbc48e0e9d940c85aab504eb23fbbaa360a67db1187c0d3acf565b4e5a06a",
+    "irHash": "fd89710cfce8a2f572201d5c4d4a23f5110ddc0a48f4f71719ad4c013b1fb9f0",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -49,7 +49,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "invoices",
+          "kind": "hasMany",
+          "target": "Invoice"
+        }
+      ],
       "commands": [
         "addItem",
         "complete"
@@ -108,7 +114,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "order",
+          "kind": "belongsTo",
+          "target": "Order"
+        }
+      ],
       "commands": [
         "createFromOrder"
       ],

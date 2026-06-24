@@ -1,4 +1,9 @@
 {
-  "shouldFail": false,
-  "diagnostics": []
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Entity 'Comment' references parent 'Post' via 'postId' but declares no belongsTo/ref relationship to 'Post'. Add 'belongsTo post: Post' (or rename the FK), or add a nested command on 'Post' that sets the FK from self.id."
+    }
+  ]
 }

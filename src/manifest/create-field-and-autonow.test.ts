@@ -70,6 +70,7 @@ store N in memory`);
     const { ir, diagnostics } = await compileToIR(`entity N {
   property required id: string
   property idx: number = -1
+  command create(id: string) { mutate id = id }
 }
 store N in memory`);
     expect(diagnostics.filter(d => d.severity === 'warning')).toEqual([]);

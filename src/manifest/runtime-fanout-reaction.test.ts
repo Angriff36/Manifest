@@ -15,6 +15,7 @@ describe('fan-out reactions', () => {
     entity Parent {
       property required id: string
       property status: string = "active"
+      hasMany children: Child
 
       command deactivate() {
         mutate status = "inactive"
@@ -28,6 +29,7 @@ describe('fan-out reactions', () => {
       property required id: string
       property parentId: string = ""
       property status: string = "active"
+      belongsTo parent: Parent
 
       command deactivate() {
         mutate status = "inactive"
@@ -84,6 +86,7 @@ describe('fan-out reactions', () => {
     const sourceWithReason = `
       entity Parent {
         property required id: string
+        hasMany children: Child
         command deactivate() { mutate status = "inactive" emit ParentDeactivated {} }
         store in memory
       }
@@ -91,6 +94,7 @@ describe('fan-out reactions', () => {
         property required id: string
         property parentId: string = ""
         property reason: string = ""
+        belongsTo parent: Parent
         command deactivate(reason: string) { mutate reason = reason }
         store in memory
       }

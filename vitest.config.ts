@@ -52,6 +52,14 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/manifest/ir-compiler.ts'),
       },
       {
+        find: '@angriff36/manifest/domain-completeness',
+        replacement: path.resolve(__dirname, './src/manifest/domain-completeness.ts'),
+      },
+      {
+        find: '@angriff36/manifest/reaction-completeness',
+        replacement: path.resolve(__dirname, './src/manifest/reaction-completeness.ts'),
+      },
+      {
         find: '@angriff36/manifest/compiler',
         replacement: path.resolve(__dirname, './src/manifest/compiler.ts'),
       },

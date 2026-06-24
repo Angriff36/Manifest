@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "866c94b7ddd6be5cb4069dfd602a308ded74d04aeadebce7843bad5f2c9adde3",
+    "irHash": "5661d62554472efb603bb405ba5a73b92ec2d001899a08ce6eb26faeb3d14a87",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -27,7 +27,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "children",
+          "kind": "hasMany",
+          "target": "Child"
+        }
+      ],
       "commands": [
         "deactivate"
       ],
@@ -63,7 +69,13 @@
         }
       ],
       "computedProperties": [],
-      "relationships": [],
+      "relationships": [
+        {
+          "name": "parent",
+          "kind": "belongsTo",
+          "target": "Parent"
+        }
+      ],
       "commands": [
         "deactivate"
       ],

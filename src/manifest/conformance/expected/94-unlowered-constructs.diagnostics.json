@@ -16,6 +16,10 @@
     {
       "severity": "warning",
       "message": "Composition 'WidgetPipeline' is parsed but not yet lowered to IR; it has no effect at runtime."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Widget' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
     }
   ]
 }

@@ -11,6 +11,11 @@ import { describe, it, expect } from 'vitest';
 import { compileToIR } from '../../ir-compiler';
 import { NextJsProjection } from './generator';
 
+function expectNoCompileErrors(result: Awaited<ReturnType<typeof compileToIR>>) {
+  expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+  expect(result.ir).not.toBeNull();
+}
+
 describe('NextJsProjection', () => {
   const projection = new NextJsProjection();
 
@@ -32,8 +37,7 @@ describe('NextJsProjection', () => {
       `;
 
       const result = await compileToIR(source);
-      expect(result.diagnostics).toHaveLength(0);
-      expect(result.ir).not.toBeNull();
+      expectNoCompileErrors(result);
 
       const routeResult = projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'Recipe' });
 
@@ -65,7 +69,7 @@ describe('NextJsProjection', () => {
       const source = `entity Recipe { property id: string }`;
       const result = await compileToIR(source);
 
-      expect(result.diagnostics).toHaveLength(0);
+      expectNoCompileErrors(result);
 
       const routeResult = projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'NonExistent' });
 
@@ -255,8 +259,7 @@ describe('NextJsProjection', () => {
       `;
 
       const result = await compileToIR(source);
-      expect(result.diagnostics).toHaveLength(0);
-      expect(result.ir).not.toBeNull();
+      expectNoCompileErrors(result);
 
       const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'Recipe' });
 
@@ -314,7 +317,7 @@ describe('NextJsProjection', () => {
       const source = `entity Recipe { property id: string }`;
       const result = await compileToIR(source);
 
-      expect(result.diagnostics).toHaveLength(0);
+      expectNoCompileErrors(result);
 
       const detailResult = projection.generate(result.ir!, { surface: 'nextjs.detail', entity: 'NonExistent' });
 
@@ -628,8 +631,7 @@ describe('NextJsProjection', () => {
 
     it('generates POST handler that calls runtime.runCommand (not database)', async () => {
       const result = await compileToIR(commandSource);
-      expect(result.diagnostics).toHaveLength(0);
-      expect(result.ir).not.toBeNull();
+      expectNoCompileErrors(result);
 
       const commandResult = projection.generate(result.ir!, {
         surface: 'nextjs.command',

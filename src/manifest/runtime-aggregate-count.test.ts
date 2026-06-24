@@ -18,12 +18,14 @@ describe('aggregate count reactions', () => {
       entity Schedule {
         property required id: string
         property shiftCount: number = 0
+        hasMany shifts: ScheduleShift
         command syncShiftCount(shiftCount: number) { mutate shiftCount = shiftCount }
         store in memory
       }
       entity ScheduleShift {
         property required id: string
         property scheduleId: string = ""
+        belongsTo schedule: Schedule
         command assign(scheduleId: string) {
           mutate scheduleId = scheduleId
           emit ScheduleShiftCreated { scheduleId: self.scheduleId }
@@ -85,6 +87,7 @@ describe('aggregate count reactions', () => {
       entity Station {
         property required id: string
         property currentTaskCount: number = 0
+        hasMany prepTasks: PrepTask
         command syncTaskCount(currentTaskCount: number) { mutate currentTaskCount = currentTaskCount }
         store in memory
       }
@@ -92,6 +95,7 @@ describe('aggregate count reactions', () => {
         property required id: string
         property stationId: string = ""
         property status: string = "pending"
+        belongsTo station: Station
         command claim(stationId: string) {
           mutate stationId = stationId
           mutate status = "in_progress"

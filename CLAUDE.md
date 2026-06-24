@@ -11,7 +11,7 @@ This is a **language implementation**, not an end-user application. The Runtime 
 ## Essential Commands
 
 ```bash
-pnpm test                    # Run all tests (630 tests - must always pass)
+pnpm test                    # Run all tests (must always pass; see test output for current count)
 pnpm run typecheck          # TypeScript check without emit
 pnpm run lint               # ESLint validation
 pnpm run dev                # Development server (localhost:5173)
@@ -112,7 +112,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite (630 tests total)
+### Test Suite
 1. **Conformance Tests** (209): Fixture-based testing with expected outputs
 2. **Unit Tests** (322):
    - Lexer tests (58): Tokenization and edge cases
@@ -151,7 +151,7 @@ From `house-style.md` and `AGENTS.md`:
 
 1. **One iteration = one committable unit**: Commit within ~15 minutes. If you can't, scope is too big
 2. **Backpressure rules**: Partial progress committed > perfect progress lost
-3. **Test-driven**: All changes must maintain 630/630 test passing
+3. **Test-driven**: All changes must keep `pnpm test` green
 4. **Spec-driven**: If behavior changes, update spec first, then tests, then implementation
 5. **Commit early**: Touching 5+ files without committing is a red flag
 
@@ -216,7 +216,7 @@ UI must reflect IR and semantics, not invent them:
 ## Definition of "Done"
 
 A change is only done when:
-- `pnpm test` is green (630/630 passing)
+- `pnpm test` is green
 - `pnpm run typecheck` passes
 - `pnpm run lint` passes
 - Spec/test/impl are aligned (no undocumented nonconformance)

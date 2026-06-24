@@ -1450,6 +1450,7 @@ entity Order {
   property required id: string
   property total: number = 0
   property status: string = "open"
+  hasMany invoices: Invoice
 
   command addItem(amount: number) {
     mutate total = self.total + amount
@@ -1468,6 +1469,7 @@ entity Invoice {
   property orderId: string = ""
   property amount: number = 0
   property status: string = "draft"
+  belongsTo order: Order
 
   command createFromOrder(orderId: string, amount: number) {
     mutate orderId = orderId
@@ -1619,6 +1621,7 @@ on CounterIncremented run Counter.increment
 entity Ticket {
   property required id: string
   property status: string = "new"
+  hasMany receipts: Receipt
 
   command close() {
     mutate status = "resolved"
@@ -1630,6 +1633,7 @@ entity Receipt {
   property required id: string
   property ticketId: string = ""
   property status: string = "draft"
+  belongsTo ticket: Ticket
 
   command create(ticketId: string) {
     mutate ticketId = ticketId

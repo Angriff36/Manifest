@@ -53,7 +53,7 @@ See [exports in `package.json`](package.json) for the full subpath list
 
 - **Full Language Parser & Compiler**: Parses Manifest source code and compiles to IR v1
 - **Reference Runtime Engine**: Executes commands with policy checks, guard evaluation, and event emission
-- **Conformance Test Suite**: 919+ tests covering compilation, runtime semantics, governance audits, adapter contracts, and edge cases
+- **Conformance Test Suite**: Executable semantics via fixtures plus unit/projection/CLI tests (run `pnpm test` for current count)
 - **Projections System**: Generate platform-specific code from IR. Next.js projection ships 5 surfaces (route, command, **dispatcher**, types, client) — the canonical dispatcher at `/api/manifest/[entity]/commands/[command]` is the recommended write path. Additional projections: **Prisma**, **Drizzle**, **OpenAPI 3.1**, **GraphQL** (SDL + resolver stubs), **Zod**, **TanStack Query** hooks, **JSON Schema**, **Express** and **Hono** route handlers, **Mermaid** ER/diagram export, and **LLM context** export
 - **Audit Sink + Outbox Store adapters**: First-party `MemoryAuditSink` / `MemoryOutboxStore` for tests and local development; `PostgresAuditSink` / `PostgresOutboxStore` for durable production use (SQL schemas ship with the package). Runtime emits exactly one audit record per `runCommand` attempt and enqueues outbox entries on emit. See `docs/spec/adapters.md`.
 - **Governance audit CLI**: `manifest audit-governance` runs five detectors (direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations); `manifest integration-check` is the umbrella validator for downstream consumers

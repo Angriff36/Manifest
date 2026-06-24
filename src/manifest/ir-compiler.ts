@@ -1,5 +1,7 @@
 import { Parser } from './parser.js';
 import { expandEntityComposition, type EntityIndex } from './entity-composition.js';
+import { checkDomainCompleteness } from './domain-completeness.js';
+import { checkReactionCompleteness } from './reaction-completeness.js';
 import { parseDurationToMs, isValidCronExpression } from './schedule-utils.js';
 import {
   ManifestProgram,
@@ -557,6 +559,17 @@ export class IRCompiler {
 
     // Static guard: duplicate event names collide in the event registry.
     this.checkEventDeclarations(events);
+
+    // Product completeness: unwired FK params, one-sided relationships, orphan entities.
+    checkDomainCompleteness(entities, commands, stores, (severity, message) => {
+      if (severity === 'info') return;
+      this.emitDiagnostic(severity, message);
+    }, reactions, tenant);
+
+    checkReactionCompleteness(entities, commands, reactions, (severity, message) => {
+      if (severity === 'info') return;
+      this.emitDiagnostic(severity, message);
+    }, events);
 
     const provenance = await createProvenance(source);
     const irWithoutHash: IR = {
@@ -1718,3 +1731,6 @@ export async function compileToIR(source: string, options?: { useCache?: boolean
   const compiler = new IRCompiler();
   return compiler.compileToIR(source, options);
 }
+
+export { checkDomainCompleteness, resolveEntityForFkField } from './domain-completeness.js';
+export { checkReactionCompleteness } from './reaction-completeness.js';

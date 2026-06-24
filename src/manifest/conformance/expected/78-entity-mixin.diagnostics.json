@@ -1,0 +1,13 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Entity 'Timestampable' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Article' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    }
+  ]
+}

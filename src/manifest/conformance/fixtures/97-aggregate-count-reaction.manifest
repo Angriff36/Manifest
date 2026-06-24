@@ -7,6 +7,7 @@
 entity Schedule {
   property required id: string
   property shiftCount: number = 0
+  hasMany shifts: ScheduleShift
 
   command syncShiftCount(shiftCount: number) {
     mutate shiftCount = shiftCount
@@ -19,6 +20,7 @@ entity ScheduleShift {
   property required id: string
   property scheduleId: string = ""
   property status: string = "active"
+  belongsTo schedule: Schedule
 
   command assign(scheduleId: string) {
     mutate scheduleId = scheduleId
