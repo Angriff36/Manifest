@@ -223,8 +223,7 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
-    "registry": "https://registry.npmjs.org",
-    "access": "public"
+    "registry": "https://npm.pkg.github.com"
   },
   "bin": {
     "manifest": "./packages/cli/dist/index.js",

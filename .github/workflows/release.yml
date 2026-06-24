@@ -28,7 +28,7 @@ jobs:
           echo "pkg_version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
           if [ "$TAG_VERSION" = "$PKG_VERSION" ]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            echo "Tag matches package.json ($PKG_VERSION) — will publish to npm"
+            echo "Tag matches package.json ($PKG_VERSION) — will publish to GitHub Packages"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             echo "Tag v$TAG_VERSION does not match package.json ($PKG_VERSION) — release notes only, skip publish"
@@ -92,11 +92,11 @@ jobs:
         with:
           version: 9
 
-      - name: Setup Node.js (with npm registry)
+      - name: Setup Node.js (with GitHub Packages registry)
         uses: actions/setup-node@v5
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://npm.pkg.github.com'
           scope: '@angriff36'
           cache: 'pnpm'
 
@@ -120,10 +120,10 @@ jobs:
       - name: Run test suite
         run: pnpm test -- --run
 
-      - name: Publish to npm
+      - name: Publish to GitHub Packages
         run: |
           set +e
-          out="$(pnpm publish --no-git-checks --access public 2>&1)"
+          out="$(pnpm publish --no-git-checks 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
