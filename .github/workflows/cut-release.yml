@@ -9,7 +9,7 @@ name: Cut Release
 #   2. ensure a CHANGELOG.md section exists (stub from commit subjects if missing)
 #   3. build + typecheck + full test suite  ← gates BEFORE any push
 #   4. commit "[release] vX.Y.Z", tag vX.Y.Z, push main + tag
-#   5. publish @angriff36/manifest to GitHub Packages
+#   5. publish @angriff36/manifest to npm (OIDC trusted publishing)
 #   6. create the GitHub Release with changelog notes
 #
 # Note: the tag is pushed with GITHUB_TOKEN, which intentionally does NOT
@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -45,12 +46,11 @@ jobs:
         with:
           version: 9
 
-      - name: Setup Node.js (with GitHub Packages registry)
+      - name: Setup Node.js (with npm registry)
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@angriff36'
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Resolve and bump version
@@ -127,7 +127,7 @@ jobs:
           git push origin main
           git push origin "v$VER"
 
-      - name: Publish to GitHub Packages
+      - name: Publish to npm
         run: |
           set +e
           out="$(pnpm publish --no-git-checks 2>&1)"
@@ -140,8 +140,6 @@ jobs:
             fi
             exit "$code"
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         run: |
