@@ -14,7 +14,7 @@ Get up and running with Manifest in 5 minutes.
 pnpm add @angriff36/manifest
 ```
 
-Configure GitHub Packages for the `@angriff36` scope if you have not already. See `docs/reference/packages-and-distribution.md`.
+`@angriff36/manifest` resolves from the public npm registry — no `.npmrc` configuration needed. See `docs/reference/packages-and-distribution.md`.
 
 Or use the CLI from the installed package:
 

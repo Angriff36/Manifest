@@ -7,7 +7,7 @@ Applies to: `@angriff36/manifest@0.5.0+`
 
 Complete reference for all Manifest CLI commands.
 
-Package/distribution notes (published package vs internal CLI workspace package, GitHub Packages, Vercel): `docs/tools/PACKAGES_AND_DISTRIBUTION.md`
+Package/distribution notes (published package vs internal CLI workspace package, npm registry, Vercel): `docs/internal/tools/PACKAGES_AND_DISTRIBUTION.md`
 
 ---
 

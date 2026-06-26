@@ -4,10 +4,10 @@ sidebarTitle: "Installation"
 description: "Add @angriff36/manifest to any Node.js 18+ project with npm or pnpm, configure TypeScript, and optionally install the CLI and Supabase peer dependency."
 ---
 
-Manifest is published as `@angriff36/manifest` to GitHub Packages. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and a package manager that supports scoped registries (npm or pnpm).
+Manifest is published as `@angriff36/manifest` to the public npm registry. Before installing, make sure your project meets the minimum requirements: **Node.js 18 or later** and npm or pnpm.
 
 <Note>
-  **Current version:** `2.10.2`. The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all ship inside `@angriff36/manifest`, and their runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
+  **Current version:** `2.18.0`. The package is fully self-contained: the compiler, runtime, CLI, MCP server, and LSP server all ship inside `@angriff36/manifest`, and their runtime dependencies are declared and installed automatically — no manual dependency installs are needed.
 </Note>
 
 ## Install the package
@@ -24,9 +24,9 @@ pnpm add @angriff36/manifest
 
 </CodeGroup>
 
-<Warning>
-  `@angriff36/manifest` is published to GitHub Packages, not the public npm registry. You need a GitHub personal access token with `read:packages` scope and an `.npmrc` entry that routes `@angriff36` to `https://npm.pkg.github.com`. See GitHub's [Authenticating to GitHub Packages](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-to-github-packages) documentation for setup instructions.
-</Warning>
+<Note>
+  `@angriff36/manifest` resolves from the public npm registry — no GitHub Packages authentication, personal access token, or custom `.npmrc` registry entry is required. `npm install` / `pnpm add` works out of the box.
+</Note>
 
 ## Package exports
 

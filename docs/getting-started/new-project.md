@@ -10,7 +10,7 @@ Complete guide to using Manifest in a new project (outside the Manifest monorepo
 
 ## Prerequisites
 
-**Manifest is published to GitHub Packages** as `@angriff36/manifest` (not the public npm registry). Configure `.npmrc` for the `@angriff36` scope. For monorepo development, you can also link the local package.
+**Manifest is published to the public npm registry** as `@angriff36/manifest` — `npm install` / `pnpm add` works with no special `.npmrc` configuration. For monorepo development, you can also link the local package.
 
 ---
 
