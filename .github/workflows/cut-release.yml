@@ -114,8 +114,11 @@ jobs:
           # handles this workspace layout), then publish the tarball with the
           # npm CLI + --provenance, which performs the OIDC exchange and dodges
           # npm's Arborist/workspace errors on a directory publish.
-          pnpm pack --pack-destination "$RUNNER_TEMP" >/tmp/pack.log 2>&1
-          TARBALL="$(ls -t "$RUNNER_TEMP"/*@*.tgz | head -n1)"
+          pnpm pack >/tmp/pack.log 2>&1
+          TARBALL="$(ls -t angriff36-manifest-*.tgz 2>/dev/null | head -n1)"
+          if [ -z "$TARBALL" ]; then
+            echo "::error::pnpm pack produced no tarball"; cat /tmp/pack.log; exit 1
+          fi
           echo "Publishing $TARBALL"
           out="$(npm publish "$TARBALL" --provenance --access public 2>&1)"
           code=$?
