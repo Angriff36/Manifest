@@ -106,6 +106,24 @@ jobs:
       # Publish FIRST. If this fails, we exit and nothing is pushed — no tag,
       # no GitHub Release, npm unchanged. Re-runs are idempotent (a 409 "already
       # published" is treated as success so the tag/release step still completes).
+      - name: Debug OIDC claims
+        run: |
+          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
+          echo "GITHUB_REF=$GITHUB_REF"
+          echo "GITHUB_WORKFLOW_REF=$GITHUB_WORKFLOW_REF"
+          echo "GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME"
+          echo "GITHUB_ACTOR=$GITHUB_ACTOR"
+          BODY=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm")
+          JWT=$(echo "$BODY" | jq -r '.value // empty')
+          if [ -n "$JWT" ]; then
+            P=$(echo "$JWT" | cut -d. -f2)
+            case $(( ${#P} % 4 )) in 2) P="${P}==";; 3) P="${P}=";; esac
+            echo "--- OIDC claims ---"
+            echo "$P" | tr '_-' '/+' | base64 -d | jq .
+          else
+            echo "No OIDC token: $BODY"
+          fi
+
       - name: Publish to npm (OIDC)
         run: |
           set +e
