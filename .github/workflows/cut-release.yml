@@ -109,7 +109,15 @@ jobs:
       - name: Publish to npm (OIDC)
         run: |
           set +e
-          out="$(pnpm publish --provenance --no-git-checks 2>&1)"
+          # pnpm signs provenance but does NOT perform the trusted-publishing
+          # credential exchange — only the npm CLI does. Pack with pnpm (it
+          # handles this workspace layout), then publish the tarball with the
+          # npm CLI + --provenance, which performs the OIDC exchange and dodges
+          # npm's Arborist/workspace errors on a directory publish.
+          pnpm pack --pack-destination "$RUNNER_TEMP" >/tmp/pack.log 2>&1
+          TARBALL="$(ls -t "$RUNNER_TEMP"/*@*.tgz | head -n1)"
+          echo "Publishing $TARBALL"
+          out="$(npm publish "$TARBALL" --provenance --access public 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
