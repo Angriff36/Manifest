@@ -176,6 +176,9 @@ function irTypeToTsType(irType: IRType): string {
     money: 'number',
     decimal: 'number',
     int: 'number',
+    integer: 'number',
+    bigint: 'number',
+    float: 'number',
   };
   const baseType = tsTypeMap[irType.name] || irType.name;
   return irType.nullable ? `${baseType} | null` : baseType;

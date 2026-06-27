@@ -137,6 +137,32 @@ describe('ReactQueryProjection', () => {
       expect(code).toContain('enabled: !!id');
     });
 
+    it('maps all numeric scalar types to number (no bare token leak)', async () => {
+      const source = `
+        entity Reading {
+          property required id: string
+          property usageHours: float
+          property count: int
+          property big: bigint
+          property price: money
+          property exact: decimal
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+
+      expect(code).toContain('usageHours: number;');
+      expect(code).toContain('count: number;');
+      expect(code).toContain('big: number;');
+      expect(code).toContain('price: number;');
+      expect(code).toContain('exact: number;');
+      // The raw scalar token must never leak into the emitted TS type.
+      expect(code).not.toContain(': float');
+      expect(code).not.toContain(': bigint');
+    });
+
     it('generates hooks for multiple entities', async () => {
       const source = `
         entity Recipe {
