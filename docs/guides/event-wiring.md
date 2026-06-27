@@ -198,6 +198,37 @@ export async function publishOutboxEvents() {
 
 ---
 
+## In-Engine vs Host-Side Wiring
+
+The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for *external* infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, propagate `correlationId`/`causationId` automatically, and are covered by conformance tests:
+
+```manifest
+// Declarative: order completes -> create its invoice (no host-side onEvent needed)
+on OrderCompleted run Invoice.createFromOrder
+  resolve payload._subject.id
+  params { orderId: payload._subject.id, amount: payload.result }
+
+// 1:N cascade: deactivate every child of the deactivated parent
+on ParentDeactivated fanOut Child where parentId = self.id
+  run deactivate
+
+// Recompute a stored count after a child event
+on ScheduleShiftCreated run Schedule.syncShiftCount
+  resolve self.scheduleId
+  params { shiftCount: count(ScheduleShift where scheduleId == self.scheduleId) }
+```
+
+To pass a value into a follow-on reaction, declare it on the emit so it lands in `payload`:
+
+```manifest
+command assign(scheduleId: string) {
+  mutate scheduleId = scheduleId
+  emit ScheduleShiftCreated { scheduleId: self.scheduleId }   // reaction reads payload.scheduleId
+}
+```
+
+Full reference: `docs/features/event-reactions.md` and `mintlify/language/reactions.mdx`. Use host-side `onEvent` (below) for side effects that leave the runtime; use declarative reactions for command-to-command orchestration.
+
 ## Pattern 3: Event-Driven Prep Task Automation
 
 When a prep task is claimed, automatically check station capacity and notify the kitchen lead. Each reaction uses `causationId` to trace why it happened.

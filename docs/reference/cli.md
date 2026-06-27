@@ -32,10 +32,16 @@ Compile `.manifest` source to IR.
 - `-g, --glob <pattern>` — glob for multiple files.
 - `-d, --diagnostics` — include diagnostics in output (default off).
 - `--pretty` — pretty-print JSON (default on).
+- `--merge` — merge multiple files into a single IR (resolves `use` declarations; default off).
+- `--entry <files...>` — entry file(s) for merge compilation (auto-detected if omitted).
 
 ```bash
 manifest compile src/app.manifest -o ir/
 ```
+
+**Idempotent output.** When an output `.ir.json` already exists and was produced from byte-identical source (same `provenance.contentHash`), the compiler reuses the prior `provenance.compiledAt` (and recomputes `irHash` against it), so re-compiling unchanged source is byte-identical and produces no spurious git diff. A fresh `compiledAt` only lands when the source actually changes. This applies to single-file and `--merge` compilation.
+
+**Duplicate event names** are reported as a compile warning (surfaced with `-d, --diagnostics` and in the LSP): two declarations of the same event name collide in the event registry, so one shadows the other. Rename one.
 
 ## generate
 
@@ -46,9 +52,13 @@ Generate code from IR using a projection.
 - `-s, --surface <name>` — surface (`route`, `command`, `types`, `client`, `all`; default `all`).
 - `-o, --output <path>` — output directory.
 - `--auth <provider>`, `--database <path>`, `--runtime <path>`, `--response <path>` — import paths layered over config.
+- `--check` — drift mode: regenerate code in memory and compare to the committed files **without writing**. Exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift) so CI can assert that committed code equals freshly generated code (`prettier --check` semantics).
 
 ```bash
 manifest generate ir/ -p nextjs -s all -o generated/
+
+# CI drift gate: fail if committed code is stale
+manifest generate ir/ -o generated/ --check
 ```
 
 ## build
@@ -103,6 +113,14 @@ Validate manifest/IR with scored diagnostics for AI agents.
 ```bash
 manifest validate-ai generated.ir.json --format json --min-score 80
 ```
+
+Diagnostics are tagged with a `category` (`schema`, `compile`, `semantic`, `structural`, `domain`). The **`domain`** category surfaces compile-time domain- and reaction-wiring checks against IR with coded diagnostics, each carrying a fix suggestion:
+
+- `DOMAIN_UNWIRED_FK` (error) — a `{parent}Id`-style foreign key with no `belongsTo`/`ref` and no command that sets it from `self.id`.
+- `DOMAIN_ORPHAN_CREATE` (error) — a child entity with no command or reaction that wires its parent FK.
+- `REACTION_UNWIRED` (error) — a reaction whose event is never emitted by a command, or whose payload references can't be satisfied by emitter params, `payload._subject`, or create-result properties.
+
+(Non-error domain findings are reported as `DOMAIN_COMPLETENESS` / `REACTION_COMPLETENESS`.) These mirror the compiler's domain-completeness semantics documented in `docs/spec/semantics.md`.
 
 ## fmt
 

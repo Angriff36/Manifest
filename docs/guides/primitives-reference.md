@@ -28,6 +28,10 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | [`policies`](#policies) | Authorization rules (read/write/execute) | IR / `.manifest` source | Per entity |
 | [`computed`](#computed-properties) | Derived properties recalculated on access | IR / `.manifest` source | Per entity |
 | [`events`](#events) | Emit structured events after successful commands | IR / `.manifest` source | Per command |
+| [emit payloads](#follow-on-emit-payloads) | Declare follow-on event payload fields (`emit E { f: expr }`) | IR / `.manifest` source | Per command |
+| [`reactions`](#reactions) | Auto-dispatch a command when an event is emitted (`on E run Entity.cmd`) | IR / `.manifest` source | Program / module / entity |
+| [`fanOut`](#fan-out-reactions) | 1:N cascade — dispatch a command on every matching child row | IR / `.manifest` source | Reaction |
+| [`count(...)`](#aggregate-count) | Count child rows matching ANDed equality predicates | IR / `.manifest` source | Reaction expression |
 | [`stores`](#stores) | Persistence target (memory, postgres, etc.) | IR / `.manifest` source | Per entity |
 
 ---
@@ -254,6 +258,66 @@ Three levels, evaluated during command execution:
 | **Spec** | `docs/spec/semantics.md` § "Events", `docs/spec/manifest-vnext.md` § "Workflow Metadata" |
 | **Example** | `docs/guides/event-wiring.md` |
 
+### Follow-on emit payloads
+
+| | |
+|---|---|
+| **What** | Explicitly-declared payload fields on an `emit`, computed at emit time and merged into the event's `payload`. Lets a follow-on reaction read real values via `payload.<field>` instead of `undefined`. |
+| **Configure** | In `.manifest` source: `emit ScheduleShiftCreated { scheduleId: self.scheduleId }` |
+| **Scope** | Per command (recorded on the command's `emitPayloads` in the IR). |
+| **Default** | No declared fields — the event carries only the command input plus the last action result. |
+| **Use when** | A reaction downstream of the event needs a value the default payload does not surface (a foreign key, a derived total). Replaces hand-written after-emit middleware that re-derived the value. |
+| **Limitations** | Each field is `name: <expr>` evaluated in the emitting command's context (`self.*`, command inputs). No cross-entity reads. |
+| **Spec** | `docs/spec/semantics.md` § "Events" |
+| **Example** | `src/manifest/conformance/fixtures/97-aggregate-count-reaction.manifest` |
+
+---
+
+## Reactions
+
+Reactions connect events to commands declaratively: when an event is emitted, the runtime evaluates matching reactions in declaration order and dispatches the target command. Full reference: `mintlify/language/reactions.mdx` and `docs/features/event-reactions.md`.
+
+### Reactions
+
+| | |
+|---|---|
+| **What** | Auto-dispatch a command when a matching event is emitted. `resolve` finds the target instance; `params` maps payload fields into command arguments. |
+| **Configure** | In `.manifest` source: `on OrderCompleted run Invoice.createFromOrder` + optional `resolve` / `params` blocks. |
+| **Scope** | Program-level, module-level, or entity-level (targets the entity's own commands). |
+| **Default** | No reactions — events fire but trigger no commands unless wired (declaratively here, or host-side via `runtime.onEvent`). |
+| **Use when** | Reactive workflows: an order completes → create an invoice → prepare shipment, without manual event handlers. |
+| **Limitations** | Reactions run synchronously within the same command turn. Cascading depth is capped at `MAX_REACTION_DEPTH = 10` (`ManifestReactionDepthError`). A reaction with no matching `resolve` instance is skipped silently. |
+| **Spec** | `docs/spec/semantics.md` § "Events", `docs/features/event-reactions.md` |
+| **Example** | `src/manifest/conformance/fixtures/67-event-reactions.manifest` |
+
+### Fan-out reactions
+
+| | |
+|---|---|
+| **What** | A 1:N cascade. Instead of resolving one instance, `fanOut` dispatches the target command on **every** target row matching a foreign-key predicate. |
+| **Configure** | In `.manifest` source: `on ParentDeactivated fanOut Child where parentId = self.id run deactivate` (optional shared `params`). |
+| **Scope** | Per reaction. The match `where <field> = <sourceExpr>` selects the collection; `<sourceExpr>` reads the event payload (`self.*` / `payload.*`). |
+| **Default** | N/A — opt-in via the `fanOut` keyword. |
+| **Use when** | "Do X to all children": cancel every line item, release every reservation, deactivate every child account. Replaces "query children by FK, loop, dispatch" middleware. |
+| **Limitations** | Each match runs the full command pipeline (guards/policies/actions/emits). Depth limit and `correlationId`/`causationId` apply per dispatched command. The Convex projection reads via `withIndex` on the FK, falling back to a filter. |
+| **Spec** | `docs/features/event-reactions.md` |
+| **Example** | `src/manifest/conformance/fixtures/96-fanout-reaction.manifest` |
+
+### Aggregate count
+
+| | |
+|---|---|
+| **What** | An expression — `count(Entity where field == value, ...)` — that counts rows matching every ANDed equality predicate. Typically a reaction param that recomputes a stored child count on a parent. |
+| **Configure** | In `.manifest` source, inside a reaction `params`: `shiftCount: count(ScheduleShift where scheduleId == self.scheduleId, status == "active")` |
+| **Scope** | Reaction expression. Predicate values resolve against the event payload (`self.*` / `payload.*`). |
+| **Default** | N/A — explicit. |
+| **Use when** | Per-parent recompute after a child event: "how many shifts does this schedule have now?" Replaces "count children where FK == parent, then patch parent" middleware. |
+| **Limitations** | Pure equality predicates only, ANDed; at least one (the FK match) required. No group-by, joins, multi-hop, or arbitrary SQL. Does **not** cover tenant-wide reconcile or dual-target moves. `count` is contextual, not reserved. Runtime scans the collection (deterministic); Convex reads via the FK's `by_<field>` index + tenant/soft-delete filters, then `.length`. |
+| **Spec** | `docs/features/event-reactions.md` |
+| **Example** | `src/manifest/conformance/fixtures/97-aggregate-count-reaction.manifest` |
+
+---
+
 ### Stores
 
 | | |
@@ -303,6 +367,10 @@ Budget tracking (`EvaluationLimits`) wraps the entire flow. If any expression ev
 | Prevent concurrent edit conflicts | `versionProperty` |
 | Protect against runaway expressions | `EvaluationLimits` |
 | Block side effects in tests | `deterministicMode: true` |
+| Run a command automatically when an event fires | `reactions` (`on E run Entity.cmd`) |
+| Pass a value to a follow-on reaction | emit payload (`emit E { field: expr }`) |
+| Do something to every child row | `fanOut` reaction |
+| Recompute a stored child count on a parent | `count(...)` reaction param |
 
 ---
 

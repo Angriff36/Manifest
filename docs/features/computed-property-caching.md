@@ -35,6 +35,10 @@ The runtime engine implements the strategies with two caches keyed by `entityNam
 
 On a cache hit the engine returns `{ value, stale, cached: true }`; on a miss it evaluates the expression, stores the result (when a strategy is configured), and returns `cached: false`. Cache entries are not silently wrong when inputs change: when a mutation touches a property that a cached computed depends on, the engine marks the matching cache entries `stale` in both the session/TTL and request caches, and propagates staleness transitively to computed properties that depend on other computed properties. The stale flag is surfaced on the read result rather than forcing an immediate recompute. Because `ttl` uses `getNow()`, expiry honors the deterministic clock supplied via `RuntimeOptions.now`.
 
+### Dependency extraction
+
+Staleness keys on the names of the instance properties a computed reads. Those names are collected at parse time by `extractDependencies()` (`src/manifest/parser.ts`) from the computed's expression and carried on the IR. It captures bare identifiers **and** member access on `self`/`this`: `computed tax = self.subtotal * self.taxRate` correctly lists `subtotal` and `taxRate` as dependencies. (Earlier versions only captured bare identifiers, so member references like `self.subtotal` listed *no* dependencies and the cache never went stale when those fields changed.) References through `user.*` and `context.*` are excluded — they are not instance properties — while a nested `self.a.b` recurses to capture `a`. This mirrors the `self`/`this` member check in the IR compiler's guard/constraint analysis.
+
 ## How it maps to projections
 
 Caching is a runtime evaluation concern; the cache strategy is metadata carried on the computed property in the IR. There is no dedicated database or schema projection for it — a projection that evaluates computed properties would consult the strategy if it chose to.

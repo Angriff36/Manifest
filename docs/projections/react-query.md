@@ -34,13 +34,25 @@ Swap the surface to `react-query.provider` for the `QueryClient` setup module.
 
 ## Type mapping & behavior
 
-IR property and parameter types are mapped to TypeScript by `irTypeToTsType`: `string` to `string`, `number` to `number`, `boolean` to `boolean`, `date`/`datetime` to `Date`, `any` to `unknown`, and `void` to `void`. Any other IR type name passes through unchanged. A nullable IR type yields `T | null`.
+IR property and parameter types are mapped to TypeScript by `irTypeToTsType`: `string` to `string`, `number`/`int`/`integer`/`decimal`/`bigint`/`float` to `number`, `boolean` to `boolean`, `any` to `unknown`, and `void` to `void`. Array/list properties emit a real element type — `array<string>` becomes `string[]` (falling back to `unknown[]` when the element type is absent), and a union element parenthesizes (`(A | B)[]`) — rather than leaking the bare `array` token. `date`/`datetime` map to `Date` by default, or to `string` when `dateSerialization: 'iso-string'` is set (see Options). Any other IR type name passes through unchanged. A nullable IR type yields `T | null`.
 
 Entity properties are marked optional (`?`) when the property carries the `optional` modifier, has a default value, or is nullable. Command input fields are optional when the parameter is not required, in which case the TypeScript type also gains ` | undefined`. Query keys use the lower-camel-cased entity name (for example `queryKeys.userProfile.all`). The mutation return type is taken from the command's `returns` type, defaulting to `unknown`.
 
 ## Options
 
 `ReactQueryProjectionOptions` accepts `apiBasePath` (default `/api`), `dispatcherBasePath` (default `/api/manifest`), `optimisticUpdates` (default `true`), `errorBoundaryIntegration` (default `true`), `typesImportPath` (default `@/types/manifest-generated`), and `defaultStaleTime` in milliseconds (default `30000`). All are optional.
+
+Two further options keep the hooks aligned with the route surface they call:
+
+- `routeCasing` (default `'lowercase'`; also `'kebab-case'`, `'snake_case'`, `'preserve'`) sets the casing of the default entity URL segment in fetch paths when no per-entity `entityRoutes` override is given. It **must match the Next.js projection's `routeCasing`** so the hooks call the routes that actually exist (`'lowercase'` flattens `PrepTask` → `preptask`; `'kebab-case'` → `prep-task`, etc.). Explicit `entityRoutes` overrides still take precedence.
+- `dateSerialization` (default `'date'`, or `'iso-string'`) controls whether `date`/`datetime` props in the inlined types are `Date` or `string`. Non-breaking.
+
+```ts
+const result = projection.generate(ir, {
+  surface: 'react-query.hooks',
+  options: { routeCasing: 'kebab-case', dateSerialization: 'iso-string' },
+});
+```
 
 ## Notes & limitations
 

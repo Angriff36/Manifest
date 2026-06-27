@@ -359,6 +359,10 @@ When any entity is realtime, generated command routes (inline mode) automaticall
     The generated code uses import paths like `@/lib/database` and `@/lib/manifest-response`. These are conventions — create those modules in your project or pass custom `databaseImportPath` and `responseImportPath` options to the projection generator.
   </Accordion>
 
+  <Accordion title="Routes don't match my react-query hooks">
+    Both projections derive each entity's default URL segment from its name, and the casing must agree. Pass the same `routeCasing` option to both generators: `'lowercase'` (default — `PrepTask` → `preptask`), `'kebab-case'` (`prep-task`), `'snake_case'` (`prep_task`), or `'preserve'` (`PrepTask`). Explicit `routeSegments` / `entityRoutes` overrides still take precedence. Use `dateSerialization: 'iso-string'` (default `'date'`) when `date`/`datetime` fields cross the wire as ISO-8601 strings rather than `Date` instances.
+  </Accordion>
+
   <Accordion title="Tenant filtering returns no results">
     Confirm that your database rows have a `tenantId` column populated and that the `userTenantMapping` lookup is returning the correct value. You can disable tenant filtering during development by passing `includeTenantFilter: false` to the generator.
   </Accordion>

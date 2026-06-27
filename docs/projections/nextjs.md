@@ -72,11 +72,25 @@ The read-query builders are **field-aware**: a clause is only emitted when the e
 
 Authentication is driven by `authProvider`. `clerk` emits a `@clerk/nextjs` auth call, `nextauth` emits `getServerSession`, `custom` imports from `authImportPath`, and `none` uses a fixed anonymous identity. Auth rejections return the configurable `unauthorizedStatus` (default 401) and never surface as a 500.
 
+The `ts.types` surface maps IR scalars to TypeScript. `float`, `bigint`, and `integer` (alongside `int`, `decimal`) all map to `number`; `boolean` to `boolean`; `string` to `string`. Array/list properties emit a real element type — `array<string>` becomes `string[]` (and falls back to `unknown[]` when the element type is absent) rather than leaking the bare `array` token. `date`/`datetime` map to `Date` by default, or to `string` when `dateSerialization: 'iso-string'` is set (see Options). A nullable IR type yields `T | null`.
+
+The default URL route segment derived from each entity name is governed by `routeCasing`. The legacy default `'lowercase'` flattens `PrepTask` to `preptask`; `'kebab-case'` → `prep-task`, `'snake_case'` → `prep_task`, and `'preserve'` keeps `PrepTask` verbatim. Explicit `routeSegments` overrides always take precedence over the derived casing.
+
 ## Options
 
 The full options object is `NextJsProjectionOptions` in `src/manifest/projections/interface.ts`. The commonly used fields are the import paths (`authImportPath`, `databaseImportPath`, `responseImportPath`, `runtimeImportPath`, default `@/lib/auth`, `@/lib/database`, `@/lib/manifest-response`, `@/lib/manifest-runtime`), the auth selector `authProvider`, the filter toggles `includeTenantFilter` and `includeSoftDeleteFilter` with their `tenantIdProperty` / `deletedAtProperty` names, the `appDir` (default `app/api`), and formatting flags `strictMode`, `includeComments`, and `indentSize`.
 
 Three nested option groups control the write and read surfaces. `dispatcher` controls the canonical write route: `enabled` (default true), `executionMode` (`inline` default, or `externalExecutor` with `executorImportPath` / `executorImportName`), `deriveInstanceId` (default true, pulls `instanceId`/`id` from the body for non-create commands), and a `path` override. `concreteCommandRoutes` controls the deprecated per-command surface with `enabled` (default false) and `legacyAliasesOnly` (default true). `readRoutes` controls reads with `enabled` (default true) and `directDbReads` (default true; set false to emit read stubs without inlining a Prisma call).
+
+Two options shape the generated route paths and types. `routeCasing` (default `'lowercase'`; `'kebab-case'`, `'snake_case'`, or `'preserve'`) normalizes the route segment derived from each entity name, while explicit `routeSegments` (and `accessorNames`) overrides still take precedence. `dateSerialization` (default `'date'`, or `'iso-string'`) selects whether `date`/`datetime` props in the `ts.types` surface are typed as `Date` or as a transport-friendly `string`. Both are non-breaking.
+
+```ts
+const types = projection.generate(ir, {
+  surface: 'ts.types',
+  options: { routeCasing: 'kebab-case', dateSerialization: 'iso-string' },
+});
+// PrepTask routes resolve under /api/prep-task; createdAt: string
+```
 
 ## Notes & limitations
 

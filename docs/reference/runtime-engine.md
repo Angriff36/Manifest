@@ -52,6 +52,12 @@ Expression evaluation is handled by `evaluateExpression()`. It supports literals
 
 Constraint and concurrency behavior are also runtime features, not projection features. `evaluateCommandConstraints()` can mark outcomes as overridden, synthesize `OverrideApplied` events, and stop execution on non-overridden blocking outcomes. `updateInstance()` enforces optimistic concurrency and allowed state transitions. If a version mismatch occurs, the runtime records a structured `ConcurrencyConflict` and emits a system event.
 
+### Batched, atomic command persistence
+
+When a command runs against a target instance (`entityName` + `instanceId`), the runtime opens a command-scoped write buffer seeded with the already-loaded instance. `mutate` and `compute` actions advance an in-memory working copy and accumulate a single store-form `patch` rather than issuing a separate store read + write per action. The buffer is flushed in **one** `store.update` at the end of the action loop — so a command mutating N fields costs one read and one write regardless of N, instead of the previous N writes plus roughly 2N reads. The flush happens **before** event emission and reaction dispatch, so emitted events and any reactions observe the final committed command state.
+
+The single entity write is also **atomic for its row**: if a `mutate`/`compute` action trips a state-transition or concurrency check, the command returns a failure result and the `finally` block restores the buffer **without flushing** — a failed command persists nothing, instead of leaving partial per-field writes behind. (Entity flush and outbox/saga enqueue remain separate operations; atomicity here covers the single entity row.) Nested commands dispatched by reactions save and restore the outer buffer, so each command flushes its own row independently.
+
 ## Basic Usage
 
 ```ts

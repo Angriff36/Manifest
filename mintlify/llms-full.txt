@@ -4,7 +4,7 @@
 
 > Source: https://manifest-b1e8623f.mintlify.app
 
-> Package: @angriff36/manifest v2.10.2
+> Package: @angriff36/manifest v2.18.6
 
 <!-- NOTE: This file is a point-in-time snapshot of the documentation body and is not auto-regenerated. The version banner above has been updated to the current release, but the prose below may reflect an earlier docs state. Treat the live docs pages as authoritative. -->
 

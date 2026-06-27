@@ -75,6 +75,30 @@ params {
 
 Inside a `params` block, `event.*` references the event payload fields. The expression language supports the full set of operators: arithmetic, comparison, logical, conditional, and function calls.
 
+## Follow-on emit payloads
+
+A reaction only sees the fields the triggering event actually carries. By default an `emit` carries the command's input plus the last action result — so a follow-on reaction reading `payload.<field>` for anything else resolves `undefined`. To pass real values down a reaction chain, declare them explicitly with an `emit Event { field: expr }` block. The fields are computed **at emit time**, in the emitting command's context:
+
+```manifest
+entity ScheduleShift {
+  property required id: string
+  property scheduleId: string = ""
+
+  command assign(scheduleId: string) {
+    mutate scheduleId = scheduleId
+    emit ScheduleShiftCreated { scheduleId: self.scheduleId }
+  }
+}
+
+event ScheduleShiftCreated: "scheduleShift.created" {}
+
+// The follow-on reaction now reads a real value, not undefined
+on ScheduleShiftCreated run Schedule.syncShiftCount
+  resolve self.scheduleId
+```
+
+Each payload field is `name: <expr>`, where the expression is evaluated in the emitting command's context (`self.*`, command inputs). The declared fields are merged into the emitted event's `payload`, where a follow-on reaction's `resolve`, `params`, `fanOut where`, and `count` predicates can read them as `self.<field>` / `payload.<field>`. This closes the gap consumers otherwise papered over with hand-written after-emit middleware.
+
 ## Fan-out reactions (1:N cascades)
 
 A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on *every* related row, e.g. "when an event is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:

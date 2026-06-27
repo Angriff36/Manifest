@@ -94,6 +94,14 @@ manifest compile [source] [options]
   Entry file(s) for merge compilation (repeatable). The merge starts from these files and follows their `use` declarations. Auto-detected when omitted. Only meaningful together with `--merge`.
 </ParamField>
 
+<Note>
+**Idempotent output.** When an output `.ir.json` already exists and was produced from byte-identical source (matching `provenance.contentHash`), the compiler reuses the prior `provenance.compiledAt` (recomputing `irHash` against it) so re-compiling unchanged source is byte-identical — no spurious git diff. A fresh `compiledAt` lands only when the source actually changes. Applies to single-file and `--merge` compilation.
+</Note>
+
+<Tip>
+**Duplicate event names** produce a compile warning (shown with `--diagnostics` and in the LSP): two declarations of the same event name collide in the event registry, so one shadows the other. Rename one.
+</Tip>
+
 ### Examples
 
 ```bash
@@ -157,6 +165,10 @@ manifest generate <ir> [options]
   *(nextjs only)* Response helpers import path (e.g. `@/lib/manifest-response` or `@repo/manifest/response`). Falls back to `projections.nextjs.options.responseImportPath`, then defaults to `@/lib/manifest-response`.
 </ParamField>
 
+<ParamField path="--check" type="boolean" default="false">
+  Drift mode: regenerate code in memory and compare it to the committed files **without writing anything**. Exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift). Use it in CI to assert that committed code equals freshly generated code — the codegen analogue of `prettier --check`. See [CI/CD](/cli/ci-cd).
+</ParamField>
+
 #### Examples
 
 ```bash
@@ -168,6 +180,9 @@ manifest generate ir/ --surface dispatcher --output app/api
 
 # Prisma schema from compiled IR
 manifest generate ir/ --projection prisma --surface prisma.schema --output prisma
+
+# CI drift gate: fail if committed code is stale vs. the IR
+manifest generate ir/ --output generated/ --check
 ```
 
 Projection-specific options (table names, column mappings, decimal precision, indexes, type overrides, foreign-key names for prisma; auth provider, tenant filters, dispatcher mode for nextjs) live in `manifest.config.yaml` under `projections.<name>.options`. See [Configuration](/cli/configuration) and the per-projection guides ([Next.js](/integration/nextjs), [Prisma](/integration/prisma)).
@@ -545,6 +560,18 @@ manifest validate-ai [source] [options]
 <ParamField path="--verbose" type="boolean" default="false">
   Include info-level diagnostics in the output.
 </ParamField>
+
+### Diagnostic categories
+
+Every diagnostic carries a `category`: `schema`, `compile`, `semantic`, `structural`, or `domain`. The **`domain`** category surfaces compile-time domain- and reaction-wiring checks against the IR with coded diagnostics (each includes a fix suggestion):
+
+| Code | Severity | Meaning |
+|---|---|---|
+| `DOMAIN_UNWIRED_FK` | error | A `{parent}Id`-style foreign key with no `belongsTo`/`ref` and no command that sets it from `self.id`. |
+| `DOMAIN_ORPHAN_CREATE` | error | A child entity with no command or reaction that wires its parent FK. |
+| `REACTION_UNWIRED` | error | A reaction whose event is never emitted by a command, or whose payload references can't be satisfied by emitter params, `payload._subject`, or create-result properties. |
+
+Non-error domain findings are reported as `DOMAIN_COMPLETENESS` / `REACTION_COMPLETENESS`. These checks mirror the compiler's domain-completeness semantics (see `docs/spec/semantics.md`) — a half-wired model fails validation.
 
 ### Examples
 

@@ -32,6 +32,20 @@ The runtime engine acts on the flag:
 
 `getNow()` honors the deterministic clock supplied through the `now` runtime option, so tests can pin timestamps to a fixed value. The Prisma projection translates the flag into native column attributes: `@default(now())` on `createdAt` and `@updatedAt` on `updatedAt`.
 
+## Manual `now()` / `today()` defaults
+
+The `timestamps` modifier is the zero-boilerplate path for the `createdAt`/`updatedAt` pair. For a single timestamp field outside that pair, declare it explicitly with a `now()` (or `today()`) default:
+
+```manifest
+property createdAt: datetime = now()
+```
+
+This call-expression default lowers to the `IRProperty.autoNow` flag (recognized: `now()`/`today()`, called with no arguments). The runtime stamps the field with the current time on create when the caller does not supply a value, and the Prisma projection emits `@default(now())`.
+
+<Note>
+Before this lowering existed, a `= now()` default compiled to **no** default and was null-filled at runtime, breaking non-null store columns (the `createdAt must not be null` class of bug). The compiler also folds negative numeric literal defaults like `= -1` into a real static default, and emits a **warning** for an unsupported call-expression default such as `= uuid()` (which would otherwise be silently dropped). See [Types](/language/types) for the full `autoNow` and diagnostics behavior.
+</Note>
+
 ## Reference
 
 - Source keyword: `timestamps`.

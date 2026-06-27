@@ -126,6 +126,23 @@ entity Article {
 
 Because type names are open strings, a property may also be declared `property scheduledFor: datetime` and will compile, but no date-specific parsing or validation is attached to such a declaration.
 
+### `now()` / `today()` defaults (autoNow)
+
+A `datetime` property can default to the current time with a `now()` (or `today()`) call default:
+
+```manifest
+entity Article {
+  property required id: string
+  property createdAt: datetime = now()
+}
+```
+
+A call-expression default cannot be stored as a static IR value, so the compiler lowers a recognized `now()`/`today()` default (called with no arguments) to the `IRProperty.autoNow` flag. The runtime stamps the field on create when the caller does not supply a value, and the Prisma projection emits `@default(now())`. Negative numeric literal defaults such as `= -1` are folded to a real static default instead of being dropped.
+
+<Warning>
+Before `autoNow` existed, a `= now()` default compiled to **no** default and the field was null-filled at runtime, breaking non-null store columns. An **unsupported** call-expression default — e.g. `= uuid()` — would still be silently dropped, so the compiler now emits a **warning** for it (listing the supported call defaults `now()`, `today()`). Separately, a `create` command that leaves a non-null, default-less property unset is **warned** about when the runtime would null-fill that field — the types that fill with `null` rather than a zero value: `datetime`, `date`, `time`, `enum`, and custom/value-object types. Zero-filling types (`string`, `number`, `boolean`, `list`/`array`, `map`) are not flagged, nor are runtime/store-managed fields (`id`, composite keys, relationship FKs, the tenant property, version fields, auto timestamps). Both are warnings (not hard errors, since the runtime merges caller input on create) and surface in `manifest compile` and the LSP.
+</Warning>
+
 Date components are read at runtime through expression built-ins operating on a numeric millisecond timestamp:
 
 ```manifest

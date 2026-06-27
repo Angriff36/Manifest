@@ -84,6 +84,32 @@ jobs:
           commit_message: "chore: regen conformance fixtures [skip ci]"
 ```
 
+## Generated-code drift gate
+
+`manifest generate --check` regenerates projection output **in memory** and compares it to the committed files without writing anything. It exits non-zero and lists the drifted files (a missing file or any byte difference counts as drift) — the codegen analogue of `prettier --check`. This lets CI assert that committed code equals freshly generated code, so stale checked-in output can never silently diverge from the IR.
+
+```bash
+# Fails the job if any committed file differs from a fresh generation
+manifest generate ir/ --output generated/ --check
+```
+
+Add it as a PR step alongside `validate` and `scan`:
+
+```yaml
+  codegen-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Assert generated code is up to date
+        run: npx manifest generate ir/ --output generated/ --check
+```
+
+When the job fails, the fix is to run `manifest generate` (without `--check`) locally and commit the result. Pair this with `manifest compile`'s idempotent output (unchanged source re-compiles byte-identically) so a clean `compile` + `generate --check` chain proves the whole `.manifest → IR → code` pipeline is committed and current.
+
 ## Breaking change detector
 
 Classify changes between two IR versions as `compatible`, `deprecated`, or `breaking`:

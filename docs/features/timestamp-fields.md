@@ -40,6 +40,16 @@ The Prisma projection (`src/manifest/projections/prisma/generator.ts`) translate
 - Runtime population: `getNow()` on create (both fields) and update (`updatedAt` only).
 - Prisma attributes: `@default(now())`, `@updatedAt`.
 
+## Related: manual `= now()` / `= today()` defaults
+
+The `timestamps` modifier is the zero-boilerplate path. For a single timestamp field outside the `createdAt`/`updatedAt` pair, declare it explicitly with a `now()` (or `today()`) default:
+
+```
+property createdAt: datetime = now()
+```
+
+This call-expression default lowers to the `IRProperty.autoNow` flag (`now()`/`today()`, no arguments): the runtime stamps the current time on create when the caller does not supply a value, and the Prisma projection emits `@default(now())`. Before this lowering existed, such a default compiled to no default and was null-filled at runtime, breaking non-null store columns. See `docs/features/date-time-types.md` for the full `autoNow` behavior, the negative-literal default fold (`= -1`), the unsupported-call-default warning (e.g. `= uuid()`), and the guaranteed-null persistence warning on `create` commands.
+
 ## Notes & limitations
 
 The injected fields carry the `readonly` modifier, so they cannot be mutated through commands. If a program manually declares `createdAt` or `updatedAt`, the auto-injection defers entirely to the manual declaration and does not add or override anything for that name. Population is driven by the runtime engine's create/update paths; stores or code paths that write instances without going through `createInstance`/`updateInstance` will not receive automatic timestamps.
