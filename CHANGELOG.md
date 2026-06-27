@@ -4,6 +4,10 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.5] - 2026-06-27
+
+_Auto-generated stub — expand with real release notes._
+
 ## [2.18.4] - 2026-06-27
 
 ### Changed
