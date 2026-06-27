@@ -27,9 +27,17 @@ pnpm run bench              # Run benchmarks
 goes green:
 
 ```bash
+pnpm manifest:publish            # patch bump + watch to green (shortcut)
+pnpm manifest:publish minor      # or minor / major / explicit e.g. 2.4.0
+
+# equivalent raw form:
 gh workflow run cut-release.yml -f version=minor   # or patch / major / explicit e.g. 2.4.0
 gh run watch --repo Angriff36/Manifest             # wait for green
 ```
+
+`pnpm manifest:publish` wraps `scripts/release.mjs` (dispatch + watch with
+`--exit-status`). Pre-write the `CHANGELOG.md` section for the target version
+first — the workflow keeps an existing section, otherwise it auto-stubs.
 
 It is publish-first. build + typecheck + the full test suite gate the run,
 then it bumps `package.json` (the source of truth), ensures a `CHANGELOG.md`
@@ -308,11 +316,13 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[proactive bridge @ 110% context — saved before compacting]
-Files (4):
-  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/reference-capsule-manifest-scripts.md (create)
-  C:/Users/Ryan/.claude/plans/glowing-watching-dolphin.md (create)
-  c:/projects/capsule-pro/manifest/source/AGENTS.md (create)
-  src/manifest/parser.ts (edit)
+[proactive bridge @ 94% context — saved before compacting]
+Files (6):
+  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/reference-npm-publish.md (create)
+  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/MEMORY.md (edit)
+  mintlify/installation.mdx (edit)
+  docs/getting-started/new-project.md (edit)
+  docs/getting-started/quickstart.md (edit)
+  docs/internal/tools/CLI_REFERENCE.md (edit)
 
 # === END COGNILAYER ===

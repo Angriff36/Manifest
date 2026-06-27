@@ -283,6 +283,7 @@
     "manifest:generate": "tsx ./packages/cli/src/index.ts generate",
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
+    "manifest:publish": "node scripts/release.mjs",
     "wasm:build": "asc assembly/index.ts --target release --outFile src/manifest/wasm/manifest-runtime.wasm --optimize --runtime stub --exportRuntime",
     "wasm:build:debug": "asc assembly/index.ts --target debug --outFile src/manifest/wasm/manifest-runtime-debug.wasm",
     "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run build"
