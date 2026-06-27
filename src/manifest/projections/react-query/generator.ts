@@ -164,6 +164,13 @@ function toKebabCase(value: string): string {
 }
 
 function irTypeToTsType(irType: IRType): string {
+  // Arrays/lists carry their element type in `generic`. Recurse so we emit a
+  // real `T[]` instead of leaking the bare `array` token (invalid TS).
+  if (irType.name === 'array' || irType.name === 'list') {
+    const inner = irType.generic ? irTypeToTsType(irType.generic) : 'unknown';
+    const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
+    return irType.nullable ? `${elem} | null` : elem;
+  }
   const tsTypeMap: Record<string, string> = {
     string: 'string',
     number: 'number',

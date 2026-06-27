@@ -453,7 +453,14 @@ function generatePrismaQuery(
 /**
  * Convert IR type to TypeScript type.
  */
-function irTypeToTsType(irType: { name: string; nullable: boolean }): string {
+function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { name: string; nullable: boolean; generic?: unknown } }): string {
+  // Arrays/lists carry their element type in `generic`. Recurse so we emit a
+  // real `T[]` instead of leaking the bare `array` token (invalid TS).
+  if (irType.name === 'array' || irType.name === 'list') {
+    const inner = irType.generic ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }) : 'unknown';
+    const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
+    return irType.nullable ? `${elem} | null` : elem;
+  }
   const tsTypeMap: Record<string, string> = {
     string: 'string',
     number: 'number',

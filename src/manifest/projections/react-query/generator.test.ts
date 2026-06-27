@@ -163,6 +163,25 @@ describe('ReactQueryProjection', () => {
       expect(code).not.toContain(': bigint');
     });
 
+    it('maps array types to T[] (no raw array token leak)', async () => {
+      const source = `
+        entity Bag {
+          property required id: string
+          property labels: string[]
+          property scores: int[]
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+
+      expect(code).toContain('labels: string[];');
+      expect(code).toContain('scores: number[];');
+      // The bare `array` token must never reach the emitted TS.
+      expect(code).not.toContain(': array');
+    });
+
     it('generates hooks for multiple entities', async () => {
       const source = `
         entity Recipe {
