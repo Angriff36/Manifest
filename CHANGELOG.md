@@ -4,6 +4,25 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.1] - 2026-06-27
+
+### Changed
+
+- [ci] upgrade npm to 11+ for trusted-publishing OIDC exchange
+- [ci] OIDC trusted publishing (npm forces it; token route blocked)
+- [ci] publish to npm via NPM_TOKEN (OIDC exchange not firing); drop provenance/tarball workarounds
+- [ci] strip stale _authToken so npm uses OIDC trusted publishing
+- [ci] diag: dump OIDC claims to identify trusted-publisher mismatch
+- [ci] fix tarball glob: pnpm pack to CWD, npm publish <tgz> --provenance
+- [ci] publish tarball via npm CLI for trusted-publishing OIDC exchange
+- [ci] add --provenance to fire npm OIDC trusted-publishing handshake
+- [fix] pin publishConfig.registry to npmjs.org
+- [ci] publish-first release to npm (OIDC); drop release.yml
+- [fix] ts.types/react-query: map money/decimal/int to number, emit enums
+- [ci] publish to npm (OIDC), drop GitHub Packages routing
+- [fix] correct publish docs: npm (OIDC), not GitHub Packages
+- [fix] point release publish at GitHub Packages registry
+
 ## [2.18.0] - 2026-06-24
 
 ### Added
