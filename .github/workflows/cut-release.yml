@@ -1,7 +1,7 @@
 name: Cut Release
 
-# Standard one-button npm release using OIDC trusted publishing
-# (no NPM_TOKEN, no GitHub Packages). Run from the Actions tab or:
+# Standard one-button npm release. Publishes to npmjs.org using an npm
+# automation token stored in the NPM_TOKEN secret. Run from the Actions tab:
 #   gh workflow run cut-release.yml -f version=patch    (or minor / major / explicit e.g. 2.19.0)
 #
 # Publish-first: npm is the source of truth for "released", so the version
@@ -10,8 +10,8 @@ name: Cut Release
 # versions. package.json is the version source of truth (checkout always
 # sees latest main, so no tag-aligning drift hack is needed).
 #
-# One-time prerequisite: register the trusted publisher once via
-# scripts/setup-npm-trusted-publish.ps1 (links this workflow to npm via OIDC).
+# Prerequisite: the NPM_TOKEN repo secret must hold a valid npm publish
+# token (granular token with publish permission on @angriff36/manifest).
 
 on:
   workflow_dispatch:
@@ -106,28 +106,12 @@ jobs:
       # Publish FIRST. If this fails, we exit and nothing is pushed — no tag,
       # no GitHub Release, npm unchanged. Re-runs are idempotent (a 409 "already
       # published" is treated as success so the tag/release step still completes).
-      - name: Publish to npm (OIDC)
+      - name: Publish to npm
         env:
-          NODE_AUTH_TOKEN: ''
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set +e
-          # A stale NPM_TOKEN secret is auto-injected as NODE_AUTH_TOKEN by
-          # setup-node, writing a static _authToken that npm uses INSTEAD of
-          # the OIDC trusted-publishing exchange (-> 404). Strip it so OIDC
-          # fires. Permanent fix: delete the NPM_TOKEN repo secret.
-          sed -i '/_authToken/d' "$(npm config get userconfig)" 2>/dev/null || true
-          # pnpm signs provenance but does NOT perform the trusted-publishing
-          # credential exchange — only the npm CLI does. Pack with pnpm (it
-          # handles this workspace layout), then publish the tarball with the
-          # npm CLI + --provenance, which performs the OIDC exchange and dodges
-          # npm's Arborist/workspace errors on a directory publish.
-          pnpm pack >/tmp/pack.log 2>&1
-          TARBALL="$(ls -t angriff36-manifest-*.tgz 2>/dev/null | head -n1)"
-          if [ -z "$TARBALL" ]; then
-            echo "::error::pnpm pack produced no tarball"; cat /tmp/pack.log; exit 1
-          fi
-          echo "Publishing $TARBALL"
-          out="$(npm publish "$TARBALL" --provenance --access public 2>&1)"
+          out="$(pnpm publish --no-git-checks 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
