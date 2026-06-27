@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.3] - 2026-06-27
+
+### Changed
+
+- [fix] map float/bigint/integer to TS number in react-query + nextjs projections
+
 ## [2.18.2] - 2026-06-27
 
 _Auto-generated stub — expand with real release notes._
