@@ -20,7 +20,7 @@ import {
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   READ_ROUTES_DEFAULTS,
 } from './defaults.js';
-import { resolveTableName, type NamingConventionInput } from '../shared/naming.js';
+import { resolveTableName, applyRouteCasing, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
 
 /**
@@ -128,6 +128,7 @@ interface NormalizedNextJsOptions {
   naming?: NamingConventionInput;
   accessorNames: Record<string, string>;
   routeSegments: Record<string, string>;
+  routeCasing: RouteCasing;
   dateSerialization: 'date' | 'iso-string';
 }
 
@@ -194,6 +195,7 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     naming: options?.naming,
     accessorNames: options?.accessorNames ?? {},
     routeSegments: options?.routeSegments ?? {},
+    routeCasing: options?.routeCasing ?? NEXTJS_DEFAULTS.routeCasing,
     dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
   };
 }
@@ -228,8 +230,8 @@ function toKebabCase(value: string): string {
     .toLowerCase();
 }
 
-function toEntitySegment(value: string): string {
-  return value.toLowerCase();
+function toEntitySegment(value: string, casing: RouteCasing = 'lowercase'): string {
+  return applyRouteCasing(value, casing);
 }
 
 /**
@@ -250,11 +252,11 @@ function resolveDbAccessor(entityName: string, options: NormalizedNextJsOptions)
 
 /**
  * URL path segment for an entity in generated route pathHints and client
- * fetch paths. Resolution: explicit `routeSegments` override → lowercased
- * entity name (legacy behavior).
+ * fetch paths. Resolution: explicit `routeSegments` override (used verbatim) →
+ * entity name normalized per `routeCasing` (default `lowercase`, legacy behavior).
  */
 function resolveRouteSegment(entityName: string, options: NormalizedNextJsOptions): string {
-  return options.routeSegments[entityName] ?? toEntitySegment(entityName);
+  return options.routeSegments[entityName] ?? toEntitySegment(entityName, options.routeCasing);
 }
 
 /**

@@ -76,6 +76,31 @@ export function toSnakeCase(s: string): string {
   return splitWords(s).map(w => w.toLowerCase()).join('_');
 }
 
+/** `createdAt` / `Widget` / `author id` → `created-at` / `widget` / `author-id`. */
+export function toKebabCase(s: string): string {
+  return splitWords(s).map(w => w.toLowerCase()).join('-');
+}
+
+/**
+ * Casing for generated URL route segments (and the client fetch paths that
+ * must match them). `'lowercase'` is the historical default — the entity name
+ * flattened with no word boundaries (`PrepTask` → `preptask`). The others split
+ * on camel/Pascal/snake/kebab boundaries first (`PrepTask` → `prep-task` /
+ * `prep_task`); `'preserve'` keeps the entity name verbatim.
+ */
+export type RouteCasing = 'lowercase' | 'kebab-case' | 'snake_case' | 'preserve';
+
+/** Normalize an identifier to a URL route segment per the chosen casing. */
+export function applyRouteCasing(name: string, casing: RouteCasing): string {
+  switch (casing) {
+    case 'kebab-case': return toKebabCase(name);
+    case 'snake_case': return toSnakeCase(name);
+    case 'preserve': return name;
+    case 'lowercase':
+    default: return name.toLowerCase();
+  }
+}
+
 /** `created_at` / `Widget` → `CreatedAt` / `Widget`. */
 export function toPascalCase(s: string): string {
   return splitWords(s)

@@ -24,6 +24,7 @@ import type {
   ProjectionResult,
   ProjectionDiagnostic,
 } from '../interface';
+import { applyRouteCasing, type RouteCasing } from '../shared/naming.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -97,6 +98,13 @@ export interface ReactQueryProjectionOptions {
    * serialize to ISO-8601 strings. Non-breaking — defaults to `'date'`.
    */
   dateSerialization?: 'date' | 'iso-string';
+  /**
+   * Casing for the default entity URL segment in fetch paths (when no
+   * `entityRoutes` override is given). Must match the nextjs projection's
+   * `routeCasing` so hooks call the routes that exist. `'lowercase'` (default,
+   * legacy) flattens `PrepTask` → `preptask`; `'kebab-case'` → `prep-task`, etc.
+   */
+  routeCasing?: RouteCasing;
 }
 
 interface NormalizedOptions {
@@ -111,6 +119,7 @@ interface NormalizedOptions {
   fetchAdapter?: { importPath: string; importName: string };
   commandEnvelope: boolean;
   dateSerialization: 'date' | 'iso-string';
+  routeCasing: RouteCasing;
 }
 
 function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions {
@@ -131,19 +140,23 @@ function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions
       : undefined,
     commandEnvelope: opts?.commandEnvelope ?? false,
     dateSerialization: opts?.dateSerialization ?? 'date',
+    routeCasing: opts?.routeCasing ?? 'lowercase',
   };
 }
 
 // Route + envelope resolvers. Each falls back to the historical default so
 // output is byte-identical when no override is supplied.
 function resolveReadBase(entityName: string, opts: NormalizedOptions): string {
-  return opts.entityRoutes[entityName]?.readBase ?? `${opts.apiBasePath}/${entityName.toLowerCase()}`;
+  return (
+    opts.entityRoutes[entityName]?.readBase ??
+    `${opts.apiBasePath}/${applyRouteCasing(entityName, opts.routeCasing)}`
+  );
 }
 
 function resolveWriteBase(entityName: string, opts: NormalizedOptions): string {
   return (
     opts.entityRoutes[entityName]?.writeBase ??
-    `${opts.dispatcherBasePath}/${entityName.toLowerCase()}/commands`
+    `${opts.dispatcherBasePath}/${applyRouteCasing(entityName, opts.routeCasing)}/commands`
   );
 }
 

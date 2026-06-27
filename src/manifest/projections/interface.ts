@@ -295,6 +295,16 @@ export interface NextJsProjectionOptions {
   routeSegments?: Record<string, string>;
 
   /**
+   * Casing applied to the default URL route segment derived from each entity
+   * name (when no explicit `routeSegments` override is given). `'lowercase'`
+   * (default) is the legacy flattened form (`PrepTask` → `preptask`);
+   * `'kebab-case'` → `prep-task`, `'snake_case'` → `prep_task`, `'preserve'`
+   * keeps the entity name verbatim. Normalizes route casing to one standard
+   * instead of the implicit lowercase-flatten.
+   */
+  routeCasing?: 'lowercase' | 'kebab-case' | 'snake_case' | 'preserve';
+
+  /**
    * How `date`/`datetime` scalars are typed in the generated `ts.types`
    * surface. `'date'` (default) emits `Date`; `'iso-string'` emits `string`,
    * matching JSON/HTTP transport where dates serialize to ISO-8601 strings.

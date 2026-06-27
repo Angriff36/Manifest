@@ -45,6 +45,9 @@ export const NEXTJS_DEFAULTS = {
    */
   unauthorizedStatus: 401,
 
+  /** Route segment casing. `'lowercase'` (legacy) flattens `PrepTask` → `preptask`; `'kebab-case'` → `prep-task`, etc. */
+  routeCasing: 'lowercase',
+
   /** date/datetime → `Date` by default; `'iso-string'` emits `string` for JSON transport. */
   dateSerialization: 'date',
 } as const satisfies Required<Omit<

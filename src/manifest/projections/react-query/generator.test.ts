@@ -186,6 +186,21 @@ describe('ReactQueryProjection', () => {
       expect(iso).not.toContain(': Date;');
     });
 
+    it('routeCasing controls the default fetch path segment', async () => {
+      const source = `entity PrepTask { property required id: string }`;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const dflt = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+      expect(dflt).toContain('/api/preptask/list');
+
+      const kebab = firstCode(
+        projection.generate(result.ir!, { surface: 'react-query.hooks', options: { routeCasing: 'kebab-case' } }),
+      );
+      expect(kebab).toContain('/api/prep-task/list');
+      expect(kebab).not.toContain('/api/preptask/list');
+    });
+
     it('maps array types to T[] (no raw array token leak)', async () => {
       const source = `
         entity Bag {

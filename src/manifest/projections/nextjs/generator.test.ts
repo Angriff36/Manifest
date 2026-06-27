@@ -65,6 +65,26 @@ describe('NextJsProjection', () => {
       expect(routeResult.diagnostics).toHaveLength(0);
     });
 
+    it('routeCasing controls the default segment (lowercase default; kebab/snake/preserve)', async () => {
+      const source = `entity PrepTask { property id: string }`;
+      const result = await compileToIR(source);
+      expectNoCompileErrors(result);
+
+      const seg = (opts?: Record<string, unknown>) =>
+        projection.generate(result.ir!, { surface: 'nextjs.route', entity: 'PrepTask', options: opts })
+          .artifacts[0].pathHint;
+
+      // Default (legacy): flattened lowercase, no word boundaries.
+      expect(seg()).toContain('/preptask/list/route.ts');
+      expect(seg({ routeCasing: 'kebab-case' })).toContain('/prep-task/list/route.ts');
+      expect(seg({ routeCasing: 'snake_case' })).toContain('/prep_task/list/route.ts');
+      expect(seg({ routeCasing: 'preserve' })).toContain('/PrepTask/list/route.ts');
+
+      // Explicit routeSegments still wins over casing.
+      expect(seg({ routeCasing: 'kebab-case', routeSegments: { PrepTask: 'kitchen/prep-tasks' } }))
+        .toContain('/kitchen/prep-tasks/list/route.ts');
+    });
+
     it('returns error diagnostic if entity not found in IR', async () => {
       const source = `entity Recipe { property id: string }`;
       const result = await compileToIR(source);

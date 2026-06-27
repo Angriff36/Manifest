@@ -291,6 +291,7 @@ describe('exported defaults', () => {
           "includeTenantFilter": false,
           "indentSize": 2,
           "responseImportPath": "@/lib/manifest-response",
+          "routeCasing": "lowercase",
           "runtimeImportPath": "@/lib/manifest-runtime",
           "strictMode": true,
           "tenantIdProperty": "tenantId",
