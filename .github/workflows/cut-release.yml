@@ -116,6 +116,11 @@ jobs:
           # cut-release.yml. Strip any static _authToken (setup-node writes one
           # referencing NODE_AUTH_TOKEN) so npm uses the OIDC exchange. Requires
           # the NPM_TOKEN secret to be deleted so nothing is injected.
+          # Trusted publishing needs npm >= 11.5.1; Node 22 ships npm 10.x,
+          # which does not perform the OIDC auth exchange (-> ENEEDAUTH).
+          npm install -g npm@latest
+          hash -r
+          npm --version
           sed -i '/_authToken/d' "$(npm config get userconfig)" 2>/dev/null || true
           out="$(npm publish --provenance --access public 2>&1)"
           code=$?
