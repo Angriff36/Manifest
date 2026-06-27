@@ -4,22 +4,46 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.6] - 2026-06-27
+
+### Added
+
+- **`routeCasing` projection option** (nextjs + react-query): normalizes the
+  default URL route segment derived from each entity name. Values:
+  `'lowercase'` (default, legacy — `PrepTask` → `preptask`), `'kebab-case'`
+  (`prep-task`), `'snake_case'` (`prep_task`), `'preserve'` (`PrepTask`).
+  Generated routes and react-query fetch paths share one casing standard via
+  `applyRouteCasing` in `shared/naming.ts`. Explicit `routeSegments` /
+  `entityRoutes` overrides still take precedence. Non-breaking — defaults to the
+  prior lowercase-flatten behavior.
+
 ## [2.18.5] - 2026-06-27
 
-_Auto-generated stub — expand with real release notes._
+Republish of 2.18.4 — no functional changes.
 
 ## [2.18.4] - 2026-06-27
 
-### Changed
+### Added
 
-- [feat] dateSerialization option: type date/datetime as string for wire transport
-- [fix] emit T[] for array/list props in react-query + nextjs TS types
+- **`dateSerialization` projection option** (nextjs + react-query): `'date'`
+  (default) types `date`/`datetime` as `Date`; `'iso-string'` types them as
+  `string`, matching JSON/HTTP transport where dates serialize to ISO-8601
+  strings. Non-breaking.
+
+### Fixed
+
+- Array/list properties now emit a real `T[]` (e.g. `string[]`, `number[]`) in
+  generated TypeScript types instead of leaking the bare, non-compiling `array`
+  token. Falls back to `unknown[]` only when the element type is absent.
 
 ## [2.18.3] - 2026-06-27
 
-### Changed
+### Fixed
 
-- [fix] map float/bigint/integer to TS number in react-query + nextjs projections
+- `float`, `bigint`, and `integer` scalars now map to `number` in generated
+  TypeScript types (nextjs + react-query). Previously they fell through to the
+  raw type name (`float` / `bigint`), producing non-compiling output; only
+  `money`/`decimal`/`int` were mapped.
 
 ## [2.18.2] - 2026-06-27
 
