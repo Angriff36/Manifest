@@ -109,7 +109,7 @@ jobs:
       - name: Publish to npm (OIDC)
         run: |
           set +e
-          out="$(pnpm publish --no-git-checks 2>&1)"
+          out="$(pnpm publish --provenance --no-git-checks 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
