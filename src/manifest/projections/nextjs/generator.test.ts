@@ -587,6 +587,36 @@ describe('NextJsProjection', () => {
       expect(code).toContain('category?: string | null;');
       expect(code).toContain('rating?: number;');
     });
+
+    it('maps money/decimal to number and emits enum declarations', async () => {
+      const source = `
+        enum Status {
+          active
+          inactive
+        }
+
+        entity Product {
+          property required price: money
+          property required amount: decimal
+          property required status: Status
+        }
+      `;
+
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(projection.generate(result.ir!, { surface: 'ts.types' }));
+
+      // money/decimal → number (no raw, non-compiling tokens)
+      expect(code).toContain('price: number;');
+      expect(code).toContain('amount: number;');
+      expect(code).not.toContain('price: money;');
+      expect(code).not.toContain('amount: decimal;');
+
+      // enum declared as a string-literal union and referenced by the property
+      expect(code).toContain('export type Status = "active" | "inactive";');
+      expect(code).toContain('status: Status;');
+    });
   });
 
   describe('ts.client surface', () => {

@@ -4693,7 +4693,7 @@ export interface Task {
   id: string;
   title?: string;
   status?: string;
-  priority?: int | null;
+  priority?: number | null;
   assigneeId?: string | null;
   createdAt: Date;
 }
@@ -5910,7 +5910,7 @@ export interface Task {
   id: string;
   title?: string;
   status?: string;
-  priority?: int | null;
+  priority?: number | null;
   assigneeId?: string | null;
   createdAt: Date;
 }

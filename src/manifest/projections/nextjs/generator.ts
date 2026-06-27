@@ -5,7 +5,7 @@
  * Configurable for different auth providers and database setups.
  */
 
-import type { IR, IREntity, IRCommand } from '../../ir';
+import type { IR, IREntity, IRCommand, IREnum } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -462,6 +462,10 @@ function irTypeToTsType(irType: { name: string; nullable: boolean }): string {
     datetime: 'Date',
     any: 'unknown',
     void: 'void',
+    // Numeric scalars with no TS equivalent map to number (matches runtime).
+    money: 'number',
+    decimal: 'number',
+    int: 'number',
   };
 
   const baseType = tsTypeMap[irType.name] || irType.name;
@@ -471,6 +475,11 @@ function irTypeToTsType(irType: { name: string; nullable: boolean }): string {
 /**
  * Generate TypeScript types from IR entity.
  */
+function generateEnumType(e: IREnum): string {
+  const members = e.values.map(v => JSON.stringify(v.name)).join(' | ');
+  return `export type ${e.name} = ${members};`;
+}
+
 function generateEntityTypes(entity: IREntity): string {
   const lines: string[] = [];
 
@@ -775,6 +784,14 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Auto-generated TypeScript types from Manifest IR');
     lines.push('// DO NOT EDIT - This file is generated from .manifest source');
     lines.push('');
+
+    // Enum declarations (string-literal unions) precede entities that
+    // reference them. Previously omitted → enum-typed properties referenced
+    // undeclared names (compile error).
+    for (const e of ir.enums ?? []) {
+      lines.push(generateEnumType(e));
+      lines.push('');
+    }
 
     for (const entity of ir.entities) {
       lines.push(generateEntityTypes(entity));

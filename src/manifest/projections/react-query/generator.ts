@@ -17,7 +17,7 @@
  *   - react-query.provider — QueryClient + QueryClientProvider setup
  */
 
-import type { IR, IREntity, IRCommand, IRParameter, IRType } from '../../ir';
+import type { IR, IREntity, IRCommand, IRParameter, IRType, IREnum } from '../../ir';
 import type {
   ProjectionTarget,
   ProjectionRequest,
@@ -172,6 +172,10 @@ function irTypeToTsType(irType: IRType): string {
     datetime: 'Date',
     any: 'unknown',
     void: 'void',
+    // Numeric scalars with no TS equivalent map to number (matches runtime).
+    money: 'number',
+    decimal: 'number',
+    int: 'number',
   };
   const baseType = tsTypeMap[irType.name] || irType.name;
   return irType.nullable ? `${baseType} | null` : baseType;
@@ -189,6 +193,11 @@ function parameterToTsType(param: IRParameter): string {
 interface CodeResult {
   code: string;
   diagnostics: ProjectionDiagnostic[];
+}
+
+function generateEnumType(e: IREnum): string {
+  const members = e.values.map(v => JSON.stringify(v.name)).join(' | ');
+  return `export type ${e.name} = ${members};`;
 }
 
 function generateEntityTypes(entity: IREntity): string {
@@ -271,6 +280,11 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push("  result: T;");
     lines.push("  events: unknown[];");
     lines.push("}");
+    lines.push("");
+  }
+
+  for (const e of ir.enums ?? []) {
+    lines.push(generateEnumType(e));
     lines.push("");
   }
 
