@@ -1,6 +1,6 @@
 {
   "name": "@angriff36/manifest",
-  "version": "2.18.5",
+  "version": "2.18.6",
   "description": "A formal domain modeling language with a deterministic reference runtime: define entities, commands, guards, policies, and events that compile to an executable IR, with projections to Next.js, Prisma, Convex, and more.",
   "keywords": [
     "dsl",
