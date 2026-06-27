@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.4] - 2026-06-27
+
+### Changed
+
+- [feat] dateSerialization option: type date/datetime as string for wire transport
+- [fix] emit T[] for array/list props in react-query + nextjs TS types
+
 ## [2.18.3] - 2026-06-27
 
 ### Changed
