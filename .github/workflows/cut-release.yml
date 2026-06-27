@@ -106,12 +106,18 @@ jobs:
       # Publish FIRST. If this fails, we exit and nothing is pushed — no tag,
       # no GitHub Release, npm unchanged. Re-runs are idempotent (a 409 "already
       # published" is treated as success so the tag/release step still completes).
-      - name: Publish to npm
+      - name: Publish to npm (trusted publishing)
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ''
         run: |
           set +e
-          out="$(pnpm publish --no-git-checks 2>&1)"
+          # OIDC trusted publishing — no npm token, no OTP, no expiry. The
+          # trusted publisher is registered on npm for Angriff36/Manifest +
+          # cut-release.yml. Strip any static _authToken (setup-node writes one
+          # referencing NODE_AUTH_TOKEN) so npm uses the OIDC exchange. Requires
+          # the NPM_TOKEN secret to be deleted so nothing is injected.
+          sed -i '/_authToken/d' "$(npm config get userconfig)" 2>/dev/null || true
+          out="$(npm publish --provenance --access public 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
