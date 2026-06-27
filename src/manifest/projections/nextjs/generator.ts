@@ -128,6 +128,7 @@ interface NormalizedNextJsOptions {
   naming?: NamingConventionInput;
   accessorNames: Record<string, string>;
   routeSegments: Record<string, string>;
+  dateSerialization: 'date' | 'iso-string';
 }
 
 /**
@@ -193,6 +194,7 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     naming: options?.naming,
     accessorNames: options?.accessorNames ?? {},
     routeSegments: options?.routeSegments ?? {},
+    dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
   };
 }
 
@@ -453,13 +455,17 @@ function generatePrismaQuery(
 /**
  * Convert IR type to TypeScript type.
  */
-function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { name: string; nullable: boolean; generic?: unknown } }): string {
+function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { name: string; nullable: boolean; generic?: unknown } }, dateAsString = false): string {
   // Arrays/lists carry their element type in `generic`. Recurse so we emit a
   // real `T[]` instead of leaking the bare `array` token (invalid TS).
   if (irType.name === 'array' || irType.name === 'list') {
-    const inner = irType.generic ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }) : 'unknown';
+    const inner = irType.generic ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }, dateAsString) : 'unknown';
     const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
     return irType.nullable ? `${elem} | null` : elem;
+  }
+  // Wire-convention: dates serialize to ISO-8601 strings over JSON/HTTP.
+  if (dateAsString && (irType.name === 'date' || irType.name === 'datetime')) {
+    return irType.nullable ? 'string | null' : 'string';
   }
   const tsTypeMap: Record<string, string> = {
     string: 'string',
@@ -490,12 +496,12 @@ function generateEnumType(e: IREnum): string {
   return `export type ${e.name} = ${members};`;
 }
 
-function generateEntityTypes(entity: IREntity): string {
+function generateEntityTypes(entity: IREntity, dateAsString = false): string {
   const lines: string[] = [];
 
   lines.push(`export interface ${entity.name} {`);
   for (const prop of entity.properties) {
-    const tsType = irTypeToTsType(prop.type);
+    const tsType = irTypeToTsType(prop.type, dateAsString);
     const isOptional = prop.modifiers.includes('optional') ||
                        prop.defaultValue !== undefined ||
                        prop.type.nullable;
@@ -730,7 +736,7 @@ export class NextJsProjection implements ProjectionTarget {
 
       case 'ts.types': {
         const opts = normalizeOptions(options);
-        const result = this._types(ir);
+        const result = this._types(ir, opts.dateSerialization === 'iso-string');
         return {
           artifacts: [{
             id: 'ts.types',
@@ -788,7 +794,7 @@ export class NextJsProjection implements ProjectionTarget {
     return { code, diagnostics };
   }
 
-  private _types(ir: IR): CodeResult {
+  private _types(ir: IR, dateAsString = false): CodeResult {
     const lines: string[] = [];
 
     lines.push('// Auto-generated TypeScript types from Manifest IR');
@@ -804,7 +810,7 @@ export class NextJsProjection implements ProjectionTarget {
     }
 
     for (const entity of ir.entities) {
-      lines.push(generateEntityTypes(entity));
+      lines.push(generateEntityTypes(entity, dateAsString));
     }
 
     return { code: lines.join('\n'), diagnostics: [] };

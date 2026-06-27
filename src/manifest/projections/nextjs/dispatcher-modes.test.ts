@@ -284,6 +284,7 @@ describe('exported defaults', () => {
           "authImportPath": "@/lib/auth",
           "authProvider": "none",
           "databaseImportPath": "@/lib/database",
+          "dateSerialization": "date",
           "deletedAtProperty": "deletedAt",
           "includeComments": true,
           "includeSoftDeleteFilter": false,

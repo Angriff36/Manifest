@@ -617,6 +617,34 @@ describe('NextJsProjection', () => {
       expect(code).toContain('export type Status = "active" | "inactive";');
       expect(code).toContain('status: Status;');
     });
+
+    it('maps float/bigint/array; honors dateSerialization', async () => {
+      const source = `
+        entity Sensor {
+          property required id: string
+          property reading: float
+          property big: bigint
+          property labels: string[]
+          property occurredAt: datetime
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const dflt = firstCode(projection.generate(result.ir!, { surface: 'ts.types' }));
+      expect(dflt).toContain('reading: number;');
+      expect(dflt).toContain('big: number;');
+      expect(dflt).toContain('labels: string[];');
+      expect(dflt).toContain('occurredAt: Date;');
+      expect(dflt).not.toContain(': float');
+      expect(dflt).not.toContain(': array');
+
+      const iso = firstCode(
+        projection.generate(result.ir!, { surface: 'ts.types', options: { dateSerialization: 'iso-string' } }),
+      );
+      expect(iso).toContain('occurredAt: string;');
+      expect(iso).not.toContain(': Date;');
+    });
   });
 
   describe('ts.client surface', () => {

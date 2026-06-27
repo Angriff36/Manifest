@@ -44,6 +44,9 @@ export const NEXTJS_DEFAULTS = {
    * Configurable per goal step 4 — auth failures must NEVER surface as 500.
    */
   unauthorizedStatus: 401,
+
+  /** date/datetime → `Date` by default; `'iso-string'` emits `string` for JSON transport. */
+  dateSerialization: 'date',
 } as const satisfies Required<Omit<
   NextJsProjectionOptions,
   | 'tenantProvider'

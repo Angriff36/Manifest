@@ -163,6 +163,29 @@ describe('ReactQueryProjection', () => {
       expect(code).not.toContain(': bigint');
     });
 
+    it('emits Date for datetime by default, string under dateSerialization:iso-string', async () => {
+      const source = `
+        entity Log {
+          property required id: string
+          property occurredAt: datetime
+          property due: date
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const dflt = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+      expect(dflt).toContain('occurredAt: Date;');
+      expect(dflt).toContain('due: Date;');
+
+      const iso = firstCode(
+        projection.generate(result.ir!, { surface: 'react-query.hooks', options: { dateSerialization: 'iso-string' } }),
+      );
+      expect(iso).toContain('occurredAt: string;');
+      expect(iso).toContain('due: string;');
+      expect(iso).not.toContain(': Date;');
+    });
+
     it('maps array types to T[] (no raw array token leak)', async () => {
       const source = `
         entity Bag {

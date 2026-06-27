@@ -91,6 +91,12 @@ export interface ReactQueryProjectionOptions {
    * instead of the bare command return type. Default: false.
    */
   commandEnvelope?: boolean;
+  /**
+   * How `date`/`datetime` scalars are typed. `'date'` (default) emits `Date`;
+   * `'iso-string'` emits `string`, matching JSON/HTTP transport where dates
+   * serialize to ISO-8601 strings. Non-breaking — defaults to `'date'`.
+   */
+  dateSerialization?: 'date' | 'iso-string';
 }
 
 interface NormalizedOptions {
@@ -104,6 +110,7 @@ interface NormalizedOptions {
   readEnvelope: Record<string, ReadEnvelopeOverride>;
   fetchAdapter?: { importPath: string; importName: string };
   commandEnvelope: boolean;
+  dateSerialization: 'date' | 'iso-string';
 }
 
 function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions {
@@ -123,6 +130,7 @@ function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions
         }
       : undefined,
     commandEnvelope: opts?.commandEnvelope ?? false,
+    dateSerialization: opts?.dateSerialization ?? 'date',
   };
 }
 
@@ -163,13 +171,17 @@ function toKebabCase(value: string): string {
     .toLowerCase();
 }
 
-function irTypeToTsType(irType: IRType): string {
+function irTypeToTsType(irType: IRType, dateAsString = false): string {
   // Arrays/lists carry their element type in `generic`. Recurse so we emit a
   // real `T[]` instead of leaking the bare `array` token (invalid TS).
   if (irType.name === 'array' || irType.name === 'list') {
-    const inner = irType.generic ? irTypeToTsType(irType.generic) : 'unknown';
+    const inner = irType.generic ? irTypeToTsType(irType.generic, dateAsString) : 'unknown';
     const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
     return irType.nullable ? `${elem} | null` : elem;
+  }
+  // Wire-convention: dates serialize to ISO-8601 strings over JSON/HTTP.
+  if (dateAsString && (irType.name === 'date' || irType.name === 'datetime')) {
+    return irType.nullable ? 'string | null' : 'string';
   }
   const tsTypeMap: Record<string, string> = {
     string: 'string',
@@ -191,8 +203,8 @@ function irTypeToTsType(irType: IRType): string {
   return irType.nullable ? `${baseType} | null` : baseType;
 }
 
-function parameterToTsType(param: IRParameter): string {
-  const baseType = irTypeToTsType(param.type);
+function parameterToTsType(param: IRParameter, dateAsString = false): string {
+  const baseType = irTypeToTsType(param.type, dateAsString);
   return param.required ? baseType : `${baseType} | undefined`;
 }
 
@@ -210,11 +222,11 @@ function generateEnumType(e: IREnum): string {
   return `export type ${e.name} = ${members};`;
 }
 
-function generateEntityTypes(entity: IREntity): string {
+function generateEntityTypes(entity: IREntity, dateAsString = false): string {
   const lines: string[] = [];
   lines.push(`export interface ${entity.name} {`);
   for (const prop of entity.properties) {
-    const tsType = irTypeToTsType(prop.type);
+    const tsType = irTypeToTsType(prop.type, dateAsString);
     const isOptional =
       prop.modifiers.includes('optional') ||
       prop.defaultValue !== undefined ||
@@ -226,7 +238,7 @@ function generateEntityTypes(entity: IREntity): string {
   return lines.join('\n');
 }
 
-function generateCommandInputType(command: IRCommand): string | null {
+function generateCommandInputType(command: IRCommand, dateAsString = false): string | null {
   if (command.parameters.length === 0) return null;
 
   const entityPrefix = command.entity ?? '';
@@ -235,7 +247,7 @@ function generateCommandInputType(command: IRCommand): string | null {
 
   lines.push(`export interface ${typeName} {`);
   for (const param of command.parameters) {
-    const tsType = parameterToTsType(param);
+    const tsType = parameterToTsType(param, dateAsString);
     const optional = param.required ? '' : '?';
     lines.push(`  ${param.name}${optional}: ${tsType};`);
   }
@@ -298,14 +310,16 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push("");
   }
 
+  const dateAsString = opts.dateSerialization === 'iso-string';
+
   for (const entity of ir.entities) {
-    lines.push(generateEntityTypes(entity));
+    lines.push(generateEntityTypes(entity, dateAsString));
     lines.push("");
   }
 
   // Command input types
   const commandInputTypes = ir.commands
-    .map(c => generateCommandInputType(c))
+    .map(c => generateCommandInputType(c, dateAsString))
     .filter((t): t is string => t !== null);
 
   if (commandInputTypes.length > 0) {
@@ -443,7 +457,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
       ? `${entityName}${capitalize(command.name)}Input`
       : 'void';
     const bareReturnType = command.returns
-      ? irTypeToTsType(command.returns)
+      ? irTypeToTsType(command.returns, opts.dateSerialization === 'iso-string')
       : 'unknown';
     const returnTypeName = opts.commandEnvelope
       ? `CommandEnvelope<${bareReturnType}>`

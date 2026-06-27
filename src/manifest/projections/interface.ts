@@ -293,6 +293,14 @@ export interface NextJsProjectionOptions {
    * `app/api/order-lines/list/route.ts` + `fetch('/api/order-lines/list')`.
    */
   routeSegments?: Record<string, string>;
+
+  /**
+   * How `date`/`datetime` scalars are typed in the generated `ts.types`
+   * surface. `'date'` (default) emits `Date`; `'iso-string'` emits `string`,
+   * matching JSON/HTTP transport where dates serialize to ISO-8601 strings.
+   * Non-breaking — defaults to `'date'`.
+   */
+  dateSerialization?: 'date' | 'iso-string';
 }
 
 /**
