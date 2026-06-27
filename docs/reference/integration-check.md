@@ -14,13 +14,13 @@ to a specific detector or runtime contract that is normative on its own.
 
 ## What gets checked
 
-| Section | What it proves | Underlying contract |
-|---|---|---|
-| `governance` | direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations | `docs/spec/adapters.md`, `manifest audit-governance` |
-| `bypasses` | The approved-bypass registry is schema-valid, all referenced files exist, review dates are not stale | `docs/spec/registry/bypasses.schema.json` |
-| `dispatcher` | The canonical `/api/manifest/[entity]/commands/[command]/route.ts` is present | `docs/spec/adapters.md § Canonical Dispatcher` |
+| Section         | What it proves                                                                                                                                                             | Underlying contract                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `governance`    | direct-writes, event-fabrication, route-drift, missing-tests, bypass-violations                                                                                            | `docs/spec/adapters.md`, `manifest audit-governance`   |
+| `bypasses`      | The approved-bypass registry is schema-valid, all referenced files exist, review dates are not stale                                                                       | `docs/spec/registry/bypasses.schema.json`              |
+| `dispatcher`    | The canonical `/api/manifest/[entity]/commands/[command]/route.ts` is present                                                                                              | `docs/spec/adapters.md § Canonical Dispatcher`         |
 | `runtime-smoke` | This installed build of `@angriff36/manifest` emits exactly one AuditRecord per `runCommand`, enqueues outbox entries on emit, threads `RuntimeContext` through to records | `docs/spec/adapters.md § Audit Sink`, `§ Outbox Store` |
-| `package-shape` | Every documented subpath export resolves; the published tarball contains the SQL schemas, dist, and CLI bin | `package.json` `exports` + `files` |
+| `package-shape` | Every documented subpath export resolves; the published tarball contains the SQL schemas, dist, and CLI bin                                                                | `package.json` `exports` + `files`                     |
 
 The `governance` and `bypasses` sections are static-analysis only — they
 inspect files on disk. The `runtime-smoke` section actually instantiates
@@ -99,14 +99,12 @@ downstream repo:
 
 ```bash
 # In manifest/:
-git tag v0.5.0
-git push --tags
-# .github/workflows/release.yml publishes to npm.pkg.github.com
+gh workflow run cut-release.yml -f version=patch   # publish-first: tag is pushed only after npm publish succeeds
 ```
 
 Then in the downstream: `pnpm update @angriff36/manifest@^0.5.0`.
 
-A published version cannot be unpublished from GH Packages, so confirming
+A published version cannot be unpublished from npm, so confirming
 clean output from `integration-check` against both the file:/ and pack/
 installs before this step is strongly recommended.
 

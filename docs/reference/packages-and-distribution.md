@@ -51,7 +51,7 @@ Publish from the Manifest repo root (`@angriff36/manifest`), not from `packages/
 
 ### CI (recommended)
 
-`cut-release.yml` / `release.yml` publish via `pnpm publish` using **OIDC trusted publishing** (`id-token: write`; no `NPM_TOKEN` secret). One-time setup: `scripts/setup-npm-trusted-publish.ps1`.
+`cut-release.yml` publishes via `pnpm publish` using **OIDC trusted publishing** (`id-token: write`; no `NPM_TOKEN` secret). One-time setup: `scripts/setup-npm-trusted-publish.ps1`.
 
 ### Manual
 

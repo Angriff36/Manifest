@@ -16,7 +16,7 @@ jobs:
 
       # This repo is pnpm (pnpm-lock.yaml + per-package node_modules under
       # packages/*). The previous CI used `npm ci` which failed because there
-      # is no package-lock.json. Mirror release.yml so install actually works.
+      # is no package-lock.json. Mirror cut-release.yml so install actually works.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:

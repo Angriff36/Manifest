@@ -1,21 +1,26 @@
 # Publishing @angriff36/manifest
 
-Last updated: 2026-02-21
+Last updated: 2026-06-24
 
 ## Overview
 
-The Manifest runtime is published as a private scoped package to GitHub Packages under `@angriff36/manifest`. It is not published to the public npm registry.
+The Manifest runtime is published as a **public** scoped package on the npm registry:
 
-See also: `docs/tools/PACKAGES_AND_DISTRIBUTION.md` for the full package model (published package vs internal CLI workspace package, consumer guidance, and Vercel implications).
+- Package: `@angriff36/manifest`
+- Registry: `https://registry.npmjs.org`
+
+No GitHub Packages auth, scope redirects, or consumer PATs required.
+
+See also: `docs/internal/tools/PACKAGES_AND_DISTRIBUTION.md`.
 
 ## Package Identity
 
-| Field | Value |
-|-------|-------|
-| Package name | `@angriff36/manifest` |
-| Registry | `https://npm.pkg.github.com` |
-| Visibility | Private (GitHub package permissions) |
-| Repo | `https://github.com/Angriff36/Manifest` |
+| Field        | Value                                   |
+| ------------ | --------------------------------------- |
+| Package name | `@angriff36/manifest`                   |
+| Registry     | `https://registry.npmjs.org`            |
+| Visibility   | Public (`publishConfig.access: public`) |
+| Repo         | `https://github.com/Angriff36/Manifest` |
 
 ## What Ships in the Package
 
@@ -33,123 +38,77 @@ The CLI binary is registered in `bin.manifest` and resolves automatically via `p
 The package version (`package.json` → `version`) is the single source of truth. The CLI reports this same version at runtime — it reads `package.json` dynamically rather than hardcoding a string. There is no separate CLI version to maintain.
 
 Consumer-visible versioning is anchored to the **root** package:
+
 - `package.json` (root, `@angriff36/manifest`)
 
 `packages/cli/package.json` is an internal workspace package and is not the consumer-facing install target. It may differ during development. What matters for publish is that `packages/cli/dist/**` contains the intended CLI changes.
 
 ## Publishing
 
-### Prerequisites
-
-A GitHub token/PAT with `write:packages` scope is required to publish. Keep this separate from the `NPM_TOKEN` used by consumer projects (which only needs `read:packages`).
+### Recommended: cut-release workflow
 
 ```bash
-export NODE_AUTH_TOKEN=ghp_your_write_packages_token_here
+gh workflow run cut-release.yml -f version=patch   # or minor / major / explicit e.g. 2.19.0
+gh run watch --repo Angriff36/Manifest
 ```
 
-### Steps
+The workflow is publish-first: it bumps version, runs build + typecheck + tests, commits the bump, **publishes to npm**, and only then tags/pushes and creates the GitHub Release. A failed publish pushes nothing (no dangling tags).
+
+### CI auth (trusted publishing — no NPM_TOKEN)
+
+One-time setup (passkey in browser when prompted):
+
+```powershell
+.\scripts\setup-npm-trusted-publish.ps1
+```
+
+Links `cut-release.yml` on `Angriff36/Manifest` to npm via OIDC. Workflows already set `id-token: write` and Node 22.
+
+Legacy: GitHub secret `NPM_TOKEN` may be deleted once trusted publishing is configured. Do **not** use a GitHub PAT there.
+
+### Manual publish (fallback)
 
 ```bash
-# 1. Bump version in both package.json files
-#    (root and packages/cli/package.json must match)
-
-# 2. Run tests
-npm test
-
-# 3. Publish (prepublishOnly builds lib + CLI automatically)
-#    Use pnpm publish (recommended for this repo/workspace layout)
-pnpm publish --no-git-checks --registry https://npm.pkg.github.com
+npm login   # once per machine; npm opens browser passkey flow for publish
+pnpm test
+pnpm publish --no-git-checks
 ```
 
-`prepublishOnly` runs: `pnpm run build:lib && pnpm --filter @manifest/cli run build`
+When npm prompts, press Enter to open the browser and approve with your **passkey** (not OTP — new npm accounts use WebAuthn, not authenticator QR codes).
 
-The `.npmrc` at the repo root routes `@angriff36` to GitHub Packages and reads `NODE_AUTH_TOKEN` from the environment:
+`prepublishOnly` runs: `pnpm run build:lib && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run build`
 
-```
-@angriff36:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-```
+Use `pnpm publish` (not `npm publish`) — this workspace layout can hit Arborist errors with `npm publish`.
 
 ## Installing in a Consumer Project
 
-### .npmrc
+No special `.npmrc` required:
 
-Add to the consuming project's `.npmrc`:
-
-```
-@angriff36:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
-```
-
-### package.json
-
-```json
-{
-  "dependencies": {
-    "@angriff36/manifest": "0.3.23"
-  }
-}
+```bash
+pnpm add @angriff36/manifest@<version> --save-exact
 ```
 
 ## Using the CLI in a Consumer Project
 
 **Always use `pnpm exec manifest` (or `npx manifest`), never a globally installed binary.**
 
-The global install and the package version are independent and will drift. `pnpm exec` resolves the binary from the installed package, guaranteeing the CLI version matches the library version.
-
-```bash
-# Correct — uses the version installed in the project
-pnpm exec manifest validate
-pnpm exec manifest compile
-pnpm exec manifest check
-
-# Wrong — uses whatever is globally installed, version unknown
-manifest validate
-```
-
-### IR Validation
-
-The `validate` command uses the IR schema bundled inside the package. No `--schema` flag needed:
-
 ```bash
 pnpm exec manifest validate path/to/output.ir.json
+pnpm exec manifest compile
+pnpm exec manifest check
 ```
 
-## Vercel Deployment
+## Vercel / CI
 
-When deploying a consumer project on Vercel, Vercel runs `pnpm install` during build. It needs to authenticate against GitHub Packages.
-
-### Required env var
-
-| Name | Value | Environments |
-|------|-------|--------------|
-| `NPM_TOKEN` | GitHub PAT with `read:packages` scope | Production, Preview, Development |
-
-Add via: Vercel project → Settings → Environment Variables.
-
-### How it works
-
-The `.npmrc` in the consumer project references `${NPM_TOKEN}`. Vercel injects the env var at build time, pnpm resolves it, and the install authenticates successfully.
-
-Important:
-
-- Vercel should install `@angriff36/manifest` from GitHub Packages.
-- Do not rely on a local workspace-only Manifest package path as the deployment mechanism.
-- If a feature works locally but fails in Vercel, verify the package was actually published and the consumer lockfile was updated.
+Public npm — no `NPM_TOKEN` needed for install. Standard `pnpm install` works.
 
 ## Package Exports
 
-| Import path | Entry point |
-|-------------|-------------|
-| `@angriff36/manifest` | `RuntimeEngine`, `Store`, `CommandResult`, etc. |
-| `@angriff36/manifest/ir` | IR type definitions |
-| `@angriff36/manifest/ir-compiler` | `compileToIR()` |
-| `@angriff36/manifest/compiler` | `ManifestCompiler` |
-| `@angriff36/manifest/projections/nextjs` | `NextJsProjection` |
-| `@angriff36/manifest/projections/routes` | `RoutesProjection` |
-
-## Privacy Model
-
-Package visibility is controlled by GitHub's package permissions model — not by `publishConfig.access`. The package is private because the GitHub repository is private. Anyone with a PAT that has `read:packages` and access to the repo can install it.
-
-`"private": false` in `package.json` is intentional — it allows `npm publish` to run. Setting `"private": true` would prevent publishing entirely (npm refuses to publish private-flagged packages).
+| Import path                              | Entry point                                     |
+| ---------------------------------------- | ----------------------------------------------- |
+| `@angriff36/manifest`                    | `RuntimeEngine`, `Store`, `CommandResult`, etc. |
+| `@angriff36/manifest/ir`                 | IR type definitions                             |
+| `@angriff36/manifest/ir-compiler`        | `compileToIR()`                                 |
+| `@angriff36/manifest/compiler`           | `ManifestCompiler`                              |
+| `@angriff36/manifest/projections/nextjs` | `NextJsProjection`                              |
+| `@angriff36/manifest/projections/routes` | `RoutesProjection`                              |

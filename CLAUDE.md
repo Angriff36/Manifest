@@ -31,18 +31,22 @@ gh workflow run cut-release.yml -f version=minor   # or patch / major / explicit
 gh run watch --repo Angriff36/Manifest             # wait for green
 ```
 
-It does the entire chain in order, gated so nothing is pushed unless
-build + typecheck + the full test suite pass: bumps `package.json`, ensures
-a `CHANGELOG.md` section (stub from commit subjects if none was written —
-write a real one beforehand for quality notes), commits `[release] vX.Y.Z`,
-tags, pushes main + tag, publishes `@angriff36/manifest` to GitHub
-Packages, and creates the GitHub Release.
+It is publish-first. build + typecheck + the full test suite gate the run,
+then it bumps `package.json` (the source of truth), ensures a `CHANGELOG.md`
+section (stubbed from commit subjects if none was written — write a real one
+beforehand for quality notes), commits `[release] vX.Y.Z` locally, and
+**publishes `@angriff36/manifest` to npm via OIDC trusted publishing** — and
+only after a successful publish does it tag, push main + tag, and create the
+GitHub Release. A failed publish leaves npm and git untouched (no dangling
+tags). Auth is OIDC (`id-token: write`; no `NPM_TOKEN`, no GitHub Packages);
+register it once with `scripts/setup-npm-trusted-publish.ps1`.
 
-**A release is done only when the `cut-release` run is green.** Manual
-fallback (only if the workflow itself is broken): CHANGELOG section →
-version bump commit → `git tag -a vX.Y.Z && git push origin vX.Y.Z` (the
-tag triggers `release.yml`; this is the step agents historically dropped) →
-verify the publish job succeeded, not just the run color.
+**A release is done only when the `cut-release` run is green** — and confirm
+the Publish step actually published (read its log, don't trust just the run
+color). Manual fallback (only if the workflow itself is broken): `npm login`
+(passkey) → `pnpm test` → `pnpm publish --no-git-checks`, then tag and push
+by hand (`git tag -a vX.Y.Z && git push origin vX.Y.Z`) and create the
+GitHub Release.
 
 Do not move/force-push a tag after the publish job has run.
 
@@ -304,7 +308,11 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[auto-bridge snapshot @ 10 changes]
-Files: C:/projects/capsule-pro/manifest/runtime/src/prisma-stores/event-prisma-store.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/proposal-line-item-count-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/proposal-lifecycle-lead-status-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/schedule-shift-count-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/prep-task-station-count-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/prep-list-seed-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/logistics-route-driver-vehicle-status-middleware.ts (edit), C:/projects/capsule-pro/manifest/runtime/src/middleware/logistics-dispatch-driver-vehicle-status-middleware.ts (edit)
+[proactive bridge @ 110% context — saved before compacting]
+Files (4):
+  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/reference-capsule-manifest-scripts.md (create)
+  C:/Users/Ryan/.claude/plans/glowing-watching-dolphin.md (create)
+  c:/projects/capsule-pro/manifest/source/AGENTS.md (create)
+  src/manifest/parser.ts (edit)
 
 # === END COGNILAYER ===
