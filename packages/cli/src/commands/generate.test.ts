@@ -24,6 +24,38 @@ async function findGeneratedFiles(dir: string): Promise<string[]> {
   return out;
 }
 
+describe('Generate Command - appDir/output overlap', () => {
+  it('does not double the output prefix when appDir already contains it', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-overlap-'));
+    const manifestPath = path.join(tempDir, 'counter.manifest');
+    const irPath = path.join(tempDir, 'counter.ir.json');
+    const outputDir = path.join(tempDir, 'apps', 'api');
+    await fs.writeFile(manifestPath, SOURCE, 'utf-8');
+
+    const { compileCommand } = await import('./compile.js');
+    const { generateCommand } = await import('./generate.js');
+
+    await compileCommand(manifestPath, {});
+    // appDir carries the full 'apps/api/app/api' while output is 'apps/api' —
+    // the exact config shape that produced 'apps/api/apps/api/app/api'.
+    await generateCommand(irPath, {
+      projection: 'nextjs',
+      surface: 'all',
+      output: outputDir,
+      projectionOptionsFromConfig: { appDir: 'apps/api/app/api' },
+    });
+
+    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    expect(files.length).toBeGreaterThan(0);
+    // No file may contain the doubled 'apps/api/apps/api' segment.
+    expect(files.some(f => f.includes('apps/api/apps/api'))).toBe(false);
+    // Routes land under the single, correct 'apps/api/app/api' prefix.
+    expect(files.some(f => f.includes('apps/api/app/api/'))).toBe(true);
+
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }, 30000);
+});
+
 describe('Generate Command - --check drift mode', () => {
   it('exits clean (no drift) when generated code matches, exits 1 on drift', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-check-'));

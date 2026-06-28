@@ -410,8 +410,36 @@ async function writeProjectionResult(
       continue;
     }
 
-    // Use pathHint directly (it may include subdirectories)
-    const outputPath = path.resolve(outputDir, artifact.pathHint);
+    // Use pathHint directly (it may include subdirectories).
+    //
+    // appDir is resolved relative to outputDir. When a config sets both to
+    // overlapping paths (e.g. output 'apps/api' + appDir 'apps/api/app/api'),
+    // a naive resolve doubles the prefix → 'apps/api/apps/api/app/api'. That is
+    // never intended, so strip the overlap and say so rather than write garbage.
+    let hint = artifact.pathHint;
+    // appDir is resolved relative to outputDir. When config sets both to
+    // overlapping paths (e.g. output 'apps/api' + appDir 'apps/api/app/api'),
+    // a naive resolve doubles the prefix → 'apps/api/apps/api/app/api'. Detect
+    // it cwd-independently: if the hint's leading segments equal the output
+    // dir's trailing segments, strip the overlap and say so — never write the
+    // doubled path silently.
+    const segs = (p: string): string[] => p.split(/[/\\]+/).filter(Boolean);
+    const outSegs = segs(outputDir);
+    const hintSegs = segs(hint);
+    let overlap = Math.min(outSegs.length, hintSegs.length);
+    for (; overlap > 0; overlap--) {
+      if (outSegs.slice(outSegs.length - overlap).join('/') === hintSegs.slice(0, overlap).join('/')) break;
+    }
+    if (overlap > 0) {
+      const collapsed = hintSegs.slice(overlap).join('/');
+      console.warn(
+        chalk.yellow(
+          `  Note: artifact path '${hint}' duplicates output dir '${hintSegs.slice(0, overlap).join('/')}' — collapsed to '${collapsed}' (appDir is relative to output; drop the output prefix from appDir to silence this).`,
+        ),
+      );
+      hint = collapsed;
+    }
+    const outputPath = path.resolve(outputDir, hint);
 
     if (checkMode) {
       // --check: compare generated code to the committed file without writing.
