@@ -249,6 +249,7 @@ program
   .argument('[source]', 'Source .manifest file, directory, or glob pattern')
   .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
+  .option('--all', 'Rebuild every projection declared in manifest.config.yaml (ignores -p)')
   .option('--ir-output <path>', 'IR output directory')
   .option('--code-output <path>', 'Generated code output directory')
   .option('-g, --glob <pattern>', 'Glob pattern for multiple files')

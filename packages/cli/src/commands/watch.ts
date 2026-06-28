@@ -15,7 +15,7 @@ import { glob } from 'glob';
 import chalk from 'chalk';
 import ora from 'ora';
 import { compileCommand } from './compile.js';
-import { generateCommand } from './generate.js';
+import { generateCommand, generateAllFromConfig } from './generate.js';
 
 export interface WatchOptions {
   projection: string;
@@ -34,6 +34,8 @@ export interface WatchOptions {
   clear: boolean;
   /** Forwarded to generate.ts so dispatcher/concreteCommandRoutes config flows through. */
   projectionOptionsFromConfig?: Record<string, unknown>;
+  /** Regenerate every projection in manifest.config.yaml on each rebuild. */
+  all?: boolean;
 }
 
 /** Structured change event emitted to stdout when --events is enabled. */
@@ -126,17 +128,21 @@ async function runBuild(
       pretty: true,
     });
 
-    // Generate
-    await generateCommand(options.irOutput, {
-      projection: options.projection,
-      surface: options.surface,
-      output: options.codeOutput,
-      auth: options.auth,
-      database: options.database,
-      runtime: options.runtime,
-      response: options.response,
-      projectionOptionsFromConfig: options.projectionOptionsFromConfig,
-    });
+    // Generate — every configured projection (--all) or the single -p one.
+    if (options.all) {
+      await generateAllFromConfig({});
+    } else {
+      await generateCommand(options.irOutput, {
+        projection: options.projection,
+        surface: options.surface,
+        output: options.codeOutput,
+        auth: options.auth,
+        database: options.database,
+        runtime: options.runtime,
+        response: options.response,
+        projectionOptionsFromConfig: options.projectionOptionsFromConfig,
+      });
+    }
 
     return true;
   } catch {
