@@ -85,6 +85,23 @@ describe('NextJsProjection', () => {
         .toContain('/kitchen/prep-tasks/list/route.ts');
     });
 
+    it('routeSegments accepts a multi-segment domain path (no post-process remap needed)', async () => {
+      const source = `entity Event { property id: string }`;
+      const result = await compileToIR(source);
+      expectNoCompileErrors(result);
+
+      const pathFor = (surface: string) =>
+        projection.generate(result.ir!, {
+          surface,
+          entity: 'Event',
+          options: { appDir: 'app/api', routeSegments: { Event: 'events/event' } },
+        }).artifacts[0]?.pathHint;
+
+      // The domain path flows verbatim into list + detail route paths.
+      expect(pathFor('nextjs.route')).toBe('app/api/events/event/list/route.ts');
+      expect(pathFor('nextjs.detail')).toBe('app/api/events/event/[id]/route.ts');
+    });
+
     it('returns error diagnostic if entity not found in IR', async () => {
       const source = `entity Recipe { property id: string }`;
       const result = await compileToIR(source);

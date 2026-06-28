@@ -294,7 +294,7 @@
         "routeSegments": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "description": "Explicit per-entity URL path segment overrides for generated routes and client fetch paths, e.g. { \"OrderLine\": \"order-lines\" } → app/api/order-lines/list/route.ts. Default: lowercased entity name."
+          "description": "Explicit per-entity URL path segment overrides for generated routes and client fetch paths, e.g. { \"OrderLine\": \"order-lines\" } → app/api/order-lines/list/route.ts. The value may contain '/' for a multi-segment domain path, e.g. { \"Event\": \"events/event\" } → app/api/events/event/list/route.ts (replaces hand-rolled domain-remap passes). Default: lowercased entity name."
         }
       }
     },

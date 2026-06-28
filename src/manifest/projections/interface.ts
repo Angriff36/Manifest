@@ -291,6 +291,11 @@ export interface NextJsProjectionOptions {
    * the client SDK's fetch paths. Takes precedence over the default
    * lowercased entity name. e.g. `{ OrderLine: 'order-lines' }` →
    * `app/api/order-lines/list/route.ts` + `fetch('/api/order-lines/list')`.
+   *
+   * The value may contain `/` to place the entity under a multi-segment
+   * domain path — there is no need to post-process generated paths. e.g.
+   * `{ Event: 'events/event' }` → `app/api/events/event/list/route.ts`. This
+   * replaces hand-rolled "domain remap" passes over the projection output.
    */
   routeSegments?: Record<string, string>;
 
