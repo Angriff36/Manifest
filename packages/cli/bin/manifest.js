@@ -3,11 +3,14 @@
 /**
  * Manifest CLI Entry Point
  *
- * This file is executed when running the `manifest` command.
- * It simply loads and runs the main CLI module.
+ * Loads the CLI straight from TypeScript source via jiti — no build step,
+ * no dist/ to drift out of sync. src/ is the single source of truth.
  */
 
-import { runCli } from '../dist/index.js';
+import { createJiti } from 'jiti';
+
+const jiti = createJiti(import.meta.url);
+const { runCli } = await jiti.import('../src/index.ts');
 
 runCli().catch((error) => {
   console.error('Manifest CLI error:', error);
