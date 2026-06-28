@@ -678,3 +678,76 @@ export async function readMergeReports(options: {
 export function formatRelative(cwd: string, filePath: string): string {
   return path.relative(cwd, filePath) || filePath;
 }
+
+/**
+ * Preflight the projection config in manifest.config.yaml for the defects that
+ * silently produce broken output at generate time — before a build is ever run.
+ *
+ * Catches:
+ *  - appDir overlapping output (the 'apps/api/apps/api/app/api' path-doubling)
+ *  - generatedDir/paths whose target dir won't match the app's '@/' import alias
+ *    (the stray 'apps/api/src/lib' that no import resolves to)
+ */
+export async function inspectConfigHealth(cwd: string = process.cwd()): Promise<DiagnosticFinding[]> {
+  const findings: DiagnosticFinding[] = [];
+
+  // Load the real config through the CLI loader, not a parallel parser.
+  let config: import('../utils/config.js').ManifestConfig | null = null;
+  try {
+    const { loadConfig } = await import('../utils/config.js');
+    config = await loadConfig(cwd);
+  } catch (error) {
+    findings.push({
+      severity: 'warning',
+      code: 'CONFIG_LOAD_FAILED',
+      message: `Could not load manifest config: ${error instanceof Error ? error.message : String(error)}`,
+    });
+    return findings;
+  }
+  if (!config?.projections) return findings;
+
+  const segs = (p: string): string[] => p.split(/[/\\]+/).filter(Boolean);
+
+  for (const [name, projection] of Object.entries(config.projections)) {
+    const output = projection?.output ?? config.output;
+    const options = (projection?.options ?? {}) as Record<string, unknown>;
+    const appDir = typeof options.appDir === 'string' ? options.appDir : undefined;
+
+    // 1. appDir overlaps output → route paths double unless collapsed.
+    if (output && appDir) {
+      const outSegs = segs(output);
+      const appSegs = segs(appDir);
+      let overlap = Math.min(outSegs.length, appSegs.length);
+      for (; overlap > 0; overlap--) {
+        if (outSegs.slice(outSegs.length - overlap).join('/') === appSegs.slice(0, overlap).join('/')) break;
+      }
+      if (overlap > 0) {
+        findings.push({
+          severity: 'warning',
+          code: 'CONFIG_APPDIR_OUTPUT_OVERLAP',
+          message: `projections.${name}: appDir '${appDir}' repeats output '${outSegs.join('/')}'. A naive resolve doubles the prefix to '${[...outSegs, ...appSegs].join('/')}' (the CLI now collapses it, but the config is wrong).`,
+          suggestion: `Make appDir relative to output — set appDir to '${appSegs.slice(overlap).join('/')}'.`,
+        });
+      }
+    }
+
+    // 2. generatedDir default vs a non-src app layout → unresolvable imports.
+    if (name === 'nextjs') {
+      const hasExplicitPaths = options.paths && typeof options.paths === 'object';
+      const generatedDir = typeof options.generatedDir === 'string' ? options.generatedDir : undefined;
+      const effectiveGeneratedDir = generatedDir ?? 'src';
+      // appDir without a 'src' segment + default 'src' generatedDir means the
+      // client/types land in <output>/src/* while the app imports '@/...'.
+      if (!hasExplicitPaths && effectiveGeneratedDir === 'src' && appDir && !segs(appDir).includes('src')) {
+        findings.push({
+          severity: 'warning',
+          code: 'CONFIG_GENERATED_DIR_LAYOUT_MISMATCH',
+          message: `projections.${name}: generatedDir defaults to 'src', so client/types are written to '${[...segs(output ?? ''), 'src'].join('/')}/…', but appDir '${appDir}' has no 'src' segment. Generated '@/…' imports may not resolve.`,
+          suggestion: `Set generatedDir (or paths.*) to match your tsconfig '@/' alias target.`,
+        });
+      }
+    }
+  }
+
+  return findings;
+}

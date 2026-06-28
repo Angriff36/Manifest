@@ -8,6 +8,7 @@ import {
   inspectSourceEntities,
   mergeIREntityDefinitions,
   mergeSourceEntityDefinitions,
+  inspectConfigHealth,
   readMergeReports,
   type DuplicateReportEntry,
   type EntitySurfaceDiff,
@@ -516,17 +517,29 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   const spinner = createSpinner('Running manifest doctor', !options.json);
   try {
     const cwd = process.cwd();
-    const [sourceInspection, irInspection, duplicates, routeCheck] = await Promise.all([
+    const [sourceInspection, irInspection, duplicates, routeCheck, configFindings] = await Promise.all([
       inspectSourceEntities({ cwd, srcPattern: options.src }),
       inspectCompiledIR({ cwd, irRoots: arrayify(options.irRoot) }),
       readMergeReports({ cwd }),
       entityName && commandName
         ? inspectRouteSurfaceForCommand({ entityName, commandName, routePath: options.route, cwd })
         : Promise.resolve({ routeExists: false, matches: [] as RouteManifestCommandHit[] }),
+      inspectConfigHealth(cwd),
     ]);
     spinner.stop();
 
     const findings: Array<{ rank: number; severity: 'error' | 'warning' | 'info'; code: string; message: string; fix?: string }> = [];
+
+    // Config preflight — projection config defects that break generate output.
+    for (const finding of configFindings) {
+      findings.push({
+        rank: finding.severity === 'error' ? 5 : 15,
+        severity: finding.severity,
+        code: finding.code,
+        message: finding.message,
+        fix: finding.suggestion,
+      });
+    }
 
     // Global parser/scanner mismatch heuristics
     for (const defs of sourceInspection.entities.values()) {
