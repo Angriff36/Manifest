@@ -24,6 +24,51 @@ async function findGeneratedFiles(dir: string): Promise<string[]> {
   return out;
 }
 
+describe('Generate Command - --all (config-driven batch)', () => {
+  it('runs every projection declared in manifest.config.yaml from one call', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-all-'));
+    await fs.mkdir(path.join(tempDir, 'src'));
+    await fs.writeFile(path.join(tempDir, 'src', 'widget.manifest'), SOURCE, 'utf-8');
+    await fs.writeFile(
+      path.join(tempDir, 'manifest.config.yaml'),
+      [
+        'src: src/**/*.manifest',
+        'output: ir/',
+        'projections:',
+        '  nextjs:',
+        '    output: apps/api/',
+        '    options:',
+        '      appDir: app/api',
+        '      generatedDir: app',
+        '  zod:',
+        '    output: schemas/',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const { compileCommand } = await import('./compile.js');
+    const { generateAllFromConfig } = await import('./generate.js');
+
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      await compileCommand('src', { output: 'ir/' });
+      await generateAllFromConfig({});
+
+      const rel = (await findGeneratedFiles(tempDir)).map(f => path.relative(tempDir, f).replace(/\\/g, '/'));
+      // Both projections wrote to their own configured outputs from one call.
+      expect(rel.some(f => f.startsWith('apps/api/'))).toBe(true);
+      expect(rel.some(f => f.startsWith('schemas/'))).toBe(true);
+      // No path doubling crept in.
+      expect(rel.some(f => f.includes('apps/api/apps/api') || f.includes('schemas/schemas'))).toBe(false);
+    } finally {
+      process.chdir(origCwd);
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }, 30000);
+});
+
 describe('Generate Command - appDir/output overlap', () => {
   it('does not double the output prefix when appDir already contains it', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-overlap-'));

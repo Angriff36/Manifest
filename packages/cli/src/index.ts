@@ -10,7 +10,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { compileCommand } from './commands/compile.js';
-import { generateCommand } from './commands/generate.js';
+import { generateCommand, generateAllFromConfig } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
 import { watchCommand } from './commands/watch.js';
 import { validateCommand } from './commands/validate.js';
@@ -161,16 +161,28 @@ program
 program
   .command('generate')
   .description('Generate code from IR using a projection')
-  .argument('<ir>', 'IR file or directory')
+  .argument('[ir]', 'IR file or directory (omit with --all; source comes from config)')
   .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
   .option('-o, --output <path>', 'Output directory')
+  .option('--all', 'Generate every projection declared in manifest.config.yaml (ignores -p/-o/<ir>)')
   .option('--auth <provider>', 'Auth provider or import path')
   .option('--database <path>', 'Database import path')
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
   .option('--check', 'Compare generated code to committed files and exit non-zero on drift (writes nothing)')
   .action(async (ir, options = {}) => {
+    // --all: drive every configured projection from manifest.config.yaml.
+    if (options.all) {
+      await generateAllFromConfig({ check: options.check });
+      return;
+    }
+
+    if (!ir) {
+      console.error('error: missing required argument \'ir\' (or pass --all to use config)');
+      process.exit(1);
+    }
+
     // resolveNextJsProjectionOptions returns the user's raw nextjs options
     // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
     // CLI flag overrides are layered on inside generateCommand.

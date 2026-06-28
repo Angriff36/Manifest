@@ -55,6 +55,19 @@ interface GenerateOptions {
    * `prettier --check` semantics.
    */
   check?: boolean;
+  /**
+   * When true, fail by throwing instead of calling process.exit(). Set by the
+   * batch driver (generateAllFromConfig) so one projection's failure doesn't
+   * abort the whole run — the batch aggregates and exits once.
+   */
+  throwOnError?: boolean;
+}
+
+/** Thrown by generateCommand under --check when files drift (throwOnError mode). */
+class DriftError extends Error {
+  constructor(public count: number) {
+    super(`drift: ${count} file(s)`);
+  }
 }
 
 // --check drift-mode state. Set once at the top of generateCommand and read in
@@ -507,6 +520,7 @@ export async function generateCommand(
     console.log('');
     if (errorCount > 0) {
       spinner.warn(`Generated from ${successCount} file(s), ${errorCount} failed`);
+      if (options.throwOnError) throw new Error(`${errorCount} IR file(s) failed to generate`);
       process.exit(1);
     }
 
@@ -517,6 +531,7 @@ export async function generateCommand(
           console.error(chalk.red(`    • ${f}`));
         }
         console.error(chalk.red('  Run `manifest generate` (without --check) and commit the result.'));
+        if (options.throwOnError) throw new DriftError(driftedFiles.length);
         process.exit(1);
       }
       spinner.succeed('No drift — generated code matches committed files.');
@@ -525,8 +540,77 @@ export async function generateCommand(
 
     spinner.succeed(`Generated code from ${successCount} IR file(s)`);
   } catch (error: unknown) {
+    if (options.throwOnError) throw error;
     spinner.fail(`Generation failed: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
     process.exit(1);
   }
+}
+
+/**
+ * Run every projection declared in manifest.config.yaml, in declaration order,
+ * from the compiled IR — the one-command replacement for hand-chained per-
+ * projection scripts. Aggregates failures/drift across projections and exits
+ * once at the end.
+ */
+export async function generateAllFromConfig(options: { check?: boolean } = {}): Promise<void> {
+  const { loadConfig } = await import('../utils/config.js');
+  const config = await loadConfig(process.cwd());
+  const projections = config?.projections ?? {};
+  const names = Object.keys(projections);
+
+  if (names.length === 0) {
+    console.warn(chalk.yellow('No projections configured in manifest.config.yaml — nothing to generate.'));
+    return;
+  }
+
+  const irSource = config?.output || 'ir/';
+  console.log(chalk.bold(`\nGenerating ${names.length} configured projection(s): ${names.join(', ')}`));
+  console.log(chalk.gray(`  IR source: ${irSource}`));
+
+  const failures: string[] = [];
+  const drifted: string[] = [];
+
+  for (const [name, projection] of Object.entries(projections)) {
+    const output = projection?.output;
+    if (!output) {
+      console.warn(chalk.yellow(`\n→ ${name}: no output path configured — skipped.`));
+      continue;
+    }
+    console.log(chalk.cyan(`\n→ ${name} → ${output}`));
+    try {
+      await generateCommand(irSource, {
+        projection: name,
+        surface: 'all',
+        output,
+        auth: undefined as unknown as string,
+        database: undefined as unknown as string,
+        runtime: undefined as unknown as string,
+        response: undefined as unknown as string,
+        projectionOptionsFromConfig: (projection.options ?? {}) as Record<string, unknown>,
+        check: options.check,
+        throwOnError: true,
+      });
+    } catch (error: unknown) {
+      if (error instanceof DriftError) {
+        drifted.push(name);
+      } else {
+        failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      console.error(chalk.red(`  ${name} failed: ${error instanceof Error ? error.message : String(error)}`));
+    }
+  }
+
+  console.log('');
+  if (failures.length > 0) {
+    console.error(chalk.red(`${failures.length} projection(s) failed:`));
+    for (const f of failures) console.error(chalk.red(`  • ${f}`));
+    process.exit(1);
+  }
+  if (drifted.length > 0) {
+    console.error(chalk.red(`Drift in ${drifted.length} projection(s): ${drifted.join(', ')}`));
+    console.error(chalk.red('  Run `manifest generate --all` (without --check) and commit the result.'));
+    process.exit(1);
+  }
+  console.log(chalk.green(`✔ All ${names.length} projection(s) generated from ${irSource}.`));
 }
