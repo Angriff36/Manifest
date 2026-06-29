@@ -431,6 +431,68 @@ describe('validateConfig — prisma multiSchema/relationMode/generator', () => {
     expect(result.diagnostics.some((d) => d.message.includes('notARealOption'))).toBe(true);
   });
 
+  it('accepts the full-scope example: every prisma + prisma-store option together', async () => {
+    // Mirrors docs/spec/config/manifest.config.full-prisma.example.ts — proves the
+    // complete option surface validates as one config, not just option-by-option.
+    const config: ManifestConfig = {
+      src: 'manifest/source/**/*.manifest',
+      output: 'manifest/ir/',
+      prismaSchema: 'packages/database/prisma/schema.prisma',
+      naming: 'snake_case',
+      projections: {
+        prisma: {
+          output: 'packages/database/prisma',
+          options: {
+            output: 'schema.prisma',
+            provider: 'postgresql',
+            relationMode: 'prisma',
+            urlEnvVar: 'DATABASE_URL',
+            generator: {
+              provider: 'prisma-client',
+              output: '../generated',
+              moduleFormat: 'esm',
+              generatedFileExtension: 'ts',
+              importFileExtension: 'ts',
+            },
+            naming: 'snake_case',
+            autoBackRelations: true,
+            multiSchema: {
+              enabled: true,
+              defaultSchema: 'public',
+              schemas: ['public', 'tenant_crm', 'tenant_events'],
+              entitySchema: { Client: 'tenant_crm', Event: 'tenant_events' },
+            },
+            tableMappings: { Event: 'events', OrderLine: 'order_lines' },
+            columnMappings: { Event: { tenantId: 'tenant_id' }, OrderLine: { unitPrice: 'unit_price' } },
+            precision: { OrderLine: { unitPrice: { precision: 14, scale: 2 } } },
+            indexes: { Event: [['tenantId', 'startsAt'], { fields: ['tenantId', 'eventNumber'], name: 'events_tenant_number_idx' }] },
+            typeMappings: { Event: { eventNumber: 'Int' } },
+            foreignKeys: { OrderLine: { order: { fields: ['orderId'], references: ['id'], onDelete: 'Cascade', onUpdate: 'Cascade' } } },
+            dbAttributes: { Event: { id: 'Uuid', startsAt: 'Timestamptz(6)' } },
+            fieldAttributes: { Event: { updatedAt: ['@updatedAt'] } },
+          },
+        },
+        'prisma-store': {
+          output: 'manifest/generated/prisma',
+          options: {
+            provider: 'postgresql',
+            naming: 'snake_case',
+            multiSchema: { enabled: true, entitySchema: { Event: 'tenant_events' } },
+            accessorNames: { OrderLine: 'orderLine' },
+            metadataOutput: 'prisma-model-metadata.generated.ts',
+            registryOutput: 'prisma-store-registry.generated.ts',
+            storeImportPath: '@angriff36/manifest/stores/prisma-generic',
+            metadataImportPath: './prisma-model-metadata.generated.js',
+            softDelete: { Event: { field: 'status', deletedValue: 'cancelled' } },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it('accepts projections.prisma.options.autoBackRelations', async () => {
     const result = await validateConfig({
       projections: { prisma: { options: { provider: 'postgresql', autoBackRelations: true } } },
