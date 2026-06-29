@@ -4,6 +4,17 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.5] - 2026-06-28
+
+### Added
+
+- **`manifest generate --all [ir]`** accepts an optional explicit IR file that
+  overrides the config `output` as the source. Point it at the merged IR from
+  `compile --all` to generate every projection from one IR — avoiding
+  last-write-wins on single-file projections (types/client/registries) when the
+  output directory also holds per-file shards. Behavior is unchanged when no
+  `<ir>` is given.
+
 ## [2.19.4] - 2026-06-28
 
 ### Changed
