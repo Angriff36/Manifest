@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { compileCommand } from './commands/compile.js';
+import { compileCommand, compileAllFromConfig } from './commands/compile.js';
 import { generateCommand, generateAllFromConfig } from './commands/generate.js';
 import { buildCommand } from './commands/build.js';
 import { watchCommand } from './commands/watch.js';
@@ -144,8 +144,14 @@ program
   .option('-d, --diagnostics', 'Include diagnostics in output', false)
   .option('--pretty', 'Pretty-print JSON output', true)
   .option('--merge', 'Merge multiple files into single IR (resolves use declarations)', false)
+  .option('--all', 'Compile every source in manifest.config.yaml into one merged IR (config-driven; resolves use/mixin; ignores [source]/-o)')
   .option('--entry <files...>', 'Entry file(s) for merge compilation (auto-detected if omitted)')
   .action(async (source, options = {}) => {
+    // --all: merged, config-driven compile — the partner to `generate --all`.
+    if (options.all) {
+      await compileAllFromConfig({ diagnostics: options.diagnostics, pretty: options.pretty });
+      return;
+    }
     const config = (await getConfig()) ?? {};
     if (!options.output && config?.output) {
       options.output = config.output;

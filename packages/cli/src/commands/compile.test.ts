@@ -331,6 +331,50 @@ describe('Compile Command - Conformance Fixtures', () => {
   });
 });
 
+describe('Compile Command - --all (config-driven merged compile)', () => {
+  it('resolves config src+output and drives MERGED compilation', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-compile-all-'));
+    await fs.mkdir(path.join(tempDir, 'src'));
+    await fs.writeFile(
+      path.join(tempDir, 'src', '_base.manifest'),
+      'entity TenantScoped {\n  property required id: string\n  indexed property required tenantId: string\n}\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tempDir, 'src', 'widget.manifest'),
+      'use "./_base.manifest"\nentity Widget mixin TenantScoped {\n  property name: string\n}\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tempDir, 'manifest.config.yaml'),
+      ['src: src/**/*.manifest', 'output: ir/widgets.ir.json', ''].join('\n'),
+      'utf-8',
+    );
+
+    const { compileAllFromConfig } = await import('./compile.js');
+    const capture = captureOutput();
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tempDir);
+      // compileAllFromConfig delegates to merged compilation using the config's
+      // `src` glob + `output`. We assert it expanded the glob to both files and
+      // entered the merge path (the wiring this function owns). End-to-end merge
+      // correctness — incl. cross-file `mixin` resolution and all-files error
+      // reporting — is covered in src/manifest/multi-compiler.test.ts. (The merge
+      // step's dynamic '@angriff36/manifest/multi-compiler' import only resolves
+      // in the built package / CLI, not under vitest, so the merge cannot
+      // complete here.)
+      await compileAllFromConfig({}).catch(() => undefined);
+      const out = capture.outputs.join('\n');
+      expect(out).toContain('Found 2 file(s) for merged compilation');
+    } finally {
+      process.chdir(origCwd);
+      capture.restore();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    }
+  }, 30000);
+});
+
 describe('Compile Command - Idempotent Provenance', () => {
   it('reuses compiledAt + irHash when source is unchanged (byte-identical re-compile)', async () => {
     const source = [

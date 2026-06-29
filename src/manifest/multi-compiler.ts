@@ -94,9 +94,18 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     }
   }
 
-  // Phase 2: Compile each file in topological order
+  // Phase 2: Compile each file in topological order.
+  //
+  // A file whose own compile errors (parse error, or a semantic/domain error
+  // that nulls its IR) must NOT abort the whole batch — otherwise the first
+  // erroring file (topologically) hides every later file's errors, turning a
+  // single `compile --all` into fix-one-rerun-see-the-next whack-a-mole. Each
+  // file is compiled independently (cross-file symbols already resolved via the
+  // Phase 1.5 compositionContext), so we collect every file's diagnostics in
+  // one pass and fail once at the end if any file errored.
   const compiledIRs: Array<{ ir: IR; absPath: string }> = [];
   const compiler = new IRCompiler();
+  let anyFileFailed = false;
 
   for (const file of resolution.order) {
     const result = await compiler.compileToIR(file.source, {
@@ -113,7 +122,8 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
     }
 
     if (!result.ir) {
-      return { ir: null, diagnostics, sources };
+      anyFileFailed = true;
+      continue; // keep compiling so every file's errors surface together
     }
 
     compiledIRs.push({ ir: result.ir, absPath: file.absPath });
@@ -121,6 +131,12 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
       absPath: file.absPath,
       contentHash: result.ir.provenance.contentHash,
     });
+  }
+
+  // Any single-file compile error makes the merged IR unsound — stop before the
+  // cross-file phases, but only after collecting all per-file diagnostics above.
+  if (anyFileFailed) {
+    return { ir: null, diagnostics, sources };
   }
 
   // Phase 3: Cross-file validation

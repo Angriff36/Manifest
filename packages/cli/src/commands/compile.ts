@@ -306,6 +306,30 @@ async function compileMerged(source: string | undefined, options: CompileOptions
 }
 
 /**
+ * Config-driven merged compile — the symmetric partner to `generate --all`.
+ *
+ * Reads `manifest.config.yaml` (`src` glob + `output`) and produces ONE merged
+ * IR, resolving `use` imports across files (e.g. a shared `_base.manifest` that
+ * declares the tenant, roles, and mixin source entities). The per-file default
+ * mode compiles each file in isolation, so any file that does
+ * `use "../_base.manifest"` + `mixin TenantScoped` fails with "mixes unknown
+ * entity"; this drives the merge path the project actually needs.
+ *
+ * `src` is typically a glob ("manifest/source/**\/*.manifest"), so it is fed
+ * through the --glob channel. `output` may be a file (the merged IR path) or a
+ * directory (writes `<output>/merged.ir.json`).
+ */
+export async function compileAllFromConfig(
+  options: Pick<CompileOptions, 'diagnostics' | 'pretty'> = {},
+): Promise<void> {
+  const { getConfig } = await import('../utils/config.js');
+  const config = await getConfig(process.cwd());
+  const src = config.src || '**/*.manifest';
+  const output = config.output || 'ir/';
+  await compileMerged('', { ...options, merge: true, glob: src, output });
+}
+
+/**
  * Compile command handler
  */
 export async function compileCommand(source: string | undefined, options: CompileOptions = {}): Promise<void> {

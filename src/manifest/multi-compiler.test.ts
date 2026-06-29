@@ -520,5 +520,39 @@ describe('Multi-Compiler', () => {
         ),
       ).toBe(true);
     });
+
+    it('reports per-file errors from EVERY file in one pass (no bail on first)', async () => {
+      // Two independent entry files, each with its own compile error that nulls
+      // its IR (a create command requiring a context-injected param). The batch
+      // must surface BOTH — bailing on the first file would hide the second and
+      // turn `compile --all` into fix-one-rerun-see-the-next whack-a-mole.
+      const host = createMemoryHost({
+        '/project/aaa.manifest': `
+          entity Aaa {
+            property required userId: string
+            command create(userId: string) { mutate userId = userId }
+          }
+        `,
+        '/project/bbb.manifest': `
+          entity Bbb {
+            property required userId: string
+            command create(userId: string) { mutate userId = userId }
+          }
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/aaa.manifest', '/project/bbb.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.ir).toBeNull();
+      const autoProvided = result.diagnostics.filter(
+        d => d.severity === 'error' && d.message.includes('auto-provides'),
+      );
+      expect(autoProvided.some(d => d.message.includes('Aaa.create'))).toBe(true);
+      expect(autoProvided.some(d => d.message.includes('Bbb.create'))).toBe(true);
+    });
   });
 });
