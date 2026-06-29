@@ -14,6 +14,15 @@
       "description": "Output path hint for the emitted artifact. Default: 'schema.prisma'. The projection itself does not write files; this value flows to ProjectionArtifact.pathHint.",
       "type": "string"
     },
+    "relationMode": {
+      "description": "Datasource relationMode. Emitted as relationMode = \"...\" on the datasource block. Use \"prisma\" when relations are enforced in the client (PlanetScale, Neon pooled, etc.) rather than via DB foreign keys.",
+      "enum": ["prisma", "foreignKeys"]
+    },
+    "generator": {
+      "description": "Fields for the emitted `generator client { ... }` block, each rendered verbatim as key = \"value\". Defaults to { provider: \"prisma-client-js\" }. Override to select the newer prisma-client generator and set output/moduleFormat/generatedFileExtension/importFileExtension.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "tableMappings": {
       "description": "Per-entity table-name override. Key = IR entity name; value = literal table name. Emits @@map(\"...\").",
       "type": "object",

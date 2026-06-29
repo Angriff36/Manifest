@@ -1910,6 +1910,46 @@ describe('PrismaProjection — multi-schema layout (G6)', () => {
     expect(code).not.toMatch(/schemas\s*=/);
   });
 
+  it('emits a custom generator block and datasource relationMode from config', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        provider: 'postgresql',
+        relationMode: 'prisma',
+        generator: {
+          provider: 'prisma-client',
+          output: '../generated',
+          moduleFormat: 'esm',
+        },
+      },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+relationMode = "prisma"$/m);
+    expect(code).toMatch(/generator client \{[\s\S]*?provider = "prisma-client"[\s\S]*?\}/);
+    expect(code).toMatch(/^\s+output = "\.\.\/generated"$/m);
+    expect(code).toMatch(/^\s+moduleFormat = "esm"$/m);
+    // default generator is not emitted when overridden
+    expect(code).not.toMatch(/prisma-client-js/);
+  });
+
+  it('defaults the generator to prisma-client-js and omits relationMode when unset', () => {
+    const ir = emptyIR();
+    ir.entities.push(moduleEntity('User', 'auth'));
+    ir.stores.push(durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/provider = "prisma-client-js"/);
+    expect(code).not.toMatch(/relationMode/);
+  });
+
   it('derives @@schema from entity.module and lists schemas on the datasource', () => {
     const ir = emptyIR();
     ir.entities.push(moduleEntity('User', 'auth'));

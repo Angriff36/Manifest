@@ -213,6 +213,26 @@ export interface PrismaProjectionOptions {
   output?: string;
 
   /**
+   * Datasource `relationMode`. Emitted as `relationMode = "..."` on the
+   * `datasource db` block when set. Use `"prisma"` for providers/hosts that
+   * enforce relations in the client (PlanetScale, Neon pooled, etc.) rather
+   * than via database foreign keys. Omit for the Prisma default.
+   * Only relevant when `provider` is set (a datasource block is emitted).
+   */
+  relationMode?: 'prisma' | 'foreignKeys';
+
+  /**
+   * Fields for the emitted `generator client { ... }` block. Each entry is
+   * emitted verbatim as `key = "value"`. Defaults to
+   * `{ provider: "prisma-client-js" }` (back-compatible). Override to select the
+   * newer `prisma-client` generator and set `output`, `moduleFormat`,
+   * `generatedFileExtension`, `importFileExtension`, etc.
+   *   generator: { provider: "prisma-client", output: "../generated", moduleFormat: "esm" }
+   * Only relevant when `provider` is set (a generator block is emitted).
+   */
+  generator?: Record<string, string>;
+
+  /**
    * Multi-schema layout. When enabled, models are placed into database schemas
    * derived from their IR module (overridable per entity) instead of being
    * flattened into the default schema. See {@link MultiSchemaConfig}.
@@ -278,6 +298,8 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     dbAttributes: input.dbAttributes ?? {},
     fieldAttributes: input.fieldAttributes ?? {},
     urlEnvVar: input.urlEnvVar,
+    relationMode: input.relationMode,
+    generator: input.generator,
     output: input.output ?? PRISMA_PROJECTION_DEFAULTS.output,
     // Passed through as-is. Absent → undefined → flat layout (back-compat).
     // resolveSchemaName in the generator guards on multiSchema?.enabled.
