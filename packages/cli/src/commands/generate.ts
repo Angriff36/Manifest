@@ -553,7 +553,7 @@ export async function generateCommand(
  * projection scripts. Aggregates failures/drift across projections and exits
  * once at the end.
  */
-export async function generateAllFromConfig(options: { check?: boolean } = {}): Promise<void> {
+export async function generateAllFromConfig(options: { check?: boolean; irOverride?: string } = {}): Promise<void> {
   const { loadConfig } = await import('../utils/config.js');
   const config = await loadConfig(process.cwd());
   const projections = config?.projections ?? {};
@@ -564,7 +564,11 @@ export async function generateAllFromConfig(options: { check?: boolean } = {}): 
     return;
   }
 
-  const irSource = config?.output || 'ir/';
+  // Default IR source is the config `output`. When that is a directory holding
+  // many per-file IRs (e.g. merged IR + stale shards), single-file projections
+  // (types/client/registries) would be written once per IR with last-write-wins.
+  // An explicit IR path (the merged IR from `compile --all`) avoids that.
+  const irSource = options.irOverride || config?.output || 'ir/';
   console.log(chalk.bold(`\nGenerating ${names.length} configured projection(s): ${names.join(', ')}`));
   console.log(chalk.gray(`  IR source: ${irSource}`));
 

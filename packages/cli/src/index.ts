@@ -167,7 +167,7 @@ program
 program
   .command('generate')
   .description('Generate code from IR using a projection')
-  .argument('[ir]', 'IR file or directory (omit with --all; source comes from config)')
+  .argument('[ir]', 'IR file or directory. With --all, an optional explicit IR file overrides the config output as the source (e.g. a merged IR).')
   .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
   .option('-o, --output <path>', 'Output directory')
@@ -179,8 +179,11 @@ program
   .option('--check', 'Compare generated code to committed files and exit non-zero on drift (writes nothing)')
   .action(async (ir, options = {}) => {
     // --all: drive every configured projection from manifest.config.yaml.
+    // An optional explicit <ir> overrides the config `output` as the IR source —
+    // use it to point at a single merged IR (from `compile --all`) instead of
+    // globbing an output dir that may also hold stale per-file shards.
     if (options.all) {
-      await generateAllFromConfig({ check: options.check });
+      await generateAllFromConfig({ check: options.check, irOverride: ir });
       return;
     }
 
