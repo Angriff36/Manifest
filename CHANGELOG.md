@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.4] - 2026-06-28
+
+### Changed
+
+- **Parent-context propagation diagnostics are now warnings, not errors.** A
+  child `create` that takes a parent/scope identifier directly — a manual FK
+  with no nested-create command on the parent, or a field also owned by a
+  `belongsTo` parent — is a common, valid pattern and no longer fails the build;
+  it is surfaced as an advisory nudge toward create-from-parent. Genuinely
+  broken wiring stays an error: a FK with no `belongsTo` relationship at all, and
+  context-injected params (`userId`/`correlationId`/…) in create parameters.
+
 ## [2.19.3] - 2026-06-28
 
 ### Fixed
