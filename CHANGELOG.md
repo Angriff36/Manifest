@@ -4,6 +4,28 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.0] - 2026-06-28
+
+### Added
+
+- **`manifest compile --all`** — config-driven, *merged* compile: the
+  symmetric partner to `manifest generate --all`. Reads `manifest.config.yaml`
+  (`src` glob + `output`) and produces ONE merged IR, resolving cross-file
+  `use` imports and `mixin`/`extends` against entities declared in other files.
+  Projects built on a shared base module (e.g. a single `_base.manifest`
+  declaring the tenant, roles, and mixin source entities such as
+  `TenantScoped`/`SoftDeletable`) can now compile natively with
+  `manifest compile --all && manifest generate --all` — no per-project glue.
+
+### Fixed
+
+- **Merged compilation now reports every file's errors in one pass.** The
+  multi-compiler returned on the first file whose IR came back null (any
+  compile error nulls the IR), which hid all later files' diagnostics and made
+  a large project fail one error at a time. It now compiles all files, collects
+  every diagnostic, and fails once at the end. (Bare per-file `manifest compile`
+  already aggregated; only the merge path was affected.)
+
 ## [2.18.7] - 2026-06-28
 
 ### Added
