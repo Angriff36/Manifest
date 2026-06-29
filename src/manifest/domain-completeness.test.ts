@@ -180,6 +180,41 @@ store BattleBoard in memory`);
     expect(ir).toBeNull();
   });
 
+  it('does NOT flag a generic value field that merely shares a name with the parent', async () => {
+    // A contact's own firstName/email are coincidentally named like the client's;
+    // they are not re-entered parent data, so they must not error. Only the FK
+    // (clientId) would be parent-owned, and that is the relationship's own FK.
+    const { diagnostics } = await compileToIR(`entity Client {
+  property required id: string
+  property firstName: string = ""
+  property email: string = ""
+  hasMany contacts: Contact
+  command create(id: string, firstName: string, email: string) {
+    mutate id = id
+    mutate firstName = firstName
+    mutate email = email
+  }
+}
+
+entity Contact {
+  property required id: string
+  property required firstName: string
+  property required email: string
+  belongsTo client: Client
+  command create(clientId: string, firstName: string, email: string, id: string) {
+    mutate id = id
+    mutate clientId = clientId
+    mutate firstName = firstName
+    mutate email = email
+  }
+}
+
+store Client in memory
+store Contact in memory`);
+
+    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+  });
+
   it('does NOT flag own fields as parent-owned for a self-referential relationship', async () => {
     // `belongsTo reverseOf: Txn` makes the entity its own relationship target.
     // Its own scalar create params (amount/reason) must not be reported as

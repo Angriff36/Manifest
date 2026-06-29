@@ -249,6 +249,14 @@ function checkCreateCommandParams(
       const name = param.name;
       if (PARENT_CONTEXT_EXCLUDED_FIELDS.has(name)) continue;
       if (fkFields.has(name)) continue;
+      // Only identifier-shaped fields are genuine parent re-entry. A child that
+      // re-asks for a parent's FK/identity (e.g. a board's `venueId`) is the real
+      // anti-pattern this catches. A generic VALUE field that merely shares a name
+      // with a parent field (a contact's own `firstName`/`email`, an area's own
+      // `code`, an alert's own `severity`) is coincidental, not propagated — value
+      // fields actually worth catching (status/name/type/…) are already excluded
+      // above. Restricting to `*Id` removes those false positives.
+      if (!name.endsWith('Id') || name.length <= 2) continue;
       const paramType = scalarTypeName(param.type);
       if (!paramType || !parentProps.has(name) || parentProps.get(name) !== paramType) continue;
       if (!childProps.has(name)) continue;
