@@ -4,6 +4,23 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.7] - 2026-06-28
+
+### Fixed
+
+- **Prisma projection now emits named `@relation`s for multiple relations
+  between the same two entities, instead of dropping them.** Previously, when an
+  entity had more than one relationship to the same target (e.g. `Author` with
+  both `authoredBooks` and `editedBooks` → `Book`), the projection bailed and
+  emitted give-up `// … PRISMA_RELATION_AMBIGUOUS` comments, producing an
+  incomplete schema. It now emits a deterministic `@relation("Owner_fkField")`
+  on both sides, anchored on the FK-owning (`belongsTo`/`ref`) side so the two
+  sides always agree. The non-FK (`hasMany`/`hasOne`) side is paired by
+  declaration order; when that pairing is order-dependent, an info diagnostic
+  `PRISMA_RELATION_PAIRING_ASSUMED` reports the assumed pairing for review. The
+  genuinely unpairable case (a multi-relation back side with no FK to anchor a
+  name) still warns via `PRISMA_RELATION_AMBIGUOUS`.
+
 ## [2.19.6] - 2026-06-28
 
 ### Added
