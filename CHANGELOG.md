@@ -4,6 +4,48 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.18.7] - 2026-06-28
+
+### Added
+
+- **`manifest generate --all`** — runs every projection declared in
+  `manifest.config.yaml` (in declaration order) from the compiled IR, each to
+  its own configured `output`. One command replaces hand-chained per-projection
+  scripts. `<ir>` argument is optional with `--all` (source = config `output`).
+- **`manifest watch --all`** — dev rebuilds now route through the same
+  config-driven batch, so `watch` regenerates every configured projection on
+  change instead of a single one.
+- **`manifest doctor` config preflight** — `doctor` now loads
+  `manifest.config.yaml` and flags two config defects before a build runs:
+  `CONFIG_APPDIR_OUTPUT_OVERLAP` (an `appDir` that repeats the `output` prefix)
+  and `CONFIG_GENERATED_DIR_LAYOUT_MISMATCH` (`generatedDir` defaulting to
+  `src` while `appDir` has no `src` segment, so generated `@/…` imports may not
+  resolve).
+
+### Fixed
+
+- **nextjs projection path doubling** — when config set an `appDir` that already
+  contained the `output` prefix (e.g. `output: apps/api`, `appDir:
+  apps/api/app/api`), generated artifacts resolved to a doubled path
+  (`apps/api/apps/api/app/api/…`). The generator now detects the overlap
+  (cwd-independent segment match, Windows-safe) and collapses it, emitting a
+  warning instead of writing the doubled path silently.
+
+### Changed
+
+- **`routeSegments` multi-segment domain paths documented + locked** — a
+  `routeSegments` value may contain `/` to place an entity under a multi-segment
+  domain path (e.g. `Event: 'events/event'` →
+  `app/api/events/event/list/route.ts`), removing the need for post-process
+  domain-remap passes. Already worked via verbatim interpolation; now documented
+  in the projection interface + config schema and guarded by a dedicated
+  contract test.
+- **CLI runs from TypeScript source via jiti** — the `@manifest/cli` workspace
+  bin loads `src/index.ts` through jiti instead of a committed `dist/`, and the
+  tracked `packages/cli/dist` snapshot was removed. Eliminates the stale-`dist`
+  class of bug where a source fix passed tests but the CLI kept running old
+  compiled output. (The published package still ships freshly-built dist.)
+
 ## [2.18.6] - 2026-06-27
 
 ### Added
