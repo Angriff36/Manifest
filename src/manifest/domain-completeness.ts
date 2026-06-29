@@ -260,9 +260,13 @@ function checkCreateCommandParams(
       const paramType = scalarTypeName(param.type);
       if (!paramType || !parentProps.has(name) || parentProps.get(name) !== paramType) continue;
       if (!childProps.has(name)) continue;
+      // Advisory, not blocking: a child taking a parent/scope identifier
+      // directly (instead of inheriting it via a create-from-parent command) is
+      // a common, valid pattern. Nudge toward parent-context propagation, but do
+      // not fail the build.
       emit(
-        'error',
-        `Command '${qualified}.create' requires '${name}' but that field is owned by parent '${parentQualified}' — populate it via parent-context propagation (create from the parent) instead of forcing the user to re-enter it.`,
+        'warning',
+        `Command '${qualified}.create' takes '${name}', which is also owned by parent '${parentQualified}' — consider populating it via parent-context propagation (create from the parent) instead of re-entering it.`,
       );
     }
   }
@@ -314,9 +318,12 @@ function checkFkDomainWiring(
     );
 
     if (manualParentId && !nestedCreate && !reactionWired) {
+      // Advisory, not blocking: the child declares belongsTo and takes the FK
+      // explicitly. Creating it from a parent command (or via a reaction) is the
+      // safer pattern, but a manual FK is valid — nudge, do not fail the build.
       emit(
-        'error',
-        `Command '${qualified}.create' requires manual '${fkField}' with no nested create on '${parentQualified}' (e.g. addMilestone) and no event reaction that supplies it. The command is not product-complete — add a parent command that sets the FK from self.id, or wire an on Event reaction with params { ${fkField}: ... }.`,
+        'warning',
+        `Command '${qualified}.create' takes a manual '${fkField}' with no nested create on '${parentQualified}' (e.g. addMilestone) and no event reaction that supplies it. Consider a parent command that sets the FK from self.id, or an on Event reaction with params { ${fkField}: ... }.`,
       );
     }
   }

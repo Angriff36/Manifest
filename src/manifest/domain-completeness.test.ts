@@ -88,7 +88,7 @@ store Book in memory`);
     expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
   });
 
-  it('errors when create requires manual parentId with no nested command or reaction', async () => {
+  it('warns (does not block) when create takes a manual parentId with no nested command or reaction', async () => {
     const { diagnostics, ir } = await runChecks(`entity DisciplinaryAction {
   property required id: string
   hasMany milestones: ActionMilestone
@@ -107,9 +107,11 @@ entity ActionMilestone {
 store DisciplinaryAction in memory
 store ActionMilestone in memory`);
 
-    const err = diagnostics.find(d => d.severity === 'error' && /manual 'disciplinaryActionId'/.test(d.message));
-    expect(err).toBeDefined();
-    expect(ir).toBeNull();
+    // Manual FK is valid (nudged via warning), so the program still compiles.
+    const warn = diagnostics.find(d => d.severity === 'warning' && /manual 'disciplinaryActionId'/.test(d.message));
+    expect(warn).toBeDefined();
+    expect(diagnostics.some(d => d.severity === 'error' && /disciplinaryActionId/.test(d.message))).toBe(false);
+    expect(ir).not.toBeNull();
   });
 });
 
@@ -151,7 +153,7 @@ store Membership in memory`);
     expect(ir).toBeNull();
   });
 
-  it('errors when child create duplicates parent-owned field', async () => {
+  it('warns (does not block) when child create takes a parent-owned identifier field', async () => {
     const { diagnostics, ir } = await compileToIR(`entity Event {
   property required id: string
   property venueId: string = ""
@@ -176,8 +178,10 @@ entity BattleBoard {
 store Event in memory
 store BattleBoard in memory`);
 
-    expect(diagnostics.some(d => d.severity === 'error' && /requires 'venueId'.*owned by parent/.test(d.message))).toBe(true);
-    expect(ir).toBeNull();
+    // Taking the parent's venueId directly is valid — nudged via warning, not blocked.
+    expect(diagnostics.some(d => d.severity === 'warning' && /venueId.*owned by parent/.test(d.message))).toBe(true);
+    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+    expect(ir).not.toBeNull();
   });
 
   it('does NOT flag a generic value field that merely shares a name with the parent', async () => {
