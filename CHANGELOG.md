@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.2] - 2026-06-28
+
+### Fixed
+
+- **Parent-owned create-param check now only flags identifier (`*Id`) fields.**
+  It previously errored on any required `create` param sharing a name+type with a
+  field on a `belongsTo`/`ref` parent, false-flagging generic value fields a child
+  legitimately owns (a contact's own `firstName`/`email`, an area's own `code`, an
+  alert's own `severity`) and blocking valid programs. Re-entering a parent's
+  FK/identity remains caught; value fields worth catching (status/name/type/…) are
+  already excluded.
+
 ## [2.19.1] - 2026-06-28
 
 ### Fixed
