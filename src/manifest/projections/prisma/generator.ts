@@ -38,7 +38,7 @@ import {
   DEFAULT_DECIMAL_PRECISION,
   DEFAULT_DECIMAL_SCALE,
 } from './type-mapping.js';
-import { resolveColumnName, resolveTableName } from '../shared/naming.js';
+import { resolveColumnName, resolveTableName, pluralize } from '../shared/naming.js';
 
 // ============================================================================
 // Surface identifiers
@@ -690,20 +690,89 @@ function emitRelationship(
         `  ${rel.name} ${rel.target} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
       );
 
-      if (opposites.length === 0) {
+      // With autoBackRelations the projection emits the inverse on the target,
+      // so a missing declared back-relation is no longer a problem.
+      if (opposites.length === 0 && !options.autoBackRelations) {
         diagnostics.push({
           severity: 'warning',
           code: 'PRISMA_RELATION_MISSING_BACKSIDE',
           entity: entity.name,
           message:
             `Relationship '${entity.name}.${rel.name}: ${rel.target}' (${rel.kind}) has no back-relation declared on ${rel.target}. ` +
-            `Prisma rejects one-sided relations — add 'hasMany' or 'hasOne' on ${rel.target} pointing back to ${entity.name}.`,
+            `Prisma rejects one-sided relations — add 'hasMany' or 'hasOne' on ${rel.target} pointing back to ${entity.name}, ` +
+            `or enable projections.prisma.options.autoBackRelations to emit it automatically.`,
         });
       }
 
       return { lines, diagnostics };
     }
   }
+}
+
+/**
+ * Auto-emit inverse relation fields on `target` for every `belongsTo`/`ref` on
+ * another emitted entity that points at `target` but is not covered by a
+ * declared `hasMany`/`hasOne` on `target`. Active only when
+ * `options.autoBackRelations` is set. The emitted field is `<pluralCamelOwner>
+ * Owner[]`; ambiguous pairs (multiple relations between the two entities) carry
+ * a deterministic `@relation("Owner_<rel>")` name matching the FK-owning side
+ * (see {@link ambiguousRelationName}). Field names are uniquified against the
+ * provided `existingFieldNames` set.
+ */
+function emitAutoInverseRelations(
+  target: IREntity,
+  ir: IR,
+  options: PrismaProjectionOptions,
+  context: RelationContext,
+  existingFieldNames: Set<string>,
+): RelationEmission {
+  const lines: string[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+  if (!options.autoBackRelations || !context.emittedEntities.has(target.name)) {
+    return { lines, diagnostics };
+  }
+
+  for (const owner of ir.entities) {
+    if (owner.name === target.name) continue; // self-relations are declared explicitly
+    if (!context.emittedEntities.has(owner.name)) continue;
+
+    // FK-owning relations owner → target (skip join-table relations).
+    const forwards = owner.relationships.filter(
+      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === target.name && !r.through,
+    );
+    if (forwards.length === 0) continue;
+
+    // Inverses already declared on target pointing back at owner cover the
+    // first N forwards (order-paired, consistent with resolveBacksideRelationName).
+    const declaredInverses = target.relationships.filter(
+      (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === owner.name,
+    );
+
+    // Forward side is "ambiguous" (and thus emits a named @relation) exactly when
+    // there is more than one relation between the two entities in either direction.
+    const forwardIsAmbiguous = forwards.length > 1 || declaredInverses.length > 1;
+
+    for (let i = declaredInverses.length; i < forwards.length; i++) {
+      const fwd = forwards[i];
+      const base = lowerFirst(pluralize(owner.name));
+      const field = forwardIsAmbiguous ? `${base}${capitalizeFirst(fwd.name)}` : base;
+      let unique = field;
+      for (let n = 2; existingFieldNames.has(unique); n++) unique = `${field}${n}`;
+      existingFieldNames.add(unique);
+      const relName = forwardIsAmbiguous ? ambiguousRelationName(owner.name, fwd.name) : undefined;
+      const relAttr = relName ? ` @relation("${relName}")` : '';
+      lines.push(`  ${unique} ${owner.name}[]${relAttr}`);
+    }
+  }
+  return { lines, diagnostics };
+}
+
+function lowerFirst(s: string): string {
+  return s ? s[0].toLowerCase() + s.slice(1) : s;
+}
+
+function capitalizeFirst(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
 // ============================================================================
@@ -774,6 +843,17 @@ function emitModel(
     }
   }
 
+  // Track field identifiers already used on this model so auto-inverse
+  // relation field names don't collide with properties, FK columns, the tenant
+  // column, or declared relation fields.
+  const usedFieldNames = new Set<string>();
+  for (const p of entity.properties) usedFieldNames.add(p.name);
+  if (ir.tenant) usedFieldNames.add(ir.tenant.property);
+  for (const r of entity.relationships) {
+    usedFieldNames.add(r.name);
+    for (const fk of r.foreignKey?.fields ?? [`${r.name}Id`]) usedFieldNames.add(fk);
+  }
+
   // Relationships
   if (entity.relationships.length > 0) {
     lines.push('');
@@ -783,6 +863,14 @@ function emitModel(
       diagnostics.push(...relDiags);
     }
   }
+
+  // Auto-emitted inverse relations for one-sided belongsTo/ref pointing here.
+  const auto = emitAutoInverseRelations(entity, ir, options, context, usedFieldNames);
+  if (auto.lines.length > 0) {
+    if (entity.relationships.length === 0) lines.push('');
+    lines.push(...auto.lines);
+  }
+  diagnostics.push(...auto.diagnostics);
 
   // @@map (table name override). Explicit tableMappings wins; otherwise the
   // auto-casing convention maps the physical table name (model name stays

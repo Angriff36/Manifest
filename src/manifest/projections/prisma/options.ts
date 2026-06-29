@@ -263,6 +263,21 @@ export interface PrismaProjectionOptions {
    * built-in pluralizer gets wrong.
    */
   naming?: NamingConventionInput;
+
+  /**
+   * Auto-emit the inverse relation field on a target model for any
+   * `belongsTo`/`ref` that lacks an explicit opposite. Opt-in; default false
+   * (fully back-compatible — without it, a one-sided relation surfaces a
+   * `PRISMA_RELATION_MISSING_BACKSIDE` warning and Prisma rejects the schema).
+   *
+   * When enabled, for every `belongsTo`/`ref` on entity E that targets T and is
+   * not already covered by a declared `hasMany`/`hasOne` on T, the projection
+   * emits `<pluralCamelE> E[]` on T. Ambiguous pairs (multiple relations between
+   * E and T) get a deterministic `@relation("E_<rel>")` name matching the
+   * FK-owning side, so both sides agree. Eliminates the need to hand-author
+   * inverse `hasMany` on hub entities (User, Event, …).
+   */
+  autoBackRelations?: boolean;
 }
 
 /**
@@ -304,6 +319,8 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Pris
     // Passed through as-is. Absent → undefined → flat layout (back-compat).
     // resolveSchemaName in the generator guards on multiSchema?.enabled.
     multiSchema: input.multiSchema,
+    // Auto-emit inverse relation fields for one-sided belongsTo/ref. Default false.
+    autoBackRelations: input.autoBackRelations ?? false,
     // Passed through as-is. Absent → undefined → IR names verbatim (back-compat).
     // The generator normalizes the shorthand/object form via normalizeNaming.
     naming: input.naming,

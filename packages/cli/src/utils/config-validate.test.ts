@@ -431,6 +431,22 @@ describe('validateConfig — prisma multiSchema/relationMode/generator', () => {
     expect(result.diagnostics.some((d) => d.message.includes('notARealOption'))).toBe(true);
   });
 
+  it('accepts projections.prisma.options.autoBackRelations', async () => {
+    const result = await validateConfig({
+      projections: { prisma: { options: { provider: 'postgresql', autoBackRelations: true } } },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('accepts a top-level output on prisma-store (required by generate --all)', async () => {
+    const result = await validateConfig({
+      projections: { 'prisma-store': { output: 'manifest/generated/runtime/', options: { provider: 'postgresql' } } },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it('rejects an unknown key inside multiSchema (closed object)', async () => {
     const config = {
       projections: { prisma: { options: { multiSchema: { enabled: true, bogus: 1 } } } },

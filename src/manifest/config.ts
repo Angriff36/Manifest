@@ -127,6 +127,8 @@ export interface ManifestPrismaProjectionOptions {
   generator?: Record<string, string>;
   /** Preserve module layout as DB schemas via `@@schema(...)`. */
   multiSchema?: ManifestPrismaMultiSchemaConfig;
+  /** Auto-emit inverse relation fields for one-sided belongsTo/ref. Default false. */
+  autoBackRelations?: boolean;
   /** Automatic identifier-casing convention (adds @map/@@map only). */
   naming?: NamingConventionInput;
   tableMappings?: Record<string, string>;

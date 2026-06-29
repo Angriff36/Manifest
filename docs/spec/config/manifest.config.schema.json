@@ -454,6 +454,10 @@
       "description": "Configuration for the Prisma store metadata/registry projection (GenericPrismaStore).",
       "additionalProperties": false,
       "properties": {
+        "output": {
+          "type": "string",
+          "description": "Directory where the store metadata/registry artifacts are written. Required for `manifest generate --all` to run this projection (projections with no top-level output are skipped)."
+        },
         "options": { "$ref": "#/definitions/PrismaStoreProjectionOptions" }
       }
     },
@@ -601,6 +605,11 @@
               "default": "public"
             }
           }
+        },
+        "autoBackRelations": {
+          "description": "Auto-emit the inverse relation field on a target model for any belongsTo/ref that lacks an explicit opposite. Default false.",
+          "type": "boolean",
+          "default": false
         },
         "accessorNames": {
           "description": "Per-entity Prisma client delegate override (e.g. OrderLine -> order_lines).",
@@ -778,6 +787,11 @@
               "default": "public"
             }
           }
+        },
+        "autoBackRelations": {
+          "description": "Auto-emit the inverse relation field on a target model for any belongsTo/ref that lacks an explicit opposite. Default false.",
+          "type": "boolean",
+          "default": false
         }
       }
     },

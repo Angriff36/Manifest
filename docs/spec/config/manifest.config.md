@@ -319,6 +319,7 @@ metadata/registry keys.
 | `options.relationMode` | (none) | enum   | `prisma` \| `foreignKeys`. Emitted as `relationMode = "..."` on the datasource. Use `prisma` when relations are enforced in the client (PlanetScale, Neon pooled, …). |
 | `options.generator` | `{ provider: "prisma-client-js" }` | `Record<string,string>` | Fields for the `generator client { ... }` block, emitted verbatim as `key = "value"` in declaration order. Override for the newer `prisma-client` generator with `output`/`moduleFormat`/`generatedFileExtension`/`importFileExtension`. |
 | `options.multiSchema` | (flat)  | object | Multi-schema layout. See below. PostgreSQL / CockroachDB / SQL Server only. |
+| `options.autoBackRelations` | `false` | boolean | Auto-emit the inverse relation field on a target model for any `belongsTo`/`ref` lacking an explicit opposite (`<pluralCamelOwner> Owner[]`, with a deterministic `@relation` name for ambiguous pairs). Removes the need to hand-author inverse `hasMany` on hub entities (User, Event, …). |
 | `options.naming` | `preserve`   | string\|object | Identifier casing (`@map`/`@@map` only); `snake_case` shorthand expands to `{ table, column, pluralizeTables: true }`. |
 | `options.urlEnvVar` | `DATABASE_URL` | string | Env var name for the DB URL in the emitted `prisma.config.ts` companion. |
 

@@ -154,6 +154,11 @@
         }
       }
     },
+    "autoBackRelations": {
+      "description": "Auto-emit the inverse relation field on a target model for any belongsTo/ref that lacks an explicit opposite. Default false. When true, emits `<pluralCamelOwner> Owner[]` on the target (with a deterministic @relation name for ambiguous pairs), removing the need to hand-author inverse hasMany on hub entities.",
+      "type": "boolean",
+      "default": false
+    },
     "naming": {
       "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (the Prisma model name and field identifiers stay the IR name, so relations/indexes are unaffected). Explicit tableMappings/columnMappings override it. String shorthand 'snake_case' ≡ { table: 'snake_case', column: 'snake_case', pluralizeTables: true }.",
       "oneOf": [

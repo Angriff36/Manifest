@@ -770,6 +770,91 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
   });
 });
 
+describe('PrismaProjection — autoBackRelations', () => {
+  it('auto-emits the inverse hasMany on the target for a one-sided belongsTo', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', {
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
+      }),
+      bareEntity('User'),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } });
+    const code = result.artifacts[0].code;
+    // Forward side present, inverse auto-emitted on User (pluralized, camel).
+    expect(code).toMatch(/author\s+User\s+@relation\(fields: \[authorId\], references: \[id\]\)/);
+    expect(code).toMatch(/model User \{[\s\S]*?posts\s+Post\[\][\s\S]*?\}/);
+    // No missing-backside warning when auto is on.
+    expect(result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE')).toBeUndefined();
+  });
+
+  it('does NOT auto-emit (and still warns) when the option is off', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', { relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }] }),
+      bareEntity('User'),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
+    expect(result.artifacts[0].code).not.toMatch(/posts\s+Post\[\]/);
+    expect(result.diagnostics.find((d) => d.code === 'PRISMA_RELATION_MISSING_BACKSIDE')).toBeDefined();
+  });
+
+  it('does not duplicate an inverse the target already declares', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', { relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }] }),
+      bareEntity('User', { relationships: [{ name: 'posts', kind: 'hasMany', target: 'Post' }] }),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    // Exactly one `posts Post[]` on User (the declared one), no auto duplicate.
+    const matches = code.match(/posts\s+Post\[\]/g) ?? [];
+    expect(matches.length).toBe(1);
+  });
+
+  it('auto-emits distinct named inverses for ambiguous multi-relations', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Connection', {
+        relationships: [
+          { name: 'fromCard', kind: 'belongsTo', target: 'Card' },
+          { name: 'toCard', kind: 'belongsTo', target: 'Card' },
+        ],
+      }),
+      bareEntity('Card'),
+    );
+    ir.stores.push(durableStore('Connection'), durableStore('Card'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    // Forward sides carry the deterministic names.
+    expect(code).toMatch(/fromCard\s+Card\s+@relation\("Connection_fromCard"/);
+    expect(code).toMatch(/toCard\s+Card\s+@relation\("Connection_toCard"/);
+    // Auto inverses on Card carry matching names and distinct field names.
+    expect(code).toMatch(/connectionsFromCard\s+Connection\[\]\s+@relation\("Connection_fromCard"\)/);
+    expect(code).toMatch(/connectionsToCard\s+Connection\[\]\s+@relation\("Connection_toCard"\)/);
+  });
+
+  it('uniquifies an auto inverse field name that collides with a property', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', { relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }] }),
+      bareEntity('User', {
+        properties: [{ name: 'posts', type: { name: 'string', nullable: false }, modifiers: [] }],
+      }),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    // The scalar `posts` property stays; the auto inverse gets a suffixed name.
+    expect(code).toMatch(/model User \{[\s\S]*?posts\s+String[\s\S]*?posts2\s+Post\[\][\s\S]*?\}/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Phase 3 golden tests: composite PK / FK / referential actions
 // ---------------------------------------------------------------------------

@@ -4,6 +4,34 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.21.0] - 2026-06-28
+
+### Added
+
+- **Prisma projection `autoBackRelations` option.** When enabled
+  (`projections.prisma.options.autoBackRelations: true`), the projection
+  auto-emits the inverse relation field on a target model for every
+  `belongsTo`/`ref` that lacks an explicit opposite — `<pluralCamelOwner>
+  Owner[]`, with a deterministic `@relation("Owner_<rel>")` name for ambiguous
+  pairs (matching the FK-owning side). This removes the need to hand-author
+  inverse `hasMany` on hub entities (a real codebase had User needing 37, Event
+  13, Facility 14) and eliminates the Prisma "missing opposite relation field"
+  error class. Default `false` (fully back-compatible); the
+  `PRISMA_RELATION_MISSING_BACKSIDE` warning is suppressed for `belongsTo`/`ref`
+  when it is on.
+
+### Fixed
+
+- **`projections.prisma-store` now accepts a top-level `output`.** The schema
+  rejected it even though `manifest generate --all` *skips* any projection
+  without a top-level `output` — so the prisma-store projection could never run
+  under `--all` while passing config validation. Added `output` to
+  `PrismaStoreProjectionConfig`.
+- `autoBackRelations` is registered in both the loaded
+  `manifest.config.schema.json` (PrismaProjectionOptions + inherited
+  PrismaStoreProjectionOptions) and the standalone reference schema, and is
+  typed on `ManifestPrismaProjectionOptions` for `manifest.config.ts` authors.
+
 ## [2.20.0] - 2026-06-28
 
 ### Fixed
