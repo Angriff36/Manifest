@@ -1,17 +1,20 @@
 name: Cut Release
 
-# Standard one-button npm release. Publishes to npmjs.org using an npm
-# automation token stored in the NPM_TOKEN secret. Run from the Actions tab:
+# Standard one-button npm release. Publishes to npmjs.org via OIDC trusted
+# publishing (no NPM_TOKEN). Run from the Actions tab:
 #   gh workflow run cut-release.yml -f version=patch    (or minor / major / explicit e.g. 2.19.0)
 #
 # Publish-first: npm is the source of truth for "released", so the version
-# commit + tag are pushed ONLY after `pnpm publish` succeeds. A publish
+# commit + tag are pushed ONLY after `npm publish` succeeds. A publish
 # failure leaves npm and git untouched — no dangling tags, no half-released
 # versions. package.json is the version source of truth (checkout always
 # sees latest main, so no tag-aligning drift hack is needed).
 #
-# Prerequisite: the NPM_TOKEN repo secret must hold a valid npm publish
-# token (granular token with publish permission on @angriff36/manifest).
+# Prerequisites (per docs.npmjs.com/trusted-publishers):
+#   - id-token: write permission (set below)
+#   - npm CLI >= 11.5.1 (Node 22 ships npm 10.x, so the publish step upgrades)
+#   - the trusted publisher registered on npmjs.com for Angriff36/Manifest +
+#     cut-release.yml; NPM_TOKEN secret must NOT exist (nothing injected).
 
 on:
   workflow_dispatch:

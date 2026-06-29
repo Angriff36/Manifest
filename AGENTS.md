@@ -124,17 +124,13 @@ Agents must follow this sequence for any change:
 
 ## Publishing (MANDATORY — Do Not Ask the User)
 
-When publishing to GitHub Packages:
+When publishing to the public npm registry:
 
-1. **Token location**: `C:\Users\Ryan\Documents\env.txt`, key `GITHUB_PACKAGES_TOKEN`
-2. **Read the token yourself** from that file. Do NOT ask the user for it.
-3. **Check existing versions first**: `NODE_AUTH_TOKEN=<token> npm view @angriff36/manifest versions --json`
-4. **Bump to next available version** in root `package.json`
-5. **Use pnpm publish** (npm publish fails due to Arborist workspace bug):
-   ```bash
-   NODE_AUTH_TOKEN=<token> pnpm publish --no-git-checks
-   ```
-6. Full publish docs: `docs/tools/PACKAGES_AND_DISTRIBUTION.md`
+1. **Prefer the release workflow**: `gh workflow run cut-release.yml -f version=patch|minor|major`
+2. **One-time CI setup**: run `scripts/setup-npm-trusted-publish.ps1` (OIDC; passkey in browser)
+3. **Check existing versions first**: `npm view @angriff36/manifest versions --json`
+4. **Manual publish** (if needed): `pnpm publish --no-git-checks` after passkey browser flow
+5. Full publish docs: `docs/internal/tools/PACKAGES_AND_DISTRIBUTION.md`
 
 ---
 

@@ -88,3 +88,8 @@ scripts/
 /src/**/*.js
 !/src/manifest/ir.js
 !/src/manifest/projections/interface.js
+/graphify-out/cache
+/graphify-out
+CLAUDE-FABLE-5.md
+output.txt
+simplify-manifest.md

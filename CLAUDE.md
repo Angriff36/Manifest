@@ -316,13 +316,8 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[proactive bridge @ 94% context — saved before compacting]
-Files (6):
-  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/reference-npm-publish.md (create)
-  C:/Users/Ryan/.claude/projects/C--projects-manifest/memory/MEMORY.md (edit)
-  mintlify/installation.mdx (edit)
-  docs/getting-started/new-project.md (edit)
-  docs/getting-started/quickstart.md (edit)
-  docs/internal/tools/CLI_REFERENCE.md (edit)
+[proactive bridge @ 87% context — saved before compacting]
+Files (1):
+  packages/cli/src/commands/compile.ts (edit)
 
 # === END COGNILAYER ===
