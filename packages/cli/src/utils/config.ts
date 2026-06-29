@@ -335,8 +335,12 @@ function mergeConfig(defaults: ManifestConfig, user: ManifestConfig | null): Man
 /**
  * Merge build config from runtime config with YAML config
  * Runtime config's build settings take precedence over YAML.
+ *
+ * Exported so tests can exercise the exact YAML+TS merge that `loadAllConfigs`
+ * feeds to `validateConfig` (a `.ts` config's `build` block is validated by the
+ * same JSON schema as YAML).
  */
-function mergeBuildConfig(
+export function mergeBuildConfig(
   yamlConfig: ManifestConfig | null,
   runtimeBuildConfig: ManifestConfig | undefined
 ): ManifestConfig {

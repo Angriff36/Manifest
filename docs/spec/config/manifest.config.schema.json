@@ -566,6 +566,42 @@
           "$ref": "#/definitions/NamingConvention",
           "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (model/field identifiers stay the IR name). Explicit tableMappings/columnMappings override it."
         },
+        "relationMode": {
+          "description": "Datasource relationMode. Emitted as relationMode = \"...\" on the datasource block. Use \"prisma\" when relations are enforced in the client (PlanetScale, Neon pooled, etc.) rather than via DB foreign keys.",
+          "enum": ["prisma", "foreignKeys"]
+        },
+        "generator": {
+          "description": "Fields for the emitted `generator client { ... }` block, each rendered verbatim as key = \"value\". Defaults to { provider: \"prisma-client-js\" }. Override to select the newer prisma-client generator and set output/moduleFormat/generatedFileExtension/importFileExtension.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "multiSchema": {
+          "description": "Preserve the model's module layout as database schemas instead of flattening into one schema. Emits @@schema(...) per model and schemas=[...] on the datasource. PostgreSQL / CockroachDB / SQL Server only.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Master switch. Default false (flat layout, fully back-compatible).",
+              "type": "boolean",
+              "default": false
+            },
+            "schemas": {
+              "description": "Explicit datasource schema list. Order preserved; any schema used by a model but missing here is appended (sorted) so the datasource lists every referenced schema.",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "entitySchema": {
+              "description": "Per-entity schema override. Key = IR entity name; value = schema name. Takes precedence over the entity's IR module.",
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "defaultSchema": {
+              "description": "Schema for entities with neither an entitySchema override nor an IR module. Default 'public'.",
+              "type": "string",
+              "default": "public"
+            }
+          }
+        },
         "accessorNames": {
           "description": "Per-entity Prisma client delegate override (e.g. OrderLine -> order_lines).",
           "type": "object",
@@ -706,6 +742,42 @@
         "naming": {
           "$ref": "#/definitions/NamingConvention",
           "description": "Automatic identifier-casing convention. Opt-in; only ever adds @map/@@map (model/field identifiers stay the IR name). Explicit tableMappings/columnMappings override it."
+        },
+        "relationMode": {
+          "description": "Datasource relationMode. Emitted as relationMode = \"...\" on the datasource block. Use \"prisma\" when relations are enforced in the client (PlanetScale, Neon pooled, etc.) rather than via DB foreign keys.",
+          "enum": ["prisma", "foreignKeys"]
+        },
+        "generator": {
+          "description": "Fields for the emitted `generator client { ... }` block, each rendered verbatim as key = \"value\". Defaults to { provider: \"prisma-client-js\" }. Override to select the newer prisma-client generator and set output/moduleFormat/generatedFileExtension/importFileExtension.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "multiSchema": {
+          "description": "Preserve the model's module layout as database schemas instead of flattening into one schema. Emits @@schema(...) per model and schemas=[...] on the datasource. PostgreSQL / CockroachDB / SQL Server only.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Master switch. Default false (flat layout, fully back-compatible).",
+              "type": "boolean",
+              "default": false
+            },
+            "schemas": {
+              "description": "Explicit datasource schema list. Order preserved; any schema used by a model but missing here is appended (sorted) so the datasource lists every referenced schema.",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "entitySchema": {
+              "description": "Per-entity schema override. Key = IR entity name; value = schema name. Takes precedence over the entity's IR module.",
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "defaultSchema": {
+              "description": "Schema for entities with neither an entitySchema override nor an IR module. Default 'public'.",
+              "type": "string",
+              "default": "public"
+            }
+          }
         }
       }
     },

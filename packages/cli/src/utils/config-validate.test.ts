@@ -1,6 +1,23 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
-import { validateConfig, formatDiagnostic } from './config-validate.js';
-import type { ManifestConfig } from './config.js';
+import { validateConfig, formatDiagnostic, loadConfigSchema } from './config-validate.js';
+import { mergeBuildConfig, type ManifestConfig } from './config.js';
+
+/** Walk up from this test file to load a docs/spec/config schema file. */
+function loadSpecSchema(fileName: string): { properties?: Record<string, unknown> } {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let prev = ''; dir !== prev; prev = dir, dir = path.dirname(dir)) {
+    const candidate = path.join(dir, 'docs', 'spec', 'config', fileName);
+    try {
+      return JSON.parse(readFileSync(candidate, 'utf-8'));
+    } catch {
+      // keep walking up
+    }
+  }
+  throw new Error(`Could not locate docs/spec/config/${fileName}`);
+}
 
 describe('validateConfig', () => {
   it('accepts a null config (defaults apply)', async () => {
@@ -345,6 +362,144 @@ describe('validateConfig', () => {
     const result = await validateConfig(config);
     expect(result.ok).toBe(true);
     expect(result.diagnostics).toHaveLength(0);
+  });
+});
+
+// ── Schema drift fix: the loaded schema (manifest.config.schema.json) previously
+//    lacked generator/relationMode/multiSchema under prisma options, so a real
+//    multi-schema config was rejected by `manifest config validate` even though
+//    the projection honors those keys. These guard against the desync returning.
+describe('validateConfig — prisma multiSchema/relationMode/generator', () => {
+  it('accepts projections.prisma.options.generator', async () => {
+    const config: ManifestConfig = {
+      projections: {
+        prisma: {
+          output: 'packages/database/prisma',
+          options: {
+            provider: 'postgresql',
+            generator: {
+              provider: 'prisma-client',
+              output: '../generated',
+              moduleFormat: 'esm',
+              generatedFileExtension: 'ts',
+              importFileExtension: 'ts',
+            },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('accepts projections.prisma.options.relationMode', async () => {
+    const result = await validateConfig({
+      projections: { prisma: { options: { provider: 'postgresql', relationMode: 'prisma' } } },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('accepts projections.prisma.options.multiSchema', async () => {
+    const config: ManifestConfig = {
+      projections: {
+        prisma: {
+          options: {
+            provider: 'postgresql',
+            multiSchema: {
+              enabled: true,
+              schemas: ['public', 'tenant_crm', 'tenant_events'],
+              entitySchema: { Client: 'tenant_crm', Event: 'tenant_events' },
+              defaultSchema: 'public',
+            },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('rejects a random unknown key under prisma options (closedness preserved)', async () => {
+    const config = {
+      projections: { prisma: { options: { provider: 'postgresql', notARealOption: true } } },
+    } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('notARealOption'))).toBe(true);
+  });
+
+  it('rejects an unknown key inside multiSchema (closed object)', async () => {
+    const config = {
+      projections: { prisma: { options: { multiSchema: { enabled: true, bogus: 1 } } } },
+    } as unknown as ManifestConfig;
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((d) => d.message.includes('bogus'))).toBe(true);
+  });
+
+  it('accepts prisma-store with inherited multiSchema/relationMode/generator + store-owned options', async () => {
+    const config: ManifestConfig = {
+      projections: {
+        'prisma-store': {
+          options: {
+            provider: 'postgresql',
+            naming: 'snake_case',
+            relationMode: 'prisma',
+            generator: { provider: 'prisma-client' },
+            multiSchema: { enabled: true, entitySchema: { Order: 'tenant_accounting' } },
+            accessorNames: { OrderLine: 'order_lines' },
+            metadataOutput: 'metadata.generated.ts',
+            registryOutput: 'registry.generated.ts',
+            softDelete: { Order: { field: 'status', deletedValue: 'deleted' } },
+          },
+        },
+      },
+    };
+    const result = await validateConfig(config);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  // The TS config's `build` block is merged over YAML and validated by the SAME
+  // schema (config.ts loadAllConfigs → mergeBuildConfig → validateConfig). Prove
+  // a .ts-authored prisma options bag survives that path.
+  it('accepts a .ts-style build block (merged) with the new prisma options', async () => {
+    const tsBuild: ManifestConfig = {
+      projections: {
+        prisma: {
+          output: 'packages/database/prisma',
+          options: {
+            provider: 'postgresql',
+            relationMode: 'prisma',
+            generator: { provider: 'prisma-client', moduleFormat: 'esm' },
+            multiSchema: { enabled: true, schemas: ['public'], defaultSchema: 'public' },
+          },
+        },
+      },
+    };
+    const merged = mergeBuildConfig(null, tsBuild);
+    const result = await validateConfig(merged);
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toHaveLength(0);
+  });
+});
+
+// ── Drift guard between the loaded contract (manifest.config.schema.json) and
+//    the standalone reference schema (prisma-projection.schema.json). Nothing
+//    loads the standalone file; this test is what keeps it honest so a future
+//    edit to one isn't silently absent from the other.
+describe('prisma projection schema drift', () => {
+  it('reference prisma-projection.schema.json key set equals loaded PrismaProjectionOptions key set', async () => {
+    const reference = loadSpecSchema('prisma-projection.schema.json');
+    const loaded = (await loadConfigSchema()) as {
+      definitions: { PrismaProjectionOptions: { properties: Record<string, unknown> } };
+    };
+    const referenceKeys = Object.keys(reference.properties ?? {}).sort();
+    const loadedKeys = Object.keys(loaded.definitions.PrismaProjectionOptions.properties).sort();
+    expect(loadedKeys).toEqual(referenceKeys);
   });
 });
 

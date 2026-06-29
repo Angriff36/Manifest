@@ -80,6 +80,81 @@ export interface ManifestProjectionConfig {
 }
 
 /**
+ * Foreign-key override for a `belongsTo`/`ref` relation in the Prisma
+ * projection. Mirrors `PrismaProjectionOptions.foreignKeys` in the JSON schema.
+ */
+export interface ManifestPrismaForeignKeyConfig {
+  fields: string[];
+  references?: string[];
+  onDelete?: string;
+  onUpdate?: string;
+}
+
+/**
+ * Multi-schema layout for the Prisma projection. Mirrors `multiSchema` in
+ * `docs/spec/config/manifest.config.schema.json`. PostgreSQL / CockroachDB /
+ * SQL Server only. Per-model resolution: `entitySchema[name]` → IR module →
+ * `defaultSchema`.
+ */
+export interface ManifestPrismaMultiSchemaConfig {
+  /** Master switch. Default false (flat layout). */
+  enabled?: boolean;
+  /** Explicit datasource schema list; missing-but-used schemas are appended. */
+  schemas?: string[];
+  /** Per-entity schema override (entity name → schema). Wins over IR module. */
+  entitySchema?: Record<string, string>;
+  /** Schema for entities with neither an override nor a module. Default 'public'. */
+  defaultSchema?: string;
+}
+
+/**
+ * Typed surface for `projections.prisma.options`. Mirrors
+ * `definitions.PrismaProjectionOptions` in the JSON schema (the executable
+ * contract `manifest config validate` enforces). Authors may annotate a
+ * `manifest.config.ts` projection's `options` with this for autocomplete;
+ * `ManifestProjectionConfig.options` stays `Record<string, unknown>` so the
+ * surface remains permissive and back-compatible.
+ */
+export interface ManifestPrismaProjectionOptions {
+  provider?: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver' | 'mongodb' | 'cockroachdb';
+  /** Path hint for the emitted schema.prisma artifact. Default 'schema.prisma'. */
+  output?: string;
+  /** Env var for the DB URL in the emitted prisma.config.ts companion. Default 'DATABASE_URL'. */
+  urlEnvVar?: string;
+  /** Datasource `relationMode`. */
+  relationMode?: 'prisma' | 'foreignKeys';
+  /** `generator client { ... }` fields, emitted verbatim as `key = "value"`. */
+  generator?: Record<string, string>;
+  /** Preserve module layout as DB schemas via `@@schema(...)`. */
+  multiSchema?: ManifestPrismaMultiSchemaConfig;
+  /** Automatic identifier-casing convention (adds @map/@@map only). */
+  naming?: NamingConventionInput;
+  tableMappings?: Record<string, string>;
+  columnMappings?: Record<string, Record<string, string>>;
+  precision?: Record<string, Record<string, { precision: number; scale: number }>>;
+  indexes?: Record<string, Array<string[] | { fields: string[]; name?: string }>>;
+  typeMappings?: Record<string, Record<string, string>>;
+  foreignKeys?: Record<string, Record<string, string | ManifestPrismaForeignKeyConfig>>;
+  dbAttributes?: Record<string, Record<string, string>>;
+  fieldAttributes?: Record<string, Record<string, string[]>>;
+}
+
+/**
+ * Typed surface for `projections.prisma-store.options`. Inherits every Prisma
+ * projection option (provider, naming, multiSchema, …) and adds the
+ * store-metadata/registry-owned keys. Mirrors `PrismaStoreProjectionOptions`
+ * in the JSON schema.
+ */
+export interface ManifestPrismaStoreProjectionOptions extends ManifestPrismaProjectionOptions {
+  accessorNames?: Record<string, string>;
+  metadataOutput?: string;
+  registryOutput?: string;
+  storeImportPath?: string;
+  metadataImportPath?: string;
+  softDelete?: Record<string, { field: string; deletedValue: string }>;
+}
+
+/**
  * Build-level configuration — the YAML-equivalent surface, also expressible as
  * the `build` block of a TypeScript config. Validated by the JSON schema.
  */

@@ -303,6 +303,60 @@ typed path builders. Configuration mirrors `ROUTES_DEFAULTS` in
 
 ---
 
+## `projections.prisma`
+
+Emits a `schema.prisma` from the IR. The projection runtime consumes these via
+`normalizeOptions` (`src/manifest/projections/prisma/options.ts`); the same keys
+are the validated contract in `manifest.config.schema.json`
+(`PrismaProjectionOptions`). `prisma-store` accepts all of these **plus** its own
+metadata/registry keys.
+
+| Key            | Default        | Type   | What it controls |
+|----------------|----------------|--------|------------------|
+| `output`       | `generated/`   | string | **Directory** the schema is written to. A projection with no top-level `output` is skipped by `manifest generate --all`. |
+| `options.output` | `schema.prisma` | string | **Filename** (path hint) resolved against the directory above. Do not repeat the full path in both — that writes a doubled path. |
+| `options.provider` | (none)     | enum   | `postgresql` \| `mysql` \| `sqlite` \| `sqlserver` \| `mongodb` \| `cockroachdb`. When set, a `datasource` block (and a `prisma.config.ts` companion) is emitted. |
+| `options.relationMode` | (none) | enum   | `prisma` \| `foreignKeys`. Emitted as `relationMode = "..."` on the datasource. Use `prisma` when relations are enforced in the client (PlanetScale, Neon pooled, …). |
+| `options.generator` | `{ provider: "prisma-client-js" }` | `Record<string,string>` | Fields for the `generator client { ... }` block, emitted verbatim as `key = "value"` in declaration order. Override for the newer `prisma-client` generator with `output`/`moduleFormat`/`generatedFileExtension`/`importFileExtension`. |
+| `options.multiSchema` | (flat)  | object | Multi-schema layout. See below. PostgreSQL / CockroachDB / SQL Server only. |
+| `options.naming` | `preserve`   | string\|object | Identifier casing (`@map`/`@@map` only); `snake_case` shorthand expands to `{ table, column, pluralizeTables: true }`. |
+| `options.urlEnvVar` | `DATABASE_URL` | string | Env var name for the DB URL in the emitted `prisma.config.ts` companion. |
+
+Per-entity maps (all `Record<EntityName, …>`, no dotted keys):
+`tableMappings`, `columnMappings`, `precision`, `indexes`, `typeMappings`,
+`foreignKeys`, `dbAttributes`, `fieldAttributes`.
+
+### `multiSchema`
+
+```yaml
+projections:
+  prisma:
+    output: packages/database/prisma
+    options:
+      provider: postgresql
+      relationMode: prisma
+      generator:
+        provider: prisma-client
+        output: "../generated"
+        moduleFormat: esm
+      multiSchema:
+        enabled: true
+        schemas: [public, tenant_crm, tenant_events]
+        entitySchema: { Client: tenant_crm, Event: tenant_events }
+        defaultSchema: public
+```
+
+| Key            | Default   | Type   | What it controls |
+|----------------|-----------|--------|------------------|
+| `enabled`      | `false`   | boolean| Master switch. Off = flat single-schema layout. |
+| `schemas`      | (derived) | string[]| Explicit datasource schema list. Any schema used by a model but missing here is appended. |
+| `entitySchema` | `{}`      | `Record<string,string>` | Per-entity override (entity name → schema). **Takes precedence over the entity's IR module** — this is how module-less entities get placed. |
+| `defaultSchema`| `public`  | string | Schema for entities with neither an override nor an IR module. |
+
+Per-model schema resolution: `entitySchema[name]` → IR `module` → `defaultSchema`.
+
+---
+
 ## Inspection CLI
 
 Three commands surface what Manifest will actually do.

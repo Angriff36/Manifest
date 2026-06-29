@@ -4,6 +4,39 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.20.0] - 2026-06-28
+
+### Fixed
+
+- **Prisma projection `multiSchema`, `relationMode`, and `generator` now pass
+  `manifest config validate`.** These options were honored by the projection
+  runtime but **rejected** by the config validator: the CLI validates only
+  against `docs/spec/config/manifest.config.schema.json`, whose inlined
+  `PrismaProjectionOptions` (and `PrismaStoreProjectionOptions`) were missing all
+  three keys. They had been added only to the standalone
+  `prisma-projection.schema.json`, **which nothing loads**. A downstream config
+  using multi-schema placement therefore failed `manifest config validate` (and
+  any pre-commit/CI gate running it) even though `manifest generate` honored it.
+  Both inlined definitions now include the three keys, with
+  `additionalProperties: false` preserved. This applies to both YAML configs and
+  the `build` block of a `manifest.config.ts` (validated by the same schema).
+
+### Added
+
+- **Typed TS config surface for Prisma options.** `@angriff36/manifest/config`
+  now exports `ManifestPrismaProjectionOptions` and
+  `ManifestPrismaStoreProjectionOptions` so `manifest.config.ts` authors get
+  autocomplete for the Prisma projection. `ManifestProjectionConfig.options`
+  stays `Record<string, unknown>` (permissive, back-compatible) and
+  `defineConfig` remains an identity helper.
+- **`## projections.prisma` reference** in `docs/spec/config/manifest.config.md`
+  (previously only `nextjs`/`routes` were documented), covering `output`,
+  `provider`, `relationMode`, `generator`, `multiSchema`, and `naming`.
+- **Schema drift guard.** A new test asserts the key set of the standalone
+  `prisma-projection.schema.json` equals the loaded
+  `PrismaProjectionOptions` key set, so the two can't silently diverge again.
+  `mergeBuildConfig` is now exported for testing the YAML+TS merge path.
+
 ## [2.19.7] - 2026-06-28
 
 ### Fixed
