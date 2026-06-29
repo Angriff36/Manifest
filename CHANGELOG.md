@@ -4,6 +4,20 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.6] - 2026-06-28
+
+### Added
+
+- **Prisma projection: configurable `generator` block and datasource
+  `relationMode`.** The `generator client` block was hardcoded to
+  `provider = "prisma-client-js"` and the datasource never emitted
+  `relationMode`. New options: `generator` (a `Record<string,string>` rendered
+  verbatim as `key = "value"`, default `{ provider: "prisma-client-js" }`) and
+  `relationMode` (`"prisma" | "foreignKeys"`). The projection can now emit a
+  complete real-world schema header (e.g. the `prisma-client` generator with
+  `output`/`moduleFormat`, `relationMode = "prisma"`) entirely from config —
+  no hand-authored preamble required.
+
 ## [2.19.5] - 2026-06-28
 
 ### Added
