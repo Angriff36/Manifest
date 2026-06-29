@@ -425,6 +425,52 @@ function findOppositeRelations(
   });
 }
 
+/**
+ * Deterministic Prisma `@relation` name for a relation that is one of several
+ * between the same pair of entities. Anchored on the FK-owning side
+ * (`belongsTo`/`ref`) so both sides compute the identical string and Prisma can
+ * pair them. The FK field name is unique per entity, so the name is unique.
+ */
+function ambiguousRelationName(fkOwnerEntity: string, fkRelName: string): string {
+  return `${fkOwnerEntity}_${fkRelName}`;
+}
+
+/**
+ * Resolve the shared `@relation` name to put on the non-FK side
+ * (`hasMany`/`hasOne`) of an ambiguous relation, by pairing it with a
+ * FK-owning relation on the target.
+ *
+ * Pairing: if the target has exactly one FK relation pointing back, use it.
+ * Otherwise pair by declaration order (i-th back-relation ↔ i-th FK relation).
+ *
+ * ponytail: order-based pairing for the N-FK case — correct when both sides are
+ * declared in parallel order (the natural hand-written case). The IR carries no
+ * inverse pointer, so order is the only deterministic signal; the projection
+ * emits a PRISMA_RELATION_PAIRING_ASSUMED info diagnostic so a human can verify.
+ * Upgrade path: add an explicit `inverse` field to IRRelationship.
+ *
+ * Returns undefined when no FK-owning back side exists (genuinely unpairable).
+ */
+function resolveBacksideRelationName(
+  entity: IREntity,
+  rel: IRRelationship,
+  ir: IR,
+): string | undefined {
+  const target = ir.entities.find((e) => e.name === rel.target);
+  if (!target) return undefined;
+  const fkRels = target.relationships.filter(
+    (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name,
+  );
+  if (fkRels.length === 0) return undefined;
+  if (fkRels.length === 1) return ambiguousRelationName(target.name, fkRels[0].name);
+  const backRels = entity.relationships.filter(
+    (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === target.name,
+  );
+  const idx = backRels.findIndex((r) => r.name === rel.name);
+  const paired = fkRels[idx];
+  return paired ? ambiguousRelationName(target.name, paired.name) : undefined;
+}
+
 interface RelationEmission {
   lines: string[];
   diagnostics: ProjectionDiagnostic[];
@@ -491,28 +537,58 @@ function emitRelationship(
     return { lines, diagnostics };
   }
 
-  // (2) Ambiguity check.
+  // (2) Ambiguity: multiple relations between this pair of entities. Prisma
+  // requires a named `@relation` on BOTH sides. We derive a deterministic name
+  // anchored on the FK-owning side so both sides agree (see helpers above).
   const sameTargetCount = entity.relationships.filter((r) => r.target === rel.target).length;
   const opposites = findOppositeRelations(entity.name, rel, ir);
-  if (sameTargetCount > 1 || opposites.length > 1) {
-    diagnostics.push({
-      severity: 'info',
-      code: 'PRISMA_RELATION_AMBIGUOUS',
-      entity: entity.name,
-      message:
-        `Relationship '${entity.name}.${rel.name}' → ${rel.target} is one of multiple relations between these entities. ` +
-        `Prisma requires named relations (e.g. \`@relation("authoredBooks")\`) to disambiguate; the projection does not ` +
-        `emit names automatically. Add the @relation name by hand, or refactor to a single relation.`,
-    });
-    lines.push(
-      `  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_AMBIGUOUS`,
-    );
-    return { lines, diagnostics };
+  const isAmbiguous = sameTargetCount > 1 || opposites.length > 1;
+  let relationName: string | undefined;
+  if (isAmbiguous) {
+    if (rel.kind === 'belongsTo' || rel.kind === 'ref') {
+      relationName = ambiguousRelationName(entity.name, rel.name);
+    } else {
+      relationName = resolveBacksideRelationName(entity, rel, ir);
+      const fkBack = ir.entities
+        .find((e) => e.name === rel.target)
+        ?.relationships.filter(
+          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name,
+        );
+      if (relationName && fkBack && fkBack.length > 1) {
+        diagnostics.push({
+          severity: 'info',
+          code: 'PRISMA_RELATION_PAIRING_ASSUMED',
+          entity: entity.name,
+          message:
+            `Relationship '${entity.name}.${rel.name}' → ${rel.target} was paired with ` +
+            `'${rel.target}.${relationName.slice(rel.target.length + 1)}' by declaration order ` +
+            `(emitted as @relation("${relationName}")). The IR carries no inverse pointer; ` +
+            `verify the pairing is correct, or declare the relations in parallel order on both sides.`,
+        });
+      }
+    }
+    if (!relationName) {
+      // hasMany/hasOne with no FK-owning back side: Prisma can't form the
+      // relation at all. Surface it rather than emit invalid schema.
+      diagnostics.push({
+        severity: 'warning',
+        code: 'PRISMA_RELATION_AMBIGUOUS',
+        entity: entity.name,
+        message:
+          `Relationship '${entity.name}.${rel.name}' → ${rel.target} is one of multiple relations between ` +
+          `these entities, but ${rel.target} declares no 'belongsTo'/'ref' back to ${entity.name} to anchor a ` +
+          `named relation. Add a FK-owning relation on ${rel.target}, or refactor to a single relation.`,
+      });
+      lines.push(`  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_AMBIGUOUS`);
+      return { lines, diagnostics };
+    }
   }
+  const relNameArg = relationName ? `"${relationName}"` : '';
+  const relNameSuffix = relationName ? ` @relation(${relNameArg})` : '';
 
   switch (rel.kind) {
     case 'hasMany': {
-      lines.push(`  ${rel.name} ${rel.target}[]`);
+      lines.push(`  ${rel.name} ${rel.target}[]${relNameSuffix}`);
       if (opposites.length === 0) {
         diagnostics.push({
           severity: 'warning',
@@ -527,7 +603,7 @@ function emitRelationship(
     }
 
     case 'hasOne': {
-      lines.push(`  ${rel.name} ${rel.target}?`);
+      lines.push(`  ${rel.name} ${rel.target}?${relNameSuffix}`);
       if (opposites.length === 0) {
         diagnostics.push({
           severity: 'warning',
@@ -603,6 +679,7 @@ function emitRelationship(
 
       // Relation field line with correct fields/references and optional referential actions.
       // Config-level onDelete/onUpdate (from ForeignKeyConfig) take precedence over IR-level.
+      const nameAttr = relationName ? `${relNameArg}, ` : '';
       const fieldsAttr = `fields: [${fkFields.join(', ')}]`;
       const refsAttr = `references: [${refsFields.join(', ')}]`;
       const effectiveOnDelete = configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : undefined);
@@ -610,7 +687,7 @@ function emitRelationship(
       const onDeleteAttr = effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '';
       const onUpdateAttr = effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '';
       lines.push(
-        `  ${rel.name} ${rel.target} @relation(${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
+        `  ${rel.name} ${rel.target} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
       );
 
       if (opposites.length === 0) {

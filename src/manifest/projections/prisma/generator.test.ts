@@ -701,7 +701,7 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
     expect(through?.message).toMatch(/join entity/);
   });
 
-  it("emits PRISMA_RELATION_AMBIGUOUS when multiple relations connect the same pair", () => {
+  it("emits deterministic named @relation on both sides when multiple relations connect the same pair", () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Author', {
@@ -719,11 +719,36 @@ describe('PrismaProjection — relationship diagnostics for unhandleable shapes'
     );
     ir.stores.push(durableStore('Author'), durableStore('Book'));
 
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+
+    // FK side: name is first @relation arg, paired by declaration order.
+    expect(code).toMatch(/author\s+Author\s+@relation\("Book_author", fields: \[authorId\], references: \[id\]\)/);
+    expect(code).toMatch(/editor\s+Author\s+@relation\("Book_editor", fields: \[editorId\], references: \[id\]\)/);
+    // Back side: same names, paired authoredBooks↔author, editedBooks↔editor.
+    expect(code).toMatch(/authoredBooks\s+Book\[\]\s+@relation\("Book_author"\)/);
+    expect(code).toMatch(/editedBooks\s+Book\[\]\s+@relation\("Book_editor"\)/);
+    // No give-up comment.
+    expect(code).not.toMatch(/PRISMA_RELATION_AMBIGUOUS/);
+  });
+
+  it("warns PRISMA_RELATION_AMBIGUOUS when a multi-relation back side has no FK to anchor a name", () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Author', {
+        relationships: [
+          { name: 'authoredBooks', kind: 'hasMany', target: 'Book' },
+          { name: 'editedBooks', kind: 'hasMany', target: 'Book' },
+        ],
+      }),
+      bareEntity('Book'),
+    );
+    ir.stores.push(durableStore('Author'), durableStore('Book'));
+
     const result = new PrismaProjection().generate(ir, { surface: 'prisma.schema' });
 
     const ambig = result.diagnostics.filter((d) => d.code === 'PRISMA_RELATION_AMBIGUOUS');
     expect(ambig.length).toBeGreaterThan(0);
-    expect(ambig[0].message).toMatch(/@relation/);
+    expect(ambig[0].message).toMatch(/belongsTo/);
   });
 
   it("emits PRISMA_RELATION_MISSING_BACKSIDE warning when only one side is declared", () => {
