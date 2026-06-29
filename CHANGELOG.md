@@ -4,6 +4,18 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.1] - 2026-06-28
+
+### Fixed
+
+- **Domain completeness no longer reports an entity's own fields as
+  "owned by parent" on a self-referential relationship.** An entity with a
+  self `belongsTo`/`ref` (e.g. `belongsTo reverseOf: Txn` for a reversal or
+  version chain) was treated as its own parent, so every required `create`
+  param that is also one of its properties was falsely flagged and the program
+  failed to compile. Self-referential relationships are now skipped in that
+  check (the FK-wiring check already skipped them).
+
 ## [2.19.0] - 2026-06-28
 
 ### Added
