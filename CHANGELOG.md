@@ -4,6 +4,38 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.22.0] - 2026-06-28
+
+Prisma projection correctness pass — everything needed for a real multi-schema
+schema to pass `prisma validate` without post-processing. Validated end-to-end
+against a 199-model multi-schema consumer.
+
+### Added
+
+- **`autoBackRelations` now handles self-relations and bidirectional pairs.** A
+  self `belongsTo` (e.g. `parent`) gets a named self-inverse; a mutual pair
+  (`A→B` belongsTo *and* `B→A` belongsTo, each auto-gaining an inverse) now names
+  all four fields consistently so the pair resolves. Ambiguity is computed from
+  the total relation fields a model will carry to a target (declared **plus**
+  auto-emitted), not just declared ones.
+
+### Fixed
+
+- **Optional FK → optional relation field.** When a relation's FK scalar
+  column is optional (a non-`required` declared property), the relation field is
+  now emitted as `Target?` (Prisma rejects a required relation over an optional
+  FK). Matches `emitPropertyLine`'s nullability rule.
+- **Self-relations and reference cycles get referential actions.** A
+  self-relation or mutual 2-cycle now emits `onDelete`/`onUpdate` (Prisma
+  rejects the implicit `SetNull`/`Cascade` there). Uses `NoAction` normally and
+  `Restrict` under `relationMode = "prisma"` (where `NoAction` is not allowed on
+  Postgres). Explicit `foreignKeys` config still wins.
+- **`@@unique([id])` for composite-key models referenced by a single-column
+  `[id]` FK.** A composite PK (`@@id([tenantId, id])`) does not make `id` alone a
+  unique criterion, so single-column `references: [id]` failed validation. The
+  projection now emits `@@unique([id])` — but only when such a reference actually
+  exists, rather than assuming every composite `id` is globally unique.
+
 ## [2.21.0] - 2026-06-28
 
 ### Added

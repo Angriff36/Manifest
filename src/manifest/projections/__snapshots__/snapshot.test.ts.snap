@@ -5409,7 +5409,7 @@ model Task {
   assigneeId String?
   createdAt DateTime?
 
-  assignee User @relation(fields: [assigneeId], references: [id])
+  assignee User? @relation(fields: [assigneeId], references: [id])
 }
 
 model User {

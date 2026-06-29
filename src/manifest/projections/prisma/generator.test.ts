@@ -65,7 +65,11 @@ function memoryStore(entityName: string): IRStore {
 /** Helper: a minimal entity with just an `id: string` property. */
 function bareEntity(
   name: string,
-  extras: { properties?: IREntity['properties']; relationships?: IREntity['relationships'] } = {},
+  extras: {
+    properties?: IREntity['properties'];
+    relationships?: IREntity['relationships'];
+    key?: IREntity['key'];
+  } = {},
 ): IREntity {
   return {
     name,
@@ -78,6 +82,7 @@ function bareEntity(
     commands: [],
     constraints: [],
     policies: [],
+    ...(extras.key ? { key: extras.key } : {}),
   };
 }
 
@@ -837,6 +842,136 @@ describe('PrismaProjection — autoBackRelations', () => {
     // Auto inverses on Card carry matching names and distinct field names.
     expect(code).toMatch(/connectionsFromCard\s+Connection\[\]\s+@relation\("Connection_fromCard"\)/);
     expect(code).toMatch(/connectionsToCard\s+Connection\[\]\s+@relation\("Connection_toCard"\)/);
+  });
+
+  it('names all four fields for a bidirectional belongsTo pair (A→B and B→A)', () => {
+    // VersionedEntity.currentVersion → EntityVersion; EntityVersion.versionedEntity → VersionedEntity.
+    // Each belongsTo auto-gains an inverse, so each model carries 2 fields to the other → all need names.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('VersionedEntity', {
+        relationships: [{ name: 'currentVersion', kind: 'belongsTo', target: 'EntityVersion' }],
+      }),
+      bareEntity('EntityVersion', {
+        relationships: [{ name: 'versionedEntity', kind: 'belongsTo', target: 'VersionedEntity' }],
+      }),
+    );
+    ir.stores.push(durableStore('VersionedEntity'), durableStore('EntityVersion'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).toMatch(/currentVersion\s+EntityVersion\s+@relation\("VersionedEntity_currentVersion", fields/);
+    expect(code).toMatch(/versionedEntity\s+VersionedEntity\s+@relation\("EntityVersion_versionedEntity", fields/);
+    expect(code).toMatch(/entityVersions\s+EntityVersion\[\]\s+@relation\("EntityVersion_versionedEntity"\)/);
+    expect(code).toMatch(/versionedEntities\s+VersionedEntity\[\]\s+@relation\("VersionedEntity_currentVersion"\)/);
+  });
+
+  it('emits an optional relation when the FK property is not required', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', {
+        properties: [{ name: 'authorId', type: { name: 'string', nullable: false }, modifiers: [] }],
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
+      }),
+      bareEntity('User'),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).toMatch(/author\s+User\?\s+@relation\(fields: \[authorId\]/);
+  });
+
+  it('emits a required relation when the FK property is required', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Post', {
+        properties: [{ name: 'authorId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+        relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
+      }),
+      bareEntity('User'),
+    );
+    ir.stores.push(durableStore('Post'), durableStore('User'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).toMatch(/author\s+User\s+@relation\(fields: \[authorId\]/);
+    expect(code).not.toMatch(/author\s+User\?/);
+  });
+
+  it('breaks a self-relation cycle with Restrict under relationMode prisma', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Node', {
+        properties: [{ name: 'parentId', type: { name: 'string', nullable: false }, modifiers: [] }],
+        relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Node' }],
+      }),
+    );
+    ir.stores.push(durableStore('Node'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { autoBackRelations: true, relationMode: 'prisma' },
+    }).artifacts[0].code;
+    expect(code).toMatch(/parent\s+Node\?\s+@relation\("Node_parent"[\s\S]*?onDelete: Restrict, onUpdate: Restrict\)/);
+  });
+
+  it('breaks a mutual 2-cycle with NoAction when not in relationMode prisma', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('A', {
+        properties: [{ name: 'bId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+        relationships: [{ name: 'b', kind: 'belongsTo', target: 'B' }],
+      }),
+      bareEntity('B', {
+        properties: [{ name: 'aId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+        relationships: [{ name: 'a', kind: 'belongsTo', target: 'A' }],
+      }),
+    );
+    ir.stores.push(durableStore('A'), durableStore('B'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).toMatch(/onDelete: NoAction, onUpdate: NoAction/);
+  });
+
+  it('emits @@unique([id]) when a composite-key model is referenced by a single-id FK', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Order', {
+        key: ['tenantId', 'id'],
+        properties: [{ name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+      }),
+      bareEntity('Line', {
+        properties: [{ name: 'orderId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+        relationships: [
+          { name: 'order', kind: 'belongsTo', target: 'Order', foreignKey: { fields: ['orderId'], references: ['id'] } },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Order'), durableStore('Line'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).toMatch(/model Order \{[\s\S]*?@@id\(\[tenantId, id\]\)[\s\S]*?@@unique\(\[id\]\)/);
+  });
+
+  it('does NOT emit @@unique([id]) for a composite-key model referenced only by composite FK', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Order', {
+        key: ['tenantId', 'id'],
+        properties: [{ name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+      }),
+      bareEntity('Line', {
+        properties: [
+          { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'orderId', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        ],
+        relationships: [
+          { name: 'order', kind: 'belongsTo', target: 'Order', foreignKey: { fields: ['tenantId', 'orderId'], references: ['tenantId', 'id'] } },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Order'), durableStore('Line'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema', options: { autoBackRelations: true } }).artifacts[0].code;
+    expect(code).not.toMatch(/@@unique\(\[id\]\)/);
   });
 
   it('uniquifies an auto inverse field name that collides with a property', () => {

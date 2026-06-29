@@ -542,7 +542,13 @@ function emitRelationship(
   // anchored on the FK-owning side so both sides agree (see helpers above).
   const sameTargetCount = entity.relationships.filter((r) => r.target === rel.target).length;
   const opposites = findOppositeRelations(entity.name, rel, ir);
-  const isAmbiguous = sameTargetCount > 1 || opposites.length > 1;
+  // Also ambiguous if autoBackRelations will add an inverse field to the same
+  // target on this model (bidirectional A↔B belongsTo pairs) — count all the
+  // Prisma fields this model will carry referencing the target.
+  const isAmbiguous =
+    sameTargetCount > 1 ||
+    opposites.length > 1 ||
+    totalRelationFields(entity.name, rel.target, ir, options) > 1;
   let relationName: string | undefined;
   if (isAmbiguous) {
     if (rel.kind === 'belongsTo' || rel.kind === 'ref') {
@@ -677,17 +683,51 @@ function emitRelationship(
         lines.push(`  @@unique([${fkFields.join(', ')}])`);
       }
 
+      // Prisma rule: if any FK scalar field is optional, the relation field must
+      // be optional too. A synthesized FK column is non-null; a declared property
+      // column is optional unless it is `required`/`id`/array — MATCHING the
+      // nullability rule in emitPropertyLine (isRequired ? '' : '?').
+      const hasCompositeKeyHere = !!entity.key && entity.key.length > 0;
+      const fkOptional = fkFields.some((f) => {
+        const prop = entity.properties.find((p) => p.name === f);
+        if (!prop) return false; // synthesized FK column is non-null
+        const isArr = prop.type.name === 'array' && !!prop.type.generic;
+        const isIdField = prop.name === 'id' && !hasCompositeKeyHere;
+        const isReq = isIdField || prop.modifiers.includes('required');
+        return !isArr && !isReq;
+      });
+      const optionalMark = fkOptional ? '?' : '';
+
       // Relation field line with correct fields/references and optional referential actions.
       // Config-level onDelete/onUpdate (from ForeignKeyConfig) take precedence over IR-level.
       const nameAttr = relationName ? `${relNameArg}, ` : '';
       const fieldsAttr = `fields: [${fkFields.join(', ')}]`;
       const refsAttr = `references: [${refsFields.join(', ')}]`;
-      const effectiveOnDelete = configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : undefined);
-      const effectiveOnUpdate = configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : undefined);
+      // Prisma rejects the implicit SetNull/Cascade referential actions on a
+      // self-relation or a reference cycle (e.g. A→B belongsTo while B→A
+      // belongsTo). Such relations must carry NoAction on at least one side; we
+      // default BOTH sides to NoAction (valid, and side-independent) unless the
+      // user explicitly configured actions.
+      const isSelfRelation = rel.target === entity.name;
+      const targetEntity = ir.entities.find((e) => e.name === rel.target);
+      const isMutualCycle =
+        !isSelfRelation &&
+        !!targetEntity?.relationships.some(
+          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
+        );
+      // `NoAction` is the cycle-breaker in relational mode, but it is not
+      // implemented for Postgres under relationMode="prisma" — there the allowed
+      // set is Cascade/Restrict/SetNull, so use Restrict to break the cycle.
+      const cycleDefault =
+        isSelfRelation || isMutualCycle
+          ? (options.relationMode === 'prisma' ? 'Restrict' : 'NoAction')
+          : undefined;
+      const effectiveOnDelete = configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : cycleDefault);
+      const effectiveOnUpdate = configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : cycleDefault);
       const onDeleteAttr = effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '';
       const onUpdateAttr = effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '';
       lines.push(
-        `  ${rel.name} ${rel.target} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
+        `  ${rel.name} ${rel.target}${optionalMark} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
       );
 
       // With autoBackRelations the projection emits the inverse on the target,
@@ -719,6 +759,67 @@ function emitRelationship(
  * (see {@link ambiguousRelationName}). Field names are uniquified against the
  * provided `existingFieldNames` set.
  */
+/**
+ * Number of synthetic inverse fields `owner`'s model gains that reference
+ * `target`: `target`'s FK-owning relations back to `owner` not already covered
+ * by a declared `hasMany`/`hasOne` on `owner`. Zero unless autoBackRelations.
+ */
+function autoInverseCountFor(ownerName: string, targetName: string, ir: IR): number {
+  const owner = ir.entities.find((e) => e.name === ownerName);
+  const target = ir.entities.find((e) => e.name === targetName);
+  if (!owner || !target) return 0;
+  const targetForwards = target.relationships.filter(
+    (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === ownerName && !r.through,
+  ).length;
+  const ownerDeclaredInverses = owner.relationships.filter(
+    (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === targetName,
+  ).length;
+  return Math.max(0, targetForwards - ownerDeclaredInverses);
+}
+
+/**
+ * Total Prisma relation FIELDS `owner`'s model will carry that reference
+ * `target` — declared relations plus any auto-emitted inverses. When > 1, every
+ * such field needs an explicit `@relation` name (Prisma's ambiguity rule). This
+ * is what makes a bidirectional pair (A→B belongsTo AND B→A belongsTo, each
+ * auto-gaining an inverse) resolve correctly under autoBackRelations.
+ */
+function totalRelationFields(
+  ownerName: string,
+  targetName: string,
+  ir: IR,
+  options: PrismaProjectionOptions,
+): number {
+  const owner = ir.entities.find((e) => e.name === ownerName);
+  if (!owner) return 0;
+  const declared = owner.relationships.filter((r) => r.target === targetName && !r.through).length;
+  const auto = options.autoBackRelations ? autoInverseCountFor(ownerName, targetName, ir) : 0;
+  return declared + auto;
+}
+
+/**
+ * True when some relation in the IR references `target` via a single-column
+ * `references: [id]`. A composite-PK model (`@@id([tenantId, id])`) does not make
+ * `id` alone unique, so such a reference requires an explicit `@@unique([id])`.
+ * We only emit that unique when a single-id reference actually exists (the
+ * reference mandates the uniqueness), rather than assuming every composite `id`
+ * is globally unique.
+ */
+function isReferencedBySingleId(target: IREntity, ir: IR, options: PrismaProjectionOptions): boolean {
+  for (const e of ir.entities) {
+    for (const r of e.relationships) {
+      if ((r.kind !== 'belongsTo' && r.kind !== 'ref') || r.target !== target.name || r.through) continue;
+      const cfg = options.foreignKeys?.[e.name]?.[r.name];
+      const refs =
+        (cfg && typeof cfg !== 'string' ? cfg.references : undefined) ??
+        r.foreignKey?.references ??
+        ['id'];
+      if (refs.length === 1 && refs[0] === 'id') return true;
+    }
+  }
+  return false;
+}
+
 function emitAutoInverseRelations(
   target: IREntity,
   ir: IR,
@@ -733,7 +834,8 @@ function emitAutoInverseRelations(
   }
 
   for (const owner of ir.entities) {
-    if (owner.name === target.name) continue; // self-relations are declared explicitly
+    // Self-relations are handled too: a self belongsTo (e.g. parent) needs a
+    // named self-inverse (e.g. children) — Prisma requires names on both.
     if (!context.emittedEntities.has(owner.name)) continue;
 
     // FK-owning relations owner → target (skip join-table relations).
@@ -748,18 +850,20 @@ function emitAutoInverseRelations(
       (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === owner.name,
     );
 
-    // Forward side is "ambiguous" (and thus emits a named @relation) exactly when
-    // there is more than one relation between the two entities in either direction.
-    const forwardIsAmbiguous = forwards.length > 1 || declaredInverses.length > 1;
+    // A name is needed when this model will carry more than one field referencing
+    // `owner` (declared + auto, either direction). A field-name suffix is needed
+    // only when this single owner contributes more than one inverse here.
+    const needsName = totalRelationFields(target.name, owner.name, ir, options) > 1;
+    const needsSuffix = forwards.length > 1;
 
     for (let i = declaredInverses.length; i < forwards.length; i++) {
       const fwd = forwards[i];
       const base = lowerFirst(pluralize(owner.name));
-      const field = forwardIsAmbiguous ? `${base}${capitalizeFirst(fwd.name)}` : base;
+      const field = needsSuffix ? `${base}${capitalizeFirst(fwd.name)}` : base;
       let unique = field;
       for (let n = 2; existingFieldNames.has(unique); n++) unique = `${field}${n}`;
       existingFieldNames.add(unique);
-      const relName = forwardIsAmbiguous ? ambiguousRelationName(owner.name, fwd.name) : undefined;
+      const relName = needsName ? ambiguousRelationName(owner.name, fwd.name) : undefined;
       const relAttr = relName ? ` @relation("${relName}")` : '';
       lines.push(`  ${unique} ${owner.name}[]${relAttr}`);
     }
@@ -891,6 +995,11 @@ function emitModel(
   if (hasCompositeKey) {
     if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
     lines.push(`  @@id([${entity.key!.join(', ')}])`);
+    // A composite PK does not make `id` alone unique. If some relation references
+    // this model via single-column `[id]`, Prisma needs an explicit unique on id.
+    if (entity.key!.includes('id') && entity.key!.length > 1 && isReferencedBySingleId(entity, ir, options)) {
+      lines.push(`  @@unique([id])`);
+    }
   }
 
   // @@unique for alternate keys (non-PK unique constraints for FK references targets)
