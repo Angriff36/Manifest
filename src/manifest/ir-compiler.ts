@@ -310,7 +310,7 @@ export class IRCompiler {
     this.diagnostics.push({ severity, message, line, column });
   }
 
-  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string; compositionContext?: EntityIndex }): Promise<CompileToIRResult> {
+  async compileToIR(source: string, options?: { useCache?: boolean; sourcePath?: string; compositionContext?: EntityIndex; skipReactionCompleteness?: boolean }): Promise<CompileToIRResult> {
     this.diagnostics = [];
 
     // vNext: Check cache before compilation.
@@ -343,7 +343,7 @@ export class IRCompiler {
       return { ir: null, diagnostics: this.diagnostics };
     }
 
-    const ir = await this.transformProgram(program, source, options?.sourcePath, options?.compositionContext);
+    const ir = await this.transformProgram(program, source, options?.sourcePath, options?.compositionContext, options?.skipReactionCompleteness);
 
     // Check for semantic errors emitted during transformation (e.g., duplicate constraint codes)
     if (this.diagnostics.some(d => d.severity === 'error')) {
@@ -359,7 +359,7 @@ export class IRCompiler {
     return { ir, diagnostics: this.diagnostics };
   }
 
-  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string, compositionContext?: EntityIndex): Promise<IR> {
+  private async transformProgram(program: ManifestProgram, source: string, sourcePath?: string, compositionContext?: EntityIndex, skipReactionCompleteness?: boolean): Promise<IR> {
     // Expand entity composition (extends, mixin, policies). The optional
     // compositionContext lets cross-file `extends`/`mixin` bases resolve in
     // multi-file builds.
@@ -566,10 +566,18 @@ export class IRCompiler {
       this.emitDiagnostic(severity, message);
     }, reactions, tenant);
 
-    checkReactionCompleteness(entities, commands, reactions, (severity, message) => {
-      if (severity === 'info') return;
-      this.emitDiagnostic(severity, message);
-    }, events);
+    // Reaction completeness is a WHOLE-PROGRAM check: a reaction may listen for
+    // an event emitted by a command in another file (the recommended pattern is
+    // to centralize reactions in their own file). Running it per-file in a
+    // multi-file build would falsely report "no command emits that event". The
+    // multi-compiler sets skipReactionCompleteness and re-runs this on the merged
+    // IR instead. Single-file compiles (no flag) still run it here.
+    if (!skipReactionCompleteness) {
+      checkReactionCompleteness(entities, commands, reactions, (severity, message) => {
+        if (severity === 'info') return;
+        this.emitDiagnostic(severity, message);
+      }, events);
+    }
 
     const provenance = await createProvenance(source);
     const irWithoutHash: IR = {

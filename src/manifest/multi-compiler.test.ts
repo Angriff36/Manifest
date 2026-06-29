@@ -521,6 +521,74 @@ describe('Multi-Compiler', () => {
       ).toBe(true);
     });
 
+    it('does not false-flag a reaction whose emitting command lives in another file', async () => {
+      // Reaction centralized in its own file; the command that emits the event is
+      // in a different file. Per-file reaction-completeness would wrongly report
+      // "no command emits that event" — the merged-IR pass must see the emitter.
+      const host = createMemoryHost({
+        '/project/widget.manifest': `
+          entity Widget {
+            property required id: string
+            property status: string = "new"
+            command flag() {
+              mutate status = "flagged"
+              emit WidgetFlagged
+            }
+            command activate() {
+              mutate status = "active"
+            }
+          }
+          event WidgetFlagged: "widget.flagged" {
+            widgetId: string
+          }
+          store Widget in memory
+        `,
+        '/project/reactions.manifest': `
+          use "./widget.manifest"
+          on WidgetFlagged run Widget.activate
+            resolve payload.widgetId
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/reactions.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.diagnostics.some(d => d.severity === 'error' && /no command emits/.test(d.message))).toBe(false);
+      expect(result.ir).not.toBeNull();
+    });
+
+    it('still errors on the merged IR when no command anywhere emits the reaction event', async () => {
+      const host = createMemoryHost({
+        '/project/widget.manifest': `
+          entity Widget {
+            property required id: string
+            command activate() { mutate id = id }
+          }
+          event GhostEvent: "ghost" {
+            widgetId: string
+          }
+          store Widget in memory
+        `,
+        '/project/reactions.manifest': `
+          use "./widget.manifest"
+          on GhostEvent run Widget.activate
+            resolve payload.widgetId
+        `,
+      });
+
+      const result = await compileProjectToIR({
+        entries: ['/project/reactions.manifest'],
+        host,
+        basePath: '/project',
+      });
+
+      expect(result.diagnostics.some(d => d.severity === 'error' && /no command emits/.test(d.message))).toBe(true);
+      expect(result.ir).toBeNull();
+    });
+
     it('reports per-file errors from EVERY file in one pass (no bail on first)', async () => {
       // Two independent entry files, each with its own compile error that nulls
       // its IR (a create command requiring a context-injected param). The batch

@@ -1,6 +1,7 @@
 import { Parser } from './parser.js';
 import { IRCompiler, computeIRHash } from './ir-compiler.js';
 import { resolveModuleGraph, ResolverHost } from './module-resolver.js';
+import { checkReactionCompleteness } from './reaction-completeness.js';
 import type { EntityIndex } from './entity-composition.js';
 import {
   IR,
@@ -112,6 +113,10 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
       useCache,
       sourcePath: file.absPath,
       compositionContext,
+      // Reaction completeness is whole-program (a reaction can listen for an
+      // event emitted by a command in another file). Defer it to the merged-IR
+      // pass below so cross-file reactions aren't falsely flagged.
+      skipReactionCompleteness: true,
     });
 
     for (const d of result.diagnostics) {
@@ -239,6 +244,25 @@ export async function compileProjectToIR(options: CompileProjectOptions): Promis
 
   // Phase 4: Merge IRs into single output
   const mergedIR = mergeIRs(compiledIRs.map(c => c.ir), sources, basePath);
+
+  // Phase 4.5: Whole-program reaction completeness. Deferred from the per-file
+  // compiles (skipReactionCompleteness) because a reaction can listen for an
+  // event emitted by a command in another file — only the merged IR has the full
+  // command/event/reaction set, so this is where "no command emits that event"
+  // can be judged without cross-file false positives.
+  checkReactionCompleteness(
+    mergedIR.entities,
+    mergedIR.commands,
+    mergedIR.reactions ?? [],
+    (severity, message) => {
+      if (severity === 'info') return;
+      diagnostics.push({ severity, message });
+    },
+    mergedIR.events ?? [],
+  );
+  if (diagnostics.some(d => d.severity === 'error')) {
+    return { ir: null, diagnostics, sources };
+  }
 
   // Compute IR hash for the merged result
   const irHash = await computeIRHash(mergedIR);
