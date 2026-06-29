@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import type { AnySchema } from 'ajv';
-import { loadCompiler } from './validate-ai-compiler.js';
 import { averageScore, formatReportText } from './validate-ai-report.js';
 import { resolveInputs } from './validate-ai-resolve-inputs.js';
 import { validateIRFile, validateManifestSource } from './validate-ai-validate-file.js';

@@ -118,6 +118,10 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         setMatrixData([]);
       }
     })();
+    // runtimeContextJson is read here only to seed the engine's initial context;
+    // recompiling the IR on every context edit would be wasteful. Context changes
+    // are picked up by the matrix re-evaluation effect below, which lists it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, disabled]);
 
   // Evaluate policy matrix whenever engine, entities, policies, roles, or context changes
@@ -147,6 +151,9 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
     }
 
     setMatrixData(matrix);
+    // evaluateCell is a stable closure over policies/roles (both already listed);
+    // adding the function identity would re-run this effect every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, entities, policies, roles, runtimeContextJson]);
 
   // Evaluate a single cell in the matrix
