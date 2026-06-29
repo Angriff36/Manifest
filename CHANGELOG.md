@@ -4,6 +4,17 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.19.3] - 2026-06-28
+
+### Fixed
+
+- **Reaction completeness ("no command emits that event") is now judged on the
+  merged IR in multi-file builds.** The check ran per-file, so a reaction
+  centralized in its own file could never see the command that emits its event
+  in another file, and a valid program failed with a phantom "the reaction can
+  never fire". Multi-file compilation now defers the per-file check and re-runs
+  it once on the merged IR; single-file compilation is unchanged.
+
 ## [2.19.2] - 2026-06-28
 
 ### Fixed
