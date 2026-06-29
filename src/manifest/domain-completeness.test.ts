@@ -179,6 +179,28 @@ store BattleBoard in memory`);
     expect(diagnostics.some(d => d.severity === 'error' && /requires 'venueId'.*owned by parent/.test(d.message))).toBe(true);
     expect(ir).toBeNull();
   });
+
+  it('does NOT flag own fields as parent-owned for a self-referential relationship', async () => {
+    // `belongsTo reverseOf: Txn` makes the entity its own relationship target.
+    // Its own scalar create params (amount/reason) must not be reported as
+    // "owned by parent Txn" — the entity is not its own parent.
+    const { diagnostics } = await compileToIR(`entity Txn {
+  property required id: string
+  property required amount: number
+  property required reason: string
+  property reverseOfId: string = ""
+  belongsTo reverseOf: Txn
+  command create(id: string, amount: number, reason: string) {
+    mutate id = id
+    mutate amount = amount
+    mutate reason = reason
+  }
+}
+
+store Txn in memory`);
+
+    expect(diagnostics.some(d => d.severity === 'error' && /owned by parent/.test(d.message))).toBe(false);
+  });
 });
 
 describe('domain completeness — warnings', () => {

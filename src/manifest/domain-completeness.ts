@@ -235,6 +235,11 @@ function checkCreateCommandParams(
     if (rel.kind !== 'belongsTo' && rel.kind !== 'ref') continue;
     const parent = findEntity(entities, rel.target);
     if (!parent) continue;
+    // A self-referential relationship (e.g. `belongsTo previous: Self` for a
+    // reversal/version chain) does NOT make the entity's own fields "owned by a
+    // parent" — the entity is not its own parent. Without this guard every
+    // create param that is also a property of the entity is falsely flagged.
+    if (parent.name === entity.name && parent.module === entity.module) continue;
     const parentQualified = qualifyEntity(parent);
     const parentProps = new Map(parent.properties.map(p => [p.name, scalarTypeName(p.type)]));
     const fkFields = new Set(rel.foreignKey?.fields ?? [defaultFkField(rel.name)]);
