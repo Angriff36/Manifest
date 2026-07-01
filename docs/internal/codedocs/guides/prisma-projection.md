@@ -6,10 +6,10 @@ description: "Generate a Prisma schema from compiled Manifest IR. Compile-time o
 > **HAND-CURATED GUIDE.** Unlike most files under `docs/codedocs/`, this guide
 > is not auto-regenerated — the Prisma projection is hand-built and its
 > contract is human-verified. For the normative spec see
-> [`docs/spec/manifest-vnext.md`](../../spec/manifest-vnext.md) (language)
-> and [`docs/spec/config/`](../../spec/config/) (config schemas). The
+> [`docs/spec/manifest-vnext.md`](../../../spec/manifest-vnext.md) (language)
+> and [`docs/spec/config/`](../../../spec/config/) (config schemas). The
 > user-facing companion lives at
-> [`mintlify/integration/prisma.mdx`](../../../mintlify/integration/prisma.mdx).
+> [`mintlify/integration/prisma.mdx`](../../../../mintlify/integration/prisma.mdx).
 
 Use this guide when you want to emit a `schema.prisma` from compiled Manifest IR — either via the CLI or programmatically from a build script. The projection is **compile-time only**; it does not connect to a database, run migrations, or know about any specific application.
 
@@ -209,5 +209,5 @@ End-to-end CLI runs against generic fixtures live in `.tmp/step2b-demo/` and `.t
 
 - [Projections (auto-generated)](../projections.md) — top-level reference for the projection contract
 - [Compilation and IR](../compilation-ir.md) — how IR is produced
-- [Manifest vNext spec](../../spec/manifest-vnext.md) — normative language semantics
-- [Prisma projection (user-facing)](../../../mintlify/integration/prisma.mdx) — Mintlify guide for consumers
+- [Manifest vNext spec](../../../spec/manifest-vnext.md) — normative language semantics
+- [Prisma projection (user-facing)](../../../../mintlify/integration/prisma.mdx) — Mintlify guide for consumers

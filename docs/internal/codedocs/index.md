@@ -7,9 +7,9 @@ description: "Learn what Manifest does, why it exists, and how to run your first
 > code-derived reference snapshot of repository structure and signatures.
 > It is intended for tooling (Context7, search indexers, etc.) and is
 > NOT verified prose on every regeneration. For normative, hand-curated
-> documentation see [`docs/spec/`](../spec/) — in particular
-> [`docs/spec/manifest-vnext.md`](../spec/manifest-vnext.md) for language
-> semantics and [`docs/spec/config/manifest.config.md`](../spec/config/manifest.config.md)
+> documentation see [`docs/spec/`](../../spec/) — in particular
+> [`docs/spec/manifest-vnext.md`](../../spec/manifest-vnext.md) for language
+> semantics and [`docs/spec/config/manifest.config.md`](../../spec/config/manifest.config.md)
 > for projection configuration. Projections are described here as
 > **tooling, not language semantics** — they consume IR and emit
 > artifacts; they do not redefine policy/guard/constraint behaviour.

@@ -96,7 +96,7 @@ console.log('IR:', ir);
 
 ## Output Format
 
-Successful compilation produces IR matching [IR v1 Schema](../spec/ir/ir-v1.schema.json):
+Successful compilation produces IR matching [IR v1 Schema](../../spec/ir/ir-v1.schema.json):
 
 ```typescript
 {
@@ -174,6 +174,6 @@ interface Diagnostic {
 ## Related Documentation
 
 - [Using Manifest in a New Project](./USING_MANIFEST_IN_NEW_PROJECT.md)
-- [IR Schema](../spec/ir/ir-v1.schema.json)
+- [IR Schema](../../spec/ir/ir-v1.schema.json)
 - [CLI Reference](./CLI_REFERENCE.md)
 - [Module System Notes](./MODULE_SYSTEM.md)

@@ -2,12 +2,12 @@ Last updated: 2026-05-26
 Status: Active
 Authority: Advisory
 Enforced by: None
-Applies to: Capsule-Pro repository at `C:\Projects\capsule-pro` vs [`docs/spec/project-layout.md`](../../spec/project-layout.md)
+Applies to: Capsule-Pro repository at `C:\Projects\capsule-pro` vs [`docs/spec/project-layout.md`](../../../spec/project-layout.md)
 
 # Capsule-Pro Layout Conformance Report
 
 This report diffs the Capsule-Pro monorepo against the normative consumer layout
-in [`docs/spec/project-layout.md`](../../spec/project-layout.md). Capsule-Pro's
+in [`docs/spec/project-layout.md`](../../../spec/project-layout.md). Capsule-Pro's
 binding layout law remains **`constitution.md` §4a** in the Capsule-Pro repo;
 when this report and the constitution disagree, **constitution wins** for
 Capsule-Pro.
@@ -69,7 +69,7 @@ C:\Projects\capsule-pro\
 
 ## Normative ↔ Capsule-Pro path table
 
-| Normative ([`project-layout.md`](../../spec/project-layout.md)) | Capsule-Pro path | Status |
+| Normative ([`project-layout.md`](../../../spec/project-layout.md)) | Capsule-Pro path | Status |
 |------------------------------------------------------------------|------------------|--------|
 | Layer 1: `**/*.manifest` or `manifest/**/*.manifest` | `manifest/source/*.manifest` (86 files) | ✅ Conforms (explicit glob via scripts) |
 | `manifest.config.yaml` | *None* — `manifest/scripts/*.mjs` | ⚠️ Equivalent config required; not YAML |
@@ -185,6 +185,6 @@ pnpm exec manifest audit-governance \
 
 ## Authority
 
-- **Normative layout:** [`docs/spec/project-layout.md`](../../spec/project-layout.md)
+- **Normative layout:** [`docs/spec/project-layout.md`](../../../spec/project-layout.md)
 - **Capsule-Pro binding:** `C:\Projects\capsule-pro\constitution.md` §4a, §17
-- **Reference fixture:** [`fixtures/sample-app/`](../../../fixtures/sample-app/)
+- **Reference fixture:** [`fixtures/sample-app/`](../../../../fixtures/sample-app/)

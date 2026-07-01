@@ -42,10 +42,16 @@ function extractMarkdownLinks(src) {
   const lines = src.split('\n');
   // Negative lookbehind avoids matching image links `![alt](src)`.
   const linkRe = /(?<!!)\[[^\]]*\]\(([^)]+)\)/g;
+  // Skip code fences (very rough — track triple-backtick state).
+  // Not perfect, but fences inside links are vanishingly rare.
+  let inFence = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Skip code fences (very rough — track triple-backtick state)
-    // Not perfect, but fences inside links are vanishingly rare.
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
     let m;
     while ((m = linkRe.exec(line)) !== null) {
       out.push({ target: m[1].trim(), line: i + 1 });
