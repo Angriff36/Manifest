@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: **v0.3.21**.
+**Manifest** is a domain-specific language (DSL) and reference runtime for defining business rules and workflows with declarative specifications. Version: see `package.json` (source of truth; v2.22.0 as of 2026-07-01).
 
 This is a **language implementation**, not an end-user application. The Runtime UI is a diagnostic and observability surface only. Primary consumers are AI agents that emit, validate, and reason about Manifest programs.
 
@@ -124,15 +124,11 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite
-1. **Conformance Tests** (209): Fixture-based testing with expected outputs
-2. **Unit Tests** (322):
-   - Lexer tests (58): Tokenization and edge cases
-   - Parser tests (79): AST construction
-   - IR Compiler tests (91): IR generation
-   - Runtime tests (56): Execution engine and guards
-3. **Projection Tests** (21): Next.js projection smoke tests
-4. **CLI Tests** (78): compile, validate, scan, config commands
+### Test Suite (~3,160 tests / 158 files as of v2.22.0 — run `pnpm test` for current counts)
+1. **Conformance Tests**: Fixture-based testing with expected outputs
+2. **Unit Tests**: lexer, parser, IR compiler, runtime engine, adapters
+3. **Projection Tests**: snapshot + smoke tests across projection targets
+4. **CLI Tests**: command registration and behavior (`packages/cli`)
 
 ### Test Files
 - `src/manifest/conformance/conformance.test.ts` - Conformance suite
@@ -316,8 +312,7 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[proactive bridge @ 87% context — saved before compacting]
-Files (1):
-  packages/cli/src/commands/compile.ts (edit)
+[Emergency bridge — running bridge was not updated]
+No changes or facts in this session.
 
 # === END COGNILAYER ===
