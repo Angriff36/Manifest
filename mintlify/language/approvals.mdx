@@ -88,7 +88,7 @@ Use the `when` expression on a stage to make it conditional. The expression is e
 
 In the PurchaseOrder example above, the `director` stage only activates when `self.amount > 10000`. Orders under $10,000 need only the `manager` stage:
 
-```manifest
+```manifest fragment
 stages {
   manager {
     policy: user.role == "manager" or user.role == "admin"
@@ -221,7 +221,7 @@ Denied and expired approvals are reset on the next command attempt — the runti
 
 Approval declarations can include `emit` entries for lifecycle transitions:
 
-```manifest
+```manifest fragment
 approval submitApproval {
   command: submit
   stages { /* ... */ }

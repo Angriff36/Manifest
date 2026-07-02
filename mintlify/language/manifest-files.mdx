@@ -30,7 +30,7 @@ entity Invoice {
 
   computed isPayable: boolean = total > 0 and status == published
 
-  command publish() {
+  command release() {
     guard self.total > 0
     mutate status = published
     emit invoicePublished
@@ -95,7 +95,7 @@ A `module` block accepts a subset of these: entities, enums, commands, policies,
 
 The entity is the core construct. Its header can declare inheritance and mixins, and its body holds the rest in any order.
 
-```manifest
+```manifest fragment
 entity PurchaseOrder extends Auditable mixin Timestamped {
   // properties
   property required id: string
@@ -114,7 +114,7 @@ entity PurchaseOrder extends Auditable mixin Timestamped {
 
   // authorization
   policy canApprove execute: user.role == "manager"
-  default policy read: true
+  default policy openAccess all: true
 
   // behavior & commands
   command approve() {
@@ -168,7 +168,7 @@ external entity ImportedUser {
 
 Modifiers are written **before** the property name:
 
-```manifest
+```manifest fragment
 property required unique email: string
 property private apiKey: string
 property masked(last4) cardNumber: string unmask when user.role == "admin"
@@ -222,14 +222,21 @@ See [Expressions](/language/expressions) for usage and examples.
 ## Commands and execution order
 
 ```manifest
-command transfer(optional memo: string = "") returns Receipt {
-  retry { attempts: 3 }
-  rateLimit { perMinute: 10 }
-  guard self.balance >= amount
-  constraint amountPositive: amount > 0 "Amount must be positive"
-  mutate balance = balance - amount
-  emit transferred { amount: amount }
+entity Account {
+  property required id: string
+  property balance: decimal(12, 2) = 0
+
+  command transfer(amount: decimal(12, 2), optional memo: string = "") {
+    retry { maxAttempts: 3 backoff: fixed delay: 1000 }
+    rateLimit { maxRequests: 10 windowMs: 60000 scope: user }
+    guard self.balance >= amount
+    constraint amountPositive: amount > 0 "Amount must be positive"
+    mutate balance = self.balance - amount
+    emit transferred
+  }
 }
+
+event transferred: "account.transfer.completed" { accountId: string }
 ```
 
 At runtime, a command executes in a **fixed order** that cannot be reconfigured:
@@ -247,7 +254,7 @@ This ordering is part of the language contract. Diagnostics explain failures (wh
 
 ## Other declarations at a glance
 
-```manifest
+```manifest fragment
 enum Priority { low, normal = "Normal", urgent(2) }      // optional label and ordinal
 
 value Money {                                            // value objects hold properties only
@@ -261,7 +268,7 @@ store Order in supabase { table: "orders" }              // persistence binding
 
 event orderPlaced: "shop.order.placed" { orderId: string }
 
-on orderPlaced run Inventory.reserve resolve self.orderId  // reaction
+on orderPlaced run Inventory.reserve resolve payload._subject.id  // reaction
 
 role manager extends staff { allow approve  deny delete }  // role hierarchy
 
@@ -273,7 +280,7 @@ saga Checkout {                                          // workflow with compen
 }
 
 webhook stripe "/hooks/stripe" run Payment.record        // inbound webhook
-  method: POST
+  method: "POST"
   idempotencyHeader: "Stripe-Idempotency-Key"
 
 schedule nightlyClose cron "0 0 * * *" run Ledger.close  // scheduled command
@@ -320,7 +327,7 @@ The language is designed around a small number of [house-style](https://github.c
 use "./shared/money.manifest"
 
 module billing {
-  enum InvoiceStatus { draft, sent = "Sent", paid(2), void(3) }
+  enum InvoiceStatus { draft, sent = "Sent", paid(2), cancelled(3) }
 
   entity Invoice {
     property required id: string
@@ -336,7 +343,7 @@ module billing {
     constraint positiveTotal: total >= 0 "Total cannot be negative"
 
     policy canSend execute: user.role == "billing" or user.role == "admin"
-    default policy read: true
+    default policy openAccess all: true
 
     command send() {
       guard self.total > 0
@@ -346,7 +353,7 @@ module billing {
     }
 
     versionProperty version: number
-    transition status from "draft" to ["sent", "void"]
+    transition status from "draft" to ["sent", "cancelled"]
     timestamps
   }
 

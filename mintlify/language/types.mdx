@@ -199,25 +199,25 @@ The `.length` and `.contains(...)` helpers are expression-level operations rathe
 
 ## Maps / Records
 
-The `map<K, V>` type declares a key-value dictionary property where all keys are of type `K` and all values are of type `V`. Use it for dynamic metadata, localization tables, or configuration objects.
+The `map<V>` type declares a key-value dictionary property where all values are of type `V`. Keys are always strings (implicit — no key type parameter is accepted). Use it for dynamic metadata, localization tables, or configuration objects.
 
 ```manifest
 entity Product {
   property required id: string
   property name: string
-  property metadata: map<string, string> = {}
-  property translations: map<string, string> = {}
-  property featureFlags: map<string, boolean> = {}
+  property metadata: map<string> = {}
+  property translations: map<string> = {}
+  property featureFlags: map<boolean> = {}
 }
 
 store Product in memory
 ```
 
-The `map<K, V>` syntax and the alternative `record<K, V>` syntax are equivalent — both normalize to the same IR type. Key types are restricted to `string` and `number`. Value types can be any scalar type.
+The single type parameter is the value type. An empty map literal `{}` is a valid default. Value types can be any scalar type — `string`, `number`, `boolean`, or a custom type name.
 
 Access map values in expressions using member access:
 
-```manifest
+```manifest fragment
 constraint hasEnglishName: self.translations["en"] != ""
 
 computed flagEnabled: self.featureFlags["beta-feature"] == true

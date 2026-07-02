@@ -33,32 +33,32 @@ Create `my-program.manifest` in your project root. This entity models a simple t
 ```manifest
 entity Todo {
   property id: string
-  property title: string
-  property completed: boolean
-  property createdAt: timestamp
+  property title: string = ""
+  property completed: boolean = false
+  property createdAt: number = 0
 
-  command create(title: string) {
-    guard title is not empty
-    guard title.length < 100
+  command create(newTitle: string) {
+    guard newTitle != null and newTitle != ""
+    guard length(newTitle) < 100
 
-    mutate this.title = title
-    mutate this.completed = false
-    mutate this.createdAt = now()
+    mutate title = newTitle
+    mutate completed = false
+    mutate createdAt = now()
   }
 
   command complete() {
-    guard this.completed is false
+    guard self.completed == false
 
-    mutate this.completed = true
-    emit TodoCompleted { todoId: this.id }
+    mutate completed = true
+    emit TodoCompleted { todoId: self.id }
   }
 
-  policy read allow if user.role == "admin"
-  policy execute allow if user.id == this.createdBy
+  policy AdminRead read: user.role == "admin"
+  policy Authenticated execute: user.id != null "Authentication required"
 }
 ```
 
-Each `command` defines a named business operation. The `guard` lines gate execution — if any guard evaluates to `false`, the command stops immediately and returns diagnostics. The `policy` lines enforce authorization before guards even run.
+Each `command` defines a named business operation. The `guard` lines gate execution — if any guard evaluates to `false`, the command stops immediately and reports which guard failed. `mutate` assigns a bare property name; expressions read the current instance through `self.*`. The `policy` lines are entity-level authorization rules — each has a name, a scope (`read`, `write`, `execute`, `all`, or `override`), an expression, and an optional denial message — and they are enforced before guards even run.
 
 </Step>
 
@@ -106,13 +106,13 @@ const { ir, diagnostics } = await compileToIR(source);
 
 <Step title="Execute a command with RuntimeEngine">
 
-Import `RuntimeEngine` from the package root and construct it with your compiled IR and a runtime context. The context provides the user identity and tenant that guards and policies resolve against.
+Import `RuntimeEngine` from the package root and construct it with your compiled IR and a runtime context. `user.*` bindings in guards and policies resolve from `context.user` (an object with at least an `id`; `role` and other keys are up to you), and `context.tenantId` scopes tenant-aware commands.
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 
 const runtime = new RuntimeEngine(ir, {
-  userId: 'user-123',
+  user: { id: 'user-123', role: 'admin' },
   tenantId: 'tenant-456',
 });
 
@@ -120,7 +120,7 @@ const runtime = new RuntimeEngine(ir, {
 // Signature: runCommand(commandName, input, { entityName })
 const createResult = await runtime.runCommand(
   'create',
-  { title: 'Learn Manifest' },
+  { newTitle: 'Learn Manifest' },
   { entityName: 'Todo' }
 );
 
@@ -149,14 +149,16 @@ const completeResult = await runtime.runCommand(
 
 if (completeResult.success) {
   console.log('Events:', completeResult.emittedEvents);
-  // Output: Events: [{ name: 'TodoCompleted', channel: 'default', ... }]
+  // Output: Events: [{ name: 'TodoCompleted', channel: 'TodoCompleted',
+  //   payload: { todoId: '...', ... }, subject: { entity: 'Todo', ... }, ... }]
 }
 ```
 
-You can also subscribe to events using `runtime.on`:
+You can also subscribe to events as they are emitted. `runtime.onEvent(listener)` receives every event (filter by `event.name` yourself); `runtime.subscribe(entityName, listener)` receives only events whose subject is that entity. Both return an unsubscribe function.
 
 ```typescript
-runtime.on('TodoCompleted', (event) => {
+const unsubscribe = runtime.onEvent((event) => {
+  if (event.name !== 'TodoCompleted') return;
   console.log('Todo completed:', event.payload.todoId);
 
   // Trigger side effects
@@ -178,7 +180,7 @@ If you prefer a command-line workflow, use the `manifest` CLI that ships with th
 manifest compile my-program.manifest --output ir/
 
 # Compile and generate Next.js routes in one step
-manifest build my-program.manifest --projection nextjs --output app/api/
+manifest build my-program.manifest --projection nextjs --code-output app/api/
 
 # Interactive project setup (creates manifest.config.yaml)
 manifest init
@@ -192,7 +194,7 @@ manifest init
 
 **"Entity not found in IR"** — Entity names are case-sensitive. Make sure the name you pass to `runCommand` exactly matches the `entity` declaration in your source file.
 
-**"Guard failed but no diagnostic"** — Check that you aren't silently catching errors before inspecting `result.diagnostics`. The runtime always emits a diagnostic for every guard failure, including the guard index, the expression, and resolved sub-expression values.
+**"Guard failed but no detail"** — Check that you aren't silently catching errors before inspecting `result.guardFailure`. The runtime populates it for every guard failure, including the guard index, the formatted expression, and resolved sub-expression values.
 
 **Compilation errors after a small change** — Conformance tests treat compilation output as executable semantics. If something stops compiling, you've changed language meaning. Review your source against the language specification.
 

@@ -54,6 +54,10 @@ The compiler validates the role graph and produces error diagnostics for:
 If any role in the inheritance chain denies an action, the denial takes precedence over all `allow` rules regardless of where they appear:
 
 ```manifest
+role User {
+  allow read
+}
+
 role Support extends User {
   allow write
   allow execute
@@ -93,7 +97,7 @@ entity Document {
     emit DocumentApproved
   }
 
-  command delete() {
+  command removeDocument() {
     mutate status = "deleted"
     emit DocumentDeleted
   }
@@ -216,7 +220,7 @@ entity Document {
     emit DocumentApproved
   }
 
-  command delete() {
+  command removeDocument() {
     mutate status = "deleted"
     emit DocumentDeleted
   }
@@ -232,7 +236,7 @@ const adminRuntime = new RuntimeEngine(ir, {
   user: { id: "admin-1", role: "Admin" },
 });
 
-const result = await adminRuntime.runCommand("Document", "delete", {
+const result = await adminRuntime.runCommand("Document", "removeDocument", {
   instanceId: "doc-42",
 });
 console.log(result.success); // true
@@ -242,10 +246,10 @@ const mgrRuntime = new RuntimeEngine(ir, {
   user: { id: "mgr-1", role: "Manager" },
 });
 
-const mgrResult = await mgrRuntime.runCommand("Document", "delete", {
+const mgrResult = await mgrRuntime.runCommand("Document", "removeDocument", {
   instanceId: "doc-42",
 });
-console.log(mgrResult.success); // false (Manager has no "delete" permission)
+console.log(mgrResult.success); // false (Manager has no "delete" permission — removeDocument requires it)
 
 // Unknown role
 const unknownRuntime = new RuntimeEngine(ir, {

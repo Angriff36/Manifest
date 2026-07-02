@@ -233,7 +233,7 @@ The issues below cover the most common problems reported when working with Manif
   <Accordion title="Read policies are not being enforced">
     **What you see**
 
-    You defined a `policy read allow if ...` rule, but the policy is never enforced — reads succeed regardless of the policy condition.
+    You defined a `policy ReadOnly read: ...` rule on an entity, but the policy is never enforced — reads succeed regardless of the policy condition.
 
     **Why it happens**
 
@@ -241,11 +241,22 @@ The issues below cover the most common problems reported when working with Manif
 
     **How to fix it**
 
-    If you need a policy enforced during command execution, use the `execute` or `all` scope instead:
+    If you need a policy enforced during command execution, use the `execute` or `all` scope instead. Policies are entity-level declarations with the form `policy Name scope: expression`:
 
     ```manifest
-    policy execute allow if user.role == "admin"
-    policy all allow if user.id == this.createdBy
+    entity Resource {
+      property required title: string
+      property createdBy: string = ""
+
+      policy AdminOnly execute: user.role == "admin"
+      policy OwnerAll all: user.id == self.createdBy
+
+      command update(newTitle: string) {
+        mutate title = newTitle
+      }
+    }
+
+    store Resource in memory
     ```
 
     `execute` is enforced during `runCommand`. `all` is enforced during all operations. Only use `read` if you are implementing application-level read authorization outside the runtime.

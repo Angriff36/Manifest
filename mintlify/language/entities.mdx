@@ -258,7 +258,7 @@ belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenan
 Add `onDelete` and/or `onUpdate` to any `belongsTo` or `ref` to declare referential integrity behavior. Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
 
 ```manifest
-belongsTo tenant: Account with tenantId onDelete restrict
+belongsTo account: Account with tenantId onDelete restrict
 belongsTo item: LineItem fields [tenantId, itemId] references [tenantId, id] onDelete cascade onUpdate restrict
 ```
 

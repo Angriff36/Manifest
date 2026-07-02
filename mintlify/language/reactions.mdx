@@ -16,6 +16,14 @@ event OrderSubmitted: "order.submitted" {
   amount: number
 }
 
+entity Order {
+  property required id: string
+
+  command submit(orderId: string, amount: number) {
+    emit OrderSubmitted { orderId: orderId, amount: amount }
+  }
+}
+
 entity OrderProcessor {
   property required id: string
   property status: string = "idle"
@@ -23,57 +31,59 @@ entity OrderProcessor {
   command processOrder(orderId: string, amount: number) {
     guard amount > 0
     mutate status = "processing"
-    emit OrderProcessing
   }
 }
 
 on OrderSubmitted run OrderProcessor.processOrder
-  resolve self.id == "processor-1"
+  resolve "processor-1"
   params {
-    orderId: event.orderId
-    amount: event.amount
+    orderId: payload.orderId
+    amount: payload.amount
   }
 ```
 
-The `resolve` expression finds the target entity instance. The `params` block maps values from the event payload into the command's parameters. Both are optional — a reaction can omit `resolve` to target a specific instance and omit `params` to call a zero-argument command.
+The `resolve` expression evaluates to the ID of the target entity instance. The `params` block maps values from the event payload into the command's parameters. `resolve` is always required on a single-target reaction; `params` is optional and may be omitted when the target command takes no arguments.
 
 ## Resolve expressions
 
-The `resolve` block determines which entity instance receives the dispatched command. The expression is evaluated against each instance of the target entity:
+The `resolve` clause provides the ID of the entity instance that receives the dispatched command. It evaluates to a single value — the instance's identifier:
 
-```manifest
+```manifest fragment
 on TaskAssigned run Notification.sendAssigned
-  resolve self.userId == event.assigneeId
+  resolve payload.assigneeId
   params {
-    taskId: event.taskId
+    taskId: payload.taskId
   }
 ```
 
-The runtime iterates instances of `Notification` and evaluates the `resolve` expression against each one. The first matching instance becomes the target. If no instance matches, the reaction is skipped silently — no error is raised.
+The runtime looks up the `Notification` instance whose `id` matches the resolved value. If no instance with that ID exists, the reaction is skipped silently — no error is raised.
 
-Omit `resolve` when the command does not require a specific instance or when the target is known by convention:
+Use a literal string when the target instance is fixed at design time (a singleton handler, a system processor, etc.):
 
-```manifest
+```manifest fragment
 on OrderSubmitted run OrderProcessor.processOrder
+  resolve "processor-1"
   params {
-    orderId: event.orderId
-    amount: event.amount
+    orderId: payload.orderId
+    amount: payload.amount
   }
 ```
+
+Use `payload._subject.id` to target the same entity instance that emitted the event, or `payload.<field>` when the target ID is carried explicitly in the event payload.
 
 ## Parameter mappings
 
 The `params` block maps event payload fields to command parameters. Each entry is an expression evaluated in the event's enriched context:
 
-```manifest
+```manifest fragment
 params {
-  orderId: event.orderId       // Direct field reference
-  total: event.amount * 1.1    // Expression with arithmetic
-  currency: "USD"              // Literal value
+  orderId: payload.orderId       // Direct field reference
+  total: payload.amount * 1.1    // Expression with arithmetic
+  currency: "USD"               // Literal value
 }
 ```
 
-Inside a `params` block, `event.*` references the event payload fields. The expression language supports the full set of operators: arithmetic, comparison, logical, conditional, and function calls.
+Inside a `params` block, `payload.*` references the event payload fields. The expression language supports the full set of operators: arithmetic, comparison, logical, conditional, and function calls.
 
 ## Follow-on emit payloads
 
@@ -101,17 +111,44 @@ Each payload field is `name: <expr>`, where the expression is evaluated in the e
 
 ## Fan-out reactions (1:N cascades)
 
-A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on *every* related row, e.g. "when an event is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:
+A single-target reaction dispatches on ONE resolved instance. For a **1:N cascade** — run a command on *every* related row, e.g. "when a gig is cancelled, unassign every staff member assigned to it" — use the `fanOut` form. It replaces `resolve` with a collection match:
 
 ```manifest
-on EventCancelled fanOut EventStaff where eventId = self.id
+entity Gig {
+  property required id: string
+  property status: string = "active"
+  hasMany staff: GigStaff
+
+  command cancel() {
+    mutate status = "cancelled"
+    emit GigCancelled
+  }
+}
+
+entity GigStaff {
+  property required id: string
+  property gigId: string = ""
+  property status: string = "assigned"
+  belongsTo gig: Gig
+
+  command unassign(reason: string) {
+    mutate status = "unassigned"
+  }
+}
+
+store Gig in memory
+store GigStaff in memory
+
+event GigCancelled: "gig.cancelled" {}
+
+on GigCancelled fanOut GigStaff where gigId = self.id
   run unassign
   params {
-    reason: "event cancelled"
+    reason: "gig cancelled"
   }
 ```
 
-This dispatches `EventStaff.unassign` on **every** `EventStaff` row where `row.eventId == self.id` (the source instance's id, read from the event payload). Each match runs the target command through the normal pipeline — its own guards, policies, actions, and emits fire — exactly like a hand-written after-emit handler, but declared.
+This dispatches `GigStaff.unassign` on **every** `GigStaff` row where `row.gigId == self.id` (the source instance's id, read from the event payload). Each match runs the target command through the normal pipeline — its own guards, policies, actions, and emits fire — exactly like a hand-written after-emit handler, but declared.
 
 - `where <field> = <sourceExpr>` selects the collection; `<field>` is a property on the target entity (an indexed or foreign-key field is preferred — the Convex projection reads it via `withIndex`, falling back to a filter otherwise).
 - `<sourceExpr>` is evaluated against the event payload (`self.id` / `payload.*`), so it sees the source entity's id and any declared `emit Event { field }` values.
@@ -137,6 +174,8 @@ entity Schedule {
 entity ScheduleShift {
   property required id: string
   property scheduleId: string = ""
+  belongsTo schedule: Schedule
+
   command assign(scheduleId: string) {
     mutate scheduleId = scheduleId
     emit ScheduleShiftCreated { scheduleId: self.scheduleId }
@@ -163,7 +202,7 @@ count(<Entity> where <field> == <value>, <field2> == <value2>, ...)
 - `<Entity>` is the counted collection. Predicate values (`<value>`) are expressions evaluated in the reaction's context — the event payload, just like other params (`self.*` / `payload.*`).
 - Predicates are **pure equality**, ANDed together. A second predicate adds a filter — e.g. counting only in-progress tasks:
 
-```manifest
+```manifest fragment
 params {
   currentTaskCount: count(PrepTask where stationId == self.stationId, status == "in_progress")
 }
@@ -193,25 +232,52 @@ Reactions can be declared at three levels:
 | Entity | Inside an `entity` block | Targets the entity's own commands |
 
 ```manifest
-// Program-level reaction -- fires globally
-on OrderSubmitted run OrderProcessor.processOrder
-  resolve self.id == "processor-1"
+event OrderSubmitted: "order.submitted" {
+  orderId: string
+}
 
-// Entity-level reaction -- fires within the entity's context
+event OrderFailed: "order.failed" {}
+event OrderReprocessed: "order.reprocessed" {}
+
+entity OrderProcessor {
+  property required id: string
+  property status: string = "idle"
+
+  command processOrder(orderId: string) {
+    mutate status = "processing"
+  }
+}
+
 entity Order {
   property required id: string
   property status: string = "pending"
+
+  command submit(orderId: string) {
+    mutate status = "submitted"
+    emit OrderSubmitted { orderId: orderId }
+  }
+
+  command fail() {
+    mutate status = "failed"
+    emit OrderFailed
+  }
 
   command reprocess() {
     mutate status = "pending"
     emit OrderReprocessed
   }
 
-  on OrderFailed run self.reprocess
-    params {
-      orderId: event.orderId
-    }
+  // Entity-level reaction -- fires within the entity's context
+  on OrderFailed run Order.reprocess
+    resolve payload._subject.id
 }
+
+// Program-level reaction -- fires globally
+on OrderSubmitted run OrderProcessor.processOrder
+  resolve "processor-1"
+  params {
+    orderId: payload.orderId
+  }
 ```
 
 Reactions at all three scopes are collected into the IR's `reactions` array. Module-scoped reactions carry a `module` field; entity-scoped reactions carry an `entity` field. The runtime evaluates all matching reactions regardless of scope.
@@ -263,11 +329,24 @@ event InvoiceCreated: "invoice.created" {
   total: number
 }
 
+event ShipmentPrepared: "shipment.prepared" {}
+
+entity Order {
+  property required id: string
+  property status: string = "pending"
+
+  command submit(orderId: string, amount: number, customerId: string) {
+    mutate status = "submitted"
+    emit OrderSubmitted { orderId: orderId, amount: amount, customerId: customerId }
+  }
+}
+
 entity Invoice {
   property required id: string
   property orderId: string = ""
   property total: number = 0
   property status: string = "draft"
+  belongsTo order: Order
 
   command createFromOrder(orderId: string, total: number) {
     guard total > 0
@@ -282,6 +361,7 @@ entity Shipping {
   property required id: string
   property orderId: string = ""
   property status: string = "pending"
+  belongsTo order: Order
 
   command prepareShipment(orderId: string) {
     mutate orderId = orderId
@@ -292,17 +372,17 @@ entity Shipping {
 
 // Reaction chain: OrderSubmitted -> create invoice
 on OrderSubmitted run Invoice.createFromOrder
-  resolve self.id == "invoice-auto"
+  resolve "invoice-auto"
   params {
-    orderId: event.orderId
-    total: event.amount
+    orderId: payload.orderId
+    total: payload.amount
   }
 
 // Reaction chain: InvoiceCreated -> prepare shipment
 on InvoiceCreated run Shipping.prepareShipment
-  resolve self.id == "shipping-auto"
+  resolve "shipping-auto"
   params {
-    orderId: event.orderId
+    orderId: payload.orderId
   }
 ```
 

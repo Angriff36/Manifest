@@ -25,6 +25,7 @@ entity Invoice {
   property required id: string
   property orderId: string = ""
   property amount: number = 0
+  belongsTo order: Order
 
   command createFromOrder(orderId: string, amount: number) {
     mutate orderId = orderId
@@ -68,7 +69,7 @@ A single-target reaction dispatches on ONE resolved instance. The `fanOut` form 
 
 From fixture `96-fanout-reaction.manifest`:
 
-```manifest
+```manifest fragment
 on ParentDeactivated fanOut Child where parentId = self.id
   run deactivate
 ```
@@ -84,7 +85,7 @@ on ParentDeactivated fanOut Child where parentId = self.id
 
 From fixture `97-aggregate-count-reaction.manifest`:
 
-```manifest
+```manifest fragment
 on ScheduleShiftCreated run Schedule.syncShiftCount
   resolve self.scheduleId
   params {

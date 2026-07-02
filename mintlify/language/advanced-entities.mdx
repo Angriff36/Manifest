@@ -76,12 +76,29 @@ store Document in memory
 An entity can both extend a parent and apply mixins:
 
 ```manifest
+entity BaseEntity {
+  property required id: string
+  timestamps
+}
+
+mixin Auditable {
+  property required createdBy: string
+  property required updatedBy: string
+}
+
+mixin SoftDeletable {
+  property deletedAt: number = 0
+  constraint notDeleted: self.deletedAt == 0
+}
+
 entity ArchivedDocument extends BaseEntity {
   mixin Auditable
   mixin SoftDeletable
 
   property required title: string
 }
+
+store ArchivedDocument in memory
 ```
 
 Members are resolved in this order: entity's own declarations → applied mixins → inherited parent members. Conflicts (same name from multiple mixins) produce a compile error.

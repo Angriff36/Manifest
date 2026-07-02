@@ -232,14 +232,13 @@ console.log("Events:", result.emittedEvents);
 
 Commands can declare retry policies for transient failures with configurable backoff strategies. When a command fails (guard failure excluded — guards fail fast), the runtime retries according to the declared policy.
 
-```manifest
+```manifest fragment
 entity Notification {
-  command sendEmail(to: string, body: string) {
+  command sendEmail(recipient: string, body: string) {
     retry {
       maxAttempts: 3
       backoff: exponential
-      initialDelay: 1000
-      maxDelay: 10000
+      delay: 1000
       jitter: true
     }
     // command body
@@ -282,15 +281,15 @@ Retry policies only apply to action execution failures. Guard failures, policy d
 
 Rate limiting policies constrain how frequently a command can be invoked per user, tenant, or globally. When the limit is exceeded, the command returns a `rateLimitExceeded` result.
 
-```manifest
+```manifest fragment
 entity ApiKey {
   property required id: string
 
   command makeRequest() {
     rateLimit {
-      window: 60000
+      windowMs: 60000
       maxRequests: 100
-      scope: user.id
+      scope: user
     }
     // command body
   }

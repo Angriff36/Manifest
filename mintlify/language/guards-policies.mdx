@@ -86,7 +86,7 @@ Guards support the full expression language:
 
 ## Policies
 
-A policy is a named boolean expression with a **scope** that controls when it is checked. Policies are declared outside entity blocks (or as entity-level defaults in vNext).
+A policy is a named boolean expression with a **scope** that controls when it is checked. Policies are declared at entity level (inside an entity block) or at module level (outside any entity block).
 
 ```manifest
 policy adminOnly execute: user.role == "admin" "Only administrators can execute commands"
@@ -124,32 +124,34 @@ entity Document {
 policy adminOnly execute: user.role == "admin" "Only admins can execute"
 ```
 
-In this example, `adminOnly` is a global policy. Bind it to a specific command by listing it inside the command body, or use `default policy` to apply it to every command on the entity.
+In this example, `adminOnly` is a module-level policy. Use `default policy` inside an entity block to apply a policy to every command on that entity.
 
-### Command-level policies
+### Per-command access restrictions
 
-Declare a policy inline within a command to override the entity's defaults:
+Policies are entity-level or module-level — there is no inline policy syntax inside a command body. To enforce stricter access on a single command, use a guard inside that command:
 
 ```manifest
 entity InventoryItem {
-  default policy execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
+  property stock: number = 0
+
+  default policy KitchenRoles execute: user.role in ["kitchen_staff", "kitchen_lead", "manager", "admin"]
 
   command consume(quantity: number) {
-    // Inherits default policy
+    // Inherits KitchenRoles policy
     guard quantity > 0
     mutate stock = self.stock - quantity
   }
 
   command adjust(delta: number) {
-    // Overrides default — managers only
-    policy execute: user.role in ["kitchen_lead", "manager", "admin"]
+    // Per-command stricter access: add a guard rather than an inline policy
+    guard user.role in ["kitchen_lead", "manager", "admin"]
     mutate stock = self.stock + delta
   }
 }
 ```
 
 <Note>
-When a command declares its own `policy` list, the entity's `defaultPolicies` are **not merged** — the command's explicit policies fully replace the defaults.
+Guards produce a `guardFailure` result; policies produce a `policyDenial` result. Use guards for state-based preconditions and additional per-command role checks; use policies for entity-wide authorization.
 </Note>
 
 ## Default policies (vNext)
@@ -177,13 +179,12 @@ entity Task {
 }
 ```
 
-Both `complete` and `reassign` inherit `RequireAuth`. If you add a command with an explicit `policy` declaration, that command uses only its declared policy.
+Both `complete` and `reassign` inherit `RequireAuth`. Add a guard inside any command for additional per-command access checks.
 
 ### Inheritance rules
 
-1. If the command declares explicit policies, use only those.
-2. If the command has no explicit policies but the entity has `defaultPolicies`, use the entity defaults.
-3. If neither has policies, no policy check runs (the scanner will warn).
+1. If the entity declares a `default policy`, every command on that entity inherits it.
+2. If no default policy applies, no policy check runs (the scanner will warn).
 
 The IR compiler expands default policies into each command's effective policy list at compile time. The runtime always evaluates an explicit, expanded list — it does not perform inheritance at runtime.
 
