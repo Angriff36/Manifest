@@ -294,6 +294,68 @@ describe('PrismaProjection — type-driven nullability (v3.1)', () => {
   });
 });
 
+describe('PrismaProjection — json column defaults', () => {
+  // Prisma requires Json column defaults as double-quoted JSON strings
+  // (@default("{}"), @default("[]"), @default("{ \"a\": 1 }")) — NOT the bare
+  // bracket syntax used for scalar lists.
+
+  it('emits @default("{}") for a json property with an empty-object default', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Doc', {
+        properties: [{
+          name: 'meta',
+          type: { name: 'json', nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'object', properties: {} },
+        }],
+      }),
+    );
+    ir.stores.push(durableStore('Doc'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+meta Json @default\("\{\}"\)$/m);
+  });
+
+  it('emits @default("[]") for a json property with an empty-array default', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Doc', {
+        properties: [{
+          name: 'meta',
+          type: { name: 'json', nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'array', elements: [] },
+        }],
+      }),
+    );
+    ir.stores.push(durableStore('Doc'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    // Json array default is a quoted JSON string, NOT the bare `[]` scalar-list form.
+    expect(code).toMatch(/^\s+meta Json @default\("\[\]"\)$/m);
+    expect(code).not.toMatch(/@default\(\[\]\)/);
+  });
+
+  it('serializes a non-empty json object default as an escaped JSON string', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Doc', {
+        properties: [{
+          name: 'meta',
+          type: { name: 'json', nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'object', properties: { a: { kind: 'number', value: 1 } } },
+        }],
+      }),
+    );
+    ir.stores.push(durableStore('Doc'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toContain('meta Json @default("{\\"a\\":1}")');
+  });
+});
+
 describe('PrismaProjection — skipping rules', () => {
   it('skips entities with store target `memory`', () => {
     const ir = emptyIR();

@@ -171,9 +171,38 @@ function literalToPrismaDefault(value: IRValue): string | undefined {
       return `[${elements.join(', ')}]`;
     }
     case 'object':
-      // Object defaults are not portable to Prisma; consumers can supply
-      // their own via fieldAttributes. Silently skip.
+      // Object defaults are not portable to Prisma scalar columns; consumers can
+      // supply their own via fieldAttributes. Json columns are handled separately
+      // (see irValueToJsonString) — this path is for non-Json scalars, so skip.
       return undefined;
+  }
+}
+
+/**
+ * Serialize an IR literal value to a JSON string for a Prisma `Json` column
+ * default. Prisma requires Json defaults as double-quoted JSON strings
+ * (`@default("{}")`, `@default("[]")`, `@default("{ \"a\": 1 }")`), NOT the bare
+ * bracket form used for scalar lists. Returns undefined if serialization fails.
+ */
+function irValueToJsonString(value: IRValue): string | undefined {
+  const toJs = (v: IRValue): unknown => {
+    switch (v.kind) {
+      case 'string': return v.value;
+      case 'number': return v.value;
+      case 'boolean': return v.value;
+      case 'null': return null;
+      case 'array': return v.elements.map(toJs);
+      case 'object': {
+        const obj: Record<string, unknown> = {};
+        for (const [k, el] of Object.entries(v.properties)) obj[k] = toJs(el);
+        return obj;
+      }
+    }
+  };
+  try {
+    return JSON.stringify(toJs(value));
+  } catch {
+    return undefined;
   }
 }
 
@@ -343,6 +372,18 @@ function emitPropertyLine(
       // An enum default is a member identifier, emitted bare (`@default(draft)`),
       // never quoted like a string literal (`@default("draft")` would be invalid).
       attrs.push(`@default(${prop.defaultValue.value})`);
+    } else if (
+      scalar === 'Json' && !isArray &&
+      (prop.defaultValue.kind === 'object' || prop.defaultValue.kind === 'array')
+    ) {
+      // Json column object/array defaults must be double-quoted JSON strings
+      // (`@default("{}")`, `@default("[]")`), not the bare bracket form Prisma
+      // reserves for scalar lists. Serialize then escape for the Prisma string.
+      const json = irValueToJsonString(prop.defaultValue);
+      if (json !== undefined) {
+        const escaped = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        attrs.push(`@default("${escaped}")`);
+      }
     } else {
       const def = literalToPrismaDefault(prop.defaultValue);
       if (def !== undefined) attrs.push(`@default(${def})`);
