@@ -1321,7 +1321,7 @@ export interface SearchOptions {
  * guarantee at-least-once delivery and idempotent indexing.
  */
 
-import type { OutboxStore, OutboxEntry } from '@manifest/outbox';
+import type { OutboxStore, OutboxEntry } from '@angriff36/manifest/outbox';
 
 /** Elasticsearch bulk operation shape */
 interface BulkOperation {

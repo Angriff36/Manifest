@@ -29,10 +29,378 @@
       "description": "Per-projection configuration. Each key matches a registered projection name (e.g. 'nextjs', 'routes').",
       "additionalProperties": false,
       "properties": {
+        "analytics": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'analytics' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "convex": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'convex' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "dart": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'dart' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "drizzle": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'drizzle' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "dynamodb": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'dynamodb' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "elasticsearch": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'elasticsearch' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "express": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'express' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "graphql": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'graphql' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "health": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'health' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "hono": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'hono' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "jsonschema": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'jsonschema' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "kysely": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'kysely' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "llm-context": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'llm-context' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "materialized-views": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'materialized-views' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "mermaid": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'mermaid' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
         "nextjs": { "$ref": "#/definitions/NextJsProjectionConfig" },
-        "routes":  { "$ref": "#/definitions/RoutesProjectionConfig" },
-        "prisma":  { "$ref": "#/definitions/PrismaProjectionConfig" },
-        "prisma-store": { "$ref": "#/definitions/PrismaStoreProjectionConfig" }
+        "openapi": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'openapi' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "prisma": { "$ref": "#/definitions/PrismaProjectionConfig" },
+        "prisma-store": { "$ref": "#/definitions/PrismaStoreProjectionConfig" },
+        "pydantic": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'pydantic' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "react-query": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'react-query' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "remix": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'remix' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "routes": { "$ref": "#/definitions/RoutesProjectionConfig" },
+        "storybook": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'storybook' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "sveltekit": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'sveltekit' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "terraform": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'terraform' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        },
+        "zod": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration for the 'zod' projection. Consumed by `manifest generate --all`, which reads `output` (the target directory/path) and `options` (passed verbatim to the projection generator). Option keys are projection-specific TypeScript interfaces and are not individually validated here.",
+          "properties": {
+            "output": {
+              "type": "string",
+              "description": "Directory or path hint where this projection's artifacts are written. A projection with no `output` is skipped by `manifest generate --all`."
+            },
+            "options": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "Projection-specific options passed verbatim to the projection generator."
+            }
+          }
+        }
       }
     },
     "env": {
@@ -295,6 +663,18 @@
           "type": "object",
           "additionalProperties": { "type": "string" },
           "description": "Explicit per-entity URL path segment overrides for generated routes and client fetch paths, e.g. { \"OrderLine\": \"order-lines\" } → app/api/order-lines/list/route.ts. The value may contain '/' for a multi-segment domain path, e.g. { \"Event\": \"events/event\" } → app/api/events/event/list/route.ts (replaces hand-rolled domain-remap passes). Default: lowercased entity name."
+        },
+        "routeCasing": {
+          "type": "string",
+          "enum": ["lowercase", "kebab-case", "snake_case", "preserve"],
+          "description": "Casing applied to the default URL route segment derived from each entity name (when no explicit routeSegments override is given). 'lowercase' (default) is the legacy flattened form (PrepTask → preptask); 'kebab-case' → prep-task, 'snake_case' → prep_task, 'preserve' keeps the entity name verbatim.",
+          "default": "lowercase"
+        },
+        "dateSerialization": {
+          "type": "string",
+          "enum": ["date", "iso-string"],
+          "description": "How date/datetime scalars are typed in the generated ts.types surface. 'date' (default) emits Date; 'iso-string' emits string, matching JSON/HTTP transport where dates serialize to ISO-8601 strings. Non-breaking.",
+          "default": "date"
         },
         "emitCompanions": {
           "type": "boolean",

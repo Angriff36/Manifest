@@ -449,6 +449,101 @@ export function registerPluginCliCommands(
 }
 
 // ---------------------------------------------------------------------------
+// Runtime Composition — LoadedPluginRegistries → RuntimeOptions fragment
+// ---------------------------------------------------------------------------
+
+/**
+ * The subset of the runtime engine's `RuntimeOptions` that plugins populate.
+ * Kept structural (not an import of `RuntimeOptions`) so the loader stays
+ * decoupled from the runtime engine module — the two `Store` shapes are
+ * identical, so the fragment assigns cleanly into `new RuntimeEngine(...)`.
+ */
+export interface PluginRuntimeOptions {
+  /** Entity-keyed store provider (engine contract), adapted from the scheme-keyed composite. */
+  storeProvider?: (entityName: string) => Store | undefined;
+  /** Custom builtins map, passed straight through to the engine. */
+  customBuiltins?: Map<string, (...args: unknown[]) => unknown>;
+  /** A single instantiated audit sink, when one is selected. */
+  auditSink?: AuditSink;
+}
+
+/**
+ * Inputs that let the composition resolve the two seams the loader cannot infer
+ * on its own: which store scheme each entity uses, and which audit sink to build.
+ */
+export interface PluginRuntimeCompositionOptions {
+  /**
+   * IR store declarations (`ir.stores`). The engine's `storeProvider` is keyed
+   * by entity name only, but the composite provider is keyed by scheme, so the
+   * composition needs this map to bridge entity → scheme.
+   */
+  stores?: ReadonlyArray<{ entity: string; target: string }>;
+  /**
+   * Which audit sink id to instantiate. Required only when more than one sink
+   * is registered; with exactly one, it is selected automatically.
+   */
+  auditSinkId?: string;
+  /** Options forwarded to the selected audit sink factory. */
+  auditSinkOptions?: Record<string, unknown>;
+}
+
+/**
+ * Map loaded plugin registries into the fragment of `RuntimeOptions` that an
+ * app passes to `new RuntimeEngine(ir, context, options)`. This is the
+ * documented seam between config-declared plugins and the runtime: apps call
+ * `loadPlugins` once, then spread this fragment into their runtime options.
+ *
+ * Async because audit sink factories may be async.
+ */
+export async function pluginRegistriesToRuntimeOptions(
+  registries: LoadedPluginRegistries,
+  options: PluginRuntimeCompositionOptions = {},
+): Promise<PluginRuntimeOptions> {
+  const result: PluginRuntimeOptions = {};
+
+  if (registries.builtins.size > 0) {
+    result.customBuiltins = registries.builtins;
+  }
+
+  // Bridge the scheme-keyed composite provider to the engine's entity-keyed
+  // `storeProvider` signature using each entity's declared store scheme.
+  const schemeByEntity = new Map<string, string>();
+  for (const s of options.stores ?? []) {
+    schemeByEntity.set(s.entity, s.target);
+  }
+  if (schemeByEntity.size > 0) {
+    result.storeProvider = (entityName: string): Store | undefined =>
+      registries.storeProvider(entityName, schemeByEntity.get(entityName));
+  }
+
+  // Audit sink: instantiate exactly one. Never guess when the choice is
+  // ambiguous — require an explicit id instead.
+  const sinkIds = [...registries.auditSinkFactories.keys()];
+  if (sinkIds.length > 0) {
+    let chosen = options.auditSinkId;
+    if (!chosen) {
+      if (sinkIds.length === 1) {
+        chosen = sinkIds[0];
+      } else {
+        throw new Error(
+          `Multiple audit sinks are registered (${sinkIds.join(', ')}). ` +
+            `Pass auditSinkId to pluginRegistriesToRuntimeOptions to select one.`,
+        );
+      }
+    }
+    const factory = registries.auditSinkFactories.get(chosen);
+    if (!factory) {
+      throw new Error(
+        `No audit sink is registered with id "${chosen}". Available: ${sinkIds.join(', ')}.`,
+      );
+    }
+    result.auditSink = await factory(options.auditSinkOptions);
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Exported for testing
 // ---------------------------------------------------------------------------
 

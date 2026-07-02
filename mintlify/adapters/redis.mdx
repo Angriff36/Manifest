@@ -85,22 +85,34 @@ await store.subscribe('OrderCreated', (event) => {
 
 ## Outbox delivery
 
-A first-party **exported** Redis outbox store is **not** currently available. The outbox stores published from the package are the in-memory and PostgreSQL implementations:
+`RedisOutboxStore` is a first-party Redis Streams implementation of the `OutboxStore` contract, exported from `@angriff36/manifest/outbox/redis`. It uses Redis Streams (`XADD` / `XREADGROUP` / `XACK`) with a consumer group so multiple dispatcher workers can drain the outbox in parallel.
+
+```typescript
+import { RedisOutboxStore } from '@angriff36/manifest/outbox/redis';
+
+const outboxStore = new RedisOutboxStore({
+  url: process.env.REDIS_URL,
+  keyPrefix: 'manifest:outbox:',         // default
+  consumerGroup: 'manifest-dispatcher',  // default
+});
+```
+
+Like `RedisStore`, it loads `ioredis` lazily as an optional peer dependency and throws a clear error if the package is not installed. The `enqueue` method accepts an optional Redis pipeline for batching event persistence alongside state mutations.
+
+The package `exports` map exposes `./outbox` (the `OutboxStore` / `OutboxEntry` contract) plus the concrete stores:
 
 | Outbox store | Import path |
 |--------------|-------------|
 | `MemoryOutboxStore` | `@angriff36/manifest/outbox/memory` |
 | `PostgresOutboxStore` | `@angriff36/manifest/outbox/postgres` |
-
-The package `exports` map only exposes `./outbox`, `./outbox/memory`, and `./outbox/postgres`. A Redis Streams outbox exists in the source tree but is **not** a public export, so `@angriff36/manifest/outbox/redis` does not resolve. For durable at-least-once delivery today, use `PostgresOutboxStore`, or implement the `OutboxStore` interface (`@angriff36/manifest/outbox`) against Redis Streams yourself.
+| `RedisOutboxStore` | `@angriff36/manifest/outbox/redis` |
 
 ## Wiring in Redis
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { RedisStore } from '@angriff36/manifest/stores';
-import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
-import { Pool } from 'pg';
+import { RedisOutboxStore } from '@angriff36/manifest/outbox/redis';
 
 const runtime = new RuntimeEngine(ir, {
   userId: session.userId,
@@ -111,8 +123,8 @@ const runtime = new RuntimeEngine(ir, {
     }
     return undefined;
   },
-  // Durable event delivery via the exported Postgres outbox:
-  outboxStore: new PostgresOutboxStore(new Pool({ connectionString: process.env.DATABASE_URL })),
+  // Durable at-least-once event delivery via the Redis Streams outbox:
+  outboxStore: new RedisOutboxStore({ url: process.env.REDIS_URL }),
 });
 ```
 
@@ -121,6 +133,7 @@ const runtime = new RuntimeEngine(ir, {
 | What | Import path |
 |------|-------------|
 | `RedisStore` class and `RedisConfig` | `@angriff36/manifest/stores` |
+| `RedisOutboxStore` | `@angriff36/manifest/outbox/redis` |
 | `MemoryOutboxStore` | `@angriff36/manifest/outbox/memory` |
 | `PostgresOutboxStore` | `@angriff36/manifest/outbox/postgres` |
 | `OutboxStore` / `OutboxEntry` interfaces | `@angriff36/manifest/outbox` |

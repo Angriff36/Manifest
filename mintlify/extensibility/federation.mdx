@@ -12,12 +12,12 @@ Each runtime instance publishes a `ServiceDescriptor` that declares which entiti
 
 ```typescript
 import { buildDescriptor } from '@angriff36/manifest/federation';
-import { ir } from './compiled.ir.json';
+import ir from './compiled.ir.json';
 
-const descriptor = buildDescriptor(ir, {
-  serviceName: 'inventory-service',
-  baseUrl: 'https://inventory.internal',
-  version: '1.2.0',
+// buildDescriptor(serviceId, ir, options)
+const descriptor = buildDescriptor('inventory-service', ir, {
+  endpoint: 'https://inventory.internal',
+  // exposeEntities: ['InventoryItem'],  // omit to expose all entities with commands
 });
 ```
 
@@ -25,11 +25,13 @@ const descriptor = buildDescriptor(ir, {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `serviceName` | `string` | Unique name for this service in the mesh |
-| `baseUrl` | `string` | Root URL for reaching this service |
-| `version` | `string` | Service version for compatibility checks |
+| `serviceId` | `string` | Unique identifier for this service in the mesh |
+| `displayName` | `string?` | Human-readable name |
+| `endpoint` | `string` | Base URL for reaching this service |
+| `schemaVersion` | `string` | IR schema version this service speaks |
 | `entities` | `ExposedEntity[]` | Entities this service exposes, with their commands |
-| `healthEndpoint` | `string` | URL for health check probes |
+| `health` | `ServiceHealth?` | Health status, populated by registry health checks |
+| `auth` | `ServiceAuthConfig?` | Service-to-service auth scheme for the policy bridge |
 
 The `buildDescriptor` function is pure: identical IR input always produces the same descriptor output, supporting deterministic builds and reproducible deployments.
 
@@ -48,7 +50,7 @@ registry.register(orderDescriptor);
 
 // Look up which service handles a given command
 const target = registry.findCommand('InventoryItem', 'reserve');
-// => { serviceName: 'inventory-service', baseUrl: 'https://inventory.internal', ... }
+// => { service: ServiceDescriptor, command: { name: 'reserve', idempotent, requiredPolicies } }
 ```
 
 ### Health checks
@@ -62,16 +64,20 @@ The `FederationClient` invokes commands on remote services. It resolves the targ
 ```typescript
 import { FederationClient } from '@angriff36/manifest/federation';
 
+// new FederationClient(registry, options?, transport?)
+// The transport defaults to HttpFederationTransport (globalThis.fetch).
 const client = new FederationClient(registry, {
-  transport: fetchTransport,        // default: globalThis.fetch
-  timeout: 5000,                    // request timeout in ms
-  retryOnIdempotent: true,          // retry idempotent commands on transient failure
-  maxRetries: 2,
+  defaultTimeoutMs: 5000,   // per-call timeout (default 30000)
+  maxRetries: 2,            // retry transient failures on idempotent commands (default 0)
+  retryDelayMs: 1000,       // delay between retries
 });
 
-const result = await client.invoke('InventoryItem', 'reserve', {
-  instanceId: 'item-sku-123',
-  quantity: 5,
+const result = await client.invoke({
+  serviceId: 'inventory-service',
+  entity: 'InventoryItem',
+  command: 'reserve',
+  input: { instanceId: 'item-sku-123', quantity: 5 },
+  bridge: { actorId: 'user-1', tenantId: 'tenant-1' },
 });
 ```
 
@@ -92,7 +98,11 @@ The default transport uses `globalThis.fetch`. Replace it for testing or alterna
 
 ```typescript
 interface FederationTransport {
-  send(request: FederationRequest): Promise<FederationResponse>;
+  invoke(
+    descriptor: ServiceDescriptor,
+    request: FederationRequest,
+    options: { timeoutMs: number; authToken?: string },
+  ): Promise<FederationResponse>;
 }
 ```
 
@@ -112,13 +122,19 @@ The policy bridge propagates caller identity across service boundaries so that p
 The sending side injects these headers into the outgoing request. The receiving side extracts them and reconstructs a `RuntimeContext` so that policy expressions like `user.role == "admin"` evaluate correctly on the downstream service.
 
 ```typescript
-import { injectPolicyHeaders, extractRuntimeContext } from '@angriff36/manifest/federation';
+import {
+  buildBridgeFromContext,
+  buildBridgeHeaders,
+  parseBridgeHeaders,
+  contextFromBridgeHeaders,
+} from '@angriff36/manifest/federation';
 
-// Sending side
-const headers = injectPolicyHeaders(runtimeContext);
+// Sending side: RuntimeContext -> bridge -> X-Manifest-* HTTP headers
+const bridge = buildBridgeFromContext(runtimeContext);
+const headers = buildBridgeHeaders(bridge);
 
-// Receiving side (in your API route handler)
-const reconstructed = extractRuntimeContext(request.headers);
+// Receiving side (in your API route handler): HTTP headers -> bridge -> RuntimeContext
+const reconstructed = contextFromBridgeHeaders(parseBridgeHeaders(request.headers));
 ```
 
 <Warning>
@@ -168,9 +184,12 @@ const federation = new FederationClient(registry, {
 //    call the inventory service to reserve stock
 async function placeOrder(orderId: string, sku: string, qty: number) {
   // Check inventory availability
-  const check = await federation.invoke('InventoryItem', 'checkAvailability', {
-    instanceId: sku,
-    quantity: qty,
+  const check = await federation.invoke({
+    serviceId: 'inventory-service',
+    entity: 'InventoryItem',
+    command: 'checkAvailability',
+    input: { instanceId: sku, quantity: qty },
+    bridge: { actorId: 'order-service' },
   });
 
   if (!check.success) {
@@ -178,9 +197,12 @@ async function placeOrder(orderId: string, sku: string, qty: number) {
   }
 
   // Reserve stock
-  const reserve = await federation.invoke('InventoryItem', 'reserve', {
-    instanceId: sku,
-    quantity: qty,
+  const reserve = await federation.invoke({
+    serviceId: 'inventory-service',
+    entity: 'InventoryItem',
+    command: 'reserve',
+    input: { instanceId: sku, quantity: qty },
+    bridge: { actorId: 'order-service' },
   });
 
   if (!reserve.success) {
@@ -205,10 +227,11 @@ The federation module is available as a subpath export:
 import {
   FederationRegistry,
   FederationClient,
+  HttpFederationTransport,
   buildDescriptor,
   generateHttpAdapter,
-  injectPolicyHeaders,
-  extractRuntimeContext,
+  buildBridgeFromContext,
+  contextFromBridgeHeaders,
 } from '@angriff36/manifest/federation';
 ```
 

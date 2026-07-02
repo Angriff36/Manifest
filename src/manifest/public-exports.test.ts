@@ -34,8 +34,12 @@ import * as OutboxApi from './outbox/outbox-store';
 import * as MemoryOutboxApi from './outbox/stores/memory';
 // Subpath: '@angriff36/manifest/outbox/postgres'
 import * as PostgresOutboxApi from './outbox/stores/postgres';
+// Subpath: '@angriff36/manifest/outbox/redis'
+import * as RedisOutboxApi from './outbox/stores/redis';
 // Subpath: '@angriff36/manifest/outbox/worker'
 import * as OutboxWorkerApi from './outbox/worker';
+// Subpath: '@angriff36/manifest/federation'
+import * as FederationApi from './federation';
 // Subpath: '@angriff36/manifest/idempotency/memory'
 import * as MemoryIdempotencyApi from './idempotency/stores/memory';
 // Subpath: '@angriff36/manifest/idempotency/postgres'
@@ -80,6 +84,13 @@ describe('Public export surface', () => {
     expect(typeof PostgresOutboxApi.PostgresOutboxStore).toBe('function');
   });
 
+  it('exposes the RedisOutboxStore class via outbox/redis', () => {
+    // Constructor is not invoked here: it dynamically imports the optional
+    // `ioredis` peer and opens a connection. The type check proves the
+    // subpath resolves and the class export survives.
+    expect(typeof RedisOutboxApi.RedisOutboxStore).toBe('function');
+  });
+
   it('exposes the outbox delivery worker module via outbox/worker', () => {
     // Bare load is the load-bearing check — a missing/renamed export breaks
     // the import above at compile time.
@@ -106,6 +117,19 @@ describe('Public export surface', () => {
 
   it('exposes the schedule worker module via schedule-worker', () => {
     expect(ScheduleWorkerApi).toBeDefined();
+  });
+
+  it('exposes the federation public surface via federation', () => {
+    // Discovery + invocation surface.
+    expect(typeof FederationApi.FederationRegistry).toBe('function');
+    expect(typeof FederationApi.FederationClient).toBe('function');
+    expect(typeof FederationApi.HttpFederationTransport).toBe('function');
+    // IR -> descriptor + typed-client codegen.
+    expect(typeof FederationApi.buildDescriptor).toBe('function');
+    expect(typeof FederationApi.generateHttpAdapter).toBe('function');
+    // Policy bridge (context <-> cross-service headers).
+    expect(typeof FederationApi.buildBridgeFromContext).toBe('function');
+    expect(typeof FederationApi.contextFromBridgeHeaders).toBe('function');
   });
 
   it('root re-exports the adapter contract types (compile-time check)', () => {

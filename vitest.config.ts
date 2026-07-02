@@ -36,6 +36,10 @@ export default defineConfig({
       },
       // All other aliases (object-style, prefix matching is fine here)
       {
+        find: '@angriff36/manifest/config',
+        replacement: path.resolve(__dirname, './src/manifest/config.ts'),
+      },
+      {
         find: '@angriff36/manifest/lexer',
         replacement: path.resolve(__dirname, './src/manifest/lexer.ts'),
       },
@@ -118,6 +122,10 @@ export default defineConfig({
       {
         find: '@angriff36/manifest/plugin-loader',
         replacement: path.resolve(__dirname, './src/manifest/plugin-loader.ts'),
+      },
+      {
+        find: '@angriff36/manifest/binary-ir',
+        replacement: path.resolve(__dirname, './src/manifest/binary-ir.ts'),
       },
       // Catch-all root alias (last)
       {

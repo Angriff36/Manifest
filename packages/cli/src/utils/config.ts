@@ -13,6 +13,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
 import { pathToFileURL } from 'url';
+import { resolveProjectionOptions as resolveProjectionOptionsForBuild } from '@angriff36/manifest/config';
+import type { ManifestBuildConfig } from '@angriff36/manifest/config';
 
 // ============================================================================
 // Type Definitions
@@ -509,6 +511,43 @@ export async function resolveNextJsProjectionOptions(
   const options = (build.projections?.nextjs?.options ?? {}) as Record<string, unknown>;
   // Shallow clone so callers can mutate without disturbing cached config.
   return { ...options };
+}
+
+/**
+ * Layer the build-level global `naming` convention UNDER a named projection's
+ * own `options` (per-projection `options.naming` always wins). Delegates to the
+ * main package's `resolveProjectionOptions` so this stays the single inheritance
+ * contract shared with the projection dispatchers — the CLI never reimplements
+ * the merge.
+ *
+ * Synchronous variant for callers that already hold a loaded build config (e.g.
+ * the batch `generate --all` driver, which resolves many projections in a loop).
+ */
+export function layerProjectionOptions(
+  build: ManifestConfig,
+  projectionName: string,
+): Record<string, unknown> {
+  // The CLI's ManifestConfig is structurally the build surface the main package
+  // reads (projections + naming); the cast bridges the two nominal types.
+  return resolveProjectionOptionsForBuild(
+    build as unknown as ManifestBuildConfig,
+    projectionName,
+  );
+}
+
+/**
+ * Resolve the option bag for ANY projection from manifest.config — the
+ * single-run analogue of the `--all` batch path. Reads that projection's own
+ * `options` block (not nextjs-only) and layers the global `naming` default
+ * under it. CLI flag overrides (--auth, --database, …) are applied on top later
+ * inside `generateCommand`.
+ */
+export async function resolveProjectionOptions(
+  projectionName: string,
+  cwd: string = process.cwd(),
+): Promise<Record<string, unknown>> {
+  const { build } = await loadAllConfigs(cwd);
+  return layerProjectionOptions(build, projectionName);
 }
 
 /**

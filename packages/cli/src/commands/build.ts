@@ -7,8 +7,8 @@
 import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { compileCommand } from './compile.js';
-import { generateCommand } from './generate.js';
+import { compileCommand, compileAllFromConfig } from './compile.js';
+import { generateCommand, generateAllFromConfig } from './generate.js';
 
 interface BuildOptions {
   projection: string;
@@ -82,4 +82,20 @@ export async function buildCommand(
     console.error(error);
     process.exit(1);
   }
+}
+
+/**
+ * `manifest build --all` — config-driven build for the whole project.
+ *
+ * The native equivalent of the CI-chained `compile --all && generate --all`:
+ * compile every source in manifest.config.yaml into one merged IR, then run
+ * every configured projection from it. Both steps read manifest.config.yaml,
+ * so there is nothing to pass in. Each step surfaces its own failures and
+ * exits non-zero on error (compileAllFromConfig / generateAllFromConfig), so a
+ * failed compile never reaches generate.
+ */
+export async function buildAllFromConfig(): Promise<void> {
+  console.log(chalk.bold('\nManifest build --all: compile + generate (config-driven)\n'));
+  await compileAllFromConfig({});
+  await generateAllFromConfig({});
 }

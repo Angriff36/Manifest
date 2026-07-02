@@ -57,18 +57,13 @@ DynamoDBStore implements optimistic locking via a `version` field. On `update`, 
 
 ## DynamoDBOutboxStore
 
-The DynamoDB outbox store implements the `OutboxStore` interface for transactional event delivery. It uses DynamoDB's `TransactWriteItems` for atomic batch enqueue (up to 100 actions), conditional `UpdateItem` for safe concurrent claim (no row locks needed), and `markDelivered`/`markFailed` for state transitions.
+A `DynamoDBOutboxStore` exists in the source tree — it implements the `OutboxStore` interface using DynamoDB's `TransactWriteItems` for atomic batch enqueue (up to 100 actions), conditional `UpdateItem` for concurrent claim, and `markDelivered`/`markFailed` for state transitions — but it is **not currently a public export**. The `@angriff36/manifest/outbox/dynamodb` subpath does not resolve, and the store has no test coverage yet, so it is not published on the `exports` map.
 
-```typescript
-import { DynamoDBOutboxStore } from '@angriff36/manifest/outbox/dynamodb';
+For durable at-least-once event delivery on AWS today, use one of the **exported** outbox stores: `PostgresOutboxStore` (`@angriff36/manifest/outbox/postgres`) or `RedisOutboxStore` (`@angriff36/manifest/outbox/redis`).
 
-const outboxStore = new DynamoDBOutboxStore({
-  tableName: 'manifest-outbox',
-  region: 'us-east-1',
-});
-```
-
-The outbox table is compatible with DynamoDB Streams for push-based dispatch. The outbox table always gets `NEW_AND_OLD_IMAGES` stream specification, while data tables get `KEYS_ONLY` unless event reactions need full context.
+<Note>
+Unlike the doc's older example, the source `DynamoDBOutboxStore` constructor takes a single options object whose `client` field is **required** — it does not accept a `region`. The `client` is an initialized AWS SDK document client that also carries the command constructors (`TransactWriteCommand`, `ScanCommand`, `UpdateCommand`), matching the convention used by `DynamoDBStore`. This shape is documented here for reference only; the store is not importable from the package until it is exported.
+</Note>
 
 ## Infrastructure projections
 
@@ -92,7 +87,8 @@ const cfn = projection.generate(ir, { surface: 'dynamodb.cloudformation' });
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
 import { DynamoDBStore } from '@angriff36/manifest/stores';
-import { DynamoDBOutboxStore } from '@angriff36/manifest/outbox/dynamodb';
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { Pool } from 'pg';
 
 const runtime = new RuntimeEngine(ir, {
   userId: session.userId,
@@ -103,10 +99,9 @@ const runtime = new RuntimeEngine(ir, {
     }
     return undefined;
   },
-  outboxStore: new DynamoDBOutboxStore({
-    tableName: 'manifest-outbox',
-    region: 'us-east-1',
-  }),
+  // The DynamoDB outbox store is not yet an exported subpath; use an exported
+  // outbox store (Postgres or Redis) for durable delivery today.
+  outboxStore: new PostgresOutboxStore(new Pool({ connectionString: process.env.DATABASE_URL })),
 });
 ```
 
@@ -116,7 +111,7 @@ const runtime = new RuntimeEngine(ir, {
 |------|-------------|
 | `DynamoDBStore` class | `@angriff36/manifest/stores` |
 | `buildDynamoDBKey` helper | `@angriff36/manifest/stores` |
-| `DynamoDBOutboxStore` | `@angriff36/manifest/outbox/dynamodb` |
+| `DynamoDBOutboxStore` | not exported (source-only) — use `@angriff36/manifest/outbox/postgres` or `/outbox/redis` |
 | `DynamoDBProjection` | `@angriff36/manifest/projections` |
 
 ## Notes & limitations

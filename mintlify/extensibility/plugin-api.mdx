@@ -54,6 +54,22 @@ For each loaded plugin the loader:
 
 `loadPlugins` returns `LoadedPluginRegistries` containing the composite store provider, builtins map, audit sink factories, collected CLI commands, the list of loaded plugins, and an array of diagnostics (severity `error`/`warning`/`info`).
 
+## Activation
+
+Declaring a plugin in `manifest.config` is enough — the CLI activates it. At startup the CLI reads the config; if `plugins` are declared it calls `loadPlugins` and registers each plugin's `CliCommandPlugin` into its commander program, so plugin commands appear in `manifest --help` and are dispatchable. Activation is conditional (a project with no `plugins` declared loads nothing) and fail-soft (a plugin that fails to load surfaces a diagnostic and is skipped; the CLI is never bricked, and the same config always yields the same commands). `manifest plugins list` performs a real load and reports each plugin's contributed capabilities plus any diagnostics.
+
+For the **runtime**, activation is explicit rather than automatic: an app maps loaded registries into runtime options with `pluginRegistriesToRuntimeOptions(registries, options?)` from `@angriff36/manifest/plugin-loader`, then spreads the result into `new RuntimeEngine(ir, context, options)`:
+
+```ts
+import { loadPlugins, pluginRegistriesToRuntimeOptions } from '@angriff36/manifest/plugin-loader';
+
+const registries = await loadPlugins(config.plugins ?? [], { manifestVersion });
+const pluginOptions = await pluginRegistriesToRuntimeOptions(registries, { stores: ir.stores });
+const engine = new RuntimeEngine(ir, context, { ...pluginOptions /* ...your other options */ });
+```
+
+The returned fragment carries `customBuiltins` (the plugin builtins map, passed straight through), a `storeProvider` (the scheme-keyed composite adapted to the engine's entity-keyed signature — this is why `stores` from the IR is required to resolve each entity's scheme), and an optional `auditSink`. Audit sinks are never guessed: with exactly one registered sink it is selected automatically, but when more than one is registered you must pass `auditSinkId` (otherwise the helper throws). The engine itself does not read config or dynamic-import plugins — that indirection would be nondeterministic inside library code — so wiring the fragment is the app's responsibility.
+
 ## Reference
 
 Extension-point interfaces (from `plugin-api.ts`):
@@ -66,7 +82,7 @@ Extension-point interfaces (from `plugin-api.ts`):
 
 Constants: `PLUGIN_API_VERSION = '1'`. `BUILTIN_STORE_TARGETS` = `memory`, `localStorage`, `postgres`, `supabase`, `durable`, `mongodb`. `RESERVED_BUILTIN_NAMES` = `now`, `uuid`, `trim`, `split`, `count`, `startsWith`, `endsWith`, `replace`, `toUpperCase`, `toLowerCase`, `length`, `substring`, `indexOf`, `matches`, `search`, `abs`, `round`, `floor`, `ceil`, `min`, `max`, `between`, `sum`, `avg`, `min_of`, `max_of`, `count_of`, `filter`, `map`, `year`, `month`, `day`, `hours`, `minutes`, `seconds`, `dateOf`, `timeOf`, `datetimeOf`, `addDuration`, `durationBetween`, `durationDays`, `durationHours`, `durationMinutes`, `durationSeconds`, `flag`, `hasPermission`, `roleAllows`.
 
-You can inspect declared plugins with the [`manifest plugins list`](/cli/commands) CLI command, which reports module name, enabled flag, and whether options are present without importing or executing the plugins.
+You can inspect declared plugins with the [`manifest plugins list`](/cli/commands) CLI command. It performs a real `loadPlugins` and reports each declaration's enabled flag, each loaded plugin's contributed capabilities (projections, store adapters, builtins, audit sinks, CLI commands), and any load diagnostics.
 
 ## Notes and limitations
 

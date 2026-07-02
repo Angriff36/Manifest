@@ -501,3 +501,10 @@ Fixing the 31 non-compiling snippets exposed places where the docs expressed rea
 | Command-body policies | No inline `policy` inside a command body; per-command restrictions require guards. Entity `default policy` + guards is the only layering mechanism (no per-command policy override). |
 | String member `.length` | `title.length` does not resolve at runtime; the builtin is `length(v)`. |
 | `timestamp` type | Not a type name (docs used it); real options are `number` or `date`/`datetime`. |
+
+## Corrections found during WS2C implementation (2026-07-02)
+
+Two audit claims were refuted during implementation (recorded per the verify-and-fix-source discipline):
+
+1. **"Implemented adapters unreachable via package exports" overstated test coverage.** The DynamoDB and MongoDB outbox stores (src/manifest/outbox/stores/{dynamodb,mongodb}.ts) have real implementations but **zero test files** — the audit's "fully implemented ... adapters ... exist in source" framing implied all three were tested; only the Redis outbox store is (live-gated suite in stores.node.test.ts). Consequently only `./outbox/redis` and `./federation` were exposed in WS2C; DynamoDB (which also has a constructor-vs-docs mismatch and an unverified claim() status question) and MongoDB stay unexported until they have behavioral tests.
+2. **"Plugin projections" is not a distinct plugin type.** The plugin API has StoreAdapterPlugin/AuditSinkPlugin/BuiltinFunctionPlugin/CliCommandPlugin wrapper types but no ProjectionPlugin — plugins contribute projections directly as `ManifestPlugin.projections: ProjectionTarget[]`, which the loader registers via registerProjection. The capability is real and (as of WS2C) wired; the type taxonomy in the audit item was imprecise.

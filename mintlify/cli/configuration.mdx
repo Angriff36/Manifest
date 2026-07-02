@@ -110,13 +110,13 @@ You can always override a config value for a single run without modifying the fi
 </ParamField>
 
 <ParamField path="plugins" type="array">
-  Third-party plugin declarations loaded by the CLI. Inspect what is declared with `manifest plugins list`. Each entry requires a `module`; `options` and `enabled` are optional.
+  Third-party plugin declarations. At CLI startup any declared plugins are loaded and the CLI commands they contribute are registered, so they appear in `manifest --help` and are dispatchable; `manifest plugins list` reports their real load status and diagnostics. Loading is conditional — a project with no `plugins` declared loads nothing. A plugin that fails to load surfaces a diagnostic and is skipped; it never bricks the CLI. For runtime use (custom store adapters, expression builtins, audit sinks), compose the loaded registries into your runtime options with `pluginRegistriesToRuntimeOptions` from `@angriff36/manifest/plugin-loader` — see [Plugin API](/extensibility/plugin-api). Each entry requires a `module`; `options` and `enabled` are optional.
 
   <ParamField path="plugins[].module" type="string" required>
     npm package name or relative file path to the plugin module.
   </ParamField>
   <ParamField path="plugins[].options" type="object">
-    Plugin-specific options passed to the plugin at load time.
+    Plugin-specific options forwarded to the plugin's `onLoad` hook and to its store-adapter and audit-sink factories.
   </ParamField>
   <ParamField path="plugins[].enabled" type="boolean" default="true">
     Whether the plugin is active.

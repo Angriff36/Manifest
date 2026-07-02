@@ -11,7 +11,11 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { compileCommand, compileAllFromConfig } from './commands/compile.js';
 import { generateCommand, generateAllFromConfig } from './commands/generate.js';
-import { buildCommand } from './commands/build.js';
+import { buildCommand, buildAllFromConfig } from './commands/build.js';
+import { analyzeCommand } from './commands/analyze.js';
+import { seedCommand } from './commands/seed.js';
+import { profileCommand } from './commands/profile.js';
+import { packCommand, unpackCommand } from './commands/pack-unpack.js';
 import { watchCommand } from './commands/watch.js';
 import { validateCommand } from './commands/validate.js';
 import { validateAICommand } from './commands/validate-ai.js';
@@ -63,7 +67,10 @@ import {
   versionsRollbackCommand,
   versionsVerifyCommand,
 } from './commands/versions.js';
-import { getConfig, resolveNextJsProjectionOptions } from './utils/config.js';
+import { getConfig, resolveNextJsProjectionOptions, resolveProjectionOptions } from './utils/config.js';
+import { registerPluginCliCommands } from '@angriff36/manifest/plugin-loader';
+import type { CliProgramLike } from '@angriff36/manifest/plugin-api';
+import { loadDeclaredPlugins, reportPluginDiagnostics } from './utils/plugins.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, normalize, dirname, join } from 'node:path';
 import { realpath, readFile } from 'node:fs/promises';
@@ -192,10 +199,11 @@ program
       process.exit(1);
     }
 
-    // resolveNextJsProjectionOptions returns the user's raw nextjs options
-    // (incl. dispatcher.*, concreteCommandRoutes.*) — no defaults baked in.
-    // CLI flag overrides are layered on inside generateCommand.
-    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+    // Resolve the SELECTED projection's own options block (not nextjs-only),
+    // layering the global `naming` convention under it — the single-run analogue
+    // of the --all path. No projection defaults are baked in (normalizeOptions
+    // owns those); CLI flag overrides are layered on inside generateCommand.
+    const projectionOptionsFromConfig = await resolveProjectionOptions(options.projection);
 
     // Default to cwd — the projection's pathHint already contains the full
     // relative path from project root (e.g. apps/api/app/api/…).  Omitting
@@ -221,6 +229,7 @@ program
   .argument('[source]', 'Source .manifest file or glob pattern')
   .option('-p, --projection <name>', 'Projection name — any registered projection (nextjs, prisma, zod, kysely, ...)', 'nextjs')
   .option('-s, --surface <name>', 'Projection surface (route, command, types, client, all)', 'all')
+  .option('--all', 'Compile every source + generate every projection from manifest.config.yaml (config-driven; ignores -p/-s/--ir-output/--code-output/-g/source)')
   .option('--ir-output <path>', 'IR output directory')
   .option('--code-output <path>', 'Generated code output directory')
   .option('-g, --glob <pattern>', 'Glob pattern for multiple files')
@@ -228,9 +237,42 @@ program
   .option('--database <path>', 'Database import path')
   .option('--runtime <path>', 'Runtime import path')
   .option('--response <path>', 'Response helpers import path')
-  .action(async (source, options = {}) => {
+  .action(async (source, options = {}, cmd) => {
+    // --all: config-driven compile-all + generate-all in one call (the native
+    // equivalent of the CI-chained `compile --all && generate --all`). Every
+    // per-run flag comes from manifest.config.yaml, so any explicitly-set
+    // single-run flag is a mistake — error rather than silently ignore it.
+    if (options.all) {
+      const singleRunFlags: Array<[string, string]> = [
+        ['projection', '-p/--projection'],
+        ['surface', '-s/--surface'],
+        ['irOutput', '--ir-output'],
+        ['codeOutput', '--code-output'],
+        ['glob', '-g/--glob'],
+        ['auth', '--auth'],
+        ['database', '--database'],
+        ['runtime', '--runtime'],
+        ['response', '--response'],
+      ];
+      const conflicting = singleRunFlags
+        .filter(([name]) => cmd?.getOptionValueSource?.(name) === 'cli')
+        .map(([, label]) => label);
+      if (source) conflicting.unshift('[source]');
+      if (conflicting.length > 0) {
+        console.error(
+          `error: --all is config-driven and ignores ${conflicting.join(', ')}; ` +
+          'remove them or drop --all.'
+        );
+        process.exit(1);
+      }
+      await buildAllFromConfig();
+      return;
+    }
+
     const config = (await getConfig()) ?? {};
-    const projectionOptionsFromConfig = await resolveNextJsProjectionOptions();
+    // Resolve the SELECTED projection's own options + output (not nextjs-only),
+    // layering the global `naming` convention under it.
+    const projectionOptionsFromConfig = await resolveProjectionOptions(options.projection);
 
     const finalOptions = {
       ...options,
@@ -238,13 +280,153 @@ program
         options.irOutput || config?.output || 'ir/',
       codeOutput:
         options.codeOutput ||
-        config?.projections?.nextjs?.output ||
-        config?.projections?.['nextjs']?.output ||
+        config?.projections?.[options.projection]?.output ||
         'generated/',
       projectionOptionsFromConfig,
     };
 
     await buildCommand(source, finalOptions);
+  });
+
+/**
+ * manifest analyze [source]
+ *
+ * Report generated projection code bundle sizes per entity, command, and
+ * store adapter, flagging IR definitions with disproportionately large output.
+ */
+program
+  .command('analyze')
+  .description('Analyze generated projection code bundle sizes (per entity/command/store)')
+  .argument('[source]', 'Source .manifest file or compiled .ir.json')
+  .option('-p, --projection <name>', 'Projection to analyze', 'nextjs')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--threshold <bytes>', 'Byte size threshold to flag large output', (v) => parseInt(v, 10))
+  .option('--json', 'Emit structured JSON to stdout', false)
+  .action(async (source, options = {}) => {
+    await analyzeCommand({
+      source,
+      projection: options.projection,
+      format: options.format,
+      flagThreshold: options.threshold,
+      json: options.json === true || options.format === 'json',
+    });
+  });
+
+/**
+ * manifest seed [source]
+ *
+ * Generate realistic, deterministic seed data from IR entity definitions.
+ * Emits JSON, SQL, or Supabase-shaped output.
+ */
+program
+  .command('seed')
+  .description('Generate realistic seed data from IR entity definitions')
+  .argument('[source]', 'Source .manifest file or compiled .ir.json')
+  .option('-o, --output <path>', 'Output file or directory')
+  .option('--profile <profile>', 'Record-count profile: dev | staging | demo', 'dev')
+  .option('-f, --format <format>', 'Output format: json | sql | supabase', 'json')
+  .option('--count <n>', 'Override record count per entity', (v) => parseInt(v, 10))
+  .option('--entity <name...>', 'Only seed the named entity (repeatable)')
+  .option('--seed <n>', 'Deterministic PRNG seed for reproducible output', (v) => parseInt(v, 10))
+  .option('--json', 'Emit structured JSON to stdout instead of writing files', false)
+  .action(async (source, options = {}) => {
+    await seedCommand({
+      source,
+      output: options.output,
+      profile: options.profile,
+      format: options.format,
+      count: options.count,
+      entity: options.entity,
+      seed: options.seed,
+      json: options.json,
+    });
+  });
+
+/**
+ * manifest profile
+ *
+ * Profile command execution timing (per-phase breakdown, slowest commands)
+ * against the runtime engine to identify performance bottlenecks.
+ */
+program
+  .command('profile')
+  .description('Profile command execution timing to find runtime bottlenecks')
+  .option('--ir <path>', 'IR file to load (default: first *.ir.json found)')
+  .option('-f, --format <format>', 'Output format: table | json | flame', 'table')
+  .option('--iterations <n>', 'Times to run each command (for averaging)', (v) => parseInt(v, 10))
+  .option('--command <name>', 'Command to profile')
+  .option('--entity <name>', 'Entity name for the command')
+  .option('--input <json>', 'Input JSON for the command')
+  .option('--export <path>', 'Export profiling data to a JSON file')
+  .option('--detailed', 'Include detailed per-operation timing', false)
+  .action(async (options = {}) => {
+    await profileCommand({
+      ir: options.ir,
+      format: options.format,
+      iterations: options.iterations,
+      command: options.command,
+      entity: options.entity,
+      input: options.input,
+      export: options.export,
+      detailed: options.detailed,
+    });
+  });
+
+/**
+ * manifest pack <input> / manifest unpack <input>
+ *
+ * Convert IR between JSON and the binary MessagePack `.mir` format. Binary IR
+ * is smaller and parses faster; use it for storage/transport, not editing.
+ */
+program
+  .command('pack')
+  .description('Convert a JSON IR file to the binary MessagePack .mir format')
+  .argument('<input>', 'Path to a .ir.json file')
+  .option('-o, --output <path>', 'Output .mir path (default: alongside input)')
+  .action(async (input, options = {}) => {
+    await packCommand(input, { output: options.output });
+  });
+
+program
+  .command('unpack')
+  .description('Convert a binary .mir file back to JSON IR')
+  .argument('<input>', 'Path to a .mir file')
+  .option('-o, --output <path>', 'Output .ir.json path (default: alongside input)')
+  .option('--no-pretty', 'Emit compact JSON (no indentation)')
+  .action(async (input, options = {}) => {
+    await unpackCommand(input, { output: options.output, pretty: options.pretty });
+  });
+
+/**
+ * manifest generate-from-prompt <prompt>
+ *
+ * Generate .manifest source from a natural-language prompt using an LLM.
+ * LLM-backed (like generate-tests) — requires ANTHROPIC_API_KEY. Generated
+ * source is compiled/validated before output. The command imports its LLM
+ * dependencies lazily so the rest of the CLI stays fast.
+ */
+program
+  .command('generate-from-prompt')
+  .description('Generate .manifest source from a natural-language prompt via an LLM (requires ANTHROPIC_API_KEY)')
+  .argument('<prompt>', 'Natural-language description of the system to generate')
+  .option('--model <model>', 'Claude model to use')
+  .option('-o, --output <path>', 'Write generated .manifest to this file (default: stdout)')
+  .option('--max-retries <n>', 'Max validation-retry attempts', (v) => parseInt(v, 10))
+  .option('--temperature <n>', 'Generation temperature (0-1)', (v) => parseFloat(v))
+  .option('--api-key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY env var)')
+  .option('--skip-validation', 'Skip compiling generated source (not recommended)', false)
+  .option('--verbose', 'Show per-iteration validation details', false)
+  .action(async (prompt, options = {}) => {
+    const { generateFromPromptCommand } = await import('./commands/generate-from-prompt.js');
+    await generateFromPromptCommand(prompt, {
+      model: options.model,
+      output: options.output,
+      maxRetries: options.maxRetries,
+      temperature: options.temperature,
+      apiKey: options.apiKey,
+      skipValidation: options.skipValidation,
+      verbose: options.verbose,
+    });
   });
 
 /**
@@ -1192,7 +1374,7 @@ const pluginsProgram = program
 
 pluginsProgram
   .command('list')
-  .description('List plugins declared in manifest.config')
+  .description('List plugins declared in manifest.config and their load status')
   .option('--json', 'JSON output', false)
   .action(async (options = {}) => {
     const config = (await getConfig()) ?? {};
@@ -1207,24 +1389,104 @@ pluginsProgram
       return;
     }
 
-    const summary = pluginDecls.map((p) => ({
+    const declared = pluginDecls.map((p) => ({
       module: p.module,
       enabled: p.enabled !== false,
       hasOptions: !!p.options && Object.keys(p.options).length > 0,
     }));
 
+    // Actually load the declared plugins so the report reflects reality
+    // (imported, validated, contributed capabilities) rather than echoing
+    // config. Reuses the same memoized load the CLI performed at startup.
+    const manifestVersion = packageVersion;
+    const registries = await loadDeclaredPlugins(manifestVersion);
+
+    const loaded = (registries?.loadedPlugins ?? []).map((plugin) => ({
+      name: plugin.manifest.name,
+      version: plugin.manifest.version,
+      projections: (plugin.projections ?? []).map((x) => x.name),
+      storeAdapters: (plugin.storeAdapters ?? []).map((x) => x.scheme),
+      auditSinks: (plugin.auditSinks ?? []).map((x) => x.id),
+      builtins: (plugin.builtins ?? []).map((x) => x.name),
+      cliCommands: (plugin.cliCommands ?? []).map((x) => x.name),
+    }));
+    const diagnostics = registries?.diagnostics ?? [];
+    const errors = diagnostics.filter((d) => d.severity === 'error');
+    const warnings = diagnostics.filter((d) => d.severity === 'warning');
+
     if (options.json) {
-      console.log(JSON.stringify({ plugins: summary }, null, 2));
-    } else {
-      console.log(chalk.bold('Declared plugins:\n'));
-      for (const p of summary) {
-        const status = p.enabled ? chalk.green('enabled') : chalk.red('disabled');
-        const opts = p.hasOptions ? chalk.gray(' (with options)') : '';
-        console.log(`  ${chalk.cyan(p.module)} ${status}${opts}`);
-      }
-      console.log(`\n  Total: ${summary.length} plugin(s)`);
+      console.log(JSON.stringify({ manifestVersion, declared, loaded, diagnostics }, null, 2));
+      return;
     }
+
+    console.log(chalk.bold('Declared plugins:\n'));
+    for (const p of declared) {
+      const status = p.enabled ? chalk.green('enabled') : chalk.red('disabled');
+      const opts = p.hasOptions ? chalk.gray(' (with options)') : '';
+      console.log(`  ${chalk.cyan(p.module)} ${status}${opts}`);
+    }
+
+    console.log(chalk.bold(`\nLoad results ${chalk.gray(`(Manifest v${manifestVersion})`)}:\n`));
+    if (loaded.length === 0) {
+      console.log(chalk.gray('  No plugins loaded.'));
+    } else {
+      for (const p of loaded) {
+        const caps: string[] = [];
+        if (p.projections.length) caps.push(`projections: ${p.projections.join(', ')}`);
+        if (p.storeAdapters.length) caps.push(`stores: ${p.storeAdapters.join(', ')}`);
+        if (p.builtins.length) caps.push(`builtins: ${p.builtins.join(', ')}`);
+        if (p.auditSinks.length) caps.push(`audit sinks: ${p.auditSinks.join(', ')}`);
+        if (p.cliCommands.length) caps.push(`cli: ${p.cliCommands.join(', ')}`);
+        console.log(`  ${chalk.green('OK')} ${chalk.cyan(p.name)} ${chalk.gray('v' + p.version)}`);
+        if (caps.length) console.log(`      ${chalk.gray(caps.join(' | '))}`);
+      }
+    }
+
+    if (errors.length || warnings.length) {
+      console.log(chalk.bold('\nDiagnostics:\n'));
+      for (const d of [...errors, ...warnings]) {
+        const tag = d.pluginName ? ` [${d.pluginName}]` : '';
+        const color = d.severity === 'error' ? chalk.red : chalk.yellow;
+        console.log(`  ${color(d.severity)}${tag}: ${d.message}`);
+      }
+    }
+
+    console.log(
+      `\n  ${declared.length} declared | ${loaded.length} loaded | ${errors.length} error(s) | ${warnings.length} warning(s)`,
+    );
   });
+
+/**
+ * Load config-declared plugins at startup and register their CLI commands so
+ * they appear in `--help` and are dispatchable. Conditional and fail-soft:
+ *   - No `plugins` declared → returns immediately (plugin-free projects pay
+ *     nothing beyond the config read).
+ *   - A plugin that fails to load surfaces a diagnostic and is skipped; the
+ *     CLI never bricks. Diagnostic output is deferred to `manifest plugins`
+ *     itself so that command can render the full picture without duplication;
+ *     every other command surfaces load warnings/errors here so a broken
+ *     plugin is never silent.
+ */
+async function activateDeclaredPlugins(): Promise<void> {
+  try {
+    const registries = await loadDeclaredPlugins(packageVersion);
+    if (!registries) return;
+    if (process.argv[2] !== 'plugins') {
+      reportPluginDiagnostics(registries);
+    }
+    registerPluginCliCommands(
+      registries.cliCommands,
+      program as unknown as CliProgramLike,
+    );
+  } catch (err) {
+    // Plugin activation must never brick the CLI.
+    console.error(
+      chalk.yellow(
+        `Warning: plugin activation failed: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    );
+  }
+}
 
 /**
  * Run the CLI
@@ -1232,6 +1494,7 @@ pluginsProgram
  * This function is exported so it can be called from the bin file.
  */
 export async function runCli(): Promise<void> {
+  await activateDeclaredPlugins();
   await program.parseAsync(process.argv);
 }
 

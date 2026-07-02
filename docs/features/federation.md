@@ -4,7 +4,7 @@
 
 The federated runtime enables multiple Manifest services to communicate with each other while preserving policy enforcement and workflow metadata across service boundaries.
 
-**Package note:** Federation lives in `src/manifest/federation/` and is **not** yet exported from `@angriff36/manifest` in `package.json`. Use it from the monorepo source (or add a `./federation` export when publishing). The API below matches `src/manifest/federation/types.ts` and `client.ts`.
+**Package note:** Federation lives in `src/manifest/federation/` and is exported as the `@angriff36/manifest/federation` subpath. The API below matches `src/manifest/federation/types.ts` and `client.ts`.
 
 ## ServiceDescriptor
 
@@ -40,7 +40,7 @@ Build a descriptor from compiled IR with `buildDescriptor()` (`src/manifest/fede
 ## FederationClient
 
 ```typescript
-import { FederationRegistry, FederationClient, buildDescriptor } from '../../src/manifest/federation/index.js';
+import { FederationRegistry, FederationClient, buildDescriptor } from '@angriff36/manifest/federation';
 
 const ordersDescriptor = buildDescriptor('orders', ordersIR, {
   endpoint: 'https://orders.svc.cluster:8080',

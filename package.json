@@ -160,6 +160,10 @@
       "types": "./dist/manifest/outbox/stores/postgres.d.ts",
       "import": "./dist/manifest/outbox/stores/postgres.js"
     },
+    "./outbox/redis": {
+      "types": "./dist/manifest/outbox/stores/redis.d.ts",
+      "import": "./dist/manifest/outbox/stores/redis.js"
+    },
     "./outbox/worker": {
       "types": "./dist/manifest/outbox/worker.d.ts",
       "import": "./dist/manifest/outbox/worker.js"
@@ -207,6 +211,10 @@
     "./agent-sdk": {
       "types": "./dist/manifest/agent-sdk/index.d.ts",
       "import": "./dist/manifest/agent-sdk/index.js"
+    },
+    "./federation": {
+      "types": "./dist/manifest/federation/index.d.ts",
+      "import": "./dist/manifest/federation/index.js"
     },
     "./ir-version-store": {
       "types": "./dist/manifest/ir-version-store.d.ts",

@@ -12,11 +12,31 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { seedCommand } from './seed.js';
 import type { IR } from '@angriff36/manifest/ir';
+
+const execFileAsync = promisify(execFile);
+const CLI_ENTRY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'index.ts');
+
+async function runCli(args: string[]): Promise<{ stdout: string; code: number }> {
+  try {
+    const { stdout } = await execFileAsync(
+      process.platform === 'win32' ? 'npx.cmd' : 'npx',
+      ['tsx', CLI_ENTRY, ...args],
+      { shell: process.platform === 'win32', timeout: 60_000 },
+    );
+    return { stdout, code: 0 };
+  } catch (error) {
+    const e = error as { stdout?: string; code?: number };
+    return { stdout: e.stdout ?? '', code: e.code ?? 1 };
+  }
+}
 
 // ---------- IR fixtures ----------
 
@@ -364,4 +384,14 @@ describe('seedCommand', () => {
     }
     expect(exitCode).toBe(1);
   });
+
+  it('is registered with help text and expected options', async () => {
+    process.chdir(originalCwd);
+    const { stdout, code } = await runCli(['seed', '--help']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('seed data');
+    expect(stdout).toContain('--profile');
+    expect(stdout).toContain('--format');
+    expect(stdout).toContain('--seed');
+  }, 30_000);
 });

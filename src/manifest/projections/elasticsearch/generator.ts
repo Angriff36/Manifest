@@ -373,7 +373,7 @@ function generateIndexer(ir: IR, opts: ReturnType<typeof normalizeOptions>): str
   lines.push(` * guarantee at-least-once delivery and idempotent indexing.`);
   lines.push(` */`);
   lines.push(``);
-  lines.push(`import type { OutboxStore, OutboxEntry } from '@manifest/outbox';`);
+  lines.push(`import type { OutboxStore, OutboxEntry } from '@angriff36/manifest/outbox';`);
   lines.push(``);
   lines.push(`/** Elasticsearch bulk operation shape */`);
   lines.push(`interface BulkOperation {`);

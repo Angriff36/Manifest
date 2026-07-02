@@ -636,9 +636,9 @@ export async function generateCommand(
  * once at the end.
  */
 export async function generateAllFromConfig(options: { check?: boolean; irOverride?: string } = {}): Promise<void> {
-  const { loadConfig } = await import('../utils/config.js');
-  const config = await loadConfig(process.cwd());
-  const projections = config?.projections ?? {};
+  const { loadAllConfigs, layerProjectionOptions } = await import('../utils/config.js');
+  const { build } = await loadAllConfigs(process.cwd());
+  const projections = build.projections ?? {};
   const names = Object.keys(projections);
 
   if (names.length === 0) {
@@ -650,7 +650,7 @@ export async function generateAllFromConfig(options: { check?: boolean; irOverri
   // many per-file IRs (e.g. merged IR + stale shards), single-file projections
   // (types/client/registries) would be written once per IR with last-write-wins.
   // An explicit IR path (the merged IR from `compile --all`) avoids that.
-  const irSource = options.irOverride || config?.output || 'ir/';
+  const irSource = options.irOverride || build.output || 'ir/';
   console.log(chalk.bold(`\nGenerating ${names.length} configured projection(s): ${names.join(', ')}`));
   console.log(chalk.gray(`  IR source: ${irSource}`));
 
@@ -673,7 +673,7 @@ export async function generateAllFromConfig(options: { check?: boolean; irOverri
         database: undefined as unknown as string,
         runtime: undefined as unknown as string,
         response: undefined as unknown as string,
-        projectionOptionsFromConfig: (projection.options ?? {}) as Record<string, unknown>,
+        projectionOptionsFromConfig: layerProjectionOptions(build, name),
         check: options.check,
         throwOnError: true,
       });
