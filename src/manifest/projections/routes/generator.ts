@@ -28,21 +28,11 @@ import type {
   RoutesProjectionOptions,
   ManualRouteDeclaration,
 } from './types';
+import { resolveRouteContract, type RouteContract } from '../shared/route-contract';
 
 // ============================================================================
 // Helpers
 // ============================================================================
-
-function toKebabCase(value: string): string {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-    .replace(/\s+/g, '-')
-    .toLowerCase();
-}
-
-function toEntitySegment(value: string): string {
-  return value.toLowerCase();
-}
 
 function toCamelCase(value: string): string {
   if (!value) return value;
@@ -82,7 +72,9 @@ function deriveRouteId(
     case 'entity-read':
       return `${source.entity}.${method.toLowerCase()}.${pathSuffix}`;
     case 'command':
-      return `${source.entity}.${source.command}`;
+      return source.variant === 'concrete'
+        ? `${source.entity}.${source.command}.concrete`
+        : `${source.entity}.${source.command}`;
     case 'manual':
       return `manual.${source.id}`;
   }
@@ -97,18 +89,17 @@ function deriveRouteId(
  */
 function deriveEntityReadRoutes(
   entity: IREntity,
-  basePath: string,
+  contract: RouteContract,
   includeAuth: boolean,
   includeTenant: boolean
 ): RouteEntry[] {
-  const segment = toEntitySegment(entity.name);
   const routes: RouteEntry[] = [];
 
-  // GET /basePath/{entity}/list — list all
+  // GET /{apiBasePath}/{entity}/list — list all
   const listSource = { kind: 'entity-read' as const, entity: entity.name };
   routes.push({
     id: deriveRouteId(listSource, 'GET', 'list'),
-    path: `${basePath}/${segment}/list`,
+    path: contract.listPath(entity.name),
     method: 'GET',
     params: [],
     source: listSource,
@@ -116,11 +107,11 @@ function deriveEntityReadRoutes(
     tenant: includeTenant,
   });
 
-  // GET /basePath/{entity}/:id — get by ID
+  // GET /{apiBasePath}/{entity}/:id — get by ID (colon param style)
   const detailSource = { kind: 'entity-read' as const, entity: entity.name };
   routes.push({
     id: deriveRouteId(detailSource, 'GET', 'detail'),
-    path: `${basePath}/${segment}/:id`,
+    path: contract.detailPath(entity.name, 'colon'),
     method: 'GET',
     params: [{ name: 'id', type: 'string', location: 'path' as const }],
     source: detailSource,
@@ -132,18 +123,24 @@ function deriveEntityReadRoutes(
 }
 
 /**
- * Derive route entries from a single IR command (write endpoint).
+ * Derive route entries for a single IR command (write endpoints).
+ *
+ * Default (dispatcher enabled): one entry at the canonical dispatcher invocation
+ * path using the RAW entity + command names. When `concreteEnabled`, an
+ * additional deprecated concrete entry (`/<apiBasePath>/<entity>/<kebab-command>`)
+ * is emitted — the exact URL the `nextjs.command` surface serves when opted in.
+ * Returns [] for orphan commands (no entity).
  */
-function deriveCommandRoute(
+function deriveCommandRoutes(
   command: IRCommand,
-  basePath: string,
+  contract: RouteContract,
   includeAuth: boolean,
-  includeTenant: boolean
-): RouteEntry | null {
-  if (!command.entity) return null;
-
-  const segment = toEntitySegment(command.entity);
-  const commandSegment = toKebabCase(command.name);
+  includeTenant: boolean,
+  dispatcherEnabled: boolean,
+  concreteEnabled: boolean
+): RouteEntry[] {
+  if (!command.entity) return [];
+  const entity = command.entity;
 
   const params: RouteParam[] = command.parameters.map((p: IRParameter) => ({
     name: p.name,
@@ -152,21 +149,45 @@ function deriveCommandRoute(
     required: p.required,
   }));
 
-  const source = {
-    kind: 'command' as const,
-    entity: command.entity,
-    command: command.name,
-  };
+  const out: RouteEntry[] = [];
 
-  return {
-    id: deriveRouteId(source, 'POST', commandSegment),
-    path: `${basePath}/${segment}/${commandSegment}`,
-    method: 'POST',
-    params,
-    source,
-    auth: includeAuth,
-    tenant: includeTenant,
-  };
+  if (dispatcherEnabled) {
+    const source = {
+      kind: 'command' as const,
+      entity,
+      command: command.name,
+      variant: 'dispatcher' as const,
+    };
+    out.push({
+      id: deriveRouteId(source, 'POST', command.name),
+      path: contract.dispatcherInvocationPath(entity, command.name),
+      method: 'POST',
+      params,
+      source,
+      auth: includeAuth,
+      tenant: includeTenant,
+    });
+  }
+
+  if (concreteEnabled) {
+    const source = {
+      kind: 'command' as const,
+      entity,
+      command: command.name,
+      variant: 'concrete' as const,
+    };
+    out.push({
+      id: deriveRouteId(source, 'POST', command.name),
+      path: contract.concreteCommandPath(entity, command.name),
+      method: 'POST',
+      params,
+      source,
+      auth: includeAuth,
+      tenant: includeTenant,
+    });
+  }
+
+  return out;
 }
 
 /**
@@ -196,9 +217,22 @@ function buildRouteManifest(
   options: RoutesProjectionOptions
 ): { manifest: RouteManifest; diagnostics: ProjectionDiagnostic[] } {
   const diagnostics: ProjectionDiagnostic[] = [];
-  const basePath = options.basePath ?? '/api';
+  // Resolve URL layout through the shared contract so this surface matches the
+  // routes nextjs emits under identical options. `basePath` is the legacy alias
+  // for `apiBasePath`; either (or neither → derived from appDir) feeds the contract.
+  const contract = resolveRouteContract({
+    appDir: options.appDir,
+    apiBasePath: options.apiBasePath ?? options.basePath,
+    dispatcherBasePath: options.dispatcherBasePath,
+    routeSegments: options.routeSegments,
+    routeCasing: options.routeCasing,
+    dispatcherRoutePath: options.dispatcher?.path,
+  });
+  const basePath = contract.apiBasePath;
   const includeAuth = options.includeAuth ?? true;
   const includeTenant = options.includeTenant ?? true;
+  const dispatcherEnabled = options.dispatcher?.enabled ?? true;
+  const concreteEnabled = options.concreteCommandRoutes?.enabled ?? false;
   const manualRoutes = options.manualRoutes ?? [];
 
   const routes: RouteEntry[] = [];
@@ -206,7 +240,7 @@ function buildRouteManifest(
   // 1. Derive entity read routes (sorted by entity name for determinism)
   const sortedEntities = [...ir.entities].sort((a, b) => a.name.localeCompare(b.name));
   for (const entity of sortedEntities) {
-    routes.push(...deriveEntityReadRoutes(entity, basePath, includeAuth, includeTenant));
+    routes.push(...deriveEntityReadRoutes(entity, contract, includeAuth, includeTenant));
   }
 
   // 2. Derive command routes (sorted by entity.command for determinism)
@@ -216,9 +250,16 @@ function buildRouteManifest(
     return aKey.localeCompare(bKey);
   });
   for (const command of sortedCommands) {
-    const route = deriveCommandRoute(command, basePath, includeAuth, includeTenant);
-    if (route) {
-      routes.push(route);
+    const cmdRoutes = deriveCommandRoutes(
+      command,
+      contract,
+      includeAuth,
+      includeTenant,
+      dispatcherEnabled,
+      concreteEnabled,
+    );
+    if (cmdRoutes.length > 0) {
+      routes.push(...cmdRoutes);
     } else if (!command.entity) {
       diagnostics.push({
         severity: 'warning',
@@ -335,7 +376,10 @@ function generateTypedPathBuilders(manifest: RouteManifest): string {
 
     for (const route of commandRoutes) {
       if (route.source.kind !== 'command') continue;
-      const fnName = `${toCamelCase(route.source.entity)}${toPascalCase(route.source.command)}Path`;
+      // Concrete (deprecated) variants get a distinct builder name so they don't
+      // collide with the canonical dispatcher builder for the same command.
+      const variantSuffix = route.source.variant === 'concrete' ? 'ConcretePath' : 'Path';
+      const fnName = `${toCamelCase(route.source.entity)}${toPascalCase(route.source.command)}${variantSuffix}`;
 
       lines.push(`/** ${route.method} ${route.path} */`);
       lines.push(`export function ${fnName}(): string {`);

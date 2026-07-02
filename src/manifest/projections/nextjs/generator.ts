@@ -20,8 +20,15 @@ import {
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   READ_ROUTES_DEFAULTS,
 } from './defaults.js';
-import { resolveTableName, applyRouteCasing, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
+import { resolveTableName, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
+import {
+  resolveRouteContract,
+  resolveEntitySegment,
+  listEnvelopeKey,
+  detailEnvelopeKey,
+  type RouteContract,
+} from '../shared/route-contract.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
 
 /**
@@ -133,6 +140,11 @@ interface NormalizedNextJsOptions {
   dateSerialization: 'date' | 'iso-string';
   emitCompanions: boolean;
   runtimeConfigImport?: string;
+  /** Explicit client/dispatcher URL bases; undefined ⇒ contract derives from appDir. */
+  apiBasePath?: string;
+  dispatcherBasePath?: string;
+  /** Resolved ts.client fetch adapter (host-provided auth fetch), if configured. */
+  clientFetchAdapter?: { importPath: string; importName: string };
 }
 
 /**
@@ -202,7 +214,33 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
     emitCompanions: options?.emitCompanions ?? NEXTJS_DEFAULTS.emitCompanions,
     runtimeConfigImport: options?.runtimeConfigImport,
+    apiBasePath: options?.apiBasePath,
+    dispatcherBasePath: options?.dispatcherBasePath,
+    clientFetchAdapter: options?.client?.fetchAdapter
+      ? {
+          importPath: options.client.fetchAdapter.importPath,
+          importName: options.client.fetchAdapter.importName ?? 'apiFetch',
+        }
+      : undefined,
   };
+}
+
+/**
+ * Build the cross-projection route contract from normalized options. This is the
+ * single source of truth for entity URL segments, the api/dispatcher URL bases,
+ * route pathHints, and read-envelope keys: the generated client SDK and the
+ * emitted route files both resolve their paths from THIS, so a client can never
+ * target a URL no route serves (the drift the 2026-07-01 audit flagged).
+ */
+function buildRouteContract(options: NormalizedNextJsOptions): RouteContract {
+  return resolveRouteContract({
+    appDir: options.appDir,
+    apiBasePath: options.apiBasePath,
+    dispatcherBasePath: options.dispatcherBasePath,
+    routeSegments: options.routeSegments,
+    routeCasing: options.routeCasing,
+    dispatcherRoutePath: options.dispatcher.path,
+  });
 }
 
 /**
@@ -235,8 +273,9 @@ function toKebabCase(value: string): string {
     .toLowerCase();
 }
 
-function toEntitySegment(value: string, casing: RouteCasing = 'lowercase'): string {
-  return applyRouteCasing(value, casing);
+function capitalizeFirst(value: string): string {
+  if (!value) return value;
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 /**
@@ -261,7 +300,10 @@ function resolveDbAccessor(entityName: string, options: NormalizedNextJsOptions)
  * entity name normalized per `routeCasing` (default `lowercase`, legacy behavior).
  */
 function resolveRouteSegment(entityName: string, options: NormalizedNextJsOptions): string {
-  return options.routeSegments[entityName] ?? toEntitySegment(entityName, options.routeCasing);
+  return resolveEntitySegment(entityName, {
+    routeSegments: options.routeSegments,
+    routeCasing: options.routeCasing,
+  });
 }
 
 /**
@@ -427,7 +469,7 @@ function generatePrismaQuery(
   options: NormalizedNextJsOptions
 ): string {
   const accessorName = resolveDbAccessor(entity.name, options);
-  const variableName = `${toLowerCamelCase(entity.name)}s`;
+  const variableName = listEnvelopeKey(entity.name);
   const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
 
   const whereConditions: string[] = [];
@@ -657,9 +699,9 @@ export class NextJsProjection implements ProjectionTarget {
         if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
           return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
         }
-        // dispatcher.path is relative to appDir (joined directly; the
-        // default starts with '/' so we don't double-slash on appDir).
-        const dispatcherPathHint = `${dispatcherOpts.appDir}${dispatcherOpts.dispatcher.path}`;
+        // Route the dispatcher pathHint through the contract so the emitted
+        // file location and the client's dispatcher URL derive from one place.
+        const dispatcherPathHint = buildRouteContract(dispatcherOpts).dispatcherRoutePathHint();
         return {
           artifacts: [{
             id: 'nextjs.dispatcher',
@@ -829,36 +871,108 @@ export class NextJsProjection implements ProjectionTarget {
     return { code: lines.join('\n'), diagnostics: [] };
   }
 
+  /**
+   * Generate the plain-TypeScript client SDK: typed list/detail read callers and
+   * typed command callers. Every URL comes from the shared route contract (so it
+   * tracks appDir/routeSegments/routeCasing and can never desync from the emitted
+   * routes) and every envelope key comes from the same helper the server routes
+   * use. Command callers POST the canonical dispatcher at its RAW entity/command
+   * path and return the dispatcher's response envelope.
+   */
   private _client(ir: IR, options: NormalizedNextJsOptions): CodeResult {
+    const contract = buildRouteContract(options);
+    const adapter = options.clientFetchAdapter;
+    const dateAsString = options.dateSerialization === 'iso-string';
+    // Commands are entity-scoped in the dispatcher; skip any orphan commands.
+    const commands = ir.commands.filter((c) => c.entity);
+
     const lines: string[] = [];
 
     lines.push('// Auto-generated client SDK from Manifest IR');
     lines.push('// DO NOT EDIT - This file is generated from .manifest source');
     lines.push('');
 
+    // Optional host-provided fetch adapter (auth/credentials). Aliased to
+    // apiFetch so read + command call sites are identical to the inline path.
+    if (adapter) {
+      const binding = adapter.importName === 'apiFetch' ? 'apiFetch' : `${adapter.importName} as apiFetch`;
+      lines.push(`import { ${binding} } from ${JSON.stringify(adapter.importPath)};`);
+      lines.push('');
+    }
+
+    // Command response envelope — the exact success body the dispatcher returns
+    // ({ data, events, diagnostics }); on failure apiFetch throws. Emitted only
+    // when the IR has commands.
+    if (commands.length > 0) {
+      lines.push('/** The command response body returned by the Manifest dispatcher. */');
+      lines.push('export interface ManifestCommandResponse<T = unknown> {');
+      lines.push('  data?: T;');
+      lines.push('  events?: unknown[];');
+      lines.push('  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;');
+      lines.push('  error?: string;');
+      lines.push('}');
+      lines.push('');
+    }
+
+    // Inline default fetch helper (throws on non-2xx, surfacing the Manifest
+    // error envelope's `error` field). Skipped when a fetchAdapter is imported.
+    if (!adapter) {
+      lines.push('async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {');
+      lines.push('  const response = await fetch(url, init);');
+      lines.push('  if (!response.ok) {');
+      lines.push('    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));');
+      lines.push('    throw new Error(body.error || body.message || `Request failed: ${response.status}`);');
+      lines.push('  }');
+      lines.push('  return response.json();');
+      lines.push('}');
+      lines.push('');
+    }
+
     for (const entity of ir.entities) {
-      const lowerEntity = resolveRouteSegment(entity.name, options);
-      const delegateName = toLowerCamelCase(entity.name);
+      const listKey = contract.listEnvelopeKey(entity.name);
+      const detailKey = contract.detailEnvelopeKey(entity.name);
 
       // List (findMany) function
       lines.push(`export async function get${entity.name}s(): Promise<${entity.name}[]> {`);
-      lines.push(`  const response = await fetch(\`/api/${lowerEntity}/list\`);`);
-      lines.push(`  if (!response.ok) {`);
-      lines.push(`    throw new Error("Failed to fetch ${entity.name}s");`);
-      lines.push(`  }`);
-      lines.push(`  const data = await response.json();`);
-      lines.push(`  return data.${delegateName}s;`);
+      lines.push(`  const data = await apiFetch<{ ${listKey}: ${entity.name}[] }>(\`${contract.listPath(entity.name)}\`);`);
+      lines.push(`  return data.${listKey};`);
       lines.push(`}`);
       lines.push('');
 
       // Detail (findUnique) function
       lines.push(`export async function get${entity.name}(id: string): Promise<${entity.name}> {`);
-      lines.push(`  const response = await fetch(\`/api/${lowerEntity}/\${encodeURIComponent(id)}\`);`);
-      lines.push(`  if (!response.ok) {`);
-      lines.push(`    throw new Error("Failed to fetch ${entity.name}");`);
-      lines.push(`  }`);
-      lines.push(`  const data = await response.json();`);
-      lines.push(`  return data.${delegateName};`);
+      lines.push(
+        `  const data = await apiFetch<{ ${detailKey}: ${entity.name} }>(\`${contract.entityBasePath(entity.name)}/\${encodeURIComponent(id)}\`);`,
+      );
+      lines.push(`  return data.${detailKey};`);
+      lines.push(`}`);
+      lines.push('');
+    }
+
+    // Command callers — POST the canonical dispatcher. The request body carries
+    // the command params plus an optional instanceId (the dispatcher reads
+    // body.instanceId / body.id to address non-create commands).
+    for (const command of commands) {
+      const entityName = command.entity as string;
+      const fnName = `${toLowerCamelCase(entityName)}${capitalizeFirst(command.name)}`;
+      const hasParams = command.parameters.length > 0;
+      const inputType = hasParams
+        ? `{ ${command.parameters
+            .map((p) => `${p.name}${p.required ? '' : '?'}: ${irTypeToTsType(p.type, dateAsString)}`)
+            .join('; ')} }`
+        : 'Record<string, never>';
+      const returnType = command.returns ? irTypeToTsType(command.returns, dateAsString) : 'unknown';
+      const url = contract.dispatcherInvocationPath(entityName, command.name);
+
+      lines.push(`export async function ${fnName}(`);
+      lines.push(`  input${hasParams ? '' : '?'}: ${inputType},`);
+      lines.push(`  options?: { instanceId?: string },`);
+      lines.push(`): Promise<ManifestCommandResponse<${returnType}>> {`);
+      lines.push(`  return apiFetch<ManifestCommandResponse<${returnType}>>(\`${url}\`, {`);
+      lines.push(`    method: "POST",`);
+      lines.push(`    headers: { "Content-Type": "application/json" },`);
+      lines.push(`    body: JSON.stringify({ ...input, instanceId: options?.instanceId }),`);
+      lines.push(`  });`);
       lines.push(`}`);
       lines.push('');
     }
@@ -1776,8 +1890,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
    */
   private _generateGetRoute(entity: IREntity, options: NormalizedNextJsOptions): string {
     const { databaseImportPath, responseImportPath } = options;
-    const delegateName = toLowerCamelCase(entity.name);
-    const variableName = `${delegateName}s`;
+    const variableName = listEnvelopeKey(entity.name);
 
     const lines: string[] = [];
 
@@ -1835,7 +1948,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
    */
   private _generateDetailRoute(entity: IREntity, options: NormalizedNextJsOptions): string {
     const { databaseImportPath, responseImportPath } = options;
-    const delegateName = toLowerCamelCase(entity.name);
+    const delegateName = detailEnvelopeKey(entity.name);
     const accessorName = resolveDbAccessor(entity.name, options);
 
     const lines: string[] = [];

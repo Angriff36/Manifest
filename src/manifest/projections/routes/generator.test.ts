@@ -113,7 +113,9 @@ describe('RoutesProjection', () => {
       );
       expect(commandRoute).toBeDefined();
       expect(commandRoute.method).toBe('POST');
-      expect(commandRoute.path).toBe('/api/recipe/create');
+      // Default write surface is the canonical dispatcher (raw entity + command).
+      expect(commandRoute.path).toBe('/api/manifest/Recipe/commands/create');
+      expect(commandRoute.source.variant).toBe('dispatcher');
       expect(commandRoute.params).toHaveLength(1);
       expect(commandRoute.params[0].name).toBe('name');
       expect(commandRoute.params[0].type).toBe('string');
@@ -333,9 +335,65 @@ describe('RoutesProjection', () => {
 
       const code = firstCode(routeResult);
 
-      // Command path builder
+      // Command path builder — canonical dispatcher invocation path.
       expect(code).toContain('export function recipeCreatePath(): string');
-      expect(code).toContain('return "/api/recipe/create"');
+      expect(code).toContain('return "/api/manifest/Recipe/commands/create"');
+    });
+
+    it('emits concrete command paths only when concreteCommandRoutes is enabled', async () => {
+      const source = `
+        entity Recipe {
+          property id: string
+
+          command create(name: string) {
+            mutate name = name
+          }
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      // Default: only the dispatcher builder, no concrete builder.
+      const dflt = firstCode(projection.generate(result.ir!, {
+        surface: 'routes.ts',
+        options: { generatedAt: '2026-01-01T00:00:00.000Z' },
+      }));
+      expect(dflt).toContain('export function recipeCreatePath(): string');
+      expect(dflt).not.toContain('recipeCreateConcretePath');
+
+      // Opted in: BOTH the dispatcher builder and the deprecated concrete builder.
+      const concrete = firstCode(projection.generate(result.ir!, {
+        surface: 'routes.ts',
+        options: { generatedAt: '2026-01-01T00:00:00.000Z', concreteCommandRoutes: { enabled: true } },
+      }));
+      expect(concrete).toContain('export function recipeCreatePath(): string');
+      expect(concrete).toContain('return "/api/manifest/Recipe/commands/create"');
+      expect(concrete).toContain('export function recipeCreateConcretePath(): string');
+      expect(concrete).toContain('return "/api/recipe/create"');
+    });
+
+    it('routeCasing / appDir shape the read + dispatcher paths', async () => {
+      const source = `
+        entity OrderLine {
+          property id: string
+
+          command publishRecipe(name: string) {
+            mutate name = name
+          }
+        }
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const code = firstCode(projection.generate(result.ir!, {
+        surface: 'routes.ts',
+        options: { generatedAt: '2026-01-01T00:00:00.000Z', appDir: 'app/api/v2', routeCasing: 'kebab-case' },
+      }));
+
+      // appDir moves the api prefix to /api/v2; kebab casing splits OrderLine.
+      expect(code).toContain('return "/api/v2/order-line/list"');
+      // Dispatcher invocation keeps the RAW entity + command names.
+      expect(code).toContain('return "/api/v2/manifest/OrderLine/commands/publishRecipe"');
     });
 
     it('generates typed path builders for manual routes', async () => {

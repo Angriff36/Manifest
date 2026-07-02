@@ -30,7 +30,9 @@ import type {
   ProjectionDiagnostic,
 } from '../interface';
 import type { HonoProjectionOptions } from './types';
+import type { RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
+import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 
 // ============================================================================
 // Constants
@@ -66,6 +68,8 @@ interface NormalizedOptions {
   runtimeFactoryName: string;
   validationImportPath: string | undefined;
   basePath: string;
+  routeCasing: RouteCasing | undefined;
+  routeSegments: Record<string, string> | undefined;
   includeTenantContext: boolean;
   tenantIdProperty: string;
   emitTypes: boolean;
@@ -84,6 +88,8 @@ function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
     runtimeFactoryName: opts.runtimeFactoryName ?? 'createManifestRuntime',
     validationImportPath: opts.validationImportPath,
     basePath: opts.basePath ?? '/api',
+    routeCasing: opts.routeCasing,
+    routeSegments: opts.routeSegments,
     includeTenantContext: opts.includeTenantContext ?? true,
     tenantIdProperty: opts.tenantIdProperty ?? 'tenantId',
     emitTypes: opts.emitTypes ?? true,
@@ -363,7 +369,15 @@ function generateHonoEntityRoutes(
   policies: IRPolicy[],
   options: NormalizedOptions,
 ): string {
-  const segment = toEntitySegment(entity.name);
+  // Route paths resolve through the shared contract so basePath actually
+  // prefixes emitted routes and the entity segment/casing matches every other
+  // projection (client, routes, react-query). Emitted paths are truthful for an
+  // app mounted at root (`export default app`).
+  const contract = resolveRouteContract({
+    apiBasePath: options.basePath,
+    routeCasing: options.routeCasing,
+    routeSegments: options.routeSegments,
+  });
   const lines: string[] = [];
   const hasValidation = !!options.validationImportPath;
 
@@ -377,9 +391,9 @@ function generateHonoEntityRoutes(
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
   if (options.publicReads) {
-    lines.push(`  app.get('/${segment}/list', async (c) => {`);
+    lines.push(`  app.get('${contract.listPath(entity.name)}', async (c) => {`);
   } else {
-    lines.push(`  app.get('/${segment}/list', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(`  app.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (c) => {`);
   }
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   if (options.includeTenantContext && !options.publicReads) {
@@ -399,9 +413,9 @@ function generateHonoEntityRoutes(
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
   if (options.publicReads) {
-    lines.push(`  app.get('/${segment}/:id', async (c) => {`);
+    lines.push(`  app.get('${contract.detailPath(entity.name, 'colon')}', async (c) => {`);
   } else {
-    lines.push(`  app.get('/${segment}/:id', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(`  app.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (c) => {`);
   }
   lines.push(`    const id = c.req.param('id');`);
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
@@ -425,17 +439,17 @@ function generateHonoEntityRoutes(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const paramsType = command.parameters.length > 0
-      ? `${toPascalCase(entity.name)}${toPascalCase(command.name)}Params`
+    const schemaName = command.parameters.length > 0
+      ? zodParamsSchemaName(entity.name, command.name)
       : undefined;
 
-    lines.push(`  app.post('/${segment}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`);
+    lines.push(`  app.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (c) => {`);
     lines.push('    try {');
 
     // Validation
-    if (hasValidation && paramsType) {
+    if (hasValidation && schemaName) {
       lines.push('      const body = await c.req.json();');
-      lines.push(`      const parseResult = ${paramsType}Schema.safeParse(body);`);
+      lines.push(`      const parseResult = ${schemaName}.safeParse(body);`);
       lines.push('      if (!parseResult.success) {');
       lines.push('        return c.json({');
       lines.push("          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },");
@@ -517,7 +531,7 @@ function generateHonoRouter(
       if (command.parameters.length > 0 && command.entity) {
         const entity = entities.find(e => e.name === command.entity);
         if (entity) {
-          schemaImports.push(`${toPascalCase(command.entity)}${toPascalCase(command.name)}ParamsSchema`);
+          schemaImports.push(zodParamsSchemaName(command.entity, command.name));
         }
       }
     }

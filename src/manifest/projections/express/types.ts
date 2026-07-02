@@ -6,6 +6,8 @@
  * router module generation from Manifest IR.
  */
 
+import type { RouteCasing } from '../shared/naming.js';
+
 /**
  * Options for the Express/Fastify route handler projection.
  */
@@ -55,10 +57,26 @@ export interface ExpressProjectionOptions {
   validationImportPath?: string;
 
   /**
-   * Base route prefix for all generated routes.
+   * Base route prefix for all generated routes. Applied to every emitted route
+   * path via the shared route contract (so `/recipe/list` is emitted as
+   * `${basePath}/recipe/list`).
    * Default: '/api'
    */
   basePath?: string;
+
+  /**
+   * URL casing for entity route segments, resolved through the shared route
+   * contract so express/fastify routes agree with the zod schema names and
+   * every other projection's paths. Default: `'lowercase'` (`PrepTask` →
+   * `preptask`, the historical `toEntitySegment` behavior).
+   */
+  routeCasing?: RouteCasing;
+
+  /**
+   * Explicit per-entity route segment overrides (used verbatim). Escape hatch
+   * when the derived casing is wrong for a specific entity.
+   */
+  routeSegments?: Record<string, string>;
 
   /**
    * Whether to include tenant context extraction from auth.

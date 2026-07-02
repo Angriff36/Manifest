@@ -1933,7 +1933,7 @@ export function createManifestRouter(): Router {
   const router = Router();
 
   /** List all Task entities */
-  router.get('/task/list', requireAuth, async (req, res) => {
+  router.get('/api/task/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('Task', { tenantId: req.user?.tenantId });
@@ -1944,7 +1944,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single Task by ID */
-  router.get('/task/:id', requireAuth, async (req, res) => {
+  router.get('/api/task/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('Task', req.params.id, { tenantId: req.user?.tenantId });
@@ -1964,7 +1964,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  router.post('/task/assign-task', requireAuth, async (req, res) => {
+  router.post('/api/task/assign-task', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -1996,7 +1996,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  router.post('/task/update-status', requireAuth, async (req, res) => {
+  router.post('/api/task/update-status', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -2040,7 +2040,7 @@ export function createManifestRouter(): Router {
   const router = Router();
 
   /** List all User entities */
-  router.get('/user/list', requireAuth, async (req, res) => {
+  router.get('/api/user/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('User', { tenantId: req.user?.tenantId });
@@ -2051,7 +2051,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single User by ID */
-  router.get('/user/:id', requireAuth, async (req, res) => {
+  router.get('/api/user/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('User', req.params.id, { tenantId: req.user?.tenantId });
@@ -2083,7 +2083,7 @@ export function createManifestRouter(): Router {
   const router = Router();
 
   /** List all Task entities */
-  router.get('/task/list', requireAuth, async (req, res) => {
+  router.get('/api/task/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('Task', { tenantId: req.user?.tenantId });
@@ -2094,7 +2094,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single Task by ID */
-  router.get('/task/:id', requireAuth, async (req, res) => {
+  router.get('/api/task/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('Task', req.params.id, { tenantId: req.user?.tenantId });
@@ -2114,7 +2114,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  router.post('/task/assign-task', requireAuth, async (req, res) => {
+  router.post('/api/task/assign-task', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -2146,7 +2146,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  router.post('/task/update-status', requireAuth, async (req, res) => {
+  router.post('/api/task/update-status', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -2172,7 +2172,7 @@ export function createManifestRouter(): Router {
   });
 
   /** List all User entities */
-  router.get('/user/list', requireAuth, async (req, res) => {
+  router.get('/api/user/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('User', { tenantId: req.user?.tenantId });
@@ -2183,7 +2183,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single User by ID */
-  router.get('/user/:id', requireAuth, async (req, res) => {
+  router.get('/api/user/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('User', req.params.id, { tenantId: req.user?.tenantId });
@@ -2215,7 +2215,7 @@ export function createManifestRouter(): Router {
   const router = Router();
 
   /** List all Task entities */
-  router.get('/task/list', requireAuth, async (req, res) => {
+  router.get('/api/task/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('Task', { tenantId: req.user?.tenantId });
@@ -2226,7 +2226,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single Task by ID */
-  router.get('/task/:id', requireAuth, async (req, res) => {
+  router.get('/api/task/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('Task', req.params.id, { tenantId: req.user?.tenantId });
@@ -2246,7 +2246,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  router.post('/task/assign-task', requireAuth, async (req, res) => {
+  router.post('/api/task/assign-task', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -2278,7 +2278,7 @@ export function createManifestRouter(): Router {
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  router.post('/task/update-status', requireAuth, async (req, res) => {
+  router.post('/api/task/update-status', requireAuth, async (req, res) => {
     try {
       const params = req.body;
       const runtime = await createManifestRuntime();
@@ -2322,7 +2322,7 @@ export function createManifestRouter(): Router {
   const router = Router();
 
   /** List all User entities */
-  router.get('/user/list', requireAuth, async (req, res) => {
+  router.get('/api/user/list', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.list('User', { tenantId: req.user?.tenantId });
@@ -2333,7 +2333,7 @@ export function createManifestRouter(): Router {
   });
 
   /** Get a single User by ID */
-  router.get('/user/:id', requireAuth, async (req, res) => {
+  router.get('/api/user/:id', requireAuth, async (req, res) => {
     try {
       const runtime = await createManifestRuntime();
       const result = await runtime.get('User', req.params.id, { tenantId: req.user?.tenantId });
@@ -3704,7 +3704,7 @@ const app = new Hono<Env>();
 // --- Task routes ---
 
   /** List all Task entities */
-  app.get('/task/list', requireAuth, async (c) => {
+  app.get('/api/task/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('Task', { tenantId: user.tenantId });
@@ -3712,7 +3712,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single Task by ID */
-  app.get('/task/:id', requireAuth, async (c) => {
+  app.get('/api/task/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -3730,7 +3730,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  app.post('/task/assign-task', requireAuth, async (c) => {
+  app.post('/api/task/assign-task', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -3764,7 +3764,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  app.post('/task/update-status', requireAuth, async (c) => {
+  app.post('/api/task/update-status', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -3824,7 +3824,7 @@ const app = new Hono<Env>();
 // --- User routes ---
 
   /** List all User entities */
-  app.get('/user/list', requireAuth, async (c) => {
+  app.get('/api/user/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('User', { tenantId: user.tenantId });
@@ -3832,7 +3832,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single User by ID */
-  app.get('/user/:id', requireAuth, async (c) => {
+  app.get('/api/user/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -3876,7 +3876,7 @@ const app = new Hono<Env>();
 // --- Task routes ---
 
   /** List all Task entities */
-  app.get('/task/list', requireAuth, async (c) => {
+  app.get('/api/task/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('Task', { tenantId: user.tenantId });
@@ -3884,7 +3884,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single Task by ID */
-  app.get('/task/:id', requireAuth, async (c) => {
+  app.get('/api/task/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -3902,7 +3902,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  app.post('/task/assign-task', requireAuth, async (c) => {
+  app.post('/api/task/assign-task', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -3936,7 +3936,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  app.post('/task/update-status', requireAuth, async (c) => {
+  app.post('/api/task/update-status', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -3966,7 +3966,7 @@ const app = new Hono<Env>();
 // --- User routes ---
 
   /** List all User entities */
-  app.get('/user/list', requireAuth, async (c) => {
+  app.get('/api/user/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('User', { tenantId: user.tenantId });
@@ -3974,7 +3974,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single User by ID */
-  app.get('/user/:id', requireAuth, async (c) => {
+  app.get('/api/user/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -4018,7 +4018,7 @@ const app = new Hono<Env>();
 // --- Task routes ---
 
   /** List all Task entities */
-  app.get('/task/list', requireAuth, async (c) => {
+  app.get('/api/task/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('Task', { tenantId: user.tenantId });
@@ -4026,7 +4026,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single Task by ID */
-  app.get('/task/:id', requireAuth, async (c) => {
+  app.get('/api/task/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -4044,7 +4044,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskAssigned
    */
-  app.post('/task/assign-task', requireAuth, async (c) => {
+  app.post('/api/task/assign-task', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -4078,7 +4078,7 @@ const app = new Hono<Env>();
    * Policies: OnlyAssignee
    * Emits: TaskStatusUpdated
    */
-  app.post('/task/update-status', requireAuth, async (c) => {
+  app.post('/api/task/update-status', requireAuth, async (c) => {
     try {
       const body = await c.req.json();
       const params = body;
@@ -4138,7 +4138,7 @@ const app = new Hono<Env>();
 // --- User routes ---
 
   /** List all User entities */
-  app.get('/user/list', requireAuth, async (c) => {
+  app.get('/api/user/list', requireAuth, async (c) => {
     const runtime = await createManifestRuntime();
     const user = c.get('user');
     const result = await runtime.list('User', { tenantId: user.tenantId });
@@ -4146,7 +4146,7 @@ const app = new Hono<Env>();
   });
 
   /** Get a single User by ID */
-  app.get('/user/:id', requireAuth, async (c) => {
+  app.get('/api/user/:id', requireAuth, async (c) => {
     const id = c.req.param('id');
     const runtime = await createManifestRuntime();
     const user = c.get('user');
@@ -6598,40 +6598,63 @@ const users = await database.user.findMany({
   "ts.client": "// Auto-generated client SDK from Manifest IR
 // DO NOT EDIT - This file is generated from .manifest source
 
-export async function getTasks(): Promise<Task[]> {
-  const response = await fetch(\`/api/task/list\`);
+/** The command response body returned by the Manifest dispatcher. */
+export interface ManifestCommandResponse<T = unknown> {
+  data?: T;
+  events?: unknown[];
+  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;
+  error?: string;
+}
+
+async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
   if (!response.ok) {
-    throw new Error("Failed to fetch Tasks");
+    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));
+    throw new Error(body.error || body.message || \`Request failed: \${response.status}\`);
   }
-  const data = await response.json();
+  return response.json();
+}
+
+export async function getTasks(): Promise<Task[]> {
+  const data = await apiFetch<{ tasks: Task[] }>(\`/api/task/list\`);
   return data.tasks;
 }
 
 export async function getTask(id: string): Promise<Task> {
-  const response = await fetch(\`/api/task/\${encodeURIComponent(id)}\`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch Task");
-  }
-  const data = await response.json();
+  const data = await apiFetch<{ task: Task }>(\`/api/task/\${encodeURIComponent(id)}\`);
   return data.task;
 }
 
 export async function getUsers(): Promise<User[]> {
-  const response = await fetch(\`/api/user/list\`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch Users");
-  }
-  const data = await response.json();
+  const data = await apiFetch<{ users: User[] }>(\`/api/user/list\`);
   return data.users;
 }
 
 export async function getUser(id: string): Promise<User> {
-  const response = await fetch(\`/api/user/\${encodeURIComponent(id)}\`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch User");
-  }
-  const data = await response.json();
+  const data = await apiFetch<{ user: User }>(\`/api/user/\${encodeURIComponent(id)}\`);
   return data.user;
+}
+
+export async function taskUpdateStatus(
+  input: { newStatus: string },
+  options?: { instanceId?: string },
+): Promise<ManifestCommandResponse<unknown>> {
+  return apiFetch<ManifestCommandResponse<unknown>>(\`/api/manifest/Task/commands/updateStatus\`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, instanceId: options?.instanceId }),
+  });
+}
+
+export async function taskAssignTask(
+  input: { userId: string },
+  options?: { instanceId?: string },
+): Promise<ManifestCommandResponse<unknown>> {
+  return apiFetch<ManifestCommandResponse<unknown>>(\`/api/manifest/Task/commands/assignTask\`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, instanceId: options?.instanceId }),
+  });
 }
 ",
   "ts.types": "// Auto-generated TypeScript types from Manifest IR
@@ -7854,6 +7877,14 @@ import {
 // Entity types (from IR)
 // ============================================================
 
+/** The command response body returned by the Manifest dispatcher. */
+export interface ManifestCommandResponse<T = unknown> {
+  data?: T;
+  events?: unknown[];
+  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;
+  error?: string;
+}
+
 export interface Task {
   id: string;
   title?: string;
@@ -7906,8 +7937,8 @@ export const queryKeys = {
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || \`Request failed: \${response.status}\`);
+    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));
+    throw new Error(body.error || body.message || \`Request failed: \${response.status}\`);
   }
   return response.json();
 }
@@ -7977,12 +8008,12 @@ export function useUserDetail(
 // ============================================================
 
 export function useTaskUpdateStatus(
-  options?: Omit<UseMutationOptions<unknown, Error, TaskUpdateStatusInput>, 'mutationFn'>,
+  options?: Omit<UseMutationOptions<ManifestCommandResponse<unknown>, Error, TaskUpdateStatusInput>, 'mutationFn'>,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: TaskUpdateStatusInput) =>
-      apiFetch<unknown>(\`/api/manifest/task/commands/update-status\`, {
+      apiFetch<ManifestCommandResponse<unknown>>(\`/api/manifest/Task/commands/updateStatus\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
@@ -7996,12 +8027,12 @@ export function useTaskUpdateStatus(
 }
 
 export function useTaskAssignTask(
-  options?: Omit<UseMutationOptions<unknown, Error, TaskAssignTaskInput>, 'mutationFn'>,
+  options?: Omit<UseMutationOptions<ManifestCommandResponse<unknown>, Error, TaskAssignTaskInput>, 'mutationFn'>,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: TaskAssignTaskInput) =>
-      apiFetch<unknown>(\`/api/manifest/task/commands/assign-task\`, {
+      apiFetch<ManifestCommandResponse<unknown>>(\`/api/manifest/Task/commands/assignTask\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
@@ -8988,7 +9019,7 @@ exports[`projection snapshots > routes > generated artifacts match snapshot 1`] 
     },
     {
       "id": "Task.assignTask",
-      "path": "/api/task/assign-task",
+      "path": "/api/manifest/Task/commands/assignTask",
       "method": "POST",
       "params": [
         {
@@ -9001,14 +9032,15 @@ exports[`projection snapshots > routes > generated artifacts match snapshot 1`] 
       "source": {
         "kind": "command",
         "entity": "Task",
-        "command": "assignTask"
+        "command": "assignTask",
+        "variant": "dispatcher"
       },
       "auth": true,
       "tenant": true
     },
     {
       "id": "Task.updateStatus",
-      "path": "/api/task/update-status",
+      "path": "/api/manifest/Task/commands/updateStatus",
       "method": "POST",
       "params": [
         {
@@ -9021,7 +9053,8 @@ exports[`projection snapshots > routes > generated artifacts match snapshot 1`] 
       "source": {
         "kind": "command",
         "entity": "Task",
-        "command": "updateStatus"
+        "command": "updateStatus",
+        "variant": "dispatcher"
       },
       "auth": true,
       "tenant": true
@@ -9061,14 +9094,14 @@ export function userDetailPath(id: string): string {
 // Command Routes
 // ============================================================================
 
-/** POST /api/task/assign-task */
+/** POST /api/manifest/Task/commands/assignTask */
 export function taskAssignTaskPath(): string {
-  return "/api/task/assign-task";
+  return "/api/manifest/Task/commands/assignTask";
 }
 
-/** POST /api/task/update-status */
+/** POST /api/manifest/Task/commands/updateStatus */
 export function taskUpdateStatusPath(): string {
-  return "/api/task/update-status";
+  return "/api/manifest/Task/commands/updateStatus";
 }
 
 // ============================================================================
@@ -9089,8 +9122,8 @@ export const ROUTE_MANIFEST: readonly RouteMetadata[] = [
   { id: "Task.get.detail", path: "/api/task/:id", method: "GET", source: "entity-read", auth: true, tenant: true },
   { id: "User.get.list", path: "/api/user/list", method: "GET", source: "entity-read", auth: true, tenant: true },
   { id: "User.get.detail", path: "/api/user/:id", method: "GET", source: "entity-read", auth: true, tenant: true },
-  { id: "Task.assignTask", path: "/api/task/assign-task", method: "POST", source: "command", auth: true, tenant: true },
-  { id: "Task.updateStatus", path: "/api/task/update-status", method: "POST", source: "command", auth: true, tenant: true },
+  { id: "Task.assignTask", path: "/api/manifest/Task/commands/assignTask", method: "POST", source: "command", auth: true, tenant: true },
+  { id: "Task.updateStatus", path: "/api/manifest/Task/commands/updateStatus", method: "POST", source: "command", auth: true, tenant: true },
 ] as const;
 ",
 }
@@ -10367,11 +10400,11 @@ exports[`projection snapshots > zod > generated artifacts match snapshot 1`] = `
 import { z } from 'zod';
 
 // Command: assignTask on Task
-export const AssignTaskParamsSchema = z.object({
+export const TaskAssignTaskParamsSchema = z.object({
   userId: z.string(),
 });
 
-export type AssignTaskParams = z.infer<typeof AssignTaskParamsSchema>;
+export type TaskAssignTaskParams = z.infer<typeof TaskAssignTaskParamsSchema>;
 ",
   "zod.command.updateStatus": "// Auto-generated by Manifest Zod projection
 // Generated at: 2025-01-01T00:00:00.000Z
@@ -10379,11 +10412,11 @@ export type AssignTaskParams = z.infer<typeof AssignTaskParamsSchema>;
 import { z } from 'zod';
 
 // Command: updateStatus on Task
-export const UpdateStatusParamsSchema = z.object({
+export const TaskUpdateStatusParamsSchema = z.object({
   newStatus: z.string(),
 });
 
-export type UpdateStatusParams = z.infer<typeof UpdateStatusParamsSchema>;
+export type TaskUpdateStatusParams = z.infer<typeof TaskUpdateStatusParamsSchema>;
 ",
   "zod.entity.Task": "// Auto-generated by Manifest Zod projection
 // Generated at: 2025-01-01T00:00:00.000Z
@@ -10457,18 +10490,18 @@ export const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>;
 
 // Command: updateStatus on Task
-export const UpdateStatusParamsSchema = z.object({
+export const TaskUpdateStatusParamsSchema = z.object({
   newStatus: z.string(),
 });
 
-export type UpdateStatusParams = z.infer<typeof UpdateStatusParamsSchema>;
+export type TaskUpdateStatusParams = z.infer<typeof TaskUpdateStatusParamsSchema>;
 
 // Command: assignTask on Task
-export const AssignTaskParamsSchema = z.object({
+export const TaskAssignTaskParamsSchema = z.object({
   userId: z.string(),
 });
 
-export type AssignTaskParams = z.infer<typeof AssignTaskParamsSchema>;
+export type TaskAssignTaskParams = z.infer<typeof TaskAssignTaskParamsSchema>;
 ",
 }
 `;

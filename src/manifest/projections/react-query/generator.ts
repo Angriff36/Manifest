@@ -24,7 +24,8 @@ import type {
   ProjectionResult,
   ProjectionDiagnostic,
 } from '../interface';
-import { applyRouteCasing, type RouteCasing } from '../shared/naming.js';
+import { type RouteCasing } from '../shared/naming.js';
+import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -57,10 +58,26 @@ export interface FetchAdapterOption {
 }
 
 export interface ReactQueryProjectionOptions {
-  /** Base API path prefix (default: '/api') */
+  /**
+   * URL prefix for list/detail read paths. Default: derived from `appDir` via the
+   * shared route contract (the Next.js routing roots `src`/`app` are stripped, so
+   * `app/api` → `/api`). Deriving it from the same `appDir` as the nextjs routes
+   * keeps the hooks and the emitted routes on one prefix. Set explicitly only to
+   * target a different origin prefix.
+   */
   apiBasePath?: string;
-  /** Dispatcher route prefix (default: '/api/manifest') */
+  /**
+   * Dispatcher URL prefix for command mutations. Default: `${apiBasePath}/manifest`
+   * (from the contract) — matches where the `nextjs.dispatcher` route is served.
+   */
   dispatcherBasePath?: string;
+  /**
+   * App Router base directory the read/dispatcher URL bases are derived from
+   * (mirrors the nextjs projection's `appDir`). Default `'app/api'` ⇒ `/api`.
+   * Change it and both the read paths and the dispatcher paths follow, so the
+   * hooks cannot desync from routes generated with the same `appDir`.
+   */
+  appDir?: string;
   /** Whether to generate optimistic update helpers (default: true) */
   optimisticUpdates?: boolean;
   /** Whether to generate error boundary integration (default: true) */
@@ -87,9 +104,12 @@ export interface ReactQueryProjectionOptions {
    */
   fetchAdapter?: FetchAdapterOption;
   /**
-   * When true, command mutations type their response as the dispatcher/sync
-   * envelope `{ success, result, events }` via a generated `CommandEnvelope<T>`
-   * instead of the bare command return type. Default: false.
+   * EXPLICIT DEVIATION KNOB. By default command mutations type their response as
+   * `ManifestCommandResponse<T>` — the real wire body the Next.js dispatcher
+   * returns (`{ data, events, diagnostics }`; on non-2xx `apiFetch` throws with
+   * the `error` field). Set this to `true` only for a server that instead returns
+   * the legacy sync envelope `{ success, result, events }`; it emits and uses a
+   * `CommandEnvelope<T>` type in place of the default. Default: false.
    */
   commandEnvelope?: boolean;
   /**
@@ -98,6 +118,12 @@ export interface ReactQueryProjectionOptions {
    * serialize to ISO-8601 strings. Non-breaking — defaults to `'date'`.
    */
   dateSerialization?: 'date' | 'iso-string';
+  /**
+   * Explicit per-entity URL path segment overrides (mirrors the nextjs
+   * projection's `routeSegments`). Takes precedence over `routeCasing`. e.g.
+   * `{ OrderLine: 'order-lines' }` → `/api/order-lines/list`.
+   */
+  routeSegments?: Record<string, string>;
   /**
    * Casing for the default entity URL segment in fetch paths (when no
    * `entityRoutes` override is given). Must match the nextjs projection's
@@ -108,8 +134,8 @@ export interface ReactQueryProjectionOptions {
 }
 
 interface NormalizedOptions {
-  apiBasePath: string;
-  dispatcherBasePath: string;
+  /** Cross-projection route contract — the single source for URL bases + segments. */
+  contract: RouteContract;
   optimisticUpdates: boolean;
   errorBoundaryIntegration: boolean;
   typesImportPath: string;
@@ -119,13 +145,21 @@ interface NormalizedOptions {
   fetchAdapter?: { importPath: string; importName: string };
   commandEnvelope: boolean;
   dateSerialization: 'date' | 'iso-string';
-  routeCasing: RouteCasing;
 }
 
 function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions {
+  // One contract, resolved from the same option names the nextjs projection
+  // uses, so the read/dispatcher URLs the hooks call can never drift from the
+  // routes emitted with the same appDir/routeSegments/routeCasing.
+  const contract = resolveRouteContract({
+    appDir: opts?.appDir,
+    apiBasePath: opts?.apiBasePath,
+    dispatcherBasePath: opts?.dispatcherBasePath,
+    routeSegments: opts?.routeSegments,
+    routeCasing: opts?.routeCasing,
+  });
   return {
-    apiBasePath: opts?.apiBasePath ?? '/api',
-    dispatcherBasePath: opts?.dispatcherBasePath ?? '/api/manifest',
+    contract,
     optimisticUpdates: opts?.optimisticUpdates ?? true,
     errorBoundaryIntegration: opts?.errorBoundaryIntegration ?? true,
     typesImportPath: opts?.typesImportPath ?? '@/types/manifest-generated',
@@ -140,32 +174,22 @@ function normalizeOptions(opts?: ReactQueryProjectionOptions): NormalizedOptions
       : undefined,
     commandEnvelope: opts?.commandEnvelope ?? false,
     dateSerialization: opts?.dateSerialization ?? 'date',
-    routeCasing: opts?.routeCasing ?? 'lowercase',
   };
 }
 
-// Route + envelope resolvers. Each falls back to the historical default so
-// output is byte-identical when no override is supplied.
+// Route + envelope resolvers. The default comes from the shared contract (so it
+// matches the emitted routes byte-for-byte); the per-entity override is the
+// explicit deviation knob.
 function resolveReadBase(entityName: string, opts: NormalizedOptions): string {
-  return (
-    opts.entityRoutes[entityName]?.readBase ??
-    `${opts.apiBasePath}/${applyRouteCasing(entityName, opts.routeCasing)}`
-  );
+  return opts.entityRoutes[entityName]?.readBase ?? opts.contract.entityBasePath(entityName);
 }
 
-function resolveWriteBase(entityName: string, opts: NormalizedOptions): string {
-  return (
-    opts.entityRoutes[entityName]?.writeBase ??
-    `${opts.dispatcherBasePath}/${applyRouteCasing(entityName, opts.routeCasing)}/commands`
-  );
+function resolveListKey(entityName: string, opts: NormalizedOptions): string {
+  return opts.readEnvelope[entityName]?.listKey ?? opts.contract.listEnvelopeKey(entityName);
 }
 
-function resolveListKey(entityName: string, camelName: string, opts: NormalizedOptions): string {
-  return opts.readEnvelope[entityName]?.listKey ?? `${camelName}s`;
-}
-
-function resolveDetailKey(entityName: string, camelName: string, opts: NormalizedOptions): string {
-  return opts.readEnvelope[entityName]?.detailKey ?? camelName;
+function resolveDetailKey(entityName: string, opts: NormalizedOptions): string {
+  return opts.readEnvelope[entityName]?.detailKey ?? opts.contract.detailEnvelopeKey(entityName);
 }
 
 // ---------------------------------------------------------------------------
@@ -308,12 +332,27 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
   lines.push("// ============================================================");
   lines.push("");
 
-  // Command response envelope (opt-in): the dispatcher/sync write shape.
+  // Command response type. Default: ManifestCommandResponse — the real body the
+  // Next.js dispatcher returns ({ data, events, diagnostics }; apiFetch throws on
+  // non-2xx, surfacing the { error } envelope). commandEnvelope opts into the
+  // legacy sync shape instead. Emitted only when entity-scoped commands exist.
+  const hasCommandHooks = ir.commands.some(
+    (c) => c.entity && ir.entities.some((e) => e.name === c.entity),
+  );
   if (opts.commandEnvelope) {
     lines.push("export interface CommandEnvelope<T> {");
     lines.push("  success: boolean;");
     lines.push("  result: T;");
     lines.push("  events: unknown[];");
+    lines.push("}");
+    lines.push("");
+  } else if (hasCommandHooks) {
+    lines.push("/** The command response body returned by the Manifest dispatcher. */");
+    lines.push("export interface ManifestCommandResponse<T = unknown> {");
+    lines.push("  data?: T;");
+    lines.push("  events?: unknown[];");
+    lines.push("  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;");
+    lines.push("  error?: string;");
     lines.push("}");
     lines.push("");
   }
@@ -373,8 +412,8 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push("async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {");
     lines.push("  const response = await fetch(url, init);");
     lines.push("  if (!response.ok) {");
-    lines.push("    const error = await response.json().catch(() => ({ message: response.statusText }));");
-    lines.push("    throw new Error(error.message || `Request failed: ${response.status}`);");
+    lines.push("    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));");
+    lines.push("    throw new Error(body.error || body.message || `Request failed: ${response.status}`);");
     lines.push("  }");
     lines.push("  return response.json();");
     lines.push("}");
@@ -391,8 +430,8 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     const name = entity.name;
     const camelName = toLowerCamelCase(name);
     const readBase = resolveReadBase(name, opts);
-    const listKey = resolveListKey(name, camelName, opts);
-    const detailKey = resolveDetailKey(name, camelName, opts);
+    const listKey = resolveListKey(name, opts);
+    const detailKey = resolveDetailKey(name, opts);
     const fallbackKey = opts.readEnvelope[name]?.fallbackKey;
 
     // List hook
@@ -461,9 +500,16 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     if (!entity) continue;
 
     const hookName = `use${entityName}${capitalize(command.name)}`;
-    const writeBase = resolveWriteBase(entityName, opts);
-    const commandSlug = toKebabCase(command.name);
     const camelEntity = toLowerCamelCase(entityName);
+
+    // Command URL: the entityRoutes.writeBase override keeps the historical
+    // `${writeBase}/${kebab(command)}` shape; the default routes through the
+    // contract's dispatcher invocation path — the RAW entity + command names the
+    // generated dispatcher resolves (a lowercased/kebab URL misses the dispatcher).
+    const writeOverride = opts.entityRoutes[entityName]?.writeBase;
+    const commandUrl = writeOverride
+      ? `${writeOverride}/${toKebabCase(command.name)}`
+      : opts.contract.dispatcherInvocationPath(entityName, command.name);
 
     const hasParams = command.parameters.length > 0;
     const inputTypeName = hasParams
@@ -474,7 +520,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
       : 'unknown';
     const returnTypeName = opts.commandEnvelope
       ? `CommandEnvelope<${bareReturnType}>`
-      : bareReturnType;
+      : `ManifestCommandResponse<${bareReturnType}>`;
 
     lines.push(`export function ${hookName}(`);
     lines.push(`  options?: Omit<UseMutationOptions<${returnTypeName}, Error, ${inputTypeName}>, 'mutationFn'>,`);
@@ -482,7 +528,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`  const queryClient = useQueryClient();`);
     lines.push(`  return useMutation({`);
     lines.push(`    mutationFn: (${hasParams ? 'input' : ''}: ${inputTypeName}) =>`);
-    lines.push(`      apiFetch<${returnTypeName}>(\`${writeBase}/${commandSlug}\`, {`);
+    lines.push(`      apiFetch<${returnTypeName}>(\`${commandUrl}\`, {`);
     lines.push(`        method: 'POST',`);
     lines.push(`        headers: { 'Content-Type': 'application/json' },`);
     lines.push(`        body: JSON.stringify(${hasParams ? 'input' : '{}'}),`);

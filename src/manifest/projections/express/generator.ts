@@ -32,7 +32,9 @@ import type {
   ProjectionDiagnostic,
 } from '../interface';
 import type { ExpressProjectionOptions } from './types';
+import type { RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
+import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 
 // ============================================================================
 // Constants
@@ -67,6 +69,8 @@ interface NormalizedOptions {
   runtimeFactoryName: string;
   validationImportPath: string | undefined;
   basePath: string;
+  routeCasing: RouteCasing | undefined;
+  routeSegments: Record<string, string> | undefined;
   includeTenantContext: boolean;
   tenantIdProperty: string;
   emitTypes: boolean;
@@ -86,6 +90,8 @@ function normalizeOptions(opts: ExpressProjectionOptions): NormalizedOptions {
     runtimeFactoryName: opts.runtimeFactoryName ?? 'createManifestRuntime',
     validationImportPath: opts.validationImportPath,
     basePath: opts.basePath ?? '/api',
+    routeCasing: opts.routeCasing,
+    routeSegments: opts.routeSegments,
     includeTenantContext: opts.includeTenantContext ?? true,
     tenantIdProperty: opts.tenantIdProperty ?? 'tenantId',
     emitTypes: opts.emitTypes ?? true,
@@ -345,7 +351,14 @@ function generateExpressEntityRouter(
   policies: IRPolicy[],
   options: NormalizedOptions,
 ): string {
-  const segment = toEntitySegment(entity.name);
+  // Route paths resolve through the shared contract so basePath actually
+  // prefixes emitted routes and the entity segment/casing matches every other
+  // projection (client, routes, react-query).
+  const contract = resolveRouteContract({
+    apiBasePath: options.basePath,
+    routeCasing: options.routeCasing,
+    routeSegments: options.routeSegments,
+  });
   const lines: string[] = [];
   const hasValidation = !!options.validationImportPath;
 
@@ -359,9 +372,9 @@ function generateExpressEntityRouter(
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
   if (options.publicReads) {
-    lines.push(`  router.get('/${segment}/list', async (req, res) => {`);
+    lines.push(`  router.get('${contract.listPath(entity.name)}', async (req, res) => {`);
   } else {
-    lines.push(`  router.get('/${segment}/list', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(`  router.get('${contract.listPath(entity.name)}', ${options.authMiddlewareName}, async (req, res) => {`);
   }
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
@@ -378,9 +391,9 @@ function generateExpressEntityRouter(
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
   if (options.publicReads) {
-    lines.push(`  router.get('/${segment}/:id', async (req, res) => {`);
+    lines.push(`  router.get('${contract.detailPath(entity.name, 'colon')}', async (req, res) => {`);
   } else {
-    lines.push(`  router.get('/${segment}/:id', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(`  router.get('${contract.detailPath(entity.name, 'colon')}', ${options.authMiddlewareName}, async (req, res) => {`);
   }
   lines.push('    try {');
   lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
@@ -402,16 +415,16 @@ function generateExpressEntityRouter(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const paramsType = command.parameters.length > 0
-      ? `${toPascalCase(entity.name)}${toPascalCase(command.name)}Params`
+    const schemaName = command.parameters.length > 0
+      ? zodParamsSchemaName(entity.name, command.name)
       : undefined;
 
-    lines.push(`  router.post('/${segment}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`);
+    lines.push(`  router.post('${contract.entityBasePath(entity.name)}/${commandSegment}', ${options.authMiddlewareName}, async (req, res) => {`);
     lines.push('    try {');
 
     // Validation
-    if (hasValidation && paramsType) {
-      lines.push(`      const parseResult = ${paramsType}Schema.safeParse(req.body);`);
+    if (hasValidation && schemaName) {
+      lines.push(`      const parseResult = ${schemaName}.safeParse(req.body);`);
       lines.push('      if (!parseResult.success) {');
       lines.push('        return res.status(400).json({');
       lines.push("          error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues },");
@@ -461,7 +474,13 @@ function generateFastifyEntityRouter(
   policies: IRPolicy[],
   options: NormalizedOptions,
 ): string {
-  const segment = toEntitySegment(entity.name);
+  // Route paths resolve through the shared contract (basePath + entity segment
+  // casing), identical to the Express router above.
+  const contract = resolveRouteContract({
+    apiBasePath: options.basePath,
+    routeCasing: options.routeCasing,
+    routeSegments: options.routeSegments,
+  });
   const lines: string[] = [];
   const hasValidation = !!options.validationImportPath;
 
@@ -474,7 +493,7 @@ function generateFastifyEntityRouter(
     lines.push('  /** List all ' + entity.name + ' entities */');
   }
   const listPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
-  lines.push(`  fastify.get('/${segment}/list', { ${listPreHandler}}, async (request, reply) => {`);
+  lines.push(`  fastify.get('${contract.listPath(entity.name)}', { ${listPreHandler}}, async (request, reply) => {`);
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`    const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
   lines.push('    return result;');
@@ -486,7 +505,7 @@ function generateFastifyEntityRouter(
     lines.push('  /** Get a single ' + entity.name + ' by ID */');
   }
   const getPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
-  lines.push(`  fastify.get('/${segment}/:id', { ${getPreHandler}}, async (request, reply) => {`);
+  lines.push(`  fastify.get('${contract.detailPath(entity.name, 'colon')}', { ${getPreHandler}}, async (request, reply) => {`);
   lines.push('    const { id } = request.params as { id: string };');
   lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`    const result = await runtime.get('${entity.name}', id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
@@ -505,15 +524,15 @@ function generateFastifyEntityRouter(
     }
 
     const commandSegment = toKebabCase(command.name);
-    const paramsType = command.parameters.length > 0
-      ? `${toPascalCase(entity.name)}${toPascalCase(command.name)}Params`
+    const schemaName = command.parameters.length > 0
+      ? zodParamsSchemaName(entity.name, command.name)
       : undefined;
 
-    lines.push(`  fastify.post('/${segment}/${commandSegment}', { preHandler: [${options.authMiddlewareName}] }, async (request, reply) => {`);
+    lines.push(`  fastify.post('${contract.entityBasePath(entity.name)}/${commandSegment}', { preHandler: [${options.authMiddlewareName}] }, async (request, reply) => {`);
 
     // Validation
-    if (hasValidation && paramsType) {
-      lines.push(`    const parseResult = ${paramsType}Schema.safeParse(request.body);`);
+    if (hasValidation && schemaName) {
+      lines.push(`    const parseResult = ${schemaName}.safeParse(request.body);`);
       lines.push('    if (!parseResult.success) {');
       lines.push('      reply.code(400);');
       lines.push("      return { error: { code: 'VALIDATION_ERROR', message: 'Invalid request body', details: parseResult.error.issues } };");
@@ -585,7 +604,7 @@ function generateExpressRouter(
       if (command.parameters.length > 0 && command.entity) {
         const entity = entities.find(e => e.name === command.entity);
         if (entity) {
-          schemaImports.push(`${toPascalCase(command.entity)}${toPascalCase(command.name)}ParamsSchema`);
+          schemaImports.push(zodParamsSchemaName(command.entity, command.name));
         }
       }
     }

@@ -37,6 +37,7 @@ import {
   lengthConstraintToZodChain,
   patternConstraintToZodChain,
 } from '../../constraint-analysis.js';
+import { zodParamsSchemaName } from '../shared/route-contract.js';
 
 // ============================================================================
 // Type mapping
@@ -275,10 +276,15 @@ function generateCommandSchema(
 ): string[] {
   const lines: string[] = [];
   const opts = normalizeOptions(analysisOptions);
-  const name = pascalCase(command.name);
+  // Entity-qualified names: two entities sharing a command name (e.g.
+  // Recipe.create + Order.create) must not collide in the combined surface, and
+  // the emitted schema export must be the exact name the hono/express
+  // projections import — both derive it from zodParamsSchemaName.
+  const entityName = command.entity ?? '';
+  const qualified = `${pascalCase(entityName)}${pascalCase(command.name)}`;
 
   // Command parameter schema
-  const schemaName = `${name}ParamsSchema`;
+  const schemaName = zodParamsSchemaName(entityName, command.name);
   lines.push(`// Command: ${command.name}${command.entity ? ` on ${command.entity}` : ''}`);
 
   if (command.parameters.length === 0) {
@@ -295,14 +301,14 @@ function generateCommandSchema(
   // Type export
   if (opts.emitTypes) {
     lines.push('');
-    lines.push(`export type ${name}Params = z.infer<typeof ${schemaName}>;`);
+    lines.push(`export type ${qualified}Params = z.infer<typeof ${schemaName}>;`);
   }
 
   // Return type schema if command has a return type
   if (command.returns && opts.emitTypes) {
     const returnExpr = irTypeToZod(command.returns, diagnostics);
-    lines.push(`export const ${name}ReturnSchema = ${returnExpr};`);
-    lines.push(`export type ${name}Return = z.infer<typeof ${name}ReturnSchema>;`);
+    lines.push(`export const ${qualified}ReturnSchema = ${returnExpr};`);
+    lines.push(`export type ${qualified}Return = z.infer<typeof ${qualified}ReturnSchema>;`);
   }
 
   return lines;

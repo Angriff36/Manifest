@@ -8,16 +8,21 @@
  * See docs/spec/manifest-vnext.md § "Canonical Routes (Normative)".
  */
 
+import type { RouteCasing } from '../shared/naming';
+
 /**
  * Source of a route entry.
  *
  * - entity-read: Derived from an IR entity (GET list/detail)
- * - command: Derived from an IR command (POST)
+ * - command: Derived from an IR command (POST). `variant` distinguishes the
+ *   canonical dispatcher invocation path (`dispatcher`, default) from the
+ *   deprecated per-command concrete path (`concrete`, only when opted in) so the
+ *   two never collide on route id / builder name.
  * - manual: Declared in project config, not IR-derived
  */
 export type RouteSource =
   | { kind: 'entity-read'; entity: string }
-  | { kind: 'command'; entity: string; command: string }
+  | { kind: 'command'; entity: string; command: string; variant?: 'dispatcher' | 'concrete' }
   | { kind: 'manual'; id: string };
 
 /**
@@ -88,10 +93,50 @@ export interface ManualRouteDeclaration {
 
 /**
  * Configuration options for the routes projection.
+ *
+ * The URL-shaping options (`appDir`/`apiBasePath`/`dispatcherBasePath`/
+ * `routeSegments`/`routeCasing`/`dispatcher`/`concreteCommandRoutes`) mirror the
+ * nextjs projection's option names and are resolved through the SAME shared route
+ * contract, so the paths this surface describes match the routes nextjs emits
+ * byte-for-byte under identical options.
  */
 export interface RoutesProjectionOptions {
-  /** Base path prefix for all routes (default: "/api") */
+  /**
+   * URL prefix for read/detail paths. Legacy alias for `apiBasePath`; when both
+   * are set `apiBasePath` wins. Default: derived from `appDir` (so `app/api` →
+   * `/api`, preserving the historical `/api` default).
+   */
   basePath?: string;
+  /** URL prefix for read/detail paths (overrides `basePath`). Default: derived from `appDir`. */
+  apiBasePath?: string;
+  /** Dispatcher URL prefix. Default: `${apiBasePath}/manifest`. */
+  dispatcherBasePath?: string;
+  /** App Router base directory the URL bases derive from. Default `'app/api'` ⇒ `/api`. */
+  appDir?: string;
+  /** Explicit per-entity URL segment overrides. Takes precedence over `routeCasing`. */
+  routeSegments?: Record<string, string>;
+  /** Casing for the default entity URL segment. Default `'lowercase'` (legacy flatten). */
+  routeCasing?: RouteCasing;
+  /**
+   * Canonical dispatcher policy (mirrors nextjs `dispatcher`). When `enabled`
+   * (default), each command is described by its dispatcher invocation path
+   * (`/api/manifest/<Entity>/commands/<command>`, raw names). `path` overrides
+   * the dispatcher route template relative to `appDir`.
+   */
+  dispatcher?: {
+    enabled?: boolean;
+    path?: string;
+  };
+  /**
+   * Deprecated per-command concrete routes policy (mirrors nextjs
+   * `concreteCommandRoutes`). When `enabled`, concrete `${apiBasePath}/<entity>/
+   * <kebab-command>` entries are ADDED alongside the dispatcher entries — the
+   * same URLs the `nextjs.command` surface emits when opted in. Default: off.
+   */
+  concreteCommandRoutes?: {
+    enabled?: boolean;
+    legacyAliasesOnly?: boolean;
+  };
   /** Whether to include auth expectations (default: true) */
   includeAuth?: boolean;
   /** Whether to include tenant expectations (default: true) */

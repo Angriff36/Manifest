@@ -514,7 +514,8 @@ describe('ZodProjection', () => {
 
       const result = projection.generate(ir, { surface: 'zod.command' });
       const code = firstCode(result);
-      expect(code).toContain('export const CreateTaskParamsSchema = z.object({');
+      // Entity-prefixed schema name (zodParamsSchemaName): Task + createTask.
+      expect(code).toContain('export const TaskCreateTaskParamsSchema = z.object({');
       expect(code).toContain('title: z.string(),');
       expect(code).toContain('priority: z.number().int().optional(),');
     });
@@ -630,7 +631,8 @@ describe('ZodProjection', () => {
 
       const code = result.artifacts[0].code;
       expect(code).toContain('RecipeSchema');
-      expect(code).toContain('CreateRecipeParamsSchema');
+      // Entity-prefixed schema name (zodParamsSchemaName): Recipe + createRecipe.
+      expect(code).toContain('RecipeCreateRecipeParamsSchema');
     });
 
     it('generates empty artifact for empty IR', () => {

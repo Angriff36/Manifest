@@ -684,6 +684,31 @@
         "runtimeConfigImport": {
           "type": "string",
           "description": "Import specifier for the app's manifest.config (default export, ManifestRuntimeConfig shape), relative to the emitted runtime factory module. When set, the generated createManifestRuntime composes a storeProvider from config.stores. Leave unset for zero-config projects (the factory uses the engine's built-in stores). Only consulted when emitCompanions is true."
+        },
+        "apiBasePath": {
+          "type": "string",
+          "description": "URL prefix for the generated ts.client fetch paths and the derivation base for dispatcher command URLs. Default: derived from appDir (the Next.js routing roots src/app are stripped, so 'app/api' → '/api'). Deriving it keeps the client and the emitted routes on the same prefix; set explicitly only to target a different origin prefix. Shared with the route layout via the cross-projection route contract so client and routes cannot desync."
+        },
+        "dispatcherBasePath": {
+          "type": "string",
+          "description": "Dispatcher URL prefix for generated client command callers. Default: `${apiBasePath}/manifest` — matches where the nextjs.dispatcher surface is served. Override alongside dispatcher.path only if you relocate the dispatcher route."
+        },
+        "client": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Options for the generated TypeScript client SDK (ts.client).",
+          "properties": {
+            "fetchAdapter": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Import a host-provided fetch wrapper (auth/credentials) instead of the inline apiFetch. Same shape as the react-query projection's fetchAdapter; the named export is aliased to apiFetch so generated call sites are identical.",
+              "properties": {
+                "importPath": { "type": "string", "description": "Module to import the adapter from, e.g. '@/lib/api'." },
+                "importName": { "type": "string", "description": "Exported name of the adapter (default: 'apiFetch'). Aliased to apiFetch." }
+              },
+              "required": ["importPath"]
+            }
+          }
         }
       }
     },

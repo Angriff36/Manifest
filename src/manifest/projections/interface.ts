@@ -340,6 +340,44 @@ export interface NextJsProjectionOptions {
    * consulted when `emitCompanions` is true.
    */
   runtimeConfigImport?: string;
+
+  /**
+   * URL prefix for the generated client SDK (`ts.client`) fetch paths and the
+   * derivation base for dispatcher command URLs. Default: **derived from
+   * `appDir`** — the Next.js routing roots `src`/`app` are stripped, so the
+   * default `app/api` yields `'/api'`. Deriving it keeps the client and the
+   * emitted routes on the same prefix (change `appDir` and the client follows);
+   * set it explicitly only to point the client at a different origin prefix than
+   * where the routes are emitted. Shared with the route layout via the
+   * cross-projection route contract so client and routes cannot desync.
+   */
+  apiBasePath?: string;
+
+  /**
+   * Dispatcher URL prefix for generated client command callers. Default:
+   * `${apiBasePath}/manifest` — matches where the `nextjs.dispatcher` surface is
+   * served. Override alongside `dispatcher.path` only if you relocate the
+   * dispatcher route.
+   */
+  dispatcherBasePath?: string;
+
+  /**
+   * Options for the generated TypeScript client SDK (`ts.client`).
+   */
+  client?: {
+    /**
+     * Import a host-provided fetch wrapper (for auth/credentials) instead of the
+     * inline `apiFetch`. Same shape and semantics as the react-query
+     * projection's `fetchAdapter`: the named export is aliased to `apiFetch` so
+     * generated call sites are identical whether or not an adapter is supplied.
+     */
+    fetchAdapter?: {
+      /** Module to import the adapter from, e.g. '@/lib/api'. */
+      importPath: string;
+      /** Exported name of the adapter (default: 'apiFetch'). Aliased to apiFetch. */
+      importName?: string;
+    };
+  };
 }
 
 /**

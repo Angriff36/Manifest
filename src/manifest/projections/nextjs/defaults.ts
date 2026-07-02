@@ -70,6 +70,9 @@ export const NEXTJS_DEFAULTS = {
   | 'accessorNames'
   | 'routeSegments'
   | 'runtimeConfigImport'
+  | 'apiBasePath'
+  | 'dispatcherBasePath'
+  | 'client'
 >>;
 
 /**

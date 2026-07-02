@@ -288,10 +288,11 @@ describe('ReactQueryProjection', () => {
       expect(code).toContain('export interface TaskCreateInput {');
       expect(code).toContain('title: string;');
 
-      // Mutation hook
+      // Mutation hook — POSTs the dispatcher with the RAW entity + command names
+      // (the dispatcher resolves by exact name; a lowercased/kebab URL misses it).
       expect(code).toContain('export function useTaskCreate(');
       expect(code).toContain("method: 'POST'");
-      expect(code).toContain('/api/manifest/task/commands/create');
+      expect(code).toContain('/api/manifest/Task/commands/create');
       expect(code).toContain('JSON.stringify(input)');
 
       // Cache invalidation
@@ -350,8 +351,8 @@ describe('ReactQueryProjection', () => {
 
       expect(code).toContain('export function useOrderSubmit(');
       expect(code).toContain('export function useOrderCancel(');
-      expect(code).toContain('/api/manifest/order/commands/submit');
-      expect(code).toContain('/api/manifest/order/commands/cancel');
+      expect(code).toContain('/api/manifest/Order/commands/submit');
+      expect(code).toContain('/api/manifest/Order/commands/cancel');
     });
   });
 
@@ -396,7 +397,8 @@ describe('ReactQueryProjection', () => {
       });
       const code = firstCode(hooksResult);
 
-      expect(code).toContain('/api/v2/manifest/foo/commands/do-it');
+      // Raw entity + command names on the custom dispatcher base.
+      expect(code).toContain('/api/v2/manifest/Foo/commands/doIt');
     });
 
     it('uses custom staleTime', async () => {
@@ -678,6 +680,32 @@ describe('ReactQueryProjection', () => {
       const code = firstCode(hooksResult);
 
       expect(code).not.toContain('CommandEnvelope');
+    });
+
+    it('defaults mutations to ManifestCommandResponse (the real dispatcher wire body)', async () => {
+      const source = `
+        entity Foo {
+          property id: string
+          property val: string = ""
+
+          command doIt(val: string) {
+            mutate val = val
+          }
+        }
+
+        store Foo in memory
+      `;
+      const result = await compileToIR(source);
+      expect(result.ir).not.toBeNull();
+
+      const hooksResult = projection.generate(result.ir!, { surface: 'react-query.hooks' });
+      const code = firstCode(hooksResult);
+
+      // The interface models the { data, events, diagnostics } success body.
+      expect(code).toContain('export interface ManifestCommandResponse<T = unknown> {');
+      expect(code).toContain('data?: T;');
+      // The mutation hook types its response as that envelope, not the bare return.
+      expect(code).toContain('ManifestCommandResponse<');
     });
   });
 

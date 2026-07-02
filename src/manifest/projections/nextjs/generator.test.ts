@@ -699,14 +699,15 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(clientResult);
 
-      // List function
+      // List function — reads via apiFetch at the contract-derived URL and
+      // extracts the shared list-envelope key.
       expect(code).toContain('export async function getRecipes()');
-      expect(code).toContain('fetch(`/api/recipe/list`)');
+      expect(code).toContain('apiFetch<{ recipes: Recipe[] }>(`/api/recipe/list`)');
       expect(code).toContain('return data.recipes;');
 
       // Detail function
       expect(code).toContain('export async function getRecipe(id: string): Promise<Recipe>');
-      expect(code).toContain('encodeURIComponent(id)');
+      expect(code).toContain('`/api/recipe/${encodeURIComponent(id)}`');
       expect(code).toContain('return data.recipe;');
     });
   });
@@ -1196,8 +1197,8 @@ describe('NextJsProjection', () => {
         options,
       });
       const clientCode = firstCode(clientResult);
-      expect(clientCode).toContain('fetch(`/api/order-lines/list`)');
-      expect(clientCode).toContain('fetch(`/api/order-lines/${encodeURIComponent(id)}`)');
+      expect(clientCode).toContain('`/api/order-lines/list`');
+      expect(clientCode).toContain('`/api/order-lines/${encodeURIComponent(id)}`');
       expect(clientCode).toContain('return data.orderLines;');
       expect(clientCode).toContain('return data.orderLine;');
     });
