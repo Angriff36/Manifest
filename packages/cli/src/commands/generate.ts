@@ -159,6 +159,9 @@ async function generateFromIR(
     } else if (options.surface === 'schedule') {
       // Generate the cron routes + vercel.json (schedules, approval expiry, job drain)
       await generateSchedule(projection, ir, outputDir, spinner, projectionOptions);
+    } else if (options.surface === 'webhook') {
+      // Generate one route per declared webhook at its declared path
+      await generateWebhooks(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
       await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
@@ -314,6 +317,16 @@ async function generateAllSurfaces(
     spinner.info('Skipping schedule cron routes (no schedules, expiring approvals, or async commands)');
   }
 
+  // Webhook surface: one App Router route per declared inbound webhook, served
+  // at its declared absolute path. Gated so a program with no webhooks emits
+  // nothing.
+  if ((ir.webhooks?.length ?? 0) > 0) {
+    spinner.text = 'Generating webhook routes...';
+    await generateWebhooks(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping webhook routes (no webhooks declared)');
+  }
+
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
@@ -355,6 +368,26 @@ async function generateSchedule(
   spinner.text = 'Generating schedule cron routes...';
   const result = projection.generate(ir, {
     surface: 'nextjs.schedule',
+    options: projectionOptions as unknown as Record<string, unknown>,
+  });
+  await writeProjectionResult(result, outputDir);
+}
+
+/**
+ * Generate the Next.js webhook surface: one App Router route per declared
+ * inbound webhook, each served at its declared absolute path. Single
+ * non-entity-scoped surface.
+ */
+async function generateWebhooks(
+  projection: NextJsProjection,
+  ir: IR,
+  outputDir: string,
+  spinner: Ora,
+  projectionOptions: NextJsProjectionOptions
+): Promise<void> {
+  spinner.text = 'Generating webhook routes...';
+  const result = projection.generate(ir, {
+    surface: 'nextjs.webhook',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);

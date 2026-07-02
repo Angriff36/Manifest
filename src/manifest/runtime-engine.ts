@@ -1556,6 +1556,17 @@ export class RuntimeEngine {
   }
 
   /**
+   * Whether an IdempotencyStore is wired into this engine. Additive read-only
+   * accessor (no semantics change): the webhook handler (src/manifest/webhooks)
+   * must fail closed when a webhook declares an `idempotencyHeader` but the
+   * runtime cannot honor the dedup contract, and the store lives in private
+   * options. Runtime execution semantics are unchanged.
+   */
+  hasIdempotencyStore(): boolean {
+    return this.options.idempotencyStore !== undefined;
+  }
+
+  /**
    * Get the provenance metadata from the IR
    */
   getProvenance(): IRProvenance | undefined {

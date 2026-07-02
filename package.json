@@ -204,6 +204,10 @@
       "types": "./dist/manifest/transactions/postgres.d.ts",
       "import": "./dist/manifest/transactions/postgres.js"
     },
+    "./webhooks": {
+      "types": "./dist/manifest/webhooks/handler.d.ts",
+      "import": "./dist/manifest/webhooks/handler.js"
+    },
     "./ir-diff": {
       "types": "./dist/manifest/ir-diff.d.ts",
       "import": "./dist/manifest/ir-diff.js"

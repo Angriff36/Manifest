@@ -133,6 +133,64 @@ describe('Generate Command - appDir/output overlap', () => {
   }, 30000);
 });
 
+describe('Generate Command - webhook surface', () => {
+  const WEBHOOK_SOURCE = [
+    'entity Order {',
+    '  property amount: number',
+    '  command UpdatePayment(amountPaid: number) {',
+    '    mutate amount = amountPaid',
+    '  }',
+    '}',
+    'webhook StripePayment "/webhooks/stripe" run Order.UpdatePayment',
+    '  transform: {',
+    '    amountPaid: payload.amount',
+    '  }',
+    '',
+  ].join('\n');
+
+  it('emits one route per declared webhook at its declared path', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-webhook-'));
+    const manifestPath = path.join(tempDir, 'order.manifest');
+    const irPath = path.join(tempDir, 'order.ir.json');
+    await fs.writeFile(manifestPath, WEBHOOK_SOURCE, 'utf-8');
+
+    const { compileCommand } = await import('./compile.js');
+    const { generateCommand } = await import('./generate.js');
+
+    await compileCommand(manifestPath, {});
+    await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir });
+
+    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    // appDir default 'app/api' → app root 'app'; served at /webhooks/stripe.
+    const route = files.find(f => f.endsWith('app/webhooks/stripe/route.ts'));
+    expect(route, `webhook route not found in ${JSON.stringify(files)}`).toBeDefined();
+    const code = await fs.readFile(route!, 'utf-8');
+    expect(code).toContain('handleWebhookRequest');
+    expect(code).toContain('export async function POST');
+
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }, 30000);
+
+  it('emits nothing for the webhook surface when no webhooks are declared', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-webhook-none-'));
+    const manifestPath = path.join(tempDir, 'counter.manifest');
+    const irPath = path.join(tempDir, 'counter.ir.json');
+    await fs.writeFile(manifestPath, SOURCE, 'utf-8');
+
+    const { compileCommand } = await import('./compile.js');
+    const { generateCommand } = await import('./generate.js');
+
+    await compileCommand(manifestPath, {});
+    await generateCommand(irPath, { projection: 'nextjs', surface: 'webhook', output: tempDir });
+
+    const files = (await findGeneratedFiles(tempDir)).map(f => f.replace(/\\/g, '/'));
+    // No webhooks → the webhook surface writes no route files.
+    expect(files.some(f => f.includes('/webhooks/'))).toBe(false);
+
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }, 30000);
+});
+
 describe('Generate Command - --check drift mode', () => {
   it('exits clean (no drift) when generated code matches, exits 1 on drift', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'manifest-generate-check-'));

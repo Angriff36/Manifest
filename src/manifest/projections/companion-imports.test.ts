@@ -234,3 +234,89 @@ describe('cross-projection companion import resolution', () => {
     ).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Webhook surfaces (Workstream 2F): the emitted webhook routes carry a LOCAL
+// runtime import (createManifestRuntime for nextjs; createManifestEngine from
+// the same companion for hono/express). The module-level `ir` above has no
+// webhooks, so the webhook surface stays silent there — these cases exercise a
+// webhook-bearing program and assert that local import still resolves to the
+// companion the projection emits.
+// ---------------------------------------------------------------------------
+
+const WEBHOOK_SOURCE = `
+  entity Order {
+    property amount: number
+    command UpdatePayment(amountPaid: number) {
+      mutate amount = amountPaid
+    }
+  }
+  webhook StripePayment "/webhooks/stripe" run Order.UpdatePayment
+    transform: {
+      amountPaid: payload.amount
+    }
+`;
+
+describe('cross-projection companion import resolution — webhook surfaces', () => {
+  let webhookIr: IR;
+  beforeAll(async () => {
+    const compiled = await compileToIR(WEBHOOK_SOURCE);
+    expect(compiled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    webhookIr = compiled.ir!;
+  });
+
+  /** Walk every surface with the webhook IR and return dangling local imports. */
+  function danglingForWebhookIr(projectionName: string, framework: CompanionFramework): DanglingImport[] {
+    const projection = getProjection(projectionName);
+    expect(projection, `projection "${projectionName}" is registered`).toBeDefined();
+
+    const seen = new Set<string>();
+    const artifacts: ProjectionResult['artifacts'] = [];
+    const add = (result: ProjectionResult) => {
+      for (const artifact of result.artifacts) {
+        if (!seen.has(artifact.id)) {
+          seen.add(artifact.id);
+          artifacts.push(artifact);
+        }
+      }
+    };
+    for (const surface of projection!.surfaces) {
+      add(projection!.generate(webhookIr, { surface, options: {} }));
+      for (const entity of webhookIr.entities) {
+        add(projection!.generate(webhookIr, { surface, entity: entity.name, options: {} }));
+      }
+    }
+
+    const emitted = new Set(artifacts.filter((a) => a.pathHint).map((a) => stripExt(a.pathHint as string)));
+    const dangling: DanglingImport[] = [];
+    for (const artifact of artifacts) {
+      for (const specifier of importSpecifiers(artifact.code)) {
+        const resolved = resolveLocalImportPathHint(specifier, { framework, importerPathHint: artifact.pathHint });
+        if (resolved === null) continue;
+        if (!emitted.has(stripExt(resolved))) {
+          dangling.push({ importer: artifact.pathHint ?? artifact.id, specifier, resolvedPathHint: resolved });
+        }
+      }
+    }
+    return dangling;
+  }
+
+  it('nextjs webhook route resolves createManifestRuntime to the emitted companion', () => {
+    // Sanity: the webhook surface actually emitted a route for this IR.
+    const webhookArtifacts = getProjection('nextjs')!.generate(webhookIr, { surface: 'nextjs.webhook', options: {} }).artifacts;
+    expect(webhookArtifacts.length).toBeGreaterThan(0);
+    expect(danglingForWebhookIr('nextjs', 'nextjs')).toEqual([]);
+  });
+
+  it('hono webhook route resolves ./lib/manifest-runtime to the emitted companion', () => {
+    const webhookArtifacts = getProjection('hono')!.generate(webhookIr, { surface: 'hono.webhooks', options: {} }).artifacts;
+    expect(webhookArtifacts.length).toBeGreaterThan(0);
+    expect(danglingForWebhookIr('hono', 'hono')).toEqual([]);
+  });
+
+  it('express webhook route resolves ./lib/manifest-runtime to the emitted companion', () => {
+    const webhookArtifacts = getProjection('express')!.generate(webhookIr, { surface: 'express.webhooks', options: {} }).artifacts;
+    expect(webhookArtifacts.length).toBeGreaterThan(0);
+    expect(danglingForWebhookIr('express', 'express')).toEqual([]);
+  });
+});

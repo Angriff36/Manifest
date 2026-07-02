@@ -209,22 +209,13 @@ This event appears in `CommandResult.emittedEvents` alongside any command-declar
 
 ## Webhook inbound triggers
 
-Webhooks declare inbound HTTP endpoints that trigger entity commands when an external system sends a request. The runtime verifies the webhook signature, transforms the payload, and dispatches the command.
+Webhooks declare inbound HTTP endpoints that trigger commands when an external system sends a request. The reference runtime verifies the HMAC signature (when declared), deduplicates by idempotency key, evaluates the payload transform, and dispatches the command — every step fail-closed.
 
 ```manifest
 entity Order {
   property required id: string
   property status: string = "pending"
   property providerRef: string = ""
-
-  webhook paymentCallback "/webhooks/payment" run Order.handlePayment
-    method: POST
-    idempotencyHeader: "X-Idempotency-Key"
-    signature {
-      algorithm: "hmac-sha256"
-      header: "X-Signature"
-      secret: "context.webhookSecret"
-    }
 
   command handlePayment(providerRef: string, status: string) {
     guard status == "completed"
@@ -233,6 +224,14 @@ entity Order {
     emit PaymentReceived
   }
 }
+
+webhook paymentCallback "/webhooks/payment" run Order.handlePayment
+  idempotencyHeader: "X-Idempotency-Key"
+  signature {
+    algorithm: "hmac-sha256"
+    header: "X-Signature"
+    secret: "context.webhookSecret"
+  }
 ```
 
 ### Webhook configuration
@@ -241,13 +240,13 @@ A webhook is declared as `webhook <name> "<path>" run [Entity.]<command>`, where
 
 | Field | Description |
 |-------|-------------|
-| `method:` | HTTP method as an identifier (typically `POST`) |
+| `method:` | HTTP method as a string (e.g. `method: "PUT"`); defaults to `POST` when omitted |
 | `idempotencyHeader:` | Optional header name carrying an idempotency key for deduplication |
 | `transform:` | Optional `{ <param>: <expr>, ... }` block mapping request data onto command parameters |
 | `signature { ... }` | Optional verification block with `algorithm` (`hmac-sha256` or `hmac-sha512`), `header`, and `secret` (a context path string) |
 
 <Note>
-Webhook signature verification happens before the command is dispatched. If the signature is invalid, the request is rejected with a `401` response and no command runs. This prevents untrusted callers from triggering commands.
+When a `signature` block is declared, the reference runtime verifies the HMAC over the exact received request bytes before the command is dispatched, comparing with `crypto.timingSafeEqual`. The provided signature may be bare hex or a `sha256=`/`sha512=`-prefixed hex (GitHub convention). A missing or invalid signature is rejected `401` and no command runs; an unresolvable `secret` context path or an unsupported `algorithm` is a fail-closed `500`. A webhook with **no** `signature` block is unauthenticated by design — declare one to require authentication. The full request pipeline (matching, idempotency, transform, dispatch statuses) is specified in `docs/spec/semantics.md` § "Webhooks (Inbound HTTP Triggers)".
 </Note>
 
 ## Event sourcing store

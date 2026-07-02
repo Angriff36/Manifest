@@ -475,6 +475,48 @@ on <EventName> run <EntityType>.<commandName>
 - Given identical IR + identical runtime context + identical input, reactions MUST produce identical results in identical order.
 - Reaction evaluation order is fixed by IR declaration order. No priority or weighting.
 
+## Webhooks (Inbound HTTP Triggers)
+
+Webhooks declare inbound HTTP endpoints that dispatch a command when an external system sends a request. The reference runtime materializes them via `handleWebhookRequest(runtime, request, options?)` (`src/manifest/webhooks`) — the executable contract every projected webhook route binds to. All processing is **fail-closed**: an unauthenticated, malformed, or under-configured request is rejected, never coerced into a command execution.
+
+### Syntax
+```
+webhook <name> "<path>" run [Entity.]<command>
+  [method: "POST"]
+  [signature { algorithm: "hmac-sha256"|"hmac-sha512", header: "<Header>", secret: "<context-path>" }]
+  [idempotencyHeader: "<Header>"]
+  [transform: { <param>: <expr>, ... }]
+```
+
+### Compilation
+- Each webhook declaration compiles to an `IRWebhook` node in the IR `webhooks` array (top level or module scope; NOT inside an entity body).
+- `path`: matched verbatim against the request path.
+- `method`: optional; when absent the runtime treats the method as POST.
+- `command` / `entity`: the command to dispatch and its optional entity scope.
+- `signature`: optional HMAC verification config. `secret` is a **context path string** (e.g. `context.stripeWebhookSecret`) resolved at runtime — never an inlined secret.
+- `idempotencyHeader`: optional request header carrying the dedup key.
+- `transform`: optional `{name, expression}` mappings; each expression is evaluated against the parsed request body.
+
+### Request handling (normative)
+A conforming runtime MUST process an inbound request in this order, returning at the first failing step:
+
+1. **Match.** Select the webhook whose `path` equals the request path and whose method (default POST) equals the request method (compared case-insensitively). If no webhook has that path, the runtime MUST respond `404`. If the path exists only under other methods, the runtime MUST respond `405`.
+2. **Signature.** When `signature` is declared:
+   - An `algorithm` outside `{hmac-sha256, hmac-sha512}` is a configuration fault → respond `500`. The runtime MUST NOT silently accept.
+   - Resolve the shared secret: the caller's explicit override (`options.resolveSecret`) when it yields a non-empty value, otherwise the `secret` context path resolved against the runtime context. An unresolved secret is a configuration fault → respond `500` naming the path. The runtime MUST NOT fall back to accepting the request.
+   - Read the configured `header`. Missing or empty → respond `401`.
+   - Compute the HMAC over the **exact received bytes** (`rawBody`) and compare it to the provided value timing-safely. The provided value MAY be bare hex or hex prefixed with `sha256=`/`sha512=` (GitHub convention); comparison is case-insensitive on the hex. Any mismatch → respond `401`.
+   - When `signature` is **absent** the endpoint is unauthenticated by design: the runtime accepts without verification. This is a deliberate, spec-guaranteed property — declare a signature to require authentication.
+3. **Idempotency.** When `idempotencyHeader` is declared:
+   - If the runtime has no `IdempotencyStore` configured, the declared dedup contract cannot be honored → respond `500`. The runtime MUST NOT silently degrade to at-least-once delivery.
+   - Read the header. Missing or empty → respond `400`.
+   - The value is passed as the command's `idempotencyKey`, so a duplicate delivery returns the cached result and the command body executes exactly once (§ Idempotency).
+4. **Body & transform.** Parse `rawBody` as JSON; invalid JSON → respond `400`. When `transform` is declared, evaluate each param expression against the parsed body (bound as `payload`, aliased `self`); an expression that throws → respond `400` (the runtime MUST NOT partially execute). Missing payload fields evaluate to `undefined` and are not errors. When `transform` is absent, the parsed JSON object is the command input as-is.
+5. **Dispatch.** Derive `instanceId` from the command input (`input.instanceId`, then `input.id`, else undefined — mirroring the generated dispatcher), then invoke `runCommand(command, input, {entityName, instanceId, idempotencyKey})`. A successful result responds `200` with `{ data, events, diagnostics }`. A failed result responds `{ error, diagnostics }` at a status derived from the failure: policy denial `403`, guard failure `422`, blocking constraint `422`, concurrency conflict `409`, approval required `409`, otherwise `400`.
+
+### Determinism
+Given identical IR + identical runtime context + identical request bytes, webhook handling MUST produce an identical response. The handler reads no wall clock; signature verification, JSON parsing, and comparison are pure functions of the request.
+
 ## User-Facing Boundary
 
 Manifest is not a form builder that exposes plumbing. Downstream products use it so

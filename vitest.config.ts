@@ -36,6 +36,10 @@ export default defineConfig({
       },
       // All other aliases (object-style, prefix matching is fine here)
       {
+        find: '@angriff36/manifest/webhooks',
+        replacement: path.resolve(__dirname, './src/manifest/webhooks/handler.ts'),
+      },
+      {
         find: '@angriff36/manifest/config',
         replacement: path.resolve(__dirname, './src/manifest/config.ts'),
       },

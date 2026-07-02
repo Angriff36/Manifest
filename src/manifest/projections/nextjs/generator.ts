@@ -30,6 +30,7 @@ import {
   type RouteContract,
 } from '../shared/route-contract.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
+import { generateWebhookRoutes } from './webhook-generator.js';
 
 /**
  * Re-export the canonical defaults so consumers of
@@ -569,7 +570,7 @@ function generateEntityTypes(entity: IREntity, dateAsString = false): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'nextjs.companions', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'nextjs.webhook', 'nextjs.companions', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -781,6 +782,14 @@ export class NextJsProjection implements ProjectionTarget {
         return generateScheduleCronRoutes(ir, {
           runtimeImportPath: scheduleOpts.runtimeImportPath,
           appDir: scheduleOpts.appDir,
+        });
+      }
+
+      case 'nextjs.webhook': {
+        const webhookOpts = normalizeOptions(options);
+        return generateWebhookRoutes(ir, {
+          runtimeImportPath: webhookOpts.runtimeImportPath,
+          appDir: webhookOpts.appDir,
         });
       }
 
