@@ -738,6 +738,7 @@ export class NextJsProjection implements ProjectionTarget {
         const scheduleOpts = normalizeOptions(options);
         return generateScheduleCronRoutes(ir, {
           runtimeImportPath: scheduleOpts.runtimeImportPath,
+          appDir: scheduleOpts.appDir,
         });
       }
 

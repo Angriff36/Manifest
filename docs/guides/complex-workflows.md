@@ -294,16 +294,13 @@ Kitchen staff might tap "claim" twice on a laggy tablet. Idempotency prevents do
 
 ```typescript
 import { RuntimeEngine } from '@angriff36/manifest';
-import type { IdempotencyStore, CommandResult } from '@angriff36/manifest';
+import { MemoryIdempotencyStore } from '@angriff36/manifest/idempotency/memory';
 
-// In-memory idempotency store (use Redis in production)
-class MemoryIdempotencyStore implements IdempotencyStore {
-  private cache = new Map<string, CommandResult>();
-
-  async has(key: string): Promise<boolean> { return this.cache.has(key); }
-  async get(key: string): Promise<CommandResult | undefined> { return this.cache.get(key); }
-  async set(key: string, result: CommandResult): Promise<void> { this.cache.set(key, result); }
-}
+// MemoryIdempotencyStore is process-local (great for dev/tests). For durable
+// dedup across restarts and instances, swap in the Postgres adapter:
+//   import { PostgresIdempotencyStore } from '@angriff36/manifest/idempotency/postgres';
+// For an exotic backend (e.g. Redis), implement the `IdempotencyStore`
+// interface exported from '@angriff36/manifest'.
 
 export async function claimPrepTask(
   tenantId: string,

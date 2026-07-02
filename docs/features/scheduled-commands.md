@@ -1,8 +1,8 @@
 # Scheduled / Cron Command Triggers
 
-> **Status: Planned.** The `schedule` DSL syntax below is **not yet implemented** in the lexer, parser, or IR schema. The conformance fixture `76-scheduled-commands.manifest` exists as forward-looking evidence; schedule lines are currently skipped during parse. Use platform schedulers (Vercel cron, CloudWatch, etc.) to invoke `runCommand` until this feature ships.
+> **Status: Implemented.** The `schedule` DSL compiles through the lexer, parser, and IR schema (`IRSchedule` in `ir-v1.schema.json`), and the conformance fixture `76-scheduled-commands.manifest` pins the semantics. The reference runtime exposes `getSchedules()` and `runSchedule(name)`, and the package ships an optional worker (`startScheduleWorker` from `@angriff36/manifest/schedule-worker`) plus generated Vercel cron routes so schedules actually fire.
 
-Scheduled commands will trigger entity commands on time-based schedules using cron expressions, fixed intervals, or periodic timers. Schedules are intended to be declarative metadata compiled into the IR and consumed by projection targets. The Manifest runtime does not include a built-in scheduler — schedules would be implemented by your hosting platform through generated cron routes or external schedulers.
+Scheduled commands trigger entity commands on time-based schedules using cron expressions, fixed intervals, or periodic timers. Schedules are declarative metadata compiled into the IR and consumed by projection targets and the runtime worker. The `RuntimeEngine` class has no built-in timer; execution is driven either by the shipped worker (`startScheduleWorker`, for long-running hosts) or by the generated Vercel cron routes.
 
 ## DSL Syntax
 
@@ -65,16 +65,15 @@ Schedules are resolved at compile time and emitted to the IR as `IRSchedule` obj
 
 Projection targets consume schedule metadata:
 
-- **Next.js projection**: Generates `vercel.json` cron entries and a dynamic route handler at `/api/cron/[scheduleName]/route.ts`. The `nextjs.cron` and `nextjs.schedule` surfaces are declared on the `NextJsProjection` class.
+- **Next.js projection** (`nextjs.schedule` surface): Generates one cron route per schedule at `<appDir>/cron/<schedule-name>/route.ts`, maintenance routes for approval expiry and async-job draining when the program needs them, and a `vercel.json` registering them all so Vercel invokes them on schedule.
 - **Express/Hono**: Route handlers for external scheduler invocation.
 - **Terraform projection**: CloudWatch Event rules or similar scheduled resources.
 
-## IR Representation (planned)
+## IR Representation
 
-When implemented, schedules would compile to IR objects similar to:
+Schedules compile to `IRSchedule` objects (defined in `ir-v1.schema.json`):
 
 ```typescript
-// PLANNED — not in ir-v1.schema.json today
 interface IRSchedule {
   name: string;
   trigger: IRTrigger;
@@ -97,7 +96,7 @@ Conformance fixture `src/manifest/conformance/fixtures/76-scheduled-commands.man
 
 ## Notes
 
-- The Manifest runtime does not execute schedules autonomously. You must deploy generated cron routes and ensure your hosting platform invokes them.
+- On Vercel, the generated cron routes plus the emitted `vercel.json` fire schedules with no extra setup. On other hosts, run `startScheduleWorker(runtime)` from `@angriff36/manifest/schedule-worker` (a tick loop that also sweeps approval expiry) or invoke `runSchedule(name)` from your own scheduler. Cron triggers are matched in UTC to the minute.
 - The `schedule`, `cron`, `interval`, and `every` keywords are added to the lexer's KEYWORDS set.
 - Schedules are entity-bound by default when using `Entity.command` syntax, but can also be declared globally at the program or module level.
 - An Inngest projection is not yet implemented. The `IRSchedule` shape supports both cron and interval triggers, making a future Inngest projection straightforward (map to `inngest.createFunction` with cron triggers).

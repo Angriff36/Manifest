@@ -156,6 +156,9 @@ async function generateFromIR(
     } else if (options.surface === 'companions') {
       // Generate the companion modules (runtime factory, response helpers, ...)
       await generateCompanions(projection, ir, outputDir, spinner, projectionOptions);
+    } else if (options.surface === 'schedule') {
+      // Generate the cron routes + vercel.json (schedules, approval expiry, job drain)
+      await generateSchedule(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
       await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
@@ -295,6 +298,22 @@ async function generateAllSurfaces(
   spinner.text = 'Generating companions...';
   await generateCompanions(projection, ir, outputDir, spinner, projectionOptions);
 
+  // Schedule surface: cron routes for schedules plus the maintenance routes an
+  // app needs (approval expiry, async-job drain) and a vercel.json that
+  // registers them. Gated so the common (no schedules/approvals/async) program
+  // doesn't emit an empty vercel.json.
+  const hasSchedules = (ir.schedules?.length ?? 0) > 0;
+  const hasExpiringApprovals = (ir.entities ?? []).some(
+    (e) => (e.approvals ?? []).some((a) => typeof a.timeout === 'number'),
+  );
+  const hasAsyncCommands = (ir.commands ?? []).some((c) => c.async === true);
+  if (hasSchedules || hasExpiringApprovals || hasAsyncCommands) {
+    spinner.text = 'Generating schedule cron routes...';
+    await generateSchedule(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping schedule cron routes (no schedules, expiring approvals, or async commands)');
+  }
+
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
@@ -316,6 +335,26 @@ async function generateCompanions(
   spinner.text = 'Generating companions...';
   const result = projection.generate(ir, {
     surface: 'nextjs.companions',
+    options: projectionOptions as unknown as Record<string, unknown>,
+  });
+  await writeProjectionResult(result, outputDir);
+}
+
+/**
+ * Generate the Next.js schedule surface: one cron route per cron schedule, the
+ * approval-expiry and job-drain maintenance routes when the IR needs them, and
+ * a vercel.json registering them all. Single non-entity-scoped surface.
+ */
+async function generateSchedule(
+  projection: NextJsProjection,
+  ir: IR,
+  outputDir: string,
+  spinner: Ora,
+  projectionOptions: NextJsProjectionOptions
+): Promise<void> {
+  spinner.text = 'Generating schedule cron routes...';
+  const result = projection.generate(ir, {
+    surface: 'nextjs.schedule',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);

@@ -317,7 +317,7 @@ In this example:
   7) Emit declared events in order.
   8) Return a CommandResult with success status, emitted events, and the last action result.
 - Commands may declare a `retry` policy. When present, the runtime wraps execution and retries only on `CONCURRENCY_CONFLICT` and `TIMEOUT` outcomes (or the explicit `retryOn` list). Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
-- `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`; adapters decide when to invoke schedules — the reference runtime does not include a built-in timer.
+- `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
 ### Command Constraints (vNext)

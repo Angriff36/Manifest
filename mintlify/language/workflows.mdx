@@ -121,9 +121,9 @@ entity Report {
 
 ### Schedule resolution
 
-Schedules are resolved at compile time and emitted to the IR as `IRSchedule` objects. The runtime does not include a built-in scheduler — schedules are declarative metadata that projection targets consume:
+Schedules are resolved at compile time and emitted to the IR as `IRSchedule` objects. The `RuntimeEngine` class has no built-in timer, but the package ships an optional worker (`startScheduleWorker` from `@angriff36/manifest/schedule-worker`) that drives schedules on a tick loop and sweeps approval expiry; projection targets also consume the metadata:
 
-- **Next.js projection**: Generates Next.js [cron routes](https://nextjs.org/docs/app/api-reference/cron) (`/api/cron/[name]/route.ts`).
+- **Next.js projection**: Generates a cron route per schedule (`/api/cron/[name]/route.ts`) plus a `vercel.json` registering them, so the platform invokes them on schedule.
 - **Express/Hono projections**: Emit route handlers intended for external scheduler invocation.
 - **Infrastructure projections** (Terraform): Generate CloudWatch Event rules or similar scheduled resources.
 
@@ -144,7 +144,7 @@ entity Cache {
 ```
 
 <Warning>
-The Manifest runtime does not execute schedules autonomously. Schedules are declarations consumed by projections. You must deploy the generated cron routes and ensure your hosting platform invokes them on schedule.
+The `RuntimeEngine` class has no built-in timer. On Vercel, the generated cron routes and `vercel.json` fire schedules automatically; on other hosts, run `startScheduleWorker(runtime)` from `@angriff36/manifest/schedule-worker`, or invoke `runSchedule(name)` from your own scheduler. Cron triggers are matched in UTC to the minute.
 </Warning>
 
 ## Combining sagas and schedules

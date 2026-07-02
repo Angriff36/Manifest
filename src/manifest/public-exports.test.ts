@@ -34,6 +34,18 @@ import * as OutboxApi from './outbox/outbox-store';
 import * as MemoryOutboxApi from './outbox/stores/memory';
 // Subpath: '@angriff36/manifest/outbox/postgres'
 import * as PostgresOutboxApi from './outbox/stores/postgres';
+// Subpath: '@angriff36/manifest/outbox/worker'
+import * as OutboxWorkerApi from './outbox/worker';
+// Subpath: '@angriff36/manifest/idempotency/memory'
+import * as MemoryIdempotencyApi from './idempotency/stores/memory';
+// Subpath: '@angriff36/manifest/idempotency/postgres'
+import * as PostgresIdempotencyApi from './idempotency/stores/postgres';
+// Subpath: '@angriff36/manifest/jobs/postgres'
+import * as PostgresJobsApi from './jobs/stores/postgres';
+// Subpath: '@angriff36/manifest/jobs/worker'
+import * as JobsWorkerApi from './jobs/worker';
+// Subpath: '@angriff36/manifest/schedule-worker'
+import * as ScheduleWorkerApi from './schedule-worker';
 
 describe('Public export surface', () => {
   it('exposes audit adapter contract symbols from the audit subpath', () => {
@@ -66,6 +78,34 @@ describe('Public export surface', () => {
 
   it('exposes the PostgresOutboxStore class via outbox/postgres', () => {
     expect(typeof PostgresOutboxApi.PostgresOutboxStore).toBe('function');
+  });
+
+  it('exposes the outbox delivery worker module via outbox/worker', () => {
+    // Bare load is the load-bearing check — a missing/renamed export breaks
+    // the import above at compile time.
+    expect(OutboxWorkerApi).toBeDefined();
+  });
+
+  it('exposes the MemoryIdempotencyStore class via idempotency/memory', () => {
+    expect(typeof MemoryIdempotencyApi.MemoryIdempotencyStore).toBe('function');
+    const store = new MemoryIdempotencyApi.MemoryIdempotencyStore();
+    expect(store).toBeInstanceOf(MemoryIdempotencyApi.MemoryIdempotencyStore);
+  });
+
+  it('exposes the PostgresIdempotencyStore class via idempotency/postgres', () => {
+    expect(typeof PostgresIdempotencyApi.PostgresIdempotencyStore).toBe('function');
+  });
+
+  it('exposes the postgres job store module via jobs/postgres', () => {
+    expect(PostgresJobsApi).toBeDefined();
+  });
+
+  it('exposes the job worker module via jobs/worker', () => {
+    expect(JobsWorkerApi).toBeDefined();
+  });
+
+  it('exposes the schedule worker module via schedule-worker', () => {
+    expect(ScheduleWorkerApi).toBeDefined();
   });
 
   it('root re-exports the adapter contract types (compile-time check)', () => {

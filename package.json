@@ -160,6 +160,22 @@
       "types": "./dist/manifest/outbox/stores/postgres.d.ts",
       "import": "./dist/manifest/outbox/stores/postgres.js"
     },
+    "./outbox/worker": {
+      "types": "./dist/manifest/outbox/worker.d.ts",
+      "import": "./dist/manifest/outbox/worker.js"
+    },
+    "./jobs/postgres": {
+      "types": "./dist/manifest/jobs/stores/postgres.d.ts",
+      "import": "./dist/manifest/jobs/stores/postgres.js"
+    },
+    "./jobs/worker": {
+      "types": "./dist/manifest/jobs/worker.d.ts",
+      "import": "./dist/manifest/jobs/worker.js"
+    },
+    "./schedule-worker": {
+      "types": "./dist/manifest/schedule-worker.d.ts",
+      "import": "./dist/manifest/schedule-worker.js"
+    },
     "./approval": {
       "types": "./dist/manifest/approval/approval-store.d.ts",
       "import": "./dist/manifest/approval/approval-store.js"
@@ -171,6 +187,14 @@
     "./approval/postgres": {
       "types": "./dist/manifest/approval/stores/postgres.d.ts",
       "import": "./dist/manifest/approval/stores/postgres.js"
+    },
+    "./idempotency/memory": {
+      "types": "./dist/manifest/idempotency/stores/memory.d.ts",
+      "import": "./dist/manifest/idempotency/stores/memory.js"
+    },
+    "./idempotency/postgres": {
+      "types": "./dist/manifest/idempotency/stores/postgres.d.ts",
+      "import": "./dist/manifest/idempotency/stores/postgres.js"
     },
     "./ir-diff": {
       "types": "./dist/manifest/ir-diff.d.ts",
@@ -240,6 +264,9 @@
     "packages/lsp-server/bin/**",
     "src/manifest/audit/sinks/*.sql",
     "src/manifest/outbox/stores/*.sql",
+    "src/manifest/approval/stores/*.sql",
+    "src/manifest/jobs/stores/*.sql",
+    "src/manifest/idempotency/stores/*.sql",
     "src/manifest/wasm/*.wasm",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/semantics.md",

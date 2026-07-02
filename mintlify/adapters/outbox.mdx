@@ -136,36 +136,32 @@ const result = await runtime.runCommand('placeOrder', input, {
 });
 ```
 
-Then run a delivery worker that polls the store:
+Then run the shipped delivery worker. `runOutboxWorker` owns the
+claim/deliver/mark loop — you supply only the `deliver` closure that publishes
+each entry:
 
 ```typescript
-import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { runOutboxWorker } from '@angriff36/manifest/outbox/worker';
 
-async function deliveryWorker(store: PostgresOutboxStore) {
-  while (true) {
-    const entries = await store.claim(25);
-    if (entries.length === 0) {
-      await sleep(1000);
-      continue;
-    }
+const worker = runOutboxWorker(store, async (entry) => {
+  // Reject to have the entry marked failed with this error; resolve to have
+  // it marked delivered. Delivery is at-least-once, so keep this idempotent.
+  await publishToEventBus(entry.event);
+});
 
-    const delivered: string[] = [];
-    const failed: { id: string; error: string }[] = [];
-
-    for (const entry of entries) {
-      try {
-        await publishToEventBus(entry.event);
-        delivered.push(entry.entryId);
-      } catch (err) {
-        failed.push({ id: entry.entryId, error: String(err) });
-      }
-    }
-
-    if (delivered.length > 0) await store.markDelivered(delivered);
-    for (const f of failed) await store.markFailed([f.id], f.error);
-  }
-}
+// On shutdown, stop the loop and wait for the in-flight batch to settle.
+await worker.stop();
 ```
+
+Options tune batching and back-off: `batchSize` (default 100), `pollIntervalMs`
+(default 1000, the wait between empty polls), an `onError` callback for
+store/infrastructure failures, and a `signal: AbortSignal` as an alternative to
+`stop()`. For a serverless or cron-driven deployment that wants a single pass
+instead of a long-lived loop, call `drainOutboxOnce(store, deliver, { batchSize })`.
+
+`runOutboxWorker` is safe to run in multiple replicas against `PostgresOutboxStore`:
+its `claim` uses `SELECT … FOR UPDATE SKIP LOCKED`, so each worker gets a
+disjoint batch.
 
 ## Crash recovery
 

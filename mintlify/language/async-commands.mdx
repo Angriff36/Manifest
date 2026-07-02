@@ -126,8 +126,36 @@ interface JobRecord {
 ```
 
 <Warning>
-`MemoryJobQueue` is for testing and development only. It stores jobs in memory and they are lost on process restart. Production deployments should provide a durable implementation backed by Redis, SQS, Google Cloud Tasks, or similar infrastructure. If no `jobQueue` is configured and an async command is invoked, the runtime returns a `MISSING_JOB_QUEUE` error result.
+`MemoryJobQueue` is for testing and development only. It stores jobs in memory and they are lost on process restart. Production deployments should use a durable queue — the shipped `PostgresJobQueue` (below), or your own `JobQueue` backed by Redis, SQS, Google Cloud Tasks, or similar. If no `jobQueue` is configured and an async command is invoked, the runtime returns a `MISSING_JOB_QUEUE` error result.
 </Warning>
+
+## Production: durable queue + drain worker
+
+`PostgresJobQueue` is a durable `JobQueue` adapter, and `runJobWorker` is the
+shipped drain loop — you no longer hand-write either. Apply the companion
+schema (`src/manifest/jobs/stores/postgres.sql`) once, then:
+
+```typescript
+import { RuntimeEngine } from "@angriff36/manifest";
+import { PostgresJobQueue } from "@angriff36/manifest/jobs/postgres";
+import { runJobWorker } from "@angriff36/manifest/jobs/worker";
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const runtime = new RuntimeEngine(ir, context, {
+  jobQueue: new PostgresJobQueue({ pool }),
+});
+
+// Long-lived worker: each tick drains pending jobs, runs their actions, and
+// records completed/failed status. Stop it on shutdown.
+const worker = runJobWorker(runtime);
+await worker.stop();
+```
+
+`PostgresJobQueue.drainPending` claims pending rows with `FOR UPDATE SKIP
+LOCKED` and flips them to `running` in one statement, so multiple worker
+replicas drain disjoint jobs. For a cron/serverless deployment that wants a
+single pass instead of a loop, call `drainJobsOnce(runtime)`.
 
 ## Deterministic testing with drainJobs()
 

@@ -196,6 +196,14 @@ export async function publishOutboxEvents() {
 }
 ```
 
+> **Using Manifest's first-party outbox?** If events are enqueued through a
+> Manifest `OutboxStore` (e.g. `PostgresOutboxStore`) rather than a bespoke
+> `prisma.outbox` table, you do not hand-write this loop. The shipped
+> `runOutboxWorker(store, deliver)` owns claim/deliver/mark; the Ably publish
+> above becomes the `deliver` closure. See
+> [Outbox adapter](../../mintlify/adapters/outbox.mdx). Hand-write a drain loop
+> only for a custom store like the Prisma table shown here.
+
 ---
 
 ## In-Engine vs Host-Side Wiring
