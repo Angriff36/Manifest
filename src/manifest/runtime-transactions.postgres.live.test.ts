@@ -58,7 +58,11 @@ describe.runIf(DB_URL)('engine transaction boundary — live Postgres end-to-end
     const outboxSql = readFileSync(
       resolve(__dirname, './outbox/stores/postgres.sql'),
       'utf-8'
-    ).replace(/manifest_outbox_entries/g, outboxTable);
+    )
+      .replace(/manifest_outbox_entries/g, outboxTable)
+      // Index names in the shared schema don't embed the table name; leaving
+      // them fixed makes parallel suites race on pg_class (duplicate relname).
+      .replace(/idx_manifest_outbox/g, `idx_${outboxTable}`);
     await pool.query(outboxSql);
     const idemSql = readFileSync(
       resolve(__dirname, './idempotency/stores/postgres.sql'),
