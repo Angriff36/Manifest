@@ -57,19 +57,11 @@ jobs:
         run: pnpm run typecheck
 
       - name: ESLint
-        # TODO: lint debt — ~114 pre-existing errors in real source files
-        # (packages/cli/src/**, src/manifest/**). Tracked as separate cleanup;
-        # marked continue-on-error so the signal stays visible in CI logs
-        # without blocking merges on debt unrelated to a given PR.
-        continue-on-error: true
         run: pnpm run lint
 
       - name: Documentation integrity checks
-        # TODO: docs:check references scripts/check-doc-metadata.mjs and
-        # scripts/check-doc-links.mjs which currently do not exist (WIP
-        # alongside scripts/docs-sync.mjs and the new docs-site/ tree).
-        # Re-enable as a blocking step once those scripts ship.
-        continue-on-error: true
+        # metadata + links + spec headers + snippet doctest (every ```manifest
+        # block in user-facing docs must compile with the real compiler).
         run: pnpm run docs:check
 
       - name: Run test suite

@@ -1,5 +1,11 @@
 # Multi-File Programs (`use`)
 
+Last updated: 2026-07-01
+Status: Active
+Authority: Binding
+Enforced by: src/manifest/module-resolver.ts, src/manifest/multi-compiler.ts, pnpm test
+Applies to: `@angriff36/manifest@2.x`
+
 ## Overview
 
 Manifest supports multi-file programs via `use` declarations. A file referenced with `use` contributes its top-level declarations (entities, enums, value objects, commands, policies, etc.) to the compilation unit. There is **no** named `import { Symbol } from "..."` syntax in the current parser — only `use`.
