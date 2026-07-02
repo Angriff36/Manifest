@@ -602,7 +602,14 @@ export interface JobRecord {
  * (use runtime-provided generateId and now functions).
  */
 export interface JobQueue {
-  enqueue(job: JobRecord): Promise<void>;
+  /**
+   * Enqueue a job. The optional `tx` is an opaque transaction handle
+   * (`TransactionHandle` in runtime-engine.ts): when the runtime is driving a
+   * `TransactionProvider` it threads the active handle so the enqueue joins the
+   * command's transaction; adapters that do not share the provider's database
+   * ignore it.
+   */
+  enqueue(job: JobRecord, tx?: unknown): Promise<void>;
   drainPending(): Promise<JobRecord[]>;
   updateStatus(jobId: string, status: JobRecord['status'], detail?: { result?: unknown; error?: string }): Promise<void>;
 }

@@ -27,7 +27,7 @@
  * DO NOT import this file in browser code — it requires `pg`.
  */
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { JobQueue, JobRecord } from '../../ir';
 
 export interface PostgresJobQueueOptions {
@@ -83,8 +83,15 @@ export class PostgresJobQueue implements JobQueue {
     this.tableName = opts.tableName ?? DEFAULT_TABLE;
   }
 
-  /** Enqueue a job. Idempotent on `jobId` — a duplicate is silently ignored. */
-  async enqueue(job: JobRecord): Promise<void> {
+  /**
+   * Enqueue a job. Idempotent on `jobId` — a duplicate is silently ignored.
+   * When `tx` is a PoolClient bound to an open transaction, the INSERT
+   * participates in that transaction so the job is enqueued atomically with
+   * the command's state mutation; otherwise it runs on a fresh pool
+   * connection.
+   */
+  async enqueue(job: JobRecord, tx?: unknown): Promise<void> {
+    const runner = (tx as PoolClient | undefined) ?? this.pool;
     const sql = `
       INSERT INTO ${quoteIdent(this.tableName)} (
         job_id, command_name, entity_name, instance_id, input,
@@ -92,7 +99,7 @@ export class PostgresJobQueue implements JobQueue {
       ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)
       ON CONFLICT (job_id) DO NOTHING
     `;
-    await this.pool.query(sql, [
+    await runner.query(sql, [
       job.jobId,
       job.commandName,
       job.entityName ?? null,

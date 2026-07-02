@@ -101,6 +101,25 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     }
   }
 
+  /**
+   * Run `callback` against a query runner. When `tx` is a PoolClient bound to
+   * an open transaction, the queries participate in that transaction so the
+   * write commits atomically with the caller's other work; otherwise a
+   * dedicated pooled connection is acquired and released (matching
+   * withConnection). Table DDL is ensured on a separate connection either way
+   * — schema creation is intentionally not part of the caller's transaction.
+   */
+  private async withRunner<R>(
+    tx: unknown,
+    callback: (runner: Pool | PoolClient) => Promise<R>
+  ): Promise<R> {
+    if (tx !== undefined && tx !== null) {
+      await this.ensureInitialized();
+      return callback(tx as PoolClient);
+    }
+    return this.withConnection(callback);
+  }
+
   async getAll(): Promise<T[]> {
     return this.withConnection(async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
@@ -109,19 +128,19 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     });
   }
 
-  async getById(id: string): Promise<T | undefined> {
-    return this.withConnection(async (client) => {
+  async getById(id: string, tx?: unknown): Promise<T | undefined> {
+    return this.withRunner(tx, async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
       const result = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
       return result.rows.length > 0 ? (result.rows[0].data as T) : undefined;
     });
   }
 
-  async create(data: Partial<T>): Promise<T> {
+  async create(data: Partial<T>, tx?: unknown): Promise<T> {
     const id = data.id || this.generateId();
     const item = { ...data, id } as T;
 
-    return this.withConnection(async (client) => {
+    return this.withRunner(tx, async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
       await client.query(
         `INSERT INTO ${quotedTable} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW()`,
@@ -131,8 +150,8 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     });
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | undefined> {
-    return this.withConnection(async (client) => {
+  async update(id: string, data: Partial<T>, tx?: unknown): Promise<T | undefined> {
+    return this.withRunner(tx, async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
       const selectResult = await client.query(`SELECT data FROM ${quotedTable} WHERE id = $1`, [id]);
       if (selectResult.rows.length === 0) return undefined;
@@ -148,8 +167,8 @@ export class PostgresStore<T extends EntityInstance> implements Store<T> {
     });
   }
 
-  async delete(id: string): Promise<boolean> {
-    return this.withConnection(async (client) => {
+  async delete(id: string, tx?: unknown): Promise<boolean> {
+    return this.withRunner(tx, async (client) => {
       const quotedTable = this.quoteIdentifier(this.tableName);
       const result = await client.query(`DELETE FROM ${quotedTable} WHERE id = $1`, [id]);
       return (result.rowCount ?? 0) > 0;

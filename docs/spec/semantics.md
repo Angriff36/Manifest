@@ -425,6 +425,7 @@ The reference runtime exposes `subscribe(entityName, listener): () => void` — 
 - Events **without** a `subject.entity` are NOT delivered to `subscribe` listeners (use `onEvent` for the unfiltered firehose).
 - The return value is an unsubscribe function; after it is called the listener receives no further events.
 - Multiple subscribers (same or different entity names) are independent; listener errors are swallowed exactly as for `onEvent` listeners and never affect execution.
+- **Transaction ordering (provider mode).** When a `TransactionProvider` is wired in (see `adapters.md` § "Transaction Boundary"), in-process notification of `onEvent`/`subscribe` listeners is **deferred until after the command's transaction commits**, so listeners never observe an event from a command that later rolled back. Reaction dispatch is unaffected — reactions run inside the transaction (their writes join it) and only the external listener notification is deferred. Without a provider, listeners are notified synchronously during event emission (unchanged). Note that `getEventLog()` is an in-process diagnostic buffer, not a transactional participant: it records emitted events as they occur in both modes and is not rewound on rollback.
 
 #### Deployment constraint (generated SSE surfaces)
 
@@ -434,8 +435,9 @@ The event stream is per-engine-instance and in-memory. Generated SSE code theref
 - A conforming runtime MAY support an `IdempotencyStore` for command deduplication.
 - When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. If no key is provided, the runtime MUST return an error.
 - If the key exists in the store, the runtime MUST return the cached `CommandResult` without re-executing the command.
-- Both successful and failed results MUST be cached.
-- The idempotency check occurs BEFORE any command evaluation (before building evaluation context, policy checks, constraints, guards, actions, or event emission).
+- Without a `TransactionProvider`, both successful and failed results MUST be cached.
+- With a `TransactionProvider` (see `adapters.md` § "Transaction Boundary"), the idempotency record is written inside the command's transaction. A committing (successful) command therefore caches its result atomically with its mutations; a failed command rolls its transaction back and caches **nothing**, so a later call with the same key re-executes rather than replaying a cached failure. This is the intended consequence of atomic rollback — "the failed attempt never happened" — and is the one place provider mode narrows the "failed results MUST be cached" rule above.
+- The idempotency check (`get`) occurs BEFORE any command evaluation (before building evaluation context, policy checks, constraints, guards, actions, or event emission) and, in provider mode, BEFORE any transaction is opened — a duplicate key short-circuits to the cached result without a transaction.
 
 ## Reactions
 

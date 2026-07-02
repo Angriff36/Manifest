@@ -36,8 +36,13 @@ export interface ApprovalStore {
    * Persist (insert or replace) the approval request under `key`. Called
    * after the runtime creates a pending request or records a stage grant /
    * denial, so the latest state is durable for the next request.
+   *
+   * When `tx` is an open transaction handle (a pg PoolClient for the Postgres
+   * store), the write participates in that transaction so the approval state
+   * commits atomically with the command's other writes. Stores without a
+   * shared transaction boundary (e.g. the in-memory store) ignore it.
    */
-  save(key: string, state: ApprovalRequestState): Promise<void>;
+  save(key: string, state: ApprovalRequestState, tx?: unknown): Promise<void>;
 
   /**
    * List every stored approval request. Useful for operational dashboards

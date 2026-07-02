@@ -8,11 +8,13 @@
  * enqueue when no events are emitted, and store.enqueue errors are
  * fail-open — they MUST NOT alter the CommandResult).
  *
- * Non-transactional caveat: the in-memory runtime has no shared
- * transaction boundary, so enqueue happens AFTER _executeCommandInternal
- * returns success. Durable adapters are expected to honor the `tx`
- * parameter on OutboxStore.enqueue. This is documented in
- * docs/spec/adapters.md § "Outbox Store".
+ * Scope: these tests exercise the NON-PROVIDER path — no
+ * RuntimeOptions.transactionProvider — where enqueue happens AFTER
+ * _executeCommandInternal returns success and is best-effort / fail-open.
+ * The transactional (provider) path, where mutation + outbox + idempotency
+ * commit or roll back together, is covered in runtime-transactions.test.ts.
+ * Both modes are documented in docs/spec/adapters.md § "Outbox Store —
+ * Transaction Boundary".
  */
 
 import { describe, it, expect } from 'vitest';
@@ -219,13 +221,15 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
   });
 
   it('demonstrates the non-transactional gap: outbox failure does NOT roll back the mutation', async () => {
-    // This test pins down the documented limitation in adapters.md
-    // § "Outbox Store — Transactional Limitation (Deferred)". The current
-    // RuntimeEngine has no shared transaction boundary, so a successful
-    // mutate followed by an outbox enqueue failure leaves state mutated
-    // without a durable outbox row. Honesty over wishful thinking: this
-    // test asserts the gap directly so any future change that *does*
-    // implement transactional outbox MUST update or remove the test.
+    // This test pins down NON-PROVIDER behavior documented in adapters.md
+    // § "Outbox Store — Transaction Boundary". Without a transactionProvider the
+    // RuntimeEngine has no shared transaction boundary, so a successful mutate
+    // followed by an outbox enqueue failure leaves state mutated without a
+    // durable outbox row (fail-open). The assertion flip predicted below has now
+    // happened, but only under a transactionProvider: with one wired in, an
+    // outbox failure rolls back and the command returns OUTBOX_ENQUEUE_FAILED
+    // (see runtime-transactions.test.ts § "outbox enqueue failure"). This
+    // fail-open fallback is the deliberate, still-pinned no-provider path.
     const ir = await compile(`
       entity User {
         property name: string
@@ -247,8 +251,9 @@ describe('Runtime outbox enqueue — fail-open and backwards compatibility', () 
 
     // The command still reports success — the mutate ran and the event
     // fired. The outbox write failure is logged on stderr but does not
-    // poison the CommandResult. If a future commit wires a shared tx,
-    // this assertion will need to flip to `success: false` + rollback.
+    // poison the CommandResult. The transactional flip (success: false +
+    // rollback) is now live, but ONLY when a transactionProvider is wired
+    // in; this no-provider path stays fail-open by design.
     expect(result.success).toBe(true);
     expect(result.result).toBe('Alice');
     expect(result.emittedEvents.map(e => e.name)).toEqual(['UserCreated']);

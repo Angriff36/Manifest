@@ -48,6 +48,8 @@ import * as PostgresIdempotencyApi from './idempotency/stores/postgres';
 import * as PostgresJobsApi from './jobs/stores/postgres';
 // Subpath: '@angriff36/manifest/jobs/worker'
 import * as JobsWorkerApi from './jobs/worker';
+// Subpath: '@angriff36/manifest/transactions/postgres'
+import * as PostgresTransactionsApi from './transactions/postgres';
 // Subpath: '@angriff36/manifest/schedule-worker'
 import * as ScheduleWorkerApi from './schedule-worker';
 
@@ -109,6 +111,10 @@ describe('Public export surface', () => {
 
   it('exposes the postgres job store module via jobs/postgres', () => {
     expect(PostgresJobsApi).toBeDefined();
+  });
+
+  it('exposes the PostgresTransactionProvider class via transactions/postgres', () => {
+    expect(typeof PostgresTransactionsApi.PostgresTransactionProvider).toBe('function');
   });
 
   it('exposes the job worker module via jobs/worker', () => {

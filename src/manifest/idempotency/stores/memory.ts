@@ -30,7 +30,9 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
     return this.cache.get(key);
   }
 
-  async set(key: string, result: CommandResult): Promise<void> {
+  async set(key: string, result: CommandResult, _tx?: unknown): Promise<void> {
+    // In-memory: no shared transaction boundary, so `tx` is ignored. Durable
+    // adapters honor it to inherit the transactional guarantee.
     if (this.cache.has(key)) {
       return;
     }

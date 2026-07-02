@@ -33,7 +33,9 @@ export class MemoryApprovalStore implements ApprovalStore {
     return found ? clone(found) : undefined;
   }
 
-  async save(key: string, state: ApprovalRequestState): Promise<void> {
+  async save(key: string, state: ApprovalRequestState, _tx?: unknown): Promise<void> {
+    // In-memory: no shared transaction boundary, so `tx` is ignored. Durable
+    // adapters honor it to inherit the transactional guarantee.
     this.requests.set(key, clone(state));
   }
 

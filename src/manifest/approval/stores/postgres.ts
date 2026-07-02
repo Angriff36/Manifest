@@ -21,7 +21,7 @@
  * DO NOT import this file in browser code — it requires `pg`.
  */
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { ApprovalGrant, ApprovalRequestState } from '../../runtime-engine';
 import type { ApprovalStore } from '../approval-store';
 
@@ -97,7 +97,8 @@ export class PostgresApprovalStore implements ApprovalStore {
     return row ? rowToState(row) : undefined;
   }
 
-  async save(key: string, state: ApprovalRequestState): Promise<void> {
+  async save(key: string, state: ApprovalRequestState, tx?: unknown): Promise<void> {
+    const runner = (tx as PoolClient | undefined) ?? this.pool;
     const sql = `
       INSERT INTO ${quoteIdent(this.tableName)} (
         request_key, entity, instance_id, approval_name, command, status,
@@ -116,7 +117,7 @@ export class PostgresApprovalStore implements ApprovalStore {
         denied_by = EXCLUDED.denied_by,
         denied_reason = EXCLUDED.denied_reason
     `;
-    await this.pool.query(sql, [
+    await runner.query(sql, [
       key,
       state.entity,
       state.instanceId,

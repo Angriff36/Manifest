@@ -174,6 +174,27 @@ When `RuntimeOptions.auditSink` is supplied, `RuntimeEngine.runCommand` emits **
 - `MemoryAuditSink` (`src/manifest/audit/sinks/memory.ts`) — in-memory, idempotent-by-recordId. Tests + sample apps.
 - `PostgresAuditSink` (`src/manifest/audit/sinks/postgres.ts`) — durable, backed by `pg`. Schema in `src/manifest/audit/sinks/postgres.sql`. Uses `INSERT … ON CONFLICT (record_id) DO NOTHING` for idempotency. Not exercised against a live database in CI — verified via mock-based unit tests; live integration tests are deferred until DB infra is added.
 
+## Transaction Provider
+
+Atomicity across a command's writes is opt-in via the `TransactionProvider` adapter (`src/manifest/runtime-engine.ts`):
+
+```typescript
+/** Opaque handle for an open transaction. Adapters that share the provider's
+ * underlying database understand it (e.g. a pg PoolClient); everyone else
+ * ignores it. */
+type TransactionHandle = unknown;
+
+interface TransactionProvider {
+  /** Run fn inside a single transaction: begin → fn(tx) → commit. Any throw
+   * from fn rolls back and rethrows. The engine never nests calls. */
+  withTransaction<T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T>;
+}
+```
+
+Wire-in via `RuntimeOptions.transactionProvider`. When supplied, the engine drives the transaction boundary described under § "Outbox Store — Transaction Boundary": it calls `withTransaction` once per command attempt and threads the returned handle into every store, outbox, idempotency, job, and approval write it performs during that attempt. The handle is intentionally typed `unknown` so the contract stays adapter-agnostic — a concrete provider that shares a database connection with its stores (e.g. one backed by a `pg` pool that also backs `PostgresStore` / `PostgresOutboxStore`) passes its `PoolClient` as the handle; adapters that do not recognize the handle ignore the trailing `tx` argument and behave exactly as before.
+
+The engine **never** nests `withTransaction` calls: nested command dispatch (reactions, saga steps, fan-out) reuses the already-open handle rather than opening a second transaction. A provider therefore only ever sees one `withTransaction` in flight per top-level command attempt.
+
 ## Outbox Store
 
 Durable event persistence is exposed via the `OutboxStore` adapter (`src/manifest/outbox/outbox-store.ts`):
@@ -190,20 +211,46 @@ When `RuntimeOptions.outboxStore` is supplied, `RuntimeEngine.runCommand` calls 
 
 Each `OutboxEntry` carries the full `EmittedEvent` (name, channel, payload, timestamp, optional provenance, optional correlationId/causationId, emitIndex), a stable `entryId` (generated via `RuntimeOptions.generateId`), `enqueuedAt`, `status='pending'`, and `attempts=0`.
 
-### Transactional Limitation (Deferred)
+### Transaction Boundary
 
-The current `RuntimeEngine` does **not** expose a shared transaction boundary between state mutation and outbox enqueue. The `Store` interface (`runtime-engine.ts`) does not accept a transaction handle, and `PostgresStore` (in `stores.node.ts`) opens its own connection per call via `withConnection`. As a consequence, when `runtime-engine.ts` calls `outboxStore.enqueue(entries)` after `_executeCommandInternal` returns, the enqueue runs on a **different** connection from the mutation.
+Whether state mutation and outbox enqueue share a transaction depends on whether a `TransactionProvider` is wired into `RuntimeOptions.transactionProvider`. Two modes exist; a runtime is conforming in either.
 
-This means:
+#### Provider mode (`RuntimeOptions.transactionProvider` is set)
 
-- A successful command followed by an `outboxStore.enqueue` failure leaves state mutated **without** a durable outbox row. The failure is logged on stderr as `[Manifest Runtime] OutboxStore.enqueue failed` and the `CommandResult` is unchanged.
-- `runtime-outbox-enqueue.test.ts` pins this behavior down with the test `demonstrates the non-transactional gap: outbox failure does NOT roll back the mutation`. Any future change that wires a real shared transaction MUST flip that assertion.
+The engine opens **one** transaction per command attempt via `transactionProvider.withTransaction(fn)`, stores the opaque `TransactionHandle` on the engine for the scope of that attempt, and threads it into **every** write it performs during the attempt:
 
-`PostgresOutboxStore.enqueue(entries, tx)` does honor a caller-supplied `tx` PoolClient — the INSERT participates in that transaction. This means a downstream worker that opens its own transaction and threads the same `PoolClient` to both a `PostgresStore` write **and** `PostgresOutboxStore.enqueue(entries, sameClient)` already gets atomicity at the adapter level. The deferred work is making `RuntimeEngine` open and thread that transaction *for* callers — which requires extending the `Store` interface with an optional `tx` parameter and refactoring `withConnection`. That refactor is out of scope until the runtime gains a first-class transaction-boundary abstraction.
+- entity mutations — `Store.create(data, tx)` / `Store.update(id, data, tx)` / `Store.delete(id, tx)`, including the batched command-buffer flush and any eager auto-create;
+- outbox enqueue — `OutboxStore.enqueue(entries, tx)`;
+- idempotency record — `IdempotencyStore.set(key, result, tx)`;
+- job enqueue — `JobQueue.enqueue(job, tx)`;
+- approval writes — `ApprovalStore.save(key, state, tx)`.
 
-### Failure Policy (Fail-Open)
+Atomicity guarantee: a successful command commits its entity mutations, outbox entries, idempotency record, and any job/approval writes **together**. If any of those writes throws — a store error, or an `OutboxStore.enqueue` failure — the whole transaction rolls back and **no** side-effect write survives.
 
-`OutboxStore.enqueue` errors are caught and logged to `stderr` as `[Manifest Runtime] OutboxStore.enqueue failed`. They MUST NOT alter `CommandResult`. Operators relying on durable delivery SHOULD alert on this line.
+Failure semantics in provider mode (this is the difference from non-provider mode):
+
+- An `OutboxStore.enqueue` failure is **not** swallowed. It rolls the transaction back (so the mutation does not survive either) and the command returns `{ success: false, error: "OUTBOX_ENQUEUE_FAILED: <cause>" }`. This is the deliberate flip of the old fail-open behavior — under a provider, a durable event that cannot be persisted must fail the command rather than silently drop.
+- A mutation/flush store error likewise rolls back; the throw propagates to the caller (unchanged for thrown store errors) with no half-committed state.
+- A **clean** command failure (guard/policy/constraint denial, concurrency conflict) also rolls its attempt back. Because such a failure never flushed any write, the rollback is a no-op for entity state, but it means a failed command leaves **no** idempotency record — consistent with "the attempt never happened". A subsequent call with the same key therefore re-executes rather than replaying a cached failure (see § "Idempotency" in `semantics.md`).
+
+Retry (`command.retry`) wraps **each** attempt in its own transaction: a failed attempt rolls back before the next attempt begins, and only the committing attempt's writes survive.
+
+Nested commands (reactions, saga steps, fan-out) invoked while a transaction is already open **join** it — they see the active handle and thread it into their own writes rather than opening a second transaction, so a parent command and every reaction it triggers commit or roll back as one unit. The top-level command owns the single outbox enqueue for the full emitted-event set (parent + reaction events); nested invocations do not enqueue independently while a transaction is active.
+
+Reads are **not** transaction-isolated in this version: `IdempotencyStore.get` (the dedup short-circuit) and entity reads run outside the transaction. A duplicate idempotency key is detected by the pre-execution `get` and returns the cached result without opening a transaction at all.
+
+#### Non-provider mode (no `transactionProvider`) — at-least-once, documented
+
+Without a provider the engine has no shared transaction boundary. `outboxStore.enqueue(entries)` runs after `_executeCommandInternal` returns success, on whatever connection the adapter opens for itself. As a consequence:
+
+- A successful command followed by an `outboxStore.enqueue` failure leaves state mutated **without** a durable outbox row. The failure is logged on stderr as `[Manifest Runtime] OutboxStore.enqueue failed` and the `CommandResult` is **unchanged** (fail-open). Operators relying on durable delivery SHOULD alert on this line.
+- `runtime-outbox-enqueue.test.ts` pins this fallback down with the test `demonstrates the non-transactional gap: outbox failure does NOT roll back the mutation`.
+
+`PostgresOutboxStore.enqueue(entries, tx)` honors a caller-supplied `tx` regardless of mode; provider mode is simply the engine supplying that `tx` itself instead of leaving durability to a hand-written worker.
+
+### Audit is deliberately outside the transaction
+
+`AuditSink.emit` runs in `runCommand`'s `finally` block, **outside** any transaction, in both modes. This is intentional: the audit record is the evidence that a command was attempted and how it resolved. Rolling back the audit record of a failed or rolled-back command would destroy exactly the observability an operator needs to see the failure. Audit is therefore at-least-once observability, not a transactional participant — its existing fail-open behavior (errors logged to stderr, never altering `CommandResult`; see § "Audit Sink — Failure Policy") is unchanged under a provider.
 
 ### First-Party Stores
 

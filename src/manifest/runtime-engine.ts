@@ -269,6 +269,17 @@ export interface RuntimeOptions {
    */
   jobQueue?: JobQueue;
   /**
+   * Optional TransactionProvider that gives commands an atomic write boundary.
+   * When supplied, the runtime opens one transaction per command attempt and
+   * threads the handle into every store, outbox, idempotency, job, and approval
+   * write, so a command's mutations + outbox entries + idempotency record commit
+   * or roll back together. Reactions/sagas invoked during the command join the
+   * same transaction. Without it, behavior is unchanged (outbox enqueue is
+   * best-effort / fail-open). Contract + semantics: docs/spec/adapters.md
+   * § "Transaction Provider" and § "Outbox Store — Transaction Boundary".
+   */
+  transactionProvider?: TransactionProvider;
+  /**
    * Optional WASM expression evaluator for near-native execution speed.
    * When provided, the runtime will use the WASM module for expression
    * evaluation and constraint validation. Falls back to the TypeScript
@@ -501,20 +512,35 @@ export interface SagaResult {
   error?: string;
 }
 
+/**
+ * Opaque handle for an open transaction. Adapters that share the provider's
+ * underlying database understand it (e.g. a pg PoolClient); everyone else
+ * ignores it.
+ */
+export type TransactionHandle = unknown;
+
+export interface TransactionProvider {
+  /** Run fn inside a single transaction: begin → fn(tx) → commit. Any throw
+   * from fn rolls back and rethrows. The engine never nests calls. */
+  withTransaction<T>(fn: (tx: TransactionHandle) => Promise<T>): Promise<T>;
+}
+
 export interface Store<T extends EntityInstance = EntityInstance> {
   getAll(): Promise<T[]>;
   getById(id: string): Promise<T | undefined>;
-  create(data: Partial<T>): Promise<T>;
-  update(id: string, data: Partial<T>): Promise<T | undefined>;
-  delete(id: string): Promise<boolean>;
+  create(data: Partial<T>, tx?: TransactionHandle): Promise<T>;
+  update(id: string, data: Partial<T>, tx?: TransactionHandle): Promise<T | undefined>;
+  delete(id: string, tx?: TransactionHandle): Promise<boolean>;
   clear(): Promise<void>;
 }
 
 export interface IdempotencyStore {
   /** Check if a command with this key has already been executed */
   has(key: string): Promise<boolean>;
-  /** Record a command result for an idempotency key */
-  set(key: string, result: CommandResult): Promise<void>;
+  /** Record a command result for an idempotency key. When the runtime is driving
+   * a TransactionProvider it threads the active handle so the record is written
+   * inside the command's transaction. */
+  set(key: string, result: CommandResult, tx?: TransactionHandle): Promise<void>;
   /** Retrieve the cached result for an idempotency key */
   get(key: string): Promise<CommandResult | undefined>;
 }
@@ -558,6 +584,30 @@ export class ManifestReactionDepthError extends Error {
     this.targetCommand = targetCommand;
   }
 }
+
+/**
+ * Internal marker for an OutboxStore.enqueue failure that occurred inside a
+ * command transaction (provider mode). It is thrown so the transaction rolls
+ * back, then caught in runCommand and converted to an OUTBOX_ENQUEUE_FAILED
+ * CommandResult. Not exported: outside provider mode the enqueue stays
+ * fail-open and this is never constructed.
+ */
+class OutboxEnqueueError extends Error {
+  readonly cause: unknown;
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'OutboxEnqueueError';
+    this.cause = cause;
+  }
+}
+
+/**
+ * Internal marker thrown from inside a command transaction to force a rollback
+ * when the command produced a clean (non-thrown) failure result. It carries the
+ * result so runCommand can return it after the transaction has rolled back.
+ * Never escapes runCommand.
+ */
+const TX_ROLLBACK = Symbol('manifest.tx.rollback');
 
 /**
  * In-memory JobQueue implementation for async commands.
@@ -793,6 +843,23 @@ export class RuntimeEngine {
   /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
 
+  /**
+   * The transaction handle for the command attempt currently in flight, or
+   * null when no provider transaction is open. Set by runCommand's provider-mode
+   * wrapper and threaded into every store/outbox/idempotency/job/approval write
+   * so nested (reaction/saga) commands join the same transaction rather than
+   * opening a new one. Always null in non-provider mode.
+   */
+  private activeTx: TransactionHandle | null = null;
+
+  /**
+   * While non-null, in-process event-listener notifications are buffered here
+   * instead of dispatched immediately, so onEvent/subscribe listeners are only
+   * notified after the command's transaction commits (provider mode). Null in
+   * non-provider mode — notification stays synchronous.
+   */
+  private deferredNotifications: EmittedEvent[] | null = null;
+
   /** Per-engine sliding-window rate limiter (in-memory; durable store is a follow-up) */
   private rateLimiter = new RateLimiter();
 
@@ -830,7 +897,10 @@ export class RuntimeEngine {
   private async saveApprovalState(key: string, state: ApprovalRequestState): Promise<void> {
     this.approvalRequests.set(key, state);
     const store = this.options.approvalStore;
-    if (store) await store.save(key, state);
+    // Threads the active command transaction (provider mode) so an approval
+    // grant/denial commits atomically with the command's other writes; the
+    // in-memory mirror above is unconditional either way.
+    if (store) await store.save(key, state, this.activeTx ?? undefined);
   }
 
   /** Per-entry-point evaluation budget for bounded complexity enforcement */
@@ -2049,7 +2119,7 @@ export class RuntimeEngine {
 
     // Encrypt fields before store write (no-op without encryptionProvider)
     const dataToStore = await this.encryptProperties(entityName, mergedData);
-    const result = await store.create(dataToStore);
+    const result = await store.create(dataToStore, this.activeTx ?? undefined);
 
     // Track newly created instance to prevent version increment on subsequent mutate actions
     if (result && result.id) {
@@ -2180,7 +2250,7 @@ export class RuntimeEngine {
         Object.assign(buf!.patch, encryptedData);
         return mergedData;
       }
-      const result = await store.update(id, encryptedData);
+      const result = await store.update(id, encryptedData, this.activeTx ?? undefined);
       return result ? await this.decryptProperties(entityName, result) : result;
     } finally {
       if (ownsEvalBudget) this.clearEvalBudget();
@@ -2219,7 +2289,7 @@ export class RuntimeEngine {
 
   async deleteInstance(entityName: string, id: string): Promise<boolean> {
     const store = this.stores.get(entityName);
-    return store ? await store.delete(id) : false;
+    return store ? await store.delete(id, this.activeTx ?? undefined) : false;
   }
 
   async runCommand(
@@ -2303,6 +2373,9 @@ export class RuntimeEngine {
 
         const jobId = this.nextRuntimeId();
         const enqueuedAt = this.getNow();
+        // Threads the active transaction when this async command is dispatched
+        // from inside another command's transaction (e.g. a reaction target);
+        // null at top level, where a single enqueue needs no transaction.
         await this.options.jobQueue.enqueue({
           jobId,
           commandName,
@@ -2313,7 +2386,7 @@ export class RuntimeEngine {
           causationId: options.causationId,
           enqueuedAt,
           status: 'pending',
-        });
+        }, this.activeTx ?? undefined);
 
         result = {
           success: true,
@@ -2332,6 +2405,17 @@ export class RuntimeEngine {
           this.getNow(),
         );
       }
+      // Provider mode: wrap each attempt (execute + outbox enqueue + idempotency
+      // set) in one transaction. Only opened at the top level — a nested command
+      // (reaction/saga) runs with this.activeTx already set and JOINS it below
+      // instead of opening a second transaction.
+      if (this.options.transactionProvider && this.activeTx === null) {
+        result = await this._runCommandInTransaction(
+          this.options.transactionProvider, command, commandName, input, options,
+        );
+        return result;
+      }
+
       const runOnce = () => this._executeCommandInternal(commandName, input, options);
       if (command?.retry) {
         result = await executeWithRetry(command.retry, runOnce, {
@@ -2342,18 +2426,21 @@ export class RuntimeEngine {
         result = await runOnce();
       }
 
-      // Outbox enqueue: when an OutboxStore is wired in and the command
-      // succeeded with one or more emitted events, durably persist the
-      // semantic events. NOTE: the in-memory runtime has no shared
-      // transaction boundary, so this enqueue is NOT transactional w.r.t.
-      // mutation today — see docs/spec/adapters.md § "Outbox Store".
-      if (this.options.outboxStore && result.success && result.emittedEvents.length > 0) {
-        await this.enqueueOutbox(result.emittedEvents, commandName, options);
-      }
-
-      // Cache result (success OR failure)
-      if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
-        await this.options.idempotencyStore.set(options.idempotencyKey, result);
+      // Outbox enqueue + idempotency set for the non-transactional path. Skipped
+      // when a transaction is already active (a nested command joining a provider
+      // transaction): the top-level attempt owns the single outbox enqueue for
+      // the full emitted-event set and the idempotency record. In pure
+      // non-provider mode this.activeTx is always null, so this runs exactly as
+      // before — the enqueue is NOT transactional w.r.t. mutation and stays
+      // fail-open (see docs/spec/adapters.md § "Outbox Store — Transaction Boundary").
+      if (this.activeTx === null) {
+        if (this.options.outboxStore && result.success && result.emittedEvents.length > 0) {
+          await this.enqueueOutbox(result.emittedEvents, commandName, options);
+        }
+        // Cache result (success OR failure)
+        if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
+          await this.options.idempotencyStore.set(options.idempotencyKey, result);
+        }
       }
 
       return result;
@@ -2668,14 +2755,15 @@ export class RuntimeEngine {
 
   /**
    * Enqueue emitted events into the configured OutboxStore as a batch.
-   * Wraps the call in try/catch and logs failures — outbox failures MUST
-   * NOT alter the CommandResult shape callers already received.
+   * Behavior depends on whether a command transaction is active:
    *
-   * Non-transactional caveat: the in-memory runtime does not yet expose a
-   * shared transaction boundary, so a successful command followed by an
-   * outbox enqueue failure leaves state mutated without an outbox row.
-   * Durable adapters MUST honor the `tx` parameter and enqueue inside the
-   * same transaction that mutated state.
+   * - Provider mode (this.activeTx set): the enqueue joins the command's
+   *   transaction (threading this.activeTx) and a failure is RETHROWN as an
+   *   OutboxEnqueueError so the transaction rolls back — the command then fails
+   *   with OUTBOX_ENQUEUE_FAILED rather than silently dropping a durable event.
+   * - Non-provider mode (this.activeTx null): the enqueue is best-effort and
+   *   fail-open — a failure is logged to stderr and MUST NOT alter the
+   *   CommandResult the caller already received.
    */
   private async enqueueOutbox(
     events: EmittedEvent[],
@@ -2695,12 +2783,111 @@ export class RuntimeEngine {
     }));
 
     try {
-      await store.enqueue(entries);
+      await store.enqueue(entries, this.activeTx ?? undefined);
     } catch (storeError) {
+      // Inside a command transaction, a dropped durable event must fail the
+      // command (roll back), not be swallowed.
+      if (this.activeTx !== null) {
+        throw new OutboxEnqueueError(storeError);
+      }
       console.warn(
         '[Manifest Runtime] OutboxStore.enqueue failed; events not durably persisted:',
         storeError instanceof Error ? storeError.message : storeError
       );
+    }
+  }
+
+  /**
+   * Provider-mode command execution. Wraps EACH attempt — command body + its
+   * outbox enqueue + its idempotency record — in one `withTransaction` call, so
+   * those writes commit or roll back together. A failed attempt (thrown store
+   * error, thrown outbox failure, or a clean non-success result) rolls back
+   * before the next attempt begins; only a committing attempt's writes survive.
+   * In-process listener notifications are held until the transaction commits.
+   *
+   * Nested commands (reactions/sagas) never reach here: they run with
+   * this.activeTx already set and take the non-transactional branch in
+   * runCommand, joining this transaction rather than opening another.
+   *
+   * See docs/spec/adapters.md § "Outbox Store — Transaction Boundary".
+   */
+  private async _runCommandInTransaction(
+    provider: TransactionProvider,
+    command: IRCommand | undefined,
+    commandName: string,
+    input: Record<string, unknown>,
+    options: {
+      entityName?: string;
+      instanceId?: string;
+      overrideRequests?: OverrideRequest[];
+      correlationId?: string;
+      causationId?: string;
+      idempotencyKey?: string;
+    },
+  ): Promise<CommandResult> {
+    const attempt = async (): Promise<CommandResult> => {
+      // Carried across the throw-to-rollback boundary within a single attempt.
+      let cleanFailure: CommandResult | undefined;
+      let committedNotifications: EmittedEvent[] = [];
+      try {
+        const committed = await provider.withTransaction(async (tx) => {
+          const prevTx = this.activeTx;
+          const prevDeferred = this.deferredNotifications;
+          this.activeTx = tx;
+          this.deferredNotifications = [];
+          try {
+            const r = await this._executeCommandInternal(commandName, input, options);
+            if (r.success) {
+              // Outbox enqueue throws OutboxEnqueueError on failure so a
+              // dropped durable event rolls the whole attempt back.
+              if (this.options.outboxStore && r.emittedEvents.length > 0) {
+                await this.enqueueOutbox(r.emittedEvents, commandName, options);
+              }
+              if (this.options.idempotencyStore && options.idempotencyKey !== undefined) {
+                await this.options.idempotencyStore.set(options.idempotencyKey, r, tx);
+              }
+              committedNotifications = this.deferredNotifications ?? [];
+              return r; // commit
+            }
+            // Clean failure: roll back so no partial write (e.g. an eager
+            // auto-create) survives, then surface the result after rollback.
+            cleanFailure = r;
+            throw TX_ROLLBACK;
+          } finally {
+            this.activeTx = prevTx;
+            this.deferredNotifications = prevDeferred;
+          }
+        });
+        // Transaction committed — safe to notify external listeners now.
+        for (const ev of committedNotifications) this.dispatchToListeners(ev);
+        return committed;
+      } catch (e) {
+        if (e === TX_ROLLBACK && cleanFailure !== undefined) {
+          return cleanFailure; // rolled back; buffered notifications discarded
+        }
+        throw e;
+      }
+    };
+
+    try {
+      if (command?.retry) {
+        return await executeWithRetry(command.retry, attempt, {
+          sleep: this.options.sleep,
+          retryJitter: this.options.retryJitter,
+        });
+      }
+      return await attempt();
+    } catch (e) {
+      // A durable outbox write that failed inside the transaction becomes a
+      // command failure rather than a thrown error escaping runCommand.
+      if (e instanceof OutboxEnqueueError) {
+        return {
+          success: false,
+          error: `OUTBOX_ENQUEUE_FAILED: ${e.message}`,
+          emittedEvents: [],
+        };
+      }
+      throw e;
     }
   }
 
@@ -3191,7 +3378,7 @@ export class RuntimeEngine {
       const cb = this.commandBuffer;
       if (cb && Object.keys(cb.patch).length > 0) {
         const cbStore = this.stores.get(cb.entityName);
-        if (cbStore) await cbStore.update(cb.id, cb.patch);
+        if (cbStore) await cbStore.update(cb.id, cb.patch, this.activeTx ?? undefined);
       }
     } finally {
       this.commandBuffer = prevBuffer;
@@ -4539,6 +4726,17 @@ export class RuntimeEngine {
   }
 
   private notifyListeners(event: EmittedEvent): void {
+    // Provider mode: hold notifications until the command's transaction commits
+    // so listeners never observe an event from a command that later rolled back.
+    if (this.deferredNotifications !== null) {
+      this.deferredNotifications.push(event);
+      return;
+    }
+    this.dispatchToListeners(event);
+  }
+
+  /** Deliver one event to every registered listener (errors swallowed). */
+  private dispatchToListeners(event: EmittedEvent): void {
     for (const listener of this.eventListeners) {
       try {
         listener(event);

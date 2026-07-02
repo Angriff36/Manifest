@@ -18,7 +18,7 @@
  * DO NOT import this file in browser code — it requires `pg`.
  */
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { CommandResult, IdempotencyStore } from '../../runtime-engine';
 
 export interface PostgresIdempotencyStoreOptions {
@@ -60,12 +60,19 @@ export class PostgresIdempotencyStore implements IdempotencyStore {
     return row ? row.result : undefined;
   }
 
-  async set(key: string, result: CommandResult): Promise<void> {
+  /**
+   * Record a result for `key`. When `tx` is a PoolClient bound to an open
+   * transaction, the INSERT participates in that transaction so the cached
+   * result commits atomically with the command's other writes; otherwise it
+   * runs on a fresh pool connection.
+   */
+  async set(key: string, result: CommandResult, tx?: unknown): Promise<void> {
+    const runner = (tx as PoolClient | undefined) ?? this.pool;
     const sql = `
       INSERT INTO ${quoteIdent(this.tableName)} (idempotency_key, result)
       VALUES ($1, $2::jsonb)
       ON CONFLICT (idempotency_key) DO NOTHING
     `;
-    await this.pool.query(sql, [key, JSON.stringify(result)]);
+    await runner.query(sql, [key, JSON.stringify(result)]);
   }
 }

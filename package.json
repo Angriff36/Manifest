@@ -200,6 +200,10 @@
       "types": "./dist/manifest/idempotency/stores/postgres.d.ts",
       "import": "./dist/manifest/idempotency/stores/postgres.js"
     },
+    "./transactions/postgres": {
+      "types": "./dist/manifest/transactions/postgres.d.ts",
+      "import": "./dist/manifest/transactions/postgres.js"
+    },
     "./ir-diff": {
       "types": "./dist/manifest/ir-diff.d.ts",
       "import": "./dist/manifest/ir-diff.js"
@@ -300,7 +304,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.lib.json && tsc --noEmit -p tsconfig.node.json && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run typecheck",
     "test": "vitest run",
-    "test:postgres": "vitest run src/manifest/audit/sinks/postgres.live.test.ts src/manifest/outbox/stores/postgres.live.test.ts --fileParallelism=false",
+    "test:postgres": "vitest run src/manifest/audit/sinks/postgres.live.test.ts src/manifest/outbox/stores/postgres.live.test.ts src/manifest/idempotency/stores/postgres.live.test.ts src/manifest/jobs/stores/postgres.live.test.ts src/manifest/transactions/postgres.live.test.ts src/manifest/runtime-transactions.postgres.live.test.ts --fileParallelism=false",
     "test:watch": "vitest",
     "bench": "vitest bench --reporter=verbose",
     "docs:check:metadata": "node scripts/check-doc-metadata.mjs",
