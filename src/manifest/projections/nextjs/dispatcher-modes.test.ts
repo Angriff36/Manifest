@@ -286,6 +286,7 @@ describe('exported defaults', () => {
           "databaseImportPath": "@/lib/database",
           "dateSerialization": "date",
           "deletedAtProperty": "deletedAt",
+          "emitCompanions": true,
           "includeComments": true,
           "includeSoftDeleteFilter": false,
           "includeTenantFilter": false,

@@ -32,6 +32,7 @@ import type {
   ProjectionDiagnostic,
 } from '../interface';
 import type { ExpressProjectionOptions } from './types';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
 
 // ============================================================================
 // Constants
@@ -40,9 +41,19 @@ import type { ExpressProjectionOptions } from './types';
 const SURFACE_ROUTER = 'express.router' as const;
 const SURFACE_ENTITY = 'express.entity' as const;
 const SURFACE_TYPES = 'express.types' as const;
+const SURFACE_COMPANIONS = 'express.companions' as const;
 const SURFACE_ALL = 'express.all' as const;
 
-const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_ALL] as const;
+const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_COMPANIONS, SURFACE_ALL] as const;
+
+/**
+ * Directories that contain a generated router file carrying the unconditional
+ * local imports (`./middleware/auth`, `./lib/manifest-runtime`). Both the
+ * monolithic router (`routes/manifest-router.ts`) and the per-entity routers
+ * (`routes/<entity>.ts`) — Express and Fastify alike — live under `routes/`,
+ * so relative companion imports resolve to a single location.
+ */
+const IMPORTER_DIRS = ['routes'] as const;
 
 // ============================================================================
 // Defaults
@@ -63,6 +74,7 @@ interface NormalizedOptions {
   publicReads: boolean;
   includeComments: boolean;
   generatedAt: string;
+  emitCompanions: boolean;
 }
 
 function normalizeOptions(opts: ExpressProjectionOptions): NormalizedOptions {
@@ -81,6 +93,7 @@ function normalizeOptions(opts: ExpressProjectionOptions): NormalizedOptions {
     publicReads: opts.publicReads ?? false,
     includeComments: opts.includeComments ?? true,
     generatedAt: opts.generatedAt ?? new Date().toISOString(),
+    emitCompanions: opts.emitCompanions ?? true,
   };
 }
 
@@ -351,7 +364,7 @@ function generateExpressEntityRouter(
     lines.push(`  router.get('/${segment}/list', ${options.authMiddlewareName}, async (req, res) => {`);
   }
   lines.push('    try {');
-  lines.push(`      const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`      const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`);
   lines.push('      res.json(result);');
   lines.push('    } catch (err) {');
@@ -370,7 +383,7 @@ function generateExpressEntityRouter(
     lines.push(`  router.get('/${segment}/:id', ${options.authMiddlewareName}, async (req, res) => {`);
   }
   lines.push('    try {');
-  lines.push(`      const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`      const result = await runtime.get('${entity.name}', req.params.id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }` : ''});`);
   lines.push('      if (!result) {');
   lines.push(`        return res.status(404).json({ error: { code: 'NOT_FOUND', message: '${entity.name} not found' } });`);
@@ -410,7 +423,7 @@ function generateExpressEntityRouter(
     }
 
     // Runtime dispatch
-    lines.push(`      const runtime = ${options.runtimeFactoryName}();`);
+    lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
 
     const contextArg = options.includeTenantContext
       ? `, { user: req.user, ${options.tenantIdProperty}: req.user?.${options.tenantIdProperty} }`
@@ -462,7 +475,7 @@ function generateFastifyEntityRouter(
   }
   const listPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
   lines.push(`  fastify.get('/${segment}/list', { ${listPreHandler}}, async (request, reply) => {`);
-  lines.push(`    const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`    const result = await runtime.list('${entity.name}'${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
   lines.push('    return result;');
   lines.push('  });');
@@ -475,7 +488,7 @@ function generateFastifyEntityRouter(
   const getPreHandler = options.publicReads ? '' : `preHandler: [${options.authMiddlewareName}], `;
   lines.push(`  fastify.get('/${segment}/:id', { ${getPreHandler}}, async (request, reply) => {`);
   lines.push('    const { id } = request.params as { id: string };');
-  lines.push(`    const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   lines.push(`    const result = await runtime.get('${entity.name}', id${options.includeTenantContext ? `, { ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }` : ''});`);
   lines.push('    if (!result) {');
   lines.push(`      reply.code(404);`);
@@ -510,7 +523,7 @@ function generateFastifyEntityRouter(
       lines.push('    const params = request.body;');
     }
 
-    lines.push(`    const runtime = ${options.runtimeFactoryName}();`);
+    lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
 
     const contextArg = options.includeTenantContext
       ? `, { user: request.user, ${options.tenantIdProperty}: request.user?.${options.tenantIdProperty} }`
@@ -643,6 +656,189 @@ function generateExpressRouter(
 }
 
 // ============================================================================
+// Companion module generation (express.companions surface)
+// ============================================================================
+
+/**
+ * Runtime companion module: the router-facing factory.
+ *
+ * The generated routers call `runtime.list(entity, filter?)`,
+ * `runtime.get(entity, id, filter?)`, and
+ * `runtime.runCommand(entity, command, { params, instanceId }, ctx?)` — none of
+ * which are RuntimeEngine's native shapes (it exposes `getAllInstances`,
+ * `getInstance`, and `runCommand(command, input, { entityName, instanceId })`).
+ * This module builds the engine via the shared factory (emitted here as
+ * `createManifestEngine`) and wraps it in a facade whose method shapes match the
+ * routes exactly, so generated output runs unmodified against the companion.
+ *
+ * The facade factory is async; each route handler awaits it per request. This
+ * text is intentionally identical to the Hono projection's — the route call
+ * shapes are the same across both frameworks.
+ */
+function generateRuntimeCompanionModule(ir: IR, options: NormalizedOptions): string {
+  // The shared factory emits an exported engine factory; keep its name distinct
+  // from the user-facing facade name to avoid a duplicate-declaration collision.
+  const engineFactory =
+    options.runtimeFactoryName === 'createManifestEngine'
+      ? 'createManifestEngineInternal'
+      : 'createManifestEngine';
+
+  const lines: string[] = [];
+  lines.push(generateRuntimeFactoryModule({ ir, exportName: engineFactory }).trimEnd());
+  lines.push('');
+  lines.push('// ── Router-facing runtime facade ────────────────────────────────────────');
+  lines.push('// Adapts RuntimeEngine to the argument shapes the generated routes call.');
+  lines.push('// AWAIT: the factory is async (it builds a RuntimeEngine); each handler awaits');
+  lines.push(`// it per request — \`const runtime = await ${options.runtimeFactoryName}();\`.`);
+  lines.push('');
+  lines.push('type ManifestListResult = Awaited<ReturnType<RuntimeEngine["getAllInstances"]>>;');
+  lines.push('type ManifestInstanceResult = Awaited<ReturnType<RuntimeEngine["getInstance"]>>;');
+  lines.push('type ManifestCommandResult = Awaited<ReturnType<RuntimeEngine["runCommand"]>>;');
+  lines.push('');
+  lines.push('/** The runtime surface the generated routes consume. */');
+  lines.push('export interface ManifestRuntime {');
+  lines.push('  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;');
+  lines.push('  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;');
+  lines.push('  runCommand(');
+  lines.push('    entityName: string,');
+  lines.push('    commandName: string,');
+  lines.push('    payload: { params?: Record<string, unknown>; instanceId?: string },');
+  lines.push('    context?: Record<string, unknown>,');
+  lines.push('  ): Promise<ManifestCommandResult>;');
+  lines.push('}');
+  lines.push('');
+  lines.push(`export async function ${options.runtimeFactoryName}(`);
+  lines.push('  context: ManifestContext = {},');
+  lines.push('): Promise<ManifestRuntime> {');
+  lines.push(`  const engine = await ${engineFactory}(context);`);
+  lines.push('  return {');
+  lines.push('    async list(entityName, filter) {');
+  lines.push('      if (filter) engine.replaceContext(filter as unknown as ManifestContext);');
+  lines.push('      return engine.getAllInstances(entityName);');
+  lines.push('    },');
+  lines.push('    async get(entityName, id, filter) {');
+  lines.push('      if (filter) engine.replaceContext(filter as unknown as ManifestContext);');
+  lines.push('      return engine.getInstance(entityName, id);');
+  lines.push('    },');
+  lines.push('    async runCommand(entityName, commandName, payload, ctx) {');
+  lines.push('      if (ctx) engine.replaceContext(ctx as unknown as ManifestContext);');
+  lines.push('      return engine.runCommand(commandName, payload?.params ?? {}, {');
+  lines.push('        entityName,');
+  lines.push('        instanceId: payload?.instanceId,');
+  lines.push('      });');
+  lines.push('    },');
+  lines.push('  };');
+  lines.push('}');
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Fail-closed auth middleware stub. The router imports `authMiddlewareName`
+ * from `authImportPath` unconditionally; this is the module that satisfies it.
+ * It compiles against only the framework's own types and denies every request
+ * until the app wires real auth — an unfinished stub must never allow access.
+ *
+ * Express emits a `RequestHandler`; Fastify emits a `preHandler` hook (the
+ * router registers it as `preHandler: [requireAuth]`).
+ */
+function generateExpressAuthStub(options: NormalizedOptions): string {
+  const name = options.authMiddlewareName;
+  const lines: string[] = [];
+  lines.push('// Auto-generated Manifest auth companion (fail-closed stub).');
+  lines.push('// DO NOT EDIT — generated by the Express projection (companions surface).');
+  lines.push('//');
+  lines.push('// Replace the body: authenticate the caller, attach the identity to the');
+  lines.push('// request (so handlers can read it), and continue. Until then every request');
+  lines.push('// is denied so unauthenticated access cannot silently succeed.');
+  lines.push('');
+
+  if (options.framework === 'fastify') {
+    lines.push("import type { FastifyRequest, FastifyReply } from 'fastify';");
+    lines.push('');
+    lines.push(`export async function ${name}(_request: FastifyRequest, reply: FastifyReply): Promise<void> {`);
+    lines.push('  reply.code(401).send({');
+    lines.push(`    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`);
+    lines.push('  });');
+    lines.push('}');
+  } else {
+    lines.push("import type { RequestHandler } from 'express';");
+    lines.push('');
+    lines.push(`export const ${name}: RequestHandler = (_req, res) => {`);
+    lines.push('  res.status(401).json({');
+    lines.push(`    error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' },`);
+    lines.push('  });');
+    lines.push('};');
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Emit the companion modules the generated router imports but no other surface
+ * writes: the runtime factory (always) and the auth middleware (always — the
+ * router imports it unconditionally).
+ *
+ * Relative specifiers (`./lib/manifest-runtime`) resolve against the importing
+ * router file's directory. Every Express/Fastify router lives under `routes/`,
+ * so each companion resolves to a single location. A package specifier is
+ * skipped (never overwritten) with an info diagnostic — that module is the
+ * app's to provide.
+ */
+function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResult {
+  const artifacts: ProjectionArtifact[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+
+  if (!options.emitCompanions) {
+    diagnostics.push({
+      severity: 'info',
+      code: 'COMPANIONS_DISABLED',
+      message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+    });
+    return { artifacts, diagnostics };
+  }
+
+  const emit = (kind: string, importSpecifier: string, build: () => string, label: string): void => {
+    // Package-ness is independent of the importer directory; probe once.
+    const probe = resolveLocalImportPathHint(importSpecifier, {
+      framework: 'express',
+      importerPathHint: `${IMPORTER_DIRS[0]}/importer.ts`,
+    });
+    if (!probe) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'COMPANION_SKIPPED_PACKAGE_PATH',
+        message: `Skipping ${label} companion — "${importSpecifier}" is a package specifier, not a local module. That module is yours to provide.`,
+      });
+      return;
+    }
+    // Resolve against every importer directory; emit the module at each distinct
+    // location so the relative import resolves from every router file.
+    const pathHints = new Set<string>();
+    for (const dir of IMPORTER_DIRS) {
+      const resolved = resolveLocalImportPathHint(importSpecifier, {
+        framework: 'express',
+        importerPathHint: `${dir}/importer.ts`,
+      });
+      if (resolved) pathHints.add(resolved);
+    }
+    const code = build();
+    for (const pathHint of [...pathHints].sort()) {
+      const topDir = pathHint.split('/')[0];
+      artifacts.push({ id: `express.companions.${kind}.${topDir}`, pathHint, contentType: 'typescript', code });
+    }
+  };
+
+  // Runtime factory — imported unconditionally by every router.
+  emit('runtime', options.runtimeImportPath, () => generateRuntimeCompanionModule(ir, options), 'runtime factory');
+
+  // Auth middleware — imported unconditionally by every router.
+  emit('auth', options.authImportPath, () => generateExpressAuthStub(options), 'auth middleware');
+
+  return { artifacts, diagnostics };
+}
+
+// ============================================================================
 // Projection class
 // ============================================================================
 
@@ -727,6 +923,10 @@ export class ExpressProjection implements ProjectionTarget {
           }],
           diagnostics,
         };
+      }
+
+      case SURFACE_COMPANIONS: {
+        return generateCompanions(ir, options);
       }
 
       case SURFACE_ALL: {

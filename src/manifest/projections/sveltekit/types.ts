@@ -136,4 +136,16 @@ export interface SvelteKitProjectionOptions {
    * ISO timestamp override for deterministic output (testing).
    */
   generatedAt?: string;
+
+  /**
+   * Emit the companion modules generated SvelteKit code imports but no other
+   * surface writes: the runtime factory (`createManifestRuntime`), the Prisma
+   * `database` client, and — for local providers — an auth stub. Default
+   * **true**, so `manifest generate` produces code that compiles without
+   * hand-authored glue. Set to `false` to keep the historical workflow where
+   * those modules are hand-written. A companion is skipped (never overwritten)
+   * when its configured import path is a package specifier rather than a
+   * `$lib`/relative alias.
+   */
+  emitCompanions?: boolean;
 }

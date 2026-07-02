@@ -153,6 +153,9 @@ async function generateFromIR(
     } else if (options.surface === 'dispatcher') {
       // Generate the canonical dispatcher route
       await generateDispatcher(projection, ir, outputDir, spinner, projectionOptions);
+    } else if (options.surface === 'companions') {
+      // Generate the companion modules (runtime factory, response helpers, ...)
+      await generateCompanions(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
       await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
@@ -232,7 +235,11 @@ async function generateWithRegistryProjection(
       collect(projection.generate(ir, { surface, entity: entity.name, options: projectionOptions }));
     }
 
-    await writeProjectionResult(merged, outputDir);
+    // The surface walk probes every surface globally and per-entity; scoped
+    // surfaces answer the mismatched probes with "requires entity/command"
+    // error diagnostics. Those are expected control flow here, so this call
+    // site alone opts out of fail-on-error.
+    await writeProjectionResult(merged, outputDir, { failOnError: false });
   }
 }
 
@@ -281,11 +288,37 @@ async function generateAllSurfaces(
     spinner.info('Skipping dispatcher (dispatcher.enabled: false)');
   }
 
+  // Companion modules (runtime factory, response helpers, database client,
+  // auth/tenant shims) so generated code compiles without hand-written glue.
+  // The projection gates on emitCompanions (default true) and skips companions
+  // whose configured import path is a package specifier.
+  spinner.text = 'Generating companions...';
+  await generateCompanions(projection, ir, outputDir, spinner, projectionOptions);
+
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
   spinner.text = 'Generating client...';
   await generateClient(projection, ir, outputDir, spinner, projectionOptions);
+}
+
+/**
+ * Generate the Next.js companion modules (runtime factory, response helpers,
+ * database client, auth/tenant shims). Single non-entity-scoped surface.
+ */
+async function generateCompanions(
+  projection: NextJsProjection,
+  ir: IR,
+  outputDir: string,
+  spinner: Ora,
+  projectionOptions: NextJsProjectionOptions
+): Promise<void> {
+  spinner.text = 'Generating companions...';
+  const result = projection.generate(ir, {
+    surface: 'nextjs.companions',
+    options: projectionOptions as unknown as Record<string, unknown>,
+  });
+  await writeProjectionResult(result, outputDir);
 }
 
 /**
@@ -401,7 +434,8 @@ async function generateClient(
  */
 async function writeProjectionResult(
   result: ProjectionResult,
-  outputDir: string
+  outputDir: string,
+  opts: { failOnError?: boolean } = {}
 ): Promise<void> {
   // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
@@ -414,6 +448,15 @@ async function writeProjectionResult(
         console.log(chalk.gray(`  Info: ${d.message}`));
       }
     });
+  }
+
+  // An error diagnostic with nothing produced is a failed generation step,
+  // not a warning to scroll past — fail the run instead of exiting 0 with
+  // missing artifacts. (The registry surface walk opts out: its probe calls
+  // legitimately produce "requires entity" errors.)
+  const errors = (result.diagnostics ?? []).filter((d) => d.severity === 'error');
+  if (opts.failOnError !== false && errors.length > 0 && result.artifacts.length === 0) {
+    throw new Error(errors[0].message);
   }
 
   // Write each artifact

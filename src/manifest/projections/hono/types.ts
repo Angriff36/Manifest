@@ -95,4 +95,17 @@ export interface HonoProjectionOptions {
    * ISO timestamp override for deterministic output (testing).
    */
   generatedAt?: string;
+
+  /**
+   * Emit the companion modules the generated router imports but no other
+   * surface writes — the runtime factory (`createManifestRuntime` at
+   * `runtimeImportPath`) and the auth middleware (`authMiddlewareName` at
+   * `authImportPath`). Default **true**, so a generated Hono app compiles
+   * without hand-authored glue.
+   *
+   * Set to `false` to keep the historical workflow where those modules are
+   * hand-written. A companion is skipped (never overwritten) when its import
+   * path is a package specifier rather than a local relative module.
+   */
+  emitCompanions?: boolean;
 }

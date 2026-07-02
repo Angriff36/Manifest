@@ -295,6 +295,15 @@
           "type": "object",
           "additionalProperties": { "type": "string" },
           "description": "Explicit per-entity URL path segment overrides for generated routes and client fetch paths, e.g. { \"OrderLine\": \"order-lines\" } → app/api/order-lines/list/route.ts. The value may contain '/' for a multi-segment domain path, e.g. { \"Event\": \"events/event\" } → app/api/events/event/list/route.ts (replaces hand-rolled domain-remap passes). Default: lowercased entity name."
+        },
+        "emitCompanions": {
+          "type": "boolean",
+          "description": "Emit the companion modules generated code imports (runtime factory, response helpers, database client, auth/tenant shims) so 'manifest generate' output compiles without hand-authored glue. A companion is skipped when its configured import path is a package specifier rather than a local alias. Set to false to keep hand-writing them.",
+          "default": true
+        },
+        "runtimeConfigImport": {
+          "type": "string",
+          "description": "Import specifier for the app's manifest.config (default export, ManifestRuntimeConfig shape), relative to the emitted runtime factory module. When set, the generated createManifestRuntime composes a storeProvider from config.stores. Leave unset for zero-config projects (the factory uses the engine's built-in stores). Only consulted when emitCompanions is true."
         }
       }
     },

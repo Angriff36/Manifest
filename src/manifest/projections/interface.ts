@@ -316,6 +316,30 @@ export interface NextJsProjectionOptions {
    * Non-breaking — defaults to `'date'`.
    */
   dateSerialization?: 'date' | 'iso-string';
+
+  /**
+   * Emit the companion modules that generated route/dispatcher code imports —
+   * the runtime factory (`createManifestRuntime`), the HTTP envelope helpers
+   * (`manifest-response`), the Prisma database client (when read routes are
+   * emitted), an auth stub (when `authProvider` is `'custom'`), and a tenant
+   * lookup helper (when `includeTenantFilter` is on). Default **true**, so
+   * `manifest generate` produces code that compiles without hand-authored glue.
+   *
+   * Set to `false` to keep the historical workflow where those modules are
+   * hand-written in the app. A companion is skipped (never overwritten) when
+   * its configured import path is a package specifier rather than a local alias.
+   */
+  emitCompanions?: boolean;
+
+  /**
+   * Import specifier for the app's `manifest.config` (default export,
+   * `ManifestRuntimeConfig` shape), relative to the emitted runtime factory
+   * module. When set, the generated `createManifestRuntime` composes a
+   * `storeProvider` from `config.stores`. Leave unset (default) for zero-config
+   * projects — the factory then uses the engine's built-in stores. Only
+   * consulted when `emitCompanions` is true.
+   */
+  runtimeConfigImport?: string;
 }
 
 /**
@@ -343,4 +367,13 @@ export interface RemixProjectionOptions {
     functionName: string;
     lookupKey: 'orgId' | 'userId';
   };
+
+  /**
+   * Emit the companion modules generated Remix code imports (runtime factory,
+   * response helpers, database client, auth/tenant shims). Default **true**.
+   * Set to `false` to keep hand-authored companions. (The Remix generator's
+   * companion emission is owned by a separate workstream; this field reserves
+   * the option shape so it is consistent with the Next.js projection.)
+   */
+  emitCompanions?: boolean;
 }

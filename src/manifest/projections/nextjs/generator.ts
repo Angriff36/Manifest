@@ -21,6 +21,7 @@ import {
   READ_ROUTES_DEFAULTS,
 } from './defaults.js';
 import { resolveTableName, applyRouteCasing, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
 
 /**
@@ -130,6 +131,8 @@ interface NormalizedNextJsOptions {
   routeSegments: Record<string, string>;
   routeCasing: RouteCasing;
   dateSerialization: 'date' | 'iso-string';
+  emitCompanions: boolean;
+  runtimeConfigImport?: string;
 }
 
 /**
@@ -197,6 +200,8 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     routeSegments: options?.routeSegments ?? {},
     routeCasing: options?.routeCasing ?? NEXTJS_DEFAULTS.routeCasing,
     dateSerialization: options?.dateSerialization ?? NEXTJS_DEFAULTS.dateSerialization,
+    emitCompanions: options?.emitCompanions ?? NEXTJS_DEFAULTS.emitCompanions,
+    runtimeConfigImport: options?.runtimeConfigImport,
   };
 }
 
@@ -522,7 +527,7 @@ function generateEntityTypes(entity: IREntity, dateAsString = false): string {
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
   readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'ts.types', 'ts.client'] as const;
+  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'nextjs.companions', 'ts.types', 'ts.client'] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -734,6 +739,11 @@ export class NextJsProjection implements ProjectionTarget {
         return generateScheduleCronRoutes(ir, {
           runtimeImportPath: scheduleOpts.runtimeImportPath,
         });
+      }
+
+      case 'nextjs.companions': {
+        const companionOpts = normalizeOptions(options);
+        return this._companions(ir, companionOpts);
       }
 
       case 'ts.types': {
@@ -1440,6 +1450,299 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
   }
 
   /**
+   * Generate the companion modules that generated route/dispatcher code
+   * imports but no other surface writes: the runtime factory, the HTTP
+   * envelope helpers, the Prisma client, an auth stub, and a tenant lookup.
+   * Each lands at the pathHint derived from its CONFIGURED import path — so a
+   * custom `responseImportPath: '@/shared/rsp'` places the module at
+   * 'shared/rsp.ts'. A companion whose import path is a package specifier is
+   * skipped (never emitted at a colliding wrong path) — that module is the
+   * user's. When `emitCompanions` is false, nothing is emitted.
+   */
+  private _companions(ir: IR, options: NormalizedNextJsOptions): ProjectionResult {
+    const diagnostics: ProjectionDiagnostic[] = [];
+    const artifacts: ProjectionResult['artifacts'] = [];
+
+    if (!options.emitCompanions) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'COMPANIONS_DISABLED',
+        message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+      });
+      return { artifacts, diagnostics };
+    }
+
+    // Resolve a configured import specifier to its emission pathHint and push
+    // the built module. Skip (with an info diagnostic) when the specifier is a
+    // package the user owns rather than a local alias.
+    const emit = (id: string, importSpecifier: string, build: () => string, label: string): void => {
+      const pathHint = resolveLocalImportPathHint(importSpecifier, { framework: 'nextjs' });
+      if (!pathHint) {
+        diagnostics.push({
+          severity: 'info',
+          code: 'COMPANION_SKIPPED_PACKAGE_PATH',
+          message: `Skipping ${label} companion — "${importSpecifier}" is a package specifier, not a local module. That module is yours to provide.`,
+        });
+        return;
+      }
+      artifacts.push({ id, pathHint, contentType: 'typescript', code: build() });
+    };
+
+    // 1. Runtime factory — always. Inline command/dispatcher routes, the
+    //    shared-runtime accessor, and the schedule surface all import it.
+    emit(
+      'nextjs.companions.runtime',
+      options.runtimeImportPath,
+      () => generateRuntimeFactoryModule({ ir, runtimeConfigImport: options.runtimeConfigImport }),
+      'runtime factory',
+    );
+
+    // 2. HTTP envelope helpers — always. Every route and the dispatcher import
+    //    manifestSuccessResponse / manifestErrorResponse / normalizeCommandResult.
+    emit(
+      'nextjs.companions.response',
+      options.responseImportPath,
+      () => this._companionResponseModule(),
+      'response helpers',
+    );
+
+    // 3. Database client — when read routes are emitted (they import
+    //    { database }) or the tenant companion needs it for the lookup.
+    if (options.readRoutes.enabled || options.includeTenantFilter) {
+      emit(
+        'nextjs.companions.database',
+        options.databaseImportPath,
+        () => this._companionDatabaseModule(),
+        'database client',
+      );
+    }
+
+    // 4. Auth stub — only when the auth import resolves to a LOCAL module.
+    //    The 'custom' provider (getUser from '@/lib/auth') always does; clerk
+    //    and next-auth default to package imports and get skipped by `emit`.
+    const authSpec = this._authCompanionSpec(options);
+    if (authSpec) {
+      emit(
+        'nextjs.companions.auth',
+        authSpec.importSpecifier,
+        () => this._companionAuthStub(authSpec.kind),
+        'auth',
+      );
+    }
+
+    // 5. Tenant lookup helper — only when tenant filtering is on. normalizeOptions
+    //    always sets tenantProvider (DEFAULT_TENANT_PROVIDER), so this emits the
+    //    module the generated tenant lookup call imports.
+    if (options.includeTenantFilter && options.tenantProvider) {
+      emit(
+        'nextjs.companions.tenant',
+        options.tenantProvider.importPath,
+        () => this._companionTenantModule(options),
+        'tenant lookup',
+      );
+    }
+
+    return { artifacts, diagnostics };
+  }
+
+  /**
+   * Resolve which auth symbol/import the generated routes expect and whether it
+   * points at a local module worth stubbing. Mirrors `generateAuthImport`:
+   * clerk/next-auth default to package imports (returned here, but skipped
+   * downstream because their path is a package); 'custom' points at an app
+   * module; 'none' imports nothing.
+   */
+  private _authCompanionSpec(
+    options: NormalizedNextJsOptions,
+  ): { importSpecifier: string; kind: 'getUser' | 'getServerSession' | 'clerkAuth' } | null {
+    switch (options.authProvider) {
+      case 'custom':
+        return { importSpecifier: options.authImportPath, kind: 'getUser' };
+      case 'nextauth':
+        return {
+          importSpecifier: options.authImportPath === '@/lib/auth' ? 'next-auth' : options.authImportPath,
+          kind: 'getServerSession',
+        };
+      case 'clerk':
+        return {
+          importSpecifier: options.authImportPath === '@/lib/auth' ? '@clerk/nextjs' : options.authImportPath,
+          kind: 'clerkAuth',
+        };
+      case 'none':
+      default:
+        return null;
+    }
+  }
+
+  /** Canonical HTTP envelope module (next/server NextResponse). */
+  private _companionResponseModule(): string {
+    const lines: string[] = [];
+    lines.push('// Auto-generated Manifest HTTP envelope helpers for Next.js.');
+    lines.push('// DO NOT EDIT — generated by the Next.js projection (companions surface).');
+    lines.push('//');
+    lines.push('// The response contract shared by generated routes, the dispatcher, and');
+    lines.push('// downstream clients: success/error envelopes + normalizeCommandResult over');
+    lines.push('// a RuntimeEngine command result.');
+    lines.push('');
+    lines.push('import { NextResponse } from "next/server";');
+    lines.push('');
+    lines.push('export interface ManifestDiagnostic {');
+    lines.push('  kind?: string;');
+    lines.push('  code?: string;');
+    lines.push('  message?: string;');
+    lines.push('  [key: string]: unknown;');
+    lines.push('}');
+    lines.push('');
+    lines.push('export interface ManifestCommandResult<T = unknown> {');
+    lines.push('  success: boolean;');
+    lines.push('  data?: T;');
+    lines.push('  error?: string;');
+    lines.push('  events?: unknown[];');
+    lines.push('  diagnostics?: ManifestDiagnostic[];');
+    lines.push('}');
+    lines.push('');
+    lines.push('/** JSON success envelope. The body object is serialized as-is. */');
+    lines.push('export function manifestSuccessResponse(body: unknown, init?: ResponseInit) {');
+    lines.push('  return NextResponse.json(body, init);');
+    lines.push('}');
+    lines.push('');
+    lines.push('/** JSON error envelope. Accepts a bare message or a { error, diagnostics } body. */');
+    lines.push('export function manifestErrorResponse(');
+    lines.push('  error: string | { error: string; diagnostics: ManifestDiagnostic[] },');
+    lines.push('  status: number,');
+    lines.push('  init?: ResponseInit,');
+    lines.push(') {');
+    lines.push('  const body = typeof error === "string" ? { error, diagnostics: [] } : error;');
+    lines.push('  return NextResponse.json(body, { ...init, status });');
+    lines.push('}');
+    lines.push('');
+    lines.push('/**');
+    lines.push(' * Normalize a RuntimeEngine command result into the stable envelope shape.');
+    lines.push(' * entityName/commandName are accepted for call-site symmetry (and future');
+    lines.push(' * logging); the current implementation does not branch on them.');
+    lines.push(' */');
+    lines.push('export function normalizeCommandResult<T = unknown>(');
+    lines.push('  entityName: string,');
+    lines.push('  commandName: string,');
+    lines.push('  result: unknown,');
+    lines.push('): ManifestCommandResult<T> {');
+    lines.push('  void entityName;');
+    lines.push('  void commandName;');
+    lines.push('  const r = (result ?? {}) as Partial<ManifestCommandResult<T>> & { error?: string };');
+    lines.push('  if (typeof r.success === "boolean") {');
+    lines.push('    return {');
+    lines.push('      success: r.success,');
+    lines.push('      data: r.data,');
+    lines.push('      error: r.error,');
+    lines.push('      events: r.events ?? [],');
+    lines.push('      diagnostics: r.diagnostics ?? [],');
+    lines.push('    };');
+    lines.push('  }');
+    lines.push('  return {');
+    lines.push('    success: !r.error,');
+    lines.push('    data: r.data,');
+    lines.push('    error: r.error,');
+    lines.push('    events: r.events ?? [],');
+    lines.push('    diagnostics: r.diagnostics ?? [],');
+    lines.push('  };');
+    lines.push('}');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /** Prisma client singleton (standard globalThis dev-reuse pattern). */
+  private _companionDatabaseModule(): string {
+    const lines: string[] = [];
+    lines.push('// Auto-generated Prisma client singleton for Next.js.');
+    lines.push('// DO NOT EDIT — generated by the Next.js projection (companions surface).');
+    lines.push('//');
+    lines.push('// globalThis reuse so dev hot-reload does not exhaust DB connections.');
+    lines.push('');
+    lines.push('import { PrismaClient } from "@prisma/client";');
+    lines.push('');
+    lines.push('const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };');
+    lines.push('');
+    lines.push('export const database = globalForPrisma.prisma ?? new PrismaClient();');
+    lines.push('');
+    lines.push('if (process.env.NODE_ENV !== "production") {');
+    lines.push('  globalForPrisma.prisma = database;');
+    lines.push('}');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /**
+   * Fail-closed auth stub. Compiles (correct types so routes type-check) but
+   * throws at runtime with a "wire your auth provider" message so unfinished
+   * auth never silently allows access.
+   */
+  private _companionAuthStub(kind: 'getUser' | 'getServerSession' | 'clerkAuth'): string {
+    const lines: string[] = [];
+    lines.push('// Auto-generated Manifest auth companion (fail-closed stub).');
+    lines.push('// Replace the body: resolve the caller from the request/session and return');
+    lines.push('// the identity. Until then this throws so unauthenticated access cannot');
+    lines.push('// silently succeed.');
+    lines.push('');
+    if (kind === 'getUser') {
+      lines.push('import type { NextRequest } from "next/server";');
+      lines.push('');
+      lines.push('export async function getUser(_request: NextRequest): Promise<{ id: string } | null> {');
+      lines.push('  throw new Error(');
+      lines.push('    "Manifest auth companion stub: implement getUser() to resolve the authenticated user from the request. Return { id } or null.",');
+      lines.push('  );');
+      lines.push('}');
+    } else if (kind === 'getServerSession') {
+      lines.push('export async function getServerSession(): Promise<{ user: { id: string } } | null> {');
+      lines.push('  throw new Error(');
+      lines.push('    "Manifest auth companion stub: implement getServerSession() to resolve the session. Return { user: { id } } or null.",');
+      lines.push('  );');
+      lines.push('}');
+    } else {
+      lines.push('export async function auth(): Promise<{ userId: string | null; orgId: string | null }> {');
+      lines.push('  throw new Error(');
+      lines.push('    "Manifest auth companion stub: implement auth() to resolve { userId, orgId } from the request.",');
+      lines.push('  );');
+      lines.push('}');
+    }
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /**
+   * Tenant lookup helper. Implements the `userTenantMapping` lookup the
+   * generated tenant filtering assumes, via the database companion, and throws
+   * a clear error when that delegate is absent so the assumption is explicit.
+   */
+  private _companionTenantModule(options: NormalizedNextJsOptions): string {
+    const provider = options.tenantProvider!;
+    const fn = provider.functionName;
+    const key = provider.lookupKey;
+    const lines: string[] = [];
+    lines.push('// Auto-generated Manifest tenant lookup companion for Next.js.');
+    lines.push('// DO NOT EDIT — generated by the Next.js projection (companions surface).');
+    lines.push('//');
+    lines.push(`// Maps ${key} → tenantId via database.userTenantMapping. Replace the body if`);
+    lines.push('// your schema resolves tenants differently.');
+    lines.push('');
+    lines.push(generateImport('{ database }', options.databaseImportPath));
+    lines.push('');
+    lines.push(`export async function ${fn}(${key}: string): Promise<string | null> {`);
+    lines.push('  const delegate = (database as unknown as {');
+    lines.push(`    userTenantMapping?: { findUnique(args: { where: { ${key}: string } }): Promise<{ tenantId: string } | null> };`);
+    lines.push('  }).userTenantMapping;');
+    lines.push('  if (!delegate?.findUnique) {');
+    lines.push('    throw new Error(');
+    lines.push(`      "Manifest tenant companion: 'database.userTenantMapping' is unavailable. Implement ${fn} to map ${key} to a tenantId for your schema.",`);
+    lines.push('    );');
+    lines.push('  }');
+    lines.push(`  const mapping = await delegate.findUnique({ where: { ${key} } });`);
+    lines.push('  return mapping?.tenantId ?? null;');
+    lines.push('}');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /**
    * Generate detail (getById) route handler for an entity.
    * Uses direct Prisma findUnique (bypassing runtime) for efficiency.
    */
@@ -1482,12 +1785,14 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
-    if (options.tenantProvider) {
+    // The tenant provider is only called when tenant filtering is on
+    // (generateTenantLookup gates on includeTenantFilter). Importing it
+    // otherwise leaves an unused — and, since the tenant companion is only
+    // emitted when filtering is on, dangling — import in the generated route.
+    if (options.includeTenantFilter && options.tenantProvider) {
       lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
-      lines.push(generateImport(`{ database }`, databaseImportPath));
-    } else {
-      lines.push(generateImport(`{ database }`, databaseImportPath));
     }
+    lines.push(generateImport(`{ database }`, databaseImportPath));
     lines.push(generateImport(
       `{ manifestErrorResponse, manifestSuccessResponse }`,
       responseImportPath
@@ -1538,12 +1843,14 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     lines.push('// Generated from Manifest IR - DO NOT EDIT');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
-    if (options.tenantProvider) {
+    // The tenant provider is only called when tenant filtering is on
+    // (generateTenantLookup gates on includeTenantFilter). Importing it
+    // otherwise leaves an unused — and, since the tenant companion is only
+    // emitted when filtering is on, dangling — import in the generated route.
+    if (options.includeTenantFilter && options.tenantProvider) {
       lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
-      lines.push(generateImport(`{ database }`, databaseImportPath));
-    } else {
-      lines.push(generateImport(`{ database }`, databaseImportPath));
     }
+    lines.push(generateImport(`{ database }`, databaseImportPath));
     lines.push(generateImport(
       `{ manifestErrorResponse, manifestSuccessResponse }`,
       responseImportPath

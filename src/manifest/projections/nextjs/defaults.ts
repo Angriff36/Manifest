@@ -50,6 +50,14 @@ export const NEXTJS_DEFAULTS = {
 
   /** date/datetime → `Date` by default; `'iso-string'` emits `string` for JSON transport. */
   dateSerialization: 'date',
+
+  /**
+   * Emit the companion modules generated code imports (runtime factory,
+   * response helpers, database client, auth/tenant shims) so `manifest
+   * generate` output compiles without hand-authored glue. Set to `false` to
+   * keep hand-writing them.
+   */
+  emitCompanions: true,
 } as const satisfies Required<Omit<
   NextJsProjectionOptions,
   | 'tenantProvider'
@@ -61,6 +69,7 @@ export const NEXTJS_DEFAULTS = {
   | 'naming'
   | 'accessorNames'
   | 'routeSegments'
+  | 'runtimeConfigImport'
 >>;
 
 /**

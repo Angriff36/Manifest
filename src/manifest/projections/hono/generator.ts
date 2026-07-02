@@ -30,6 +30,7 @@ import type {
   ProjectionDiagnostic,
 } from '../interface';
 import type { HonoProjectionOptions } from './types';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
 
 // ============================================================================
 // Constants
@@ -38,9 +39,21 @@ import type { HonoProjectionOptions } from './types';
 const SURFACE_ROUTER = 'hono.router' as const;
 const SURFACE_ENTITY = 'hono.entity' as const;
 const SURFACE_TYPES = 'hono.types' as const;
+const SURFACE_COMPANIONS = 'hono.companions' as const;
 const SURFACE_ALL = 'hono.all' as const;
 
-const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_ALL] as const;
+const SURFACES = [SURFACE_ROUTER, SURFACE_ENTITY, SURFACE_TYPES, SURFACE_COMPANIONS, SURFACE_ALL] as const;
+
+/**
+ * Directories that contain a generated router file carrying the unconditional
+ * local imports (`./middleware/auth`, `./lib/manifest-runtime`). The monolithic
+ * router is emitted at `src/routes.ts` (edge-deploy entry) while per-entity
+ * routers are at `routes/<entity>.ts`, so a relative companion import resolves
+ * to a DIFFERENT directory depending on which file imports it. The companion is
+ * emitted at each location so the import resolves from both. See the projection
+ * docs note on the `src/` vs `routes/` split.
+ */
+const IMPORTER_DIRS = ['src', 'routes'] as const;
 
 // ============================================================================
 // Defaults
@@ -60,6 +73,7 @@ interface NormalizedOptions {
   publicReads: boolean;
   includeComments: boolean;
   generatedAt: string;
+  emitCompanions: boolean;
 }
 
 function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
@@ -77,6 +91,7 @@ function normalizeOptions(opts: HonoProjectionOptions): NormalizedOptions {
     publicReads: opts.publicReads ?? false,
     includeComments: opts.includeComments ?? true,
     generatedAt: opts.generatedAt ?? new Date().toISOString(),
+    emitCompanions: opts.emitCompanions ?? true,
   };
 }
 
@@ -366,7 +381,7 @@ function generateHonoEntityRoutes(
   } else {
     lines.push(`  app.get('/${segment}/list', ${options.authMiddlewareName}, async (c) => {`);
   }
-  lines.push(`    const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   if (options.includeTenantContext && !options.publicReads) {
     lines.push(`    const user = c.get('user');`);
     lines.push(`    const result = await runtime.list('${entity.name}', { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`);
@@ -389,7 +404,7 @@ function generateHonoEntityRoutes(
     lines.push(`  app.get('/${segment}/:id', ${options.authMiddlewareName}, async (c) => {`);
   }
   lines.push(`    const id = c.req.param('id');`);
-  lines.push(`    const runtime = ${options.runtimeFactoryName}();`);
+  lines.push(`    const runtime = await ${options.runtimeFactoryName}();`);
   if (options.includeTenantContext && !options.publicReads) {
     lines.push(`    const user = c.get('user');`);
     lines.push(`    const result = await runtime.get('${entity.name}', id, { ${options.tenantIdProperty}: user.${options.tenantIdProperty} });`);
@@ -433,7 +448,7 @@ function generateHonoEntityRoutes(
     }
 
     // Runtime dispatch
-    lines.push(`      const runtime = ${options.runtimeFactoryName}();`);
+    lines.push(`      const runtime = await ${options.runtimeFactoryName}();`);
     lines.push(`      const user = c.get('user');`);
 
     const contextArg = options.includeTenantContext
@@ -576,6 +591,179 @@ function generateHonoRouter(
 }
 
 // ============================================================================
+// Companion module generation (hono.companions surface)
+// ============================================================================
+
+/**
+ * Runtime companion module: the router-facing factory.
+ *
+ * The generated routes call `runtime.list(entity, filter?)`,
+ * `runtime.get(entity, id, filter?)`, and
+ * `runtime.runCommand(entity, command, { params, instanceId }, ctx?)` — none of
+ * which are RuntimeEngine's native shapes (`getAllInstances`, `getInstance`,
+ * `runCommand(command, input, { entityName, instanceId })`). This module builds
+ * the engine via the shared factory (emitted here as `createManifestEngine`) and
+ * wraps it in a facade whose method shapes match the routes exactly.
+ *
+ * The facade factory is async; each route handler awaits it per request. This
+ * text is intentionally identical to the Express projection's — the route call
+ * shapes are the same across both frameworks.
+ */
+function generateRuntimeCompanionModule(ir: IR, options: NormalizedOptions): string {
+  // The shared factory emits an exported engine factory; keep its name distinct
+  // from the user-facing facade name to avoid a duplicate-declaration collision.
+  const engineFactory =
+    options.runtimeFactoryName === 'createManifestEngine'
+      ? 'createManifestEngineInternal'
+      : 'createManifestEngine';
+
+  const lines: string[] = [];
+  lines.push(generateRuntimeFactoryModule({ ir, exportName: engineFactory }).trimEnd());
+  lines.push('');
+  lines.push('// ── Router-facing runtime facade ────────────────────────────────────────');
+  lines.push('// Adapts RuntimeEngine to the argument shapes the generated routes call.');
+  lines.push('// AWAIT: the factory is async (it builds a RuntimeEngine); each handler awaits');
+  lines.push(`// it per request — \`const runtime = await ${options.runtimeFactoryName}();\`.`);
+  lines.push('');
+  lines.push('type ManifestListResult = Awaited<ReturnType<RuntimeEngine["getAllInstances"]>>;');
+  lines.push('type ManifestInstanceResult = Awaited<ReturnType<RuntimeEngine["getInstance"]>>;');
+  lines.push('type ManifestCommandResult = Awaited<ReturnType<RuntimeEngine["runCommand"]>>;');
+  lines.push('');
+  lines.push('/** The runtime surface the generated routes consume. */');
+  lines.push('export interface ManifestRuntime {');
+  lines.push('  list(entityName: string, filter?: Record<string, unknown>): Promise<ManifestListResult>;');
+  lines.push('  get(entityName: string, id: string, filter?: Record<string, unknown>): Promise<ManifestInstanceResult>;');
+  lines.push('  runCommand(');
+  lines.push('    entityName: string,');
+  lines.push('    commandName: string,');
+  lines.push('    payload: { params?: Record<string, unknown>; instanceId?: string },');
+  lines.push('    context?: Record<string, unknown>,');
+  lines.push('  ): Promise<ManifestCommandResult>;');
+  lines.push('}');
+  lines.push('');
+  lines.push(`export async function ${options.runtimeFactoryName}(`);
+  lines.push('  context: ManifestContext = {},');
+  lines.push('): Promise<ManifestRuntime> {');
+  lines.push(`  const engine = await ${engineFactory}(context);`);
+  lines.push('  return {');
+  lines.push('    async list(entityName, filter) {');
+  lines.push('      if (filter) engine.replaceContext(filter as unknown as ManifestContext);');
+  lines.push('      return engine.getAllInstances(entityName);');
+  lines.push('    },');
+  lines.push('    async get(entityName, id, filter) {');
+  lines.push('      if (filter) engine.replaceContext(filter as unknown as ManifestContext);');
+  lines.push('      return engine.getInstance(entityName, id);');
+  lines.push('    },');
+  lines.push('    async runCommand(entityName, commandName, payload, ctx) {');
+  lines.push('      if (ctx) engine.replaceContext(ctx as unknown as ManifestContext);');
+  lines.push('      return engine.runCommand(commandName, payload?.params ?? {}, {');
+  lines.push('        entityName,');
+  lines.push('        instanceId: payload?.instanceId,');
+  lines.push('      });');
+  lines.push('    },');
+  lines.push('  };');
+  lines.push('}');
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Fail-closed auth middleware stub. The router imports `authMiddlewareName`
+ * from `authImportPath` unconditionally; this module satisfies that import.
+ *
+ * Per the projection's auth contract (hono/types.ts), the middleware sets
+ * `c.set('user', ...)` and continues. A stub cannot resolve a real user, so it
+ * denies every request (fail-closed) with a 401 and an instructive comment —
+ * unauthenticated access must never silently succeed. Compiles against only
+ * Hono's own types.
+ */
+function generateHonoAuthStub(options: NormalizedOptions): string {
+  const name = options.authMiddlewareName;
+  const lines: string[] = [];
+  lines.push('// Auto-generated Manifest auth companion (fail-closed stub).');
+  lines.push('// DO NOT EDIT — generated by the Hono projection (companions surface).');
+  lines.push('//');
+  lines.push("// Replace the body: authenticate the caller, then `c.set('user', { id, ... })`");
+  lines.push('// and `await next()`. Until then every request is denied so unauthenticated');
+  lines.push('// access cannot silently succeed.');
+  lines.push('');
+  lines.push("import type { MiddlewareHandler } from 'hono';");
+  lines.push('');
+  lines.push(`export const ${name}: MiddlewareHandler = async (c) => {`);
+  lines.push('  return c.json(');
+  lines.push(`    { error: { code: 'UNAUTHORIZED', message: 'Auth not configured: implement ${name} in this module.' } },`);
+  lines.push('    401,');
+  lines.push('  );');
+  lines.push('};');
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Emit the companion modules the generated router imports but no other surface
+ * writes: the runtime factory (always) and the auth middleware (always — the
+ * router imports it unconditionally).
+ *
+ * Relative specifiers (`./lib/manifest-runtime`) resolve against the importing
+ * router file's directory. The monolithic router is at `src/routes.ts` and
+ * per-entity routers at `routes/<entity>.ts`, so each companion is emitted at
+ * both resolved locations. A package specifier is skipped (never overwritten)
+ * with an info diagnostic — that module is the app's to provide.
+ */
+function generateCompanions(ir: IR, options: NormalizedOptions): ProjectionResult {
+  const artifacts: ProjectionArtifact[] = [];
+  const diagnostics: ProjectionDiagnostic[] = [];
+
+  if (!options.emitCompanions) {
+    diagnostics.push({
+      severity: 'info',
+      code: 'COMPANIONS_DISABLED',
+      message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+    });
+    return { artifacts, diagnostics };
+  }
+
+  const emit = (kind: string, importSpecifier: string, build: () => string, label: string): void => {
+    // Package-ness is independent of the importer directory; probe once.
+    const probe = resolveLocalImportPathHint(importSpecifier, {
+      framework: 'hono',
+      importerPathHint: `${IMPORTER_DIRS[0]}/importer.ts`,
+    });
+    if (!probe) {
+      diagnostics.push({
+        severity: 'info',
+        code: 'COMPANION_SKIPPED_PACKAGE_PATH',
+        message: `Skipping ${label} companion — "${importSpecifier}" is a package specifier, not a local module. That module is yours to provide.`,
+      });
+      return;
+    }
+    // Resolve against every importer directory; emit the module at each distinct
+    // location so the relative import resolves from every router file.
+    const pathHints = new Set<string>();
+    for (const dir of IMPORTER_DIRS) {
+      const resolved = resolveLocalImportPathHint(importSpecifier, {
+        framework: 'hono',
+        importerPathHint: `${dir}/importer.ts`,
+      });
+      if (resolved) pathHints.add(resolved);
+    }
+    const code = build();
+    for (const pathHint of [...pathHints].sort()) {
+      const topDir = pathHint.split('/')[0];
+      artifacts.push({ id: `hono.companions.${kind}.${topDir}`, pathHint, contentType: 'typescript', code });
+    }
+  };
+
+  // Runtime factory — imported unconditionally by every router.
+  emit('runtime', options.runtimeImportPath, () => generateRuntimeCompanionModule(ir, options), 'runtime factory');
+
+  // Auth middleware — imported unconditionally by every router.
+  emit('auth', options.authImportPath, () => generateHonoAuthStub(options), 'auth middleware');
+
+  return { artifacts, diagnostics };
+}
+
+// ============================================================================
 // Projection class
 // ============================================================================
 
@@ -660,6 +848,10 @@ export class HonoProjection implements ProjectionTarget {
           }],
           diagnostics,
         };
+      }
+
+      case SURFACE_COMPANIONS: {
+        return generateCompanions(ir, options);
       }
 
       case SURFACE_ALL: {

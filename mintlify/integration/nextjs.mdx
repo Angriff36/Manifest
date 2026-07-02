@@ -203,7 +203,7 @@ This guide walks you through adding Manifest to an existing Next.js App Router p
     }
     ```
 
-    Runtime construction is delegated to `createManifestRuntime` from `@/lib/manifest-runtime` — a module you provide that loads the compiled IR and constructs the `RuntimeEngine` with the given context. Enrich the `user` object there with any fields your guards and policies read (e.g. `role`).
+    Runtime construction is delegated to `createManifestRuntime` from `@/lib/manifest-runtime` — a module the generator emits for you (the `companions` surface, on by default) that embeds the compiled IR and constructs the `RuntimeEngine` with the given context. Regenerate it after every compile, or set `emitCompanions: false` and maintain your own — for example to enrich the `user` object with fields your guards and policies read (e.g. `role`).
   </Step>
 
   <Step title="Wire up Clerk auth">
@@ -383,11 +383,11 @@ When any entity is realtime, generated command routes (inline mode) automaticall
   </Accordion>
 
   <Accordion title="Guard fails even with the correct user">
-    Guards reference `user.*` from the runtime context, not from the request body. Make sure your `@/lib/manifest-runtime` module's `createManifestRuntime` forwards a `user` object with the fields your guards read (e.g. `role`) when constructing `RuntimeEngine`. If the guard references `user.role` and you did not supply it, the failure is correct behavior.
+    Guards reference `user.*` from the runtime context, not from the request body. The generated `@/lib/manifest-runtime` forwards the context it receives; if your guards read fields the dispatcher's auth step doesn't supply (e.g. `role`), enrich the context — either in a custom runtime module (`emitCompanions: false`) or by adjusting your auth provider wiring. If the guard references `user.role` and you did not supply it, the failure is correct behavior.
   </Accordion>
 
   <Accordion title="Generated route imports are wrong">
-    The generated code uses import paths like `@/lib/database`, `@/lib/manifest-response`, and `@/lib/manifest-runtime`. These are conventions — create those modules in your project: `@/lib/manifest-response` must export `manifestErrorResponse`, `manifestSuccessResponse`, and `normalizeCommandResult`; `@/lib/manifest-runtime` must export `createManifestRuntime`; `@/lib/database` must export `database`. Or pass custom `databaseImportPath`, `responseImportPath`, and `runtimeImportPath` options to the projection generator.
+    The generated code uses import paths like `@/lib/database`, `@/lib/manifest-response`, and `@/lib/manifest-runtime`. The generator emits these companion modules itself (the `companions` surface, included in `--surface all`), so a fresh generate compiles without hand-written files — this error usually means the companions were generated into a different directory than your `@/*` alias points at, or generation ran with `emitCompanions: false`. Custom `databaseImportPath`, `responseImportPath`, and `runtimeImportPath` options relocate both the imports and the emitted modules; paths pointing at npm packages are left to you.
   </Accordion>
 
   <Accordion title="Routes don't match my react-query hooks">
