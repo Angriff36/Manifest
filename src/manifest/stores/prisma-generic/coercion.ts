@@ -29,6 +29,28 @@ export function toDecimalInput(value: unknown): DecimalInput {
 
 export function asJsonInput(value: unknown): Exclude<JsonInput, null> {
   if (value === null || value === undefined) return {} as Exclude<JsonInput, null>;
+  // A string reaching a Json-typed field is frequently already-serialized JSON
+  // (e.g. a value that was JSON.stringify'd upstream, or a consumer migrating a
+  // String column to Json). Passing it verbatim makes Prisma store a
+  // double-encoded jsonb string (`"{\"a\":1}"` instead of `{"a":1}`). Re-parse
+  // so the structured value lands in the column.
+  //
+  // Boundary: adopt the parsed value ONLY when it is an object or array. A plain
+  // string is itself a legal JSON scalar, and eagerly parsing strings that decode
+  // to a scalar would surprisingly coerce stored values — '123' → 123, 'true' →
+  // true, 'null' → null. Those (and any non-JSON string) are kept as the raw
+  // string; only objects/arrays are unwrapped.
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed !== null && typeof parsed === 'object') {
+        return parsed as Exclude<JsonInput, null>;
+      }
+    } catch {
+      // Not valid JSON — fall through and keep the raw string.
+    }
+    return value as Exclude<JsonInput, null>;
+  }
   return value as Exclude<JsonInput, null>;
 }
 
