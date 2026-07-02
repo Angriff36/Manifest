@@ -487,3 +487,17 @@ All 116 features in .automaker/features were verified against current main by in
 | working | value-object-type | verified | Value object declarations compile end-to-end: parser, IR, code generator, and Prisma JSONB mapping are all wired, and the conformance fixture exists. |
 | working | watch-mode-compiler | verified | 'manifest watch' command is fully implemented and registered in the CLI with debounce, structured JSON events, and incremental rebuild. |
 | working | zod-schema-projection | verified | ZodProjection is fully implemented, registered as a builtin, generates z.object() schemas for entities and commands, and has a test suite. |
+
+## Appendix E — language gaps surfaced while fixing doc snippets (2026-07-01)
+
+Fixing the 31 non-compiling snippets exposed places where the docs expressed reasonable intent the language rejects. Each was verified against the compiler; docs were rewritten to legal syntax, and the gap is recorded here rather than papered over:
+
+| Gap | Detail |
+|---|---|
+| `map<K, V>` two-parameter form | Parser accepts only `map<V>` (keys implicitly string). The documented `record<K, V>` alias does not exist either. |
+| `retry` block fields | `initialDelay`/`maxDelay`/`attempts` do not exist; real fields are `maxAttempts`, `backoff`, `delay` (fixture 72). No delay-cap field exists. |
+| `rateLimit` block fields | `perMinute`/`strategy: fixed\|sliding` do not exist; real fields are `maxRequests`, `windowMs`, `scope` with bare-identifier scopes (`user`, `tenant`, `global`) — `scope: user.id` is invalid (fixture 74). |
+| Reserved-word ergonomics | `publish`, `read`, `execute`, `delete`, `to`, `tenant`, `self`, `void`, `in` cannot be identifiers — so a command cannot be named `publish`, a role permission cannot be named `delete`, a relationship cannot be named `tenant`. Common domain words; worth considering contextual keywords or quoted identifiers. |
+| Command-body policies | No inline `policy` inside a command body; per-command restrictions require guards. Entity `default policy` + guards is the only layering mechanism (no per-command policy override). |
+| String member `.length` | `title.length` does not resolve at runtime; the builtin is `length(v)`. |
+| `timestamp` type | Not a type name (docs used it); real options are `number` or `date`/`datetime`. |
