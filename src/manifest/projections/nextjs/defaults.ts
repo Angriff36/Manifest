@@ -73,6 +73,7 @@ export const NEXTJS_DEFAULTS = {
   | 'apiBasePath'
   | 'dispatcherBasePath'
   | 'client'
+  | 'realtime'
 >>;
 
 /**
@@ -179,6 +180,21 @@ export const READ_ROUTES_DEFAULTS = {
 } as const;
 
 /**
+ * Default realtime (SSE) delivery policy for the Next.js projection.
+ *
+ * `requireEventBus` is **false by default**: without an `eventBus` configured
+ * on the runtime, the generated shared-runtime singleton warns once that SSE
+ * delivery is single-instance only, but still runs. Set to true for
+ * deployments that advertise multi-instance realtime — the emitted singleton
+ * then THROWS at init when no bus is present, so a missing bus fails loud at
+ * startup instead of silently degrading. See the `realtime` option in
+ * NextJsProjectionOptions and docs/spec/semantics.md § "Realtime Entities".
+ */
+export const REALTIME_DEFAULTS = {
+  requireEventBus: false,
+} as const;
+
+/**
  * Default options for the Canonical Routes projection.
  *
  * These mirror the inline defaults in `routes/generator.ts` so the routes
@@ -202,6 +218,7 @@ export interface ManifestDefaultsSnapshot {
   dispatcher: typeof DISPATCHER_DEFAULTS;
   concreteCommandRoutes: typeof CONCRETE_COMMAND_ROUTES_DEFAULTS;
   readRoutes: typeof READ_ROUTES_DEFAULTS;
+  realtime: typeof REALTIME_DEFAULTS;
   routes: typeof ROUTES_DEFAULTS;
 }
 
@@ -217,6 +234,7 @@ export function getManifestDefaultsSnapshot(): ManifestDefaultsSnapshot {
     dispatcher: DISPATCHER_DEFAULTS,
     concreteCommandRoutes: CONCRETE_COMMAND_ROUTES_DEFAULTS,
     readRoutes: READ_ROUTES_DEFAULTS,
+    realtime: REALTIME_DEFAULTS,
     routes: ROUTES_DEFAULTS,
   };
 }

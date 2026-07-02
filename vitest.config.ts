@@ -36,6 +36,14 @@ export default defineConfig({
       },
       // All other aliases (object-style, prefix matching is fine here)
       {
+        find: '@angriff36/manifest/events/redis',
+        replacement: path.resolve(__dirname, './src/manifest/events/redis.ts'),
+      },
+      {
+        find: '@angriff36/manifest/events',
+        replacement: path.resolve(__dirname, './src/manifest/events/event-bus.ts'),
+      },
+      {
         find: '@angriff36/manifest/webhooks',
         replacement: path.resolve(__dirname, './src/manifest/webhooks/handler.ts'),
       },

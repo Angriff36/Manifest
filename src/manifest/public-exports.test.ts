@@ -52,6 +52,10 @@ import * as JobsWorkerApi from './jobs/worker';
 import * as PostgresTransactionsApi from './transactions/postgres';
 // Subpath: '@angriff36/manifest/schedule-worker'
 import * as ScheduleWorkerApi from './schedule-worker';
+// Subpath: '@angriff36/manifest/events'
+import * as EventBusApi from './events/event-bus';
+// Subpath: '@angriff36/manifest/events/redis'
+import * as RedisEventBusApi from './events/redis';
 
 describe('Public export surface', () => {
   it('exposes audit adapter contract symbols from the audit subpath', () => {
@@ -123,6 +127,19 @@ describe('Public export surface', () => {
 
   it('exposes the schedule worker module via schedule-worker', () => {
     expect(ScheduleWorkerApi).toBeDefined();
+  });
+
+  it('exposes the MemoryEventBus class via events', () => {
+    expect(typeof EventBusApi.MemoryEventBus).toBe('function');
+    const bus = new EventBusApi.MemoryEventBus();
+    expect(bus).toBeInstanceOf(EventBusApi.MemoryEventBus);
+  });
+
+  it('exposes the RedisEventBus class via events/redis', () => {
+    // Constructor is not invoked without an injected client: it would
+    // dynamically import the optional `ioredis` peer and open a connection.
+    // The type check proves the subpath resolves and the class export survives.
+    expect(typeof RedisEventBusApi.RedisEventBus).toBe('function');
   });
 
   it('exposes the federation public surface via federation', () => {

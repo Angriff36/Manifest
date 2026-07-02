@@ -19,6 +19,7 @@ import {
   DISPATCHER_DEFAULTS,
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   READ_ROUTES_DEFAULTS,
+  REALTIME_DEFAULTS,
 } from './defaults.js';
 import { resolveTableName, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
 import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
@@ -102,6 +103,13 @@ interface NormalizedReadRoutesOptions {
 }
 
 /**
+ * Normalized realtime (SSE) delivery policy.
+ */
+interface NormalizedRealtimeOptions {
+  requireEventBus: boolean;
+}
+
+/**
  * Normalized options for internal use (all required, no outputPath).
  */
 interface NormalizedNextJsOptions {
@@ -127,6 +135,7 @@ interface NormalizedNextJsOptions {
   dispatcher: NormalizedDispatcherOptions;
   concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions;
   readRoutes: NormalizedReadRoutesOptions;
+  realtime: NormalizedRealtimeOptions;
   paths: {
     typesFile: string;
     clientFile: string;
@@ -172,6 +181,9 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     enabled: options?.readRoutes?.enabled ?? READ_ROUTES_DEFAULTS.enabled,
     directDbReads: options?.readRoutes?.directDbReads ?? READ_ROUTES_DEFAULTS.directDbReads,
   };
+  const realtime: NormalizedRealtimeOptions = {
+    requireEventBus: options?.realtime?.requireEventBus ?? REALTIME_DEFAULTS.requireEventBus,
+  };
 
   // Resolve artifact paths from generatedDir (default: 'src').
   // Individual path overrides take precedence.
@@ -206,6 +218,7 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     dispatcher,
     concreteCommandRoutes,
     readRoutes,
+    realtime,
     paths,
     sharedRuntimeImportPath,
     naming: options?.naming,
@@ -1542,6 +1555,26 @@ export function use${name}Subscription(options: Use${name}SubscriptionOptions = 
     }
 
     const opts = normalizeOptions(options);
+    // When no eventBus is configured on the runtime, the singleton either fails
+    // loud (requireEventBus) or warns once and continues single-instance. The
+    // positive path (bus present → connectEventBus) is identical either way.
+    const noBusBranch = opts.realtime.requireEventBus
+      ? `    throw new Error(
+      "Manifest realtime: realtime.requireEventBus is enabled but no eventBus is configured on the runtime. " +
+        "Configure an eventBus in RuntimeOptions (createManifestRuntime) to enable multi-instance SSE delivery, " +
+        "or unset realtime.requireEventBus.",
+    );`
+      : `    console.warn(
+      "Manifest realtime: no eventBus configured; SSE delivery is single-instance only " +
+        "(events from other instances/processes will not reach this stream)",
+    );`;
+    const requireNote = opts.realtime.requireEventBus
+      ? `//
+// realtime.requireEventBus is ON: this singleton THROWS at init when no bus is
+// present, so a deployment that advertises multi-instance realtime fails loud
+// at startup instead of silently degrading to single-instance delivery.
+`
+      : '';
     const code = `// Auto-generated shared Manifest runtime accessor.
 // Generated from Manifest IR - DO NOT EDIT
 //
@@ -1549,9 +1582,12 @@ export function use${name}Subscription(options: Use${name}SubscriptionOptions = 
 // SAME engine instance: the event stream is per-engine and in-memory. This
 // module memoizes ONE runtime per server process.
 //
-// Deployment constraint: requires a long-lived, single-instance Node server.
-// Serverless / multi-instance fan-out needs an external event bus (out of
-// scope). See docs/spec/semantics.md § "Realtime Entities".
+// Multi-instance / serverless fan-out: configure an \`eventBus\` in the runtime
+// factory's RuntimeOptions (createManifestRuntime). When one is present this
+// accessor calls \`runtime.connectEventBus()\` ONCE at init, subscribing this
+// process to remote events so they reach local SSE subscribers. Without a bus,
+// delivery is single-instance only (this process's own events).
+${requireNote}// See docs/spec/semantics.md § "Realtime Entities".
 
 import { createManifestRuntime } from "${opts.runtimeImportPath}";
 
@@ -1560,12 +1596,27 @@ type SharedRuntime = Awaited<ReturnType<typeof createManifestRuntime>>;
 let sharedRuntimePromise: Promise<SharedRuntime> | null = null;
 
 /**
+ * Build the singleton runtime and, if an eventBus is configured, subscribe
+ * this process to it so events from other instances reach local SSE streams.
+ */
+async function initSharedRuntime(): Promise<SharedRuntime> {
+  const runtime = await createManifestRuntime({});
+  if (runtime.hasEventBus()) {
+    // Subscribe once, at init — the SSE route streams from this same engine.
+    await runtime.connectEventBus();
+  } else {
+${noBusBranch}
+  }
+  return runtime;
+}
+
+/**
  * Returns the module-scoped singleton runtime. Request handlers MUST set
  * per-request context via runtime.replaceContext() before runCommand.
  */
 export function getSharedRuntime(): Promise<SharedRuntime> {
   if (!sharedRuntimePromise) {
-    sharedRuntimePromise = createManifestRuntime({});
+    sharedRuntimePromise = initSharedRuntime();
   }
   return sharedRuntimePromise;
 }

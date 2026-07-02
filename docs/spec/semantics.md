@@ -415,7 +415,7 @@ entity Order {
 
 - `realtime` is a contextual identifier, NOT a reserved word: `property realtime: boolean` remains a valid plain property declaration.
 - The flag compiles to `IREntity.realtime: true`.
-- **`realtime` has no runtime execution semantics.** It is a projection hint only: projections (Next.js, Express) use it to emit SSE subscription surfaces for the flagged entity. Identical IR with and without the flag produces identical command execution results, identical events, and identical state.
+- **`realtime` has no runtime execution semantics.** It is a projection hint only: the Next.js projection uses it to emit an SSE subscription surface for the flagged entity (it is the only projection that emits SSE today — Express does not). Identical IR with and without the flag produces identical command execution results, identical events, and identical state.
 
 #### Runtime `subscribe()` contract
 
@@ -429,7 +429,19 @@ The reference runtime exposes `subscribe(entityName, listener): () => void` — 
 
 #### Deployment constraint (generated SSE surfaces)
 
-The event stream is per-engine-instance and in-memory. Generated SSE code therefore uses a module-scoped singleton engine (a generated `getSharedRuntime()` accessor shared by SSE routes and command routes). This requires a long-lived Node server process and a **single-instance deployment**; serverless or multi-instance fan-out needs an external event bus and is out of scope.
+The in-process event stream is per-engine-instance and in-memory. Generated SSE code (only the Next.js projection emits an SSE surface today) uses a module-scoped singleton engine (a generated `getSharedRuntime()` accessor shared by SSE routes and command routes). By itself this requires a long-lived Node server process and a **single-instance deployment**: a command executed on one instance notifies only the listeners registered on that same instance, so a second instance — or a fresh serverless invocation — never observes it.
+
+#### Cross-instance delivery — the `EventBus` adapter (optional)
+
+To fan events out across instances, wire an `EventBus` into `RuntimeOptions.eventBus` (contract + in-process `MemoryEventBus`: `src/manifest/events/event-bus.ts`, exported as `@angriff36/manifest/events`; see `adapters.md` § "Event Bus"). The engine then bridges its in-process stream to the bus in two directions:
+
+- **Outbound (automatic).** After a command completes, the engine publishes **one** `EventBusMessage` carrying `{ originId, events }`, where `events` is the full batch of events that command delivered to local listeners and `originId` is the publishing engine's stable per-instance id. A command that emits N events — including any events its reactions emit (see § "Reactions") — produces exactly **one** message containing all N, never one message per event.
+  - **Post-commit, once per committed attempt.** In provider mode (see `adapters.md` § "Outbox Store — Transaction Boundary") the publish happens **after the transaction commits**, so a command that rolls back publishes **nothing** and a retried command publishes only its committing attempt's events. In non-provider mode the batch is published when the top-level `runCommand` completes.
+  - **Idempotency.** A duplicate `idempotencyKey` short-circuits to the cached result before any evaluation and therefore publishes **nothing** — no events were re-emitted.
+  - **At-least-once, non-blocking.** Publishing occurs after the command's effects are final; a publish failure is logged (`[Manifest Runtime] EventBus.publish failed`) and does **not** fail the command. Subscribers MUST be idempotent.
+- **Inbound (explicit).** `connectEventBus(): Promise<() => Promise<void>>` subscribes the engine to the bus and re-dispatches every **remote** message's events to this engine's local `onEvent`/`subscribe` listeners, so an SSE surface backed by engine B observes events emitted by a command on engine A. Messages whose `originId` equals this engine's own id are **skipped** — an engine never re-delivers its own outbound events, so a local listener is notified exactly once. The subscription is not active until `connectEventBus` is awaited; the returned function unsubscribes. Calling `connectEventBus` again while already connected returns the existing unsubscribe without opening a second subscription. `hasEventBus()` reports whether a bus is configured.
+
+The bus carries only command-emitted events (the in-process stream described above). Saga *lifecycle* events (`SagaStarted`/`SagaCompleted`/`SagaAborted`) are emitted by the orchestrator outside any `runCommand` batch and are **not** published to the bus; the per-step command events they bracket are.
 
 ### Idempotency (vNext)
 - A conforming runtime MAY support an `IdempotencyStore` for command deduplication.

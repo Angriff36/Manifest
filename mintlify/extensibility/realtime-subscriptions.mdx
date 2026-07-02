@@ -130,9 +130,24 @@ When any entity in the IR is flagged `realtime`, the generated dispatcher and pe
 
 `externalExecutor` mode is unaffected — the executor owns runtime construction and should call `getSharedRuntime()` itself when realtime is in play.
 
-<Warning>
-**Deployment constraint:** the shared engine requires a long-lived, single-instance Node server process. Serverless or multi-instance deployments need an external event bus for fan-out, which is out of scope for the generated surfaces. See `docs/spec/semantics.md` § "Realtime Entities".
-</Warning>
+### Single-instance vs. multi-instance delivery
+
+In-memory, the shared engine's stream is **single-instance**: a subscriber only observes events emitted by commands that executed in its own server process. On a long-lived, single-instance Node server that is all you need.
+
+To fan events across processes (serverless, multiple replicas), configure an `eventBus` in the runtime factory's `RuntimeOptions`. When one is present, the generated `getSharedRuntime()` singleton calls `runtime.connectEventBus()` **once at initialization**, subscribing the process to remote events so events published by commands on other instances reach this stream's local subscribers. Manifest ships two `EventBus` implementations: an in-process `MemoryEventBus` (`@angriff36/manifest/events`, single node / tests) and a `RedisEventBus` (`@angriff36/manifest/events/redis`) for cross-process fan-out.
+
+When **no** bus is configured, the singleton emits a single `console.warn` at init noting that delivery is single-instance only, and continues. For a deployment that advertises multi-instance realtime, set the `realtime.requireEventBus` option to make the generated singleton **throw at init** instead — so a missing bus fails loud at startup rather than silently degrading:
+
+```typescript
+const shared = projection.generate(ir, {
+  surface: 'nextjs.sharedRuntime',
+  options: { realtime: { requireEventBus: true } },
+});
+```
+
+<Note>
+The default companion runtime factory does not inject a bus — supply the `eventBus` through the runtime's `RuntimeOptions` (a custom runtime factory or your app's runtime wiring). See `docs/spec/semantics.md` § "Realtime Entities" and `docs/spec/adapters.md` § "Event Bus".
+</Note>
 
 ## Runtime `subscribe()` contract
 

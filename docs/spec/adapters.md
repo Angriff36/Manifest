@@ -368,3 +368,43 @@ The `drainJobs()` method on `RuntimeEngine` is the primary testing surface. It:
 4. Updates job status via `jobQueue.updateStatus()`
 5. Returns an array of `CommandResult` — one per drained job
 
+## Event Bus
+
+The in-process event stream (`onEvent`/`subscribe`) is per-engine-instance and in-memory, so a command executed on one instance never reaches listeners on another. Cross-instance fan-out is opt-in via the `EventBus` adapter (`src/manifest/events/event-bus.ts`, exported as `@angriff36/manifest/events`):
+
+```typescript
+/** One post-commit batch of events from one engine instance. */
+interface EventBusMessage {
+  /** Publishing engine's instance id — subscribers use it to skip self-echo. */
+  originId: string;
+  events: EmittedEvent[];
+}
+type EventBusHandler = (message: EventBusMessage) => void;
+
+interface EventBus {
+  publish(message: EventBusMessage): Promise<void>;
+  /** Resolves once the subscription is active; returns an async unsubscribe. */
+  subscribe(handler: EventBusHandler): Promise<() => Promise<void>>;
+  close(): Promise<void>;
+}
+```
+
+Wire-in via `RuntimeOptions.eventBus`. The bus is intentionally dumb: `publish` fans a message out to **every** subscribed handler, including the publishing engine's own handler. Filtering out self-echo is the **engine's** job (via `originId`), not the bus's — this keeps the transport a pure fan-out that any process-external implementation (Redis pub/sub, etc.) can satisfy without tracking origins.
+
+### Runtime Behavior (Implemented)
+
+When `RuntimeOptions.eventBus` is supplied, `RuntimeEngine` bridges its in-process stream to the bus in two directions. Full semantics live in `semantics.md` § "Cross-instance delivery"; the contract summary:
+
+- **Outbound (automatic).** After a command completes, the engine publishes **one** `EventBusMessage` with `{ originId, events }` — the full batch that command delivered to local listeners (parent + reaction events), never one message per event.
+  - **`originId`** is a stable per-instance id generated once in the constructor via `RuntimeOptions.generateId` (falling back to `crypto.randomUUID`) — the same deterministic source used for audit/outbox record ids, so tests that inject `generateId` get a deterministic origin.
+  - **Post-commit / once per committed attempt.** In provider mode the publish happens after the transaction commits (a rolled-back or non-committing retry attempt publishes nothing); in non-provider mode it happens when the top-level `runCommand` completes. A duplicate `idempotencyKey` short-circuits before evaluation and publishes nothing.
+- **Inbound (explicit).** `connectEventBus(): Promise<() => Promise<void>>` subscribes and re-dispatches remote messages' events to local `onEvent`/`subscribe` listeners; messages whose `originId` matches this engine are skipped. The constructor stays synchronous — subscription is deferred to this awaited call. A second `connectEventBus` while already connected returns the existing unsubscribe without opening a second subscription. `hasEventBus()` reports whether a bus is configured.
+
+### Failure Policy (Fail-Open, At-Least-Once)
+
+Publishing happens **after** the command's effects are final, so `EventBus.publish` errors are caught and logged to `stderr` (`[Manifest Runtime] EventBus.publish failed`) and MUST NOT alter `CommandResult` or fail the command — mirroring the outbox non-provider fail-open policy. Delivery is therefore at-least-once; subscribers MUST be idempotent (the same guidance as the outbox, § "Delivery Semantics").
+
+### First-Party Implementations
+
+- `MemoryEventBus` (`src/manifest/events/event-bus.ts`) — synchronous in-process fan-out; `subscribe` resolves immediately and `publish` delivers to all handlers on the same tick. Single-process only (two engines sharing one instance), for tests and single-node use. A cross-process `RedisEventBus` (`@angriff36/manifest/events/redis`) implements the same contract for real multi-instance deployments.
+

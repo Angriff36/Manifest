@@ -30,6 +30,7 @@ import {
 import { getSchedulesFromIR } from './runtime-schedule.js';
 import type { IRSchedule } from './ir';
 import { RuntimeProfilingBridge } from './runtime-profiling-bridge.js';
+import type { EventBus, EventBusMessage } from './events/event-bus';
 
 // Note: PostgresStore and SupabaseStore are in stores.node.ts for server-side use only.
 // This file is browser-safe and only includes MemoryStore and LocalStorageStore.
@@ -280,6 +281,18 @@ export interface RuntimeOptions {
    */
   transactionProvider?: TransactionProvider;
   /**
+   * Optional cross-instance EventBus. When supplied, the engine publishes one
+   * message per committed command (the full parent + reaction event batch) to
+   * the bus, and — after `connectEventBus()` — re-dispatches remote messages to
+   * local onEvent/subscribe listeners. Enables realtime fan-out across
+   * serverless / multi-instance deployments; without it the event stream stays
+   * single-instance. Publish is post-commit and fail-open (a publish failure is
+   * logged, never fails the command). Contract + semantics:
+   * docs/spec/adapters.md § "Event Bus" and docs/spec/semantics.md
+   * § "Cross-instance delivery".
+   */
+  eventBus?: EventBus;
+  /**
    * Optional WASM expression evaluator for near-native execution speed.
    * When provided, the runtime will use the WASM module for expression
    * evaluation and constraint validation. Falls back to the TypeScript
@@ -330,6 +343,7 @@ export type { AuditSink, AuditRecord, CommandOutcome } from './audit/audit-sink'
 export type { OutboxStore, OutboxEntry, OutboxEntryStatus } from './outbox/outbox-store';
 export type { ApprovalStore } from './approval/approval-store';
 export type { JobQueue, JobRecord } from './ir';
+export type { EventBus, EventBusMessage, EventBusHandler } from './events/event-bus';
 
 export interface EntityInstance {
   id: string;
@@ -859,6 +873,32 @@ export class RuntimeEngine {
    * non-provider mode — notification stays synchronous.
    */
   private deferredNotifications: EmittedEvent[] | null = null;
+
+  /**
+   * Stable per-instance id used as the EventBus `originId` so subscribers can
+   * skip an engine's own published events. Derived lazily (first bus use) from
+   * the deterministic id source via `instanceId()` — deriving it eagerly in the
+   * constructor would consume a `generateId` tick and shift every user-visible
+   * instance id, so engines without a bus never touch it.
+   */
+  private _instanceId: string | undefined;
+
+  /**
+   * Outbound EventBus batch for the top-level command in flight, or null when
+   * no bus is configured / no command owns a batch. The top-level runCommand
+   * sets it to [] on entry and publishes it once on completion; nested
+   * (reaction/saga) commands accumulate into the same array so one message
+   * carries the full parent + reaction event set. Only allocated when
+   * RuntimeOptions.eventBus is present — the no-bus path stays untouched.
+   */
+  private busBatch: EmittedEvent[] | null = null;
+
+  /**
+   * Active EventBus unsubscribe from connectEventBus, or undefined when not
+   * connected. Present so a duplicate connectEventBus is idempotent (returns the
+   * same disconnect) rather than opening a second subscription.
+   */
+  private busUnsubscribe: (() => Promise<void>) | undefined;
 
   /** Per-engine sliding-window rate limiter (in-memory; durable store is a follow-up) */
   private rateLimiter = new RateLimiter();
@@ -2328,6 +2368,11 @@ export class RuntimeEngine {
 
     let result: CommandResult | undefined;
     let thrown: unknown;
+    // Event bus: the top-level runCommand owns the outbound batch; nested
+    // (reaction/saga) commands accumulate into it and do not publish. Only
+    // allocated when a bus is configured so the common path stays untouched.
+    const ownsBusBatch = this.options.eventBus !== undefined && this.busBatch === null;
+    if (ownsBusBatch) this.busBatch = [];
     try {
       // Tenant context gate: fail closed before ANY work, including idempotency
       // cache reads/writes. Falsy values (undefined, '', null) all count as
@@ -2476,6 +2521,15 @@ export class RuntimeEngine {
           result,
           thrown,
         });
+      }
+      // Publish this command's collected events to the EventBus (post-commit,
+      // once per top-level command). Fail-open: publishBatchToEventBus swallows
+      // and logs errors so it never fails the command. Reset the batch first so
+      // a publish that re-enters (should not, but defensively) starts clean.
+      if (ownsBusBatch) {
+        const batch = this.busBatch ?? [];
+        this.busBatch = null;
+        await this.publishBatchToEventBus(batch);
       }
     }
   }
@@ -2871,6 +2925,10 @@ export class RuntimeEngine {
         });
         // Transaction committed — safe to notify external listeners now.
         for (const ev of committedNotifications) this.dispatchToListeners(ev);
+        // Collect the committed set for the outbound EventBus batch (post-commit):
+        // the full parent + reaction event set becomes one published message. A
+        // rolled-back attempt returns via TX_ROLLBACK above and never reaches here.
+        if (this.busBatch !== null) this.busBatch.push(...committedNotifications);
         return committed;
       } catch (e) {
         if (e === TX_ROLLBACK && cleanFailure !== undefined) {
@@ -4736,13 +4794,91 @@ export class RuntimeEngine {
     });
   }
 
+  // ─── Event Bus (cross-instance realtime) ─────────────────────────────
+  // Bridges the in-process event stream to a configured RuntimeOptions.eventBus.
+  // Contract + semantics: docs/spec/adapters.md § "Event Bus" and
+  // docs/spec/semantics.md § "Cross-instance delivery".
+
+  /** Whether a cross-instance EventBus is wired into RuntimeOptions.eventBus. */
+  hasEventBus(): boolean {
+    return this.options.eventBus !== undefined;
+  }
+
+  /**
+   * This engine's stable EventBus `originId`, derived on first bus use (never in
+   * the constructor — see `_instanceId`) and memoized so every publish and the
+   * self-echo filter agree on one value for the engine's lifetime.
+   */
+  private instanceId(): string {
+    return (this._instanceId ??= this.nextRuntimeId());
+  }
+
+  /**
+   * Subscribe this engine to the configured EventBus and re-dispatch REMOTE
+   * events to local onEvent/subscribe listeners, so an SSE surface backed by
+   * one engine observes events emitted by a command on another. Messages
+   * published by this same engine (originId === this.instanceId) are skipped so
+   * a local listener is never double-notified. Resolves once the subscription
+   * is active; the returned function unsubscribes.
+   *
+   * Idempotent: calling it again while already connected returns the existing
+   * unsubscribe without opening a second subscription. The constructor stays
+   * synchronous — subscription is deferred to this awaited call.
+   */
+  async connectEventBus(): Promise<() => Promise<void>> {
+    const bus = this.options.eventBus;
+    if (!bus) {
+      throw new Error('connectEventBus called but RuntimeOptions.eventBus is not configured');
+    }
+    if (this.busUnsubscribe) return this.busUnsubscribe;
+    const rawUnsubscribe = await bus.subscribe((message: EventBusMessage) => {
+      if (message.originId === this.instanceId()) return; // skip self-echo
+      // dispatchToListeners (not notifyListeners) so remote events are delivered
+      // to local listeners WITHOUT being collected into an outbound batch — a
+      // remote event must never be re-published.
+      for (const ev of message.events) this.dispatchToListeners(ev);
+    });
+    const disconnect = async (): Promise<void> => {
+      if (this.busUnsubscribe === disconnect) this.busUnsubscribe = undefined;
+      await rawUnsubscribe();
+    };
+    this.busUnsubscribe = disconnect;
+    return disconnect;
+  }
+
+  /**
+   * Publish one command's collected event batch to the EventBus. Post-commit
+   * and best-effort: a publish failure is logged and never fails the command
+   * (the events are already durable / already delivered locally). No-op without
+   * a bus or with an empty batch. Mirrors the outbox non-provider fail-open
+   * policy (docs/spec/adapters.md § "Event Bus — Failure Policy").
+   */
+  private async publishBatchToEventBus(events: EmittedEvent[]): Promise<void> {
+    const bus = this.options.eventBus;
+    if (!bus || events.length === 0) return;
+    try {
+      await bus.publish({ originId: this.instanceId(), events });
+    } catch (err) {
+      console.warn(
+        '[Manifest Runtime] EventBus.publish failed; remote subscribers will not receive this batch:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   private notifyListeners(event: EmittedEvent): void {
     // Provider mode: hold notifications until the command's transaction commits
     // so listeners never observe an event from a command that later rolled back.
+    // (Provider mode collects the outbound EventBus batch post-commit instead —
+    // see _runCommandInTransaction.)
     if (this.deferredNotifications !== null) {
       this.deferredNotifications.push(event);
       return;
     }
+    // Non-provider mode: the event is final on emission. Collect it into the
+    // top-level command's outbound EventBus batch (published once on command
+    // completion) before delivering to in-process listeners synchronously.
+    if (this.busBatch !== null) this.busBatch.push(event);
     this.dispatchToListeners(event);
   }
 

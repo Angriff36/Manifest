@@ -7,7 +7,11 @@
  * - Must handle entity not found errors
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { compileToIR } from '../../ir-compiler';
 import { NextJsProjection } from './generator';
 
@@ -1087,6 +1091,44 @@ describe('NextJsProjection', () => {
       expect(sharedResult.diagnostics[0].code).toBe('REALTIME_NOT_ENABLED');
     });
 
+    it('nextjs.sharedRuntime connects the singleton to the eventBus and warns when a bus is optional (default)', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, { surface: 'nextjs.sharedRuntime' });
+      const code = result.artifacts[0].code;
+
+      // The singleton initializer bridges the SSE process to a remote bus.
+      expect(code).toContain('async function initSharedRuntime');
+      expect(code).toContain('runtime.hasEventBus()');
+      expect(code).toContain('await runtime.connectEventBus()');
+      // getSharedRuntime memoizes the async initializer, not a bare factory call.
+      expect(code).toContain('sharedRuntimePromise = initSharedRuntime()');
+
+      // Default (requireEventBus off): warn once, do NOT throw.
+      expect(code).toContain('console.warn');
+      expect(code).toContain(
+        'Manifest realtime: no eventBus configured; SSE delivery is single-instance only',
+      );
+      expect(code).not.toContain('throw new Error');
+    });
+
+    it('nextjs.sharedRuntime throws at init when realtime.requireEventBus is true', async () => {
+      const ir = await realtimeIR();
+      const result = projection.generate(ir, {
+        surface: 'nextjs.sharedRuntime',
+        options: { realtime: { requireEventBus: true } },
+      });
+      const code = result.artifacts[0].code;
+
+      // Positive path is unchanged — a configured bus still connects.
+      expect(code).toContain('await runtime.connectEventBus()');
+      // requireEventBus flips the no-bus branch from warn to a loud throw.
+      expect(code).toContain('throw new Error');
+      expect(code).toContain('realtime.requireEventBus is enabled but no eventBus is configured');
+      expect(code).not.toContain('console.warn');
+      // The header documents the fail-loud behaviour.
+      expect(code).toContain('realtime.requireEventBus is ON');
+    });
+
     it('dispatcher uses the shared runtime when realtime entities exist (inline mode)', async () => {
       const ir = await realtimeIR();
       const result = projection.generate(ir, { surface: 'nextjs.dispatcher' });
@@ -1267,5 +1309,131 @@ describe('NextJsProjection', () => {
       expect(projection.surfaces).toContain('ts.types');
       expect(projection.surfaces).toContain('ts.client');
     });
+  });
+});
+
+/**
+ * Executed proof that the emitted shared-runtime accessor actually bridges
+ * cross-instance events. Two real RuntimeEngine instances share ONE
+ * MemoryEventBus; the emitted `getSharedRuntime()` singleton calls
+ * connectEventBus() at init, so an event emitted by a command on the SECOND
+ * engine reaches a local subscriber on the singleton — the multi-instance
+ * delivery the wiring claims. Loaded via jiti against the in-tree engine + bus,
+ * mirroring the companions executed test.
+ */
+describe('emitted sharedRuntime bridges cross-instance events over a shared bus', () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const RUNTIME_ENGINE_PATH = resolve(here, '../../runtime-engine.ts');
+  const EVENT_BUS_PATH = resolve(here, '../../events/event-bus.ts');
+  const projection = new NextJsProjection();
+  const tempDirs: string[] = [];
+
+  afterAll(async () => {
+    for (const dir of tempDirs) {
+      await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
+  it("a remote command on a second engine reaches the singleton's local subscriber", async () => {
+    // Realtime program whose command emits an event without needing an
+    // instance (mirrors the proven companions executed-test command shape).
+    const source = `
+      entity Order {
+        property id: string
+        realtime
+
+        event OrderSubmitted
+
+        command submit() {
+          mutate result = true
+          emit OrderSubmitted
+        }
+      }
+    `;
+    const compiled = await compileToIR(source);
+    expect(compiled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+
+    const shared = projection.generate(compiled.ir!, { surface: 'nextjs.sharedRuntime' });
+    const sharedCode = shared.artifacts[0].code;
+    // Sanity: the emitted accessor really does bridge to the bus at init.
+    expect(sharedCode).toContain('await runtime.connectEventBus()');
+
+    const dir = await fs.mkdtemp(join(tmpdir(), 'manifest-realtime-'));
+    tempDirs.push(dir);
+
+    // A single shared MemoryEventBus, imported by the factory so BOTH engines
+    // fan out over the SAME instance.
+    await fs.writeFile(
+      join(dir, 'shared-bus.ts'),
+      'import { MemoryEventBus } from "@manifest/event-bus";\nexport const bus = new MemoryEventBus();\n',
+      'utf-8',
+    );
+
+    // A runtime factory that injects the shared bus into RuntimeOptions — the
+    // wiring an app provides for multi-instance realtime (the default companion
+    // factory does not pass eventBus). Embeds the compiled IR.
+    const factoryPath = join(dir, 'manifest-runtime.ts');
+    await fs.writeFile(
+      factoryPath,
+      [
+        'import { RuntimeEngine } from "@angriff36/manifest";',
+        'import { bus } from "./shared-bus";',
+        `const ir = ${JSON.stringify(compiled.ir)} as any;`,
+        'export async function createManifestRuntime(context = {}) {',
+        '  return new RuntimeEngine(ir, context, { eventBus: bus });',
+        '}',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    // The emitted accessor, verbatim. It imports createManifestRuntime from
+    // '@/lib/manifest-runtime' (aliased below to the factory) and, because
+    // hasEventBus() is true, calls connectEventBus() during init.
+    const sharedPath = join(dir, 'manifest-shared-runtime.ts');
+    await fs.writeFile(sharedPath, sharedCode, 'utf-8');
+
+    const jitiMod = (await import('jiti')) as unknown as {
+      default: (base: string, opts: Record<string, unknown>) => (id: string) => unknown;
+    };
+    const jitiFactory = (jitiMod.default ?? (jitiMod as unknown)) as (
+      base: string,
+      opts: Record<string, unknown>,
+    ) => (id: string) => unknown;
+    const load = jitiFactory(RUNTIME_ENGINE_PATH, {
+      interopDefault: true,
+      alias: {
+        '@angriff36/manifest': RUNTIME_ENGINE_PATH,
+        '@manifest/event-bus': EVENT_BUS_PATH,
+        '@/lib/manifest-runtime': factoryPath,
+      },
+    });
+
+    type Engine = {
+      onEvent: (listener: (event: unknown) => void) => () => void;
+      runCommand: (command: string, input: Record<string, unknown>) => Promise<{ success: boolean }>;
+    };
+
+    const sharedMod = load(sharedPath) as { getSharedRuntime: () => Promise<Engine> };
+    const factoryMod = load(factoryPath) as {
+      createManifestRuntime: (ctx?: Record<string, unknown>) => Promise<Engine>;
+    };
+
+    // engineA: the SSE singleton — connectEventBus() ran during init, so it
+    // observes remote events on its local listeners.
+    const engineA = await sharedMod.getSharedRuntime();
+    // engineB: a SECOND engine on the SAME bus (a different instance/process in
+    // production). It only publishes; it never subscribed via connectEventBus.
+    const engineB = await factoryMod.createManifestRuntime({});
+
+    const received: unknown[] = [];
+    engineA.onEvent((event) => received.push(event));
+
+    const result = await engineB.runCommand('submit', {});
+    expect(result.success).toBe(true);
+
+    // MemoryEventBus fan-out is synchronous and publish is awaited inside
+    // runCommand, so the remote event has already reached engineA's listener.
+    expect(received.length).toBeGreaterThan(0);
   });
 });

@@ -162,6 +162,10 @@ async function generateFromIR(
     } else if (options.surface === 'webhook') {
       // Generate one route per declared webhook at its declared path
       await generateWebhooks(projection, ir, outputDir, spinner, projectionOptions);
+    } else if (options.surface === 'realtime') {
+      // Generate the shared-runtime singleton + SSE route + client hook for
+      // every realtime entity
+      await generateRealtime(projection, ir, outputDir, spinner, projectionOptions);
     } else if (options.surface === 'types') {
       // Generate TypeScript types
       await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
@@ -327,6 +331,16 @@ async function generateAllSurfaces(
     spinner.info('Skipping webhook routes (no webhooks declared)');
   }
 
+  // Realtime surfaces: shared-runtime singleton + one SSE route + one client
+  // hook per `realtime` entity. Gated so a program without realtime entities
+  // emits nothing.
+  if ((ir.entities ?? []).some((e) => e.realtime)) {
+    spinner.text = 'Generating realtime surfaces...';
+    await generateRealtime(projection, ir, outputDir, spinner, projectionOptions);
+  } else {
+    spinner.info('Skipping realtime surfaces (no realtime entities)');
+  }
+
   spinner.text = 'Generating types...';
   await generateTypes(projection, ir, outputDir, spinner, projectionOptions);
 
@@ -391,6 +405,39 @@ async function generateWebhooks(
     options: projectionOptions as unknown as Record<string, unknown>,
   });
   await writeProjectionResult(result, outputDir);
+}
+
+/**
+ * Generate the Next.js realtime surfaces: the shared-runtime singleton (which
+ * connects to the configured event bus, or warns/throws per
+ * realtime.requireEventBus), plus an SSE subscribe route and a client
+ * subscription hook for every entity declared `realtime`.
+ */
+async function generateRealtime(
+  projection: NextJsProjection,
+  ir: IR,
+  outputDir: string,
+  spinner: Ora,
+  projectionOptions: NextJsProjectionOptions
+): Promise<void> {
+  spinner.text = 'Generating realtime surfaces...';
+  const shared = projection.generate(ir, {
+    surface: 'nextjs.sharedRuntime',
+    options: projectionOptions as unknown as Record<string, unknown>,
+  });
+  await writeProjectionResult(shared, outputDir);
+
+  for (const entity of ir.entities ?? []) {
+    if (!entity.realtime) continue;
+    for (const surface of ['nextjs.subscribe', 'nextjs.subscriptionHook'] as const) {
+      const result = projection.generate(ir, {
+        surface,
+        entity: entity.name,
+        options: projectionOptions as unknown as Record<string, unknown>,
+      });
+      await writeProjectionResult(result, outputDir);
+    }
+  }
 }
 
 /**

@@ -666,8 +666,6 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
   private keyPrefix: string;
   private defaultTTL: number | undefined;
   private generateId: () => string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private subscribers: Map<string, Array<(event: any) => void>> = new Map();
 
   constructor(
     entityName: string,
@@ -761,17 +759,37 @@ export class RedisStore<T extends EntityInstance = EntityInstance> implements St
     }
   }
 
-  // Pub/sub helpers for event publishing
-  async publishEvent(channel: string, event: unknown): Promise<void> {
-    await this.client.publish(channel, JSON.stringify(event));
+  // Pub/sub helpers for event publishing.
+  //
+  // These were a silent in-process stub: `subscribe` pushed callbacks into a
+  // Map that nothing ever read (delivery never happened) and `publishEvent`
+  // wrote to a Redis channel no one listened on. A stub that pretends to work
+  // is worse than no method at all, so both now throw and point at the real
+  // primitive. Nothing in this repo called them except the (Redis-gated)
+  // integration test; realtime fan-out lives in RedisEventBus, which owns the
+  // dedicated subscriber connection the old stub admitted it lacked.
+
+  /**
+   * @deprecated Removed no-op. Use `RedisEventBus` from
+   * `@angriff36/manifest/events/redis` for realtime event fan-out.
+   */
+  async publishEvent(_channel: string, _event: unknown): Promise<void> {
+    throw new Error(
+      "RedisStore.publishEvent is not implemented — it was a no-op stub. " +
+      "Use RedisEventBus from '@angriff36/manifest/events/redis'."
+    );
   }
 
-  async subscribe(channel: string, callback: (event: unknown) => void): Promise<void> {
-    if (!this.subscribers.has(channel)) {
-      this.subscribers.set(channel, []);
-    }
-    this.subscribers.get(channel)!.push(callback);
-    // For a real implementation, use a dedicated subscriber connection
+  /**
+   * @deprecated Removed no-op — the old implementation silently dropped
+   * callbacks (they were never invoked). Use `RedisEventBus` from
+   * `@angriff36/manifest/events/redis` for realtime event fan-out.
+   */
+  async subscribe(_channel: string, _callback: (event: unknown) => void): Promise<void> {
+    throw new Error(
+      "RedisStore.subscribe is not implemented — it silently dropped callbacks. " +
+      "Use RedisEventBus from '@angriff36/manifest/events/redis'."
+    );
   }
 }
 

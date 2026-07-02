@@ -650,6 +650,7 @@
         "dispatcher": { "$ref": "#/definitions/DispatcherOptions" },
         "concreteCommandRoutes": { "$ref": "#/definitions/ConcreteCommandRoutesOptions" },
         "readRoutes": { "$ref": "#/definitions/ReadRoutesOptions" },
+        "realtime": { "$ref": "#/definitions/RealtimeOptions" },
         "naming": {
           "$ref": "#/definitions/NamingConvention",
           "description": "Naming convention for database accessor names (database.<accessor> in generated read routes). Applies table-name resolution to the entity name — use when the database client exposes physical table names (Kysely, raw SQL) instead of Prisma model delegates. Response field names stay camelCase (the API contract is independent of physical DB naming). Explicit accessorNames entries override it."
@@ -781,6 +782,18 @@
           "type": "boolean",
           "description": "When false, read route stubs are emitted without inlining a Prisma call — useful for projects that route reads through a separate query layer.",
           "default": true
+        }
+      }
+    },
+    "RealtimeOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Realtime (SSE) delivery options for entities flagged `realtime`. The generated shared-runtime singleton streams engine events over SSE; configuring an `eventBus` in the runtime factory's RuntimeOptions lets it fan events across instances (the accessor calls connectEventBus() at init when a bus is present).",
+      "properties": {
+        "requireEventBus": {
+          "type": "boolean",
+          "description": "When true, the generated shared-runtime singleton THROWS at init if no eventBus is configured on the runtime — fail-loud for deployments that advertise multi-instance realtime. When false (default), a one-time console.warn is emitted and delivery degrades to single-instance.",
+          "default": false
         }
       }
     },

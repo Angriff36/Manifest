@@ -208,6 +208,14 @@
       "types": "./dist/manifest/webhooks/handler.d.ts",
       "import": "./dist/manifest/webhooks/handler.js"
     },
+    "./events": {
+      "types": "./dist/manifest/events/event-bus.d.ts",
+      "import": "./dist/manifest/events/event-bus.js"
+    },
+    "./events/redis": {
+      "types": "./dist/manifest/events/redis.d.ts",
+      "import": "./dist/manifest/events/redis.js"
+    },
     "./ir-diff": {
       "types": "./dist/manifest/ir-diff.d.ts",
       "import": "./dist/manifest/ir-diff.js"

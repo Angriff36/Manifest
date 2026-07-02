@@ -155,34 +155,23 @@ describe.runIf(ioredisAvailable)('RedisStore', () => {
     await ttlStore.close();
   });
 
-  it('publishes and subscribes to events', async () => {
+  it('rejects the deprecated store-level pub/sub with a pointer to the event bus', async () => {
+    // The old store-level channel pub/sub was a silent in-process stub (the
+    // subscribe callbacks were never invoked by anything); it now throws and
+    // points at @angriff36/manifest/events/redis. Note: the pre-replacement
+    // version of this test could never have passed against a live Redis —
+    // the stub never delivered — it only ever went green by being skipped.
     const pubSubStore = new RedisStore<TestEntity>('PubSubEntity', {
       url: REDIS_URL,
       keyPrefix: 'test:pubsub:',
     });
 
-    let receivedEvent: unknown = null;
-
-    await pubSubStore.subscribe('test-channel', (event) => {
-      receivedEvent = event;
-    });
-
-    const testEvent: EmittedEvent = {
-      name: 'test',
-      channel: 'test-channel',
-      payload: { data: 'test-value' },
-      timestamp: Date.now(),
-    };
-
-    await pubSubStore.publishEvent('test-channel', testEvent);
-
-    // Give pub/sub time to propagate
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    expect(receivedEvent).toBeDefined();
-    const event = receivedEvent as EmittedEvent;
-    expect(event?.name).toBe('test');
-    expect(event?.payload).toEqual({ data: 'test-value' });
+    await expect(
+      pubSubStore.subscribe('test-channel', () => {})
+    ).rejects.toThrow(/events\/redis/);
+    await expect(
+      pubSubStore.publishEvent('test-channel', { name: 'test' })
+    ).rejects.toThrow(/events\/redis/);
 
     await pubSubStore.close();
   });

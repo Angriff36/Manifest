@@ -302,6 +302,9 @@ describe('exported defaults', () => {
           "directDbReads": true,
           "enabled": true,
         },
+        "realtime": {
+          "requireEventBus": false,
+        },
         "routes": {
           "basePath": "/api",
           "includeAuth": true,

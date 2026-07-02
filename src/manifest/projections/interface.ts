@@ -378,6 +378,28 @@ export interface NextJsProjectionOptions {
       importName?: string;
     };
   };
+
+  /**
+   * Realtime (SSE) delivery options for entities flagged `realtime`.
+   *
+   * The generated shared-runtime singleton streams engine events over SSE.
+   * In-memory that stream is single-instance: events only reach subscribers
+   * connected to the SAME server process. Configuring an `eventBus` in the
+   * runtime factory's `RuntimeOptions` lets the singleton fan events across
+   * instances — the generated accessor calls `connectEventBus()` once at init
+   * when a bus is present, subscribing the process to remote events.
+   */
+  realtime?: {
+    /**
+     * When true, the generated shared-runtime singleton THROWS at
+     * initialization if no `eventBus` is configured on the runtime. Use this
+     * for deployments that advertise multi-instance realtime so a missing bus
+     * fails loud at startup instead of silently degrading to single-instance
+     * delivery. Default **false** — a one-time `console.warn` is emitted
+     * instead.
+     */
+    requireEventBus?: boolean;
+  };
 }
 
 /**
