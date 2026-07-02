@@ -4,6 +4,41 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.1.0] - 2026-07-02
+
+Upstream correctness fixes surfaced by capsule-pro's schema-vs-database
+reconciliation. The Prisma projection now honors declared type nullability, and
+the generic Prisma store stops double-encoding JSON that arrives as a string.
+
+### Fixed
+
+- **Prisma projection: column nullability follows the IR type, not `required`.**
+  The generator decided a column's `?` suffix from the `required` modifier / id
+  alone, discarding the `type.nullable` flag the parser records for an explicit
+  `?` on a property type. Every non-`required` property therefore emitted a
+  nullable column even when its declared type was non-nullable — capsule-pro's
+  schema-vs-DB reconciliation traced 826 nullability drifts to this. A scalar
+  column is now nullable **iff** `type.nullable` is true; `required`/id no longer
+  drive the suffix (a non-`required` non-nullable property emits `NOT NULL`, and
+  the `required` + `?` edge case emits `?` — the declared type wins). Relation /
+  foreign-key optionality follows the same rule (a relation is optional iff a
+  backing FK scalar is nullable; a synthesized FK column stays `NOT NULL`).
+  Arrays keep their implicit-optional (no `?`) handling. Documented in the
+  Prisma projection README.
+- **Prisma projection: `json` object/array column defaults emit valid Prisma.**
+  A `property meta: json = {}` emitted no `@default` at all, and `= []` emitted
+  the bare `@default([])` that Prisma reserves for scalar lists and rejects on a
+  `Json` column. Object/array literal defaults on a `Json` column are now
+  serialized to a double-quoted JSON string (`@default("{}")`, `@default("[]")`,
+  `@default("{ \"a\": 1 }")`).
+- **`GenericPrismaStore`: `asJsonInput` no longer double-encodes JSON strings.**
+  A value that was already `JSON.stringify`'d upstream (common when a consumer
+  migrates a `String` column to `Json`) was passed verbatim and stored as a
+  double-encoded jsonb string. A string input that parses to an object or array
+  is now re-parsed and stored structured; a string that parses to a scalar
+  (`'123'`, `'true'`, `'null'`) or is not valid JSON is kept as the raw string,
+  so plain strings are never surprise-coerced.
+
 ## [3.0.0] - 2026-07-02
 
 The "no hand-written glue" release. Seven workstreams driven by a full
