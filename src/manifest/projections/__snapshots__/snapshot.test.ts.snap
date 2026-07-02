@@ -7378,7 +7378,7 @@ model Task {
   status String @default("todo")
   priority Int? @default(1)
   assigneeId String?
-  createdAt DateTime?
+  createdAt DateTime
 
   assignee User? @relation(fields: [assigneeId], references: [id])
 }

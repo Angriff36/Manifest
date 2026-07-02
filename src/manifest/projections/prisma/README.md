@@ -26,6 +26,37 @@ Prisma schema artifacts. It does NOT participate in runtime semantics.
 - **projection-config.json**: Storage rendering — table names, column names, DB-native types, precision, indexes, field attributes. NO domain semantics.
 - **PrismaProjection** (this code): Translates IR + config into Prisma schema. Carries NO knowledge of any specific application.
 
+## Nullability
+
+A scalar column's Prisma optionality is driven **solely by the IR type's
+`nullable` flag** — i.e. whether the `.manifest` source wrote an explicit `?` on
+the property type:
+
+| `.manifest` source | IR `type.nullable` | Prisma column |
+|---|---|---|
+| `property name: string` | `false` | `name String` (NOT NULL) |
+| `property name: string?` | `true` | `name String?` (nullable) |
+| `property required name: string` | `false` | `name String` (NOT NULL) |
+| `property required name: string?` | `true` | `name String?` — the type wins |
+
+The `required` modifier and the `id` identity do **not** drive column
+nullability: a non-`required` property with a non-nullable type still emits a
+`NOT NULL` column. (A property named `id` is non-nullable by construction, so it
+is always `NOT NULL` regardless.) This makes the generated schema match the
+declared types exactly, rather than silently widening every non-`required`
+column to nullable. In the edge case where a property is both `required` and has
+a `?` type, the declared type wins and the column is nullable.
+
+Two structural exceptions keep their existing behavior:
+
+- **Scalar list** fields (`String[]`, `Int[]`, …) are implicitly optional in
+  Prisma and never carry a `?`.
+- **Relation** field optionality follows the nullability of its backing foreign
+  key scalar(s): if any FK column is nullable (its IR type is nullable), the
+  relation field is optional (`author User?`); otherwise it is required. A
+  synthesized FK column (not declared as a property) is `NOT NULL`, so its
+  relation is required.
+
 ## Config Keys
 
 | Key | Shape | Purpose |

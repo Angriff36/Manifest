@@ -110,7 +110,7 @@ describe('PrismaProjection — projection target metadata', () => {
 });
 
 describe('PrismaProjection — generic fixture (Widget)', () => {
-  it('emits a Prisma model for a durable entity with id, required name, and optional qty', () => {
+  it('emits a Prisma model for a durable entity: @id id, required name, and a non-nullable non-required qty (NOT NULL — type-driven)', () => {
     const ir = emptyIR();
     ir.entities.push(widgetEntity());
     ir.stores.push(durableStore('Widget'));
@@ -127,7 +127,8 @@ describe('PrismaProjection — generic fixture (Widget)', () => {
     expect(code).toMatch(/model Widget \{/);
     expect(code).toMatch(/^\s+id String @id$/m);
     expect(code).toMatch(/^\s+name String$/m);
-    expect(code).toMatch(/^\s+qty Int\?$/m);
+    // qty has type.nullable:false and no `required` modifier → NOT NULL (no `?`).
+    expect(code).toMatch(/^\s+qty Int$/m);
     expect(code).toMatch(/^\}$/m);
 
     const errs = result.diagnostics.filter((d) => d.severity === 'error');
@@ -206,6 +207,90 @@ describe('PrismaProjection — generic fixture (Widget)', () => {
     expect(betaPos).toBeGreaterThan(-1);
     expect(alphaPos).toBeGreaterThan(-1);
     expect(betaPos).toBeLessThan(alphaPos);
+  });
+});
+
+describe('PrismaProjection — type-driven nullability (v3.1)', () => {
+  // A scalar column is nullable IFF prop.type.nullable is true. The `required`
+  // modifier and the `id` identity no longer drive the `?` suffix.
+
+  it('non-nullable property WITHOUT `required` → NOT NULL (no `?`)', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Widget', {
+        properties: [{ name: 'label', type: { name: 'string', nullable: false }, modifiers: [] }],
+      }),
+    );
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+label String$/m);
+    expect(code).not.toMatch(/^\s+label String\?$/m);
+  });
+
+  it('explicit `?` type (type.nullable:true) → nullable column', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Widget', {
+        properties: [{ name: 'nickname', type: { name: 'string', nullable: true }, modifiers: [] }],
+      }),
+    );
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+nickname String\?$/m);
+  });
+
+  it('non-nullable property WITH a default → NOT NULL + @default', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Widget', {
+        properties: [{
+          name: 'active',
+          type: { name: 'boolean', nullable: false },
+          modifiers: [],
+          defaultValue: { kind: 'boolean', value: true },
+        }],
+      }),
+    );
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+active Boolean @default\(true\)$/m);
+    expect(code).not.toMatch(/active Boolean\?/);
+  });
+
+  it('edge case: `required` + `?` type → the type wins (nullable)', () => {
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Widget', {
+        properties: [{ name: 'note', type: { name: 'string', nullable: true }, modifiers: ['required'] }],
+      }),
+    );
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+note String\?$/m);
+  });
+
+  it('timestamps-injected createdAt/updatedAt (type.nullable:false) → NOT NULL', () => {
+    // The ir-compiler injects createdAt/updatedAt as { nullable: false } when an
+    // entity declares `timestamps`. The projection must emit them NOT NULL.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Widget', {
+        properties: [
+          { name: 'createdAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] },
+          { name: 'updatedAt', type: { name: 'datetime', nullable: false }, modifiers: ['readonly'] },
+        ],
+      }),
+    );
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+createdAt DateTime$/m);
+    expect(code).toMatch(/^\s+updatedAt DateTime$/m);
+    expect(code).not.toMatch(/DateTime\?/);
   });
 });
 
@@ -865,11 +950,11 @@ describe('PrismaProjection — autoBackRelations', () => {
     expect(code).toMatch(/versionedEntities\s+VersionedEntity\[\]\s+@relation\("VersionedEntity_currentVersion"\)/);
   });
 
-  it('emits an optional relation when the FK property is not required', () => {
+  it('emits an optional relation when the FK property type is nullable', () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Post', {
-        properties: [{ name: 'authorId', type: { name: 'string', nullable: false }, modifiers: [] }],
+        properties: [{ name: 'authorId', type: { name: 'string', nullable: true }, modifiers: [] }],
         relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
       bareEntity('User'),
@@ -880,11 +965,12 @@ describe('PrismaProjection — autoBackRelations', () => {
     expect(code).toMatch(/author\s+User\?\s+@relation\(fields: \[authorId\]/);
   });
 
-  it('emits a required relation when the FK property is required', () => {
+  it('emits a required relation when the FK property type is non-nullable (even without `required`)', () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Post', {
-        properties: [{ name: 'authorId', type: { name: 'string', nullable: false }, modifiers: ['required'] }],
+        // non-nullable type, NO `required` modifier → still a required relation.
+        properties: [{ name: 'authorId', type: { name: 'string', nullable: false }, modifiers: [] }],
         relationships: [{ name: 'author', kind: 'belongsTo', target: 'User' }],
       }),
       bareEntity('User'),
@@ -900,7 +986,8 @@ describe('PrismaProjection — autoBackRelations', () => {
     const ir = emptyIR();
     ir.entities.push(
       bareEntity('Node', {
-        properties: [{ name: 'parentId', type: { name: 'string', nullable: false }, modifiers: [] }],
+        // nullable FK so the self-relation stays optional (a root node has no parent).
+        properties: [{ name: 'parentId', type: { name: 'string', nullable: true }, modifiers: [] }],
         relationships: [{ name: 'parent', kind: 'belongsTo', target: 'Node' }],
       }),
     );
@@ -1416,7 +1503,7 @@ describe('PrismaProjection — dbAttributes config', () => {
       options: { dbAttributes: { Widget: { bornOn: 'Date' } } },
     }).artifacts[0].code;
 
-    expect(code).toMatch(/^\s+bornOn DateTime\? @db\.Date$/m);
+    expect(code).toMatch(/^\s+bornOn DateTime @db\.Date$/m);
   });
 
   it('emits @db.SmallInt on an Int field via dbAttributes', () => {
@@ -1826,8 +1913,9 @@ describe('PrismaProjection — procurement entity snapshot (dbAttributes + field
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(14, 4\)$/m);
     // ProcurementItem: createdAt DateTime @db.Timestamptz(6) @default(now())
     expect(code).toMatch(/^\s+createdAt DateTime @db\.Timestamptz\(6\) @default\(now\(\)\)$/m);
-    // ProcurementItem: updatedAt DateTime? @db.Timestamptz(6) @updatedAt
-    expect(code).toMatch(/^\s+updatedAt DateTime\? @db\.Timestamptz\(6\) @updatedAt$/m);
+    // ProcurementItem: updatedAt DateTime @db.Timestamptz(6) @updatedAt
+    // (type.nullable:false + no `required` → NOT NULL under the type-driven rule)
+    expect(code).toMatch(/^\s+updatedAt DateTime @db\.Timestamptz\(6\) @updatedAt$/m);
     // Composite PK
     expect(code).toMatch(/^\s+@@id\(\[vendorId, lineNo\]\)$/m);
     // Composite FK relation
@@ -2345,8 +2433,9 @@ describe('PrismaProjection — naming convention (auto casing)', () => {
     }).artifacts[0].code;
 
     // Prisma field identifier stays camelCase; only @map carries the physical name.
-    expect(code).toMatch(/^\s+createdAt DateTime\? @map\("created_at"\)$/m);
-    expect(code).toMatch(/^\s+displayName String\? @map\("display_name"\)$/m);
+    // (both columns are type.nullable:false → NOT NULL under the type-driven rule)
+    expect(code).toMatch(/^\s+createdAt DateTime @map\("created_at"\)$/m);
+    expect(code).toMatch(/^\s+displayName String @map\("display_name"\)$/m);
     // Model name stays PascalCase; @@map carries the pluralized physical name.
     expect(code).toMatch(/^model UserAccount \{/m);
     expect(code).toMatch(/^\s+@@map\("user_accounts"\)$/m);
@@ -2404,7 +2493,7 @@ describe('PrismaProjection — naming convention (auto casing)', () => {
 
     expect(code).toMatch(/^\s+@@map\("accounts"\)$/m);
     expect(code).not.toMatch(/user_accounts/);
-    expect(code).toMatch(/^\s+createdAt DateTime\? @map\("inserted_at"\)$/m);
+    expect(code).toMatch(/^\s+createdAt DateTime @map\("inserted_at"\)$/m);
     expect(code).not.toMatch(/created_at/);
   });
 

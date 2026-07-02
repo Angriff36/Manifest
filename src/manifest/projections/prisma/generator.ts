@@ -267,9 +267,12 @@ function emitPropertyLine(
   // (in that case @@id([...]) is emitted at model level; the id column is not special).
   const hasCompositeKey = entity.key && entity.key.length > 0;
   const isId = prop.name === 'id' && !hasCompositeKey;
-  const isRequired = isId || prop.modifiers.includes('required');
+  // A scalar column is nullable IFF the IR type is nullable — i.e. the .manifest
+  // source wrote an explicit `?` on the property type. `required`/id no longer
+  // drive the suffix: a non-nullable type emits NOT NULL even without `required`,
+  // and the edge case `required` + `?` type emits `?` (the declared type wins).
   // Prisma list fields (String[]) are implicitly optional — never append ?.
-  const nullableSuffix = isArray ? '' : (isRequired ? '' : '?');
+  const nullableSuffix = isArray ? '' : (prop.type.nullable ? '?' : '');
   // Prisma list suffix: scalar becomes scalar[].
   const listSuffix = isArray ? '[]' : '';
 
@@ -683,18 +686,15 @@ function emitRelationship(
         lines.push(`  @@unique([${fkFields.join(', ')}])`);
       }
 
-      // Prisma rule: if any FK scalar field is optional, the relation field must
-      // be optional too. A synthesized FK column is non-null; a declared property
-      // column is optional unless it is `required`/`id`/array — MATCHING the
-      // nullability rule in emitPropertyLine (isRequired ? '' : '?').
-      const hasCompositeKeyHere = !!entity.key && entity.key.length > 0;
+      // Prisma rule: if any FK scalar field is nullable, the relation field must
+      // be nullable too. A synthesized FK column is non-null; a declared property
+      // column's nullability follows its IR type — MATCHING the type-driven
+      // nullability rule in emitPropertyLine (prop.type.nullable ? '?' : '').
       const fkOptional = fkFields.some((f) => {
         const prop = entity.properties.find((p) => p.name === f);
         if (!prop) return false; // synthesized FK column is non-null
         const isArr = prop.type.name === 'array' && !!prop.type.generic;
-        const isIdField = prop.name === 'id' && !hasCompositeKeyHere;
-        const isReq = isIdField || prop.modifiers.includes('required');
-        return !isArr && !isReq;
+        return !isArr && prop.type.nullable;
       });
       const optionalMark = fkOptional ? '?' : '';
 
