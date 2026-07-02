@@ -354,6 +354,28 @@ describe('PrismaProjection — json column defaults', () => {
     const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
     expect(code).toContain('meta Json @default("{\\"a\\":1}")');
   });
+
+  it('quotes the default on a NULLABLE json column too (capsule `permissions: json? = []` — P1012 repro)', () => {
+    // Old output `permissions Json? @default([])` failed `prisma validate` with
+    // P1012 "The default value of a non-list field cannot be a list." The quoted
+    // JSON-string form is required regardless of column nullability.
+    const ir = emptyIR();
+    ir.entities.push(
+      bareEntity('Role', {
+        properties: [{
+          name: 'permissions',
+          type: { name: 'json', nullable: true },
+          modifiers: [],
+          defaultValue: { kind: 'array', elements: [] },
+        }],
+      }),
+    );
+    ir.stores.push(durableStore('Role'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+permissions Json\? @default\("\[\]"\)$/m);
+    expect(code).not.toMatch(/@default\(\[\]\)/);
+  });
 });
 
 describe('PrismaProjection — skipping rules', () => {

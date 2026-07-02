@@ -27,10 +27,12 @@ the generic Prisma store stops double-encoding JSON that arrives as a string.
   Prisma projection README.
 - **Prisma projection: `json` object/array column defaults emit valid Prisma.**
   A `property meta: json = {}` emitted no `@default` at all, and `= []` emitted
-  the bare `@default([])` that Prisma reserves for scalar lists and rejects on a
-  `Json` column. Object/array literal defaults on a `Json` column are now
-  serialized to a double-quoted JSON string (`@default("{}")`, `@default("[]")`,
-  `@default("{ \"a\": 1 }")`).
+  the bare `@default([])` that Prisma reserves for scalar lists — `prisma
+  validate` rejected `permissions Json? @default([])` with **P1012** "The default
+  value of a non-list field cannot be a list." Object/array literal defaults on a
+  `Json` column (nullable or not) are now serialized to a double-quoted JSON
+  string (`@default("{}")`, `@default("[]")`, `@default("{ \"a\": 1 }")`),
+  unblocking capsule-pro's string→json field migration.
 - **`GenericPrismaStore`: `asJsonInput` no longer double-encodes JSON strings.**
   A value that was already `JSON.stringify`'d upstream (common when a consumer
   migrates a `String` column to `Json`) was passed verbatim and stored as a
