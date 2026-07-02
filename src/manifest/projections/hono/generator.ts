@@ -32,7 +32,7 @@ import type {
 } from '../interface';
 import type { HonoProjectionOptions } from './types';
 import type { RouteCasing } from '../shared/naming.js';
-import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 import { resolveRouteContract, zodParamsSchemaName } from '../shared/route-contract.js';
 
 // ============================================================================

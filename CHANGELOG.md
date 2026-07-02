@@ -4,6 +4,127 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.0.0] - 2026-07-02
+
+The "no hand-written glue" release. Seven workstreams driven by a full
+docs-vs-implementation audit: generated code now compiles and **runs** with
+zero hand-authored companion files, the engine's queues drain natively,
+command persistence is transactional on Postgres, every route-emitting
+projection shares one layout contract, webhooks execute, and realtime works
+across processes. Major version: generated-output naming and defaults changed
+(see Breaking changes).
+
+### Breaking changes
+
+- **Zod schema names are entity-prefixed.** `CreateParamsSchema` is now
+  `RecipeCreateParamsSchema` (collision-free; matches exactly what the
+  hono/express validation imports always expected — that mismatch was a live
+  unresolved-import bug). Entity-less command schemas keep their old names.
+- **`routes` projection describes the dispatcher by default.** Command entries
+  now carry the canonical `/api/manifest/<Entity>/commands/<command>` raw-name
+  invocation paths (tagged `variant: 'dispatcher'`); the deprecated concrete
+  `<basePath>/<entity>/<kebab-command>` entries are emitted only behind
+  `concreteCommandRoutes.enabled: true`.
+- **react-query hooks call routes that exist.** Command mutations previously
+  posted lowercased-entity/kebab-command paths the raw-name dispatcher never
+  served (any `OrderLine.publishRecipe`-class name 404'd); they now use the
+  shared dispatcher invocation path, and the default response typing matches
+  the real wire body (`{ data, events, diagnostics }` — the legacy
+  `CommandEnvelope` shape remains behind the explicit `commandEnvelope` knob).
+- **`hono`/`express` `basePath` is no longer ignored.** Both projections
+  accepted-and-dropped the option; routes now really emit under it (default
+  `/api/...`). Anyone relying on the bare paths must set `basePath: ''`.
+- **`RedisStore.publishEvent`/`subscribe` throw.** The store-level pub/sub was
+  a silent in-process stub whose callbacks were never invoked; use the real
+  event bus at `@angriff36/manifest/events/redis`.
+- **Server projections emit companion modules by default** (`emitCompanions:
+  true`): generated output now includes `manifest-runtime`,
+  `manifest-response`, `database`, auth/tenant helpers at the configured
+  import paths. Projects that already hand-maintain those files should set
+  `emitCompanions: false` or delete their copies and regenerate.
+
+### Added
+
+- **Generated companions (2A).** Next.js, Express, Hono, Remix, and SvelteKit
+  emit every module their generated code imports — including the runtime
+  factory (`createManifestRuntime`, IR embedded) and, for Express/Hono, a
+  facade matching the router call contract. A cross-projection gate
+  (`companion-imports.test.ts`) fails CI if any generated file imports a
+  missing local module. Express/Hono routers also gained the missing `await`
+  on the factory.
+- **Drains (2B).** `runOutboxWorker`/`drainOutboxOnce`
+  (`@angriff36/manifest/outbox/worker`); durable `PostgresJobQueue` +
+  `runJobWorker`/`drainJobsOnce` (`./jobs/postgres`, `./jobs/worker`); a real
+  5-field UTC cron matcher replacing the always-false placeholder +
+  `startScheduleWorker`/`runSchedulesOnce` (`./schedule-worker`, sweeps
+  approval expiry each tick); the Next.js schedule surface is CLI-reachable,
+  respects `appDir`, and emits a real `vercel.json` crons artifact plus
+  approval-expiry and jobs-drain cron routes; `MemoryIdempotencyStore` +
+  `PostgresIdempotencyStore` (`./idempotency/*`) — duplicate keys return the
+  cached result with the mutation applied exactly once.
+- **Wiring (2C).** `./outbox/redis` and `./federation` are importable (they
+  were shipped-but-unreachable); `analyze`, `seed`, `profile`, `pack`,
+  `unpack`, and `generate-from-prompt` are registered CLI commands;
+  `manifest build --all`; single-run `generate/build -p <name>` resolve that
+  projection's own config block and layer the global `naming` convention;
+  `plugins:` declarations actually load (plugin CLI commands register;
+  `pluginRegistriesToRuntimeOptions()` composes store/builtin/audit
+  contributions into `RuntimeOptions`); the config schema is generated from
+  the projection registry — all 27 projections validate.
+- **Transactions (2D).** `RuntimeOptions.transactionProvider` +
+  `PostgresTransactionProvider` (`./transactions/postgres`): each command
+  attempt commits its mutation, outbox enqueue, idempotency record, job
+  enqueue, and approval save atomically — or rolls all of them back. An
+  outbox failure inside the transaction fails the command
+  (`OUTBOX_ENQUEUE_FAILED`) instead of silently dropping events. Audit stays
+  outside the transaction by design (rolling back the record of a failure
+  destroys the evidence).
+- **Route/client coherence (2E).** One shared route-layout contract
+  (`shared/route-contract.ts`) consumed by nextjs, ts.client, react-query,
+  routes, zod, hono, and express, plus a cross-projection coherence gate.
+  `ts.client` finally earns its name: typed command callers per IR command,
+  configurable base paths, and the real response envelope.
+- **Webhooks (2F).** `handleWebhookRequest` (`./webhooks`) executes declared
+  webhooks fail-closed: HMAC over the raw body with `timingSafeEqual`
+  (sha256/sha512, bare or GitHub-prefixed hex), idempotency-header dedupe
+  through the idempotency store and transaction boundary, payload transforms,
+  dispatcher-consistent statuses. Next.js/Hono/Express emit webhook routes at
+  the declared absolute paths (HMAC is the auth — no app middleware).
+- **Realtime/event bus (2G).** `EventBus` contract with `MemoryEventBus`
+  (`./events`) and `RedisEventBus` (`./events/redis`, dedicated subscriber
+  connection). The engine publishes one post-commit batch per command (never
+  for rollbacks; reaction cascades ride the same message);
+  `connectEventBus()` bridges remote events into normal listeners with
+  self-echo filtered. The emitted Next.js shared runtime connects the bus,
+  warns honestly when single-instance, or throws under
+  `realtime.requireEventBus`. New `--surface realtime` emits the
+  subscribe/hook/shared-runtime trio (previously unreachable from the CLI).
+- **Docs correctness gate (WS1).** Every ```manifest fence in user-facing
+  docs is compiled by CI (`check-doc-snippets`); 31 non-compiling snippets and
+  the phantom quickstart APIs were fixed; lint and docs checks are blocking.
+
+### Fixed
+
+- CLI `generate` no longer exits 0 when a deliberately invoked surface
+  produces only error diagnostics.
+- Next.js read routes no longer import the tenant provider when tenant
+  filtering is off; Remix `manifest-types` re-exports the shared result types
+  its client imports; Remix/SvelteKit import a configured `tenantProvider`
+  instead of calling it un-imported.
+- The elasticsearch indexer template imports `@angriff36/manifest/outbox`
+  instead of the nonexistent `@manifest/outbox`.
+- The approval-store Postgres schema ships in the npm package (it was
+  missing from `files`), alongside the new jobs/idempotency schemas.
+
+### Known gaps (tracked)
+
+GraphQL/analytics projections still emit scaffolding-grade output; DynamoDB/
+MongoDB outbox stores remain unexported until they have tests; declarations
+silently dropped without diagnostics (entity-body `webhook`, entity
+`behaviors`, top-level `realtime` prefix, mutating commands without an
+`instanceId`); `releaseStaleJobs`; GenericPrismaStore transaction
+participation; react-query `optimisticUpdates`.
+
 ## [2.22.0] - 2026-06-28
 
 Prisma projection correctness pass — everything needed for a real multi-schema

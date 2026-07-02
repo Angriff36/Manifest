@@ -210,26 +210,24 @@ jq '.entities[].name' program.ir.json
 
 ### "Cannot find module '@/lib/manifest-response'"
 
-**Cause**: Missing response helper utilities.
+**Cause**: The Next.js projection's generated routes import `manifestSuccessResponse` /
+`manifestErrorResponse` / `normalizeCommandResult` from this module. It is emitted for
+you as a **companion module**, so this error means it wasn't written — either you
+generated with `emitCompanions: false`, or with a build predating the companions surface.
 
 **Solution**:
-Create `src/lib/manifest-response.ts`:
+Regenerate with companions enabled. `emitCompanions` defaults to `true`, so a plain
+`manifest generate` (or `manifest build`) now writes the module to the path in
+`responseImportPath` (default `@/lib/manifest-response`) alongside the runtime factory,
+database client, and auth stub — no hand-written files required:
 
-```typescript
-export function manifestSuccessResponse(data: unknown, status = 200) {
-  return Response.json(data, { status });
-}
-
-export function manifestErrorResponse(
-  message: string | Diagnostics,
-  status = 400
-) {
-  return Response.json(
-    typeof message === 'string' ? { error: message } : message,
-    { status }
-  );
-}
+```bash
+manifest generate ir/app.ir.json --projection nextjs --surface companions --output app/api/
 ```
+
+Only hand-write the module if you have deliberately set `emitCompanions: false` to keep
+your own implementation. In that case create `src/lib/manifest-response.ts` exporting
+`manifestSuccessResponse(data, status)` and `manifestErrorResponse(message, status)`.
 
 ### Auth integration failing
 

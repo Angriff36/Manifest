@@ -28,7 +28,7 @@ import type {
   RoutesProjectionOptions,
   ManualRouteDeclaration,
 } from './types';
-import { resolveRouteContract, type RouteContract } from '../shared/route-contract';
+import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
 
 // ============================================================================
 // Helpers

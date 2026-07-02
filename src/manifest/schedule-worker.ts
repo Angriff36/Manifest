@@ -14,7 +14,7 @@
 
 import type { CommandResult, ApprovalRequestState } from './runtime-engine';
 import type { IRSchedule, IREntity } from './ir';
-import { isCronDue, isIntervalDue } from './runtime-schedule';
+import { isCronDue, isIntervalDue } from './runtime-schedule.js';
 
 /**
  * The minimal runtime surface the worker depends on. `RuntimeEngine` satisfies

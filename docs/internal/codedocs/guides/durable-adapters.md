@@ -106,6 +106,12 @@ for (const entry of batch) {
 }
 ```
 
+You no longer have to hand-write this claim/deliver/mark loop. The shipped
+`drainOutboxOnce(store, deliver)` (one pass) and `runOutboxWorker(store, deliver)`
+(a polling worker) from `@angriff36/manifest/outbox/worker` own exactly the loop
+above — pass your `publishToBus` as the `deliver` closure. Write the loop by hand
+only for a bespoke outbox table that does not implement the `OutboxStore` interface.
+
 </Step>
 </Steps>
 
@@ -178,4 +184,4 @@ Operational notes:
 - Apply the shipped SQL schemas from `src/manifest/audit/sinks/postgres.sql` and `src/manifest/outbox/stores/postgres.sql` before using the PostgreSQL audit and outbox adapters.
 - `PostgresOutboxStore.claim()` uses `FOR UPDATE SKIP LOCKED` semantics so multiple workers can claim disjoint batches.
 - `PostgresAuditSink.emit()` requires `recordId`; `RuntimeEngine.runCommand()` provides one automatically when an audit sink is configured.
-- The runtime still has the documented transactional gap between mutation and outbox enqueue, so monitor outbox warnings and design consumers to be idempotent.
+- Without a `transactionProvider`, the runtime has the documented transactional gap between mutation and outbox enqueue, so monitor outbox warnings and design consumers to be idempotent. To close the gap, pass a `PostgresTransactionProvider` (`@angriff36/manifest/transactions/postgres`) as `RuntimeOptions.transactionProvider`; the engine then commits each command's mutation, outbox enqueue, and idempotency record atomically. Idempotent consumers remain good practice regardless.

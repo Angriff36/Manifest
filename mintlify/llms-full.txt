@@ -3788,20 +3788,28 @@ await outboxStore.releaseStaleClaims(staleEntryIds);
 Only release claims when you are certain the original worker is no longer running. Releasing a claim held by a live worker produces a second delivery. The `attempts` counter increments on every successful claim, so you can use it to bound retries and dead-letter entries that exceed a threshold.
 
 
-## Transactional limitation
+## Transaction boundary
 
 
-The current `RuntimeEngine` does **not** share a transaction boundary between entity state mutation and outbox enqueue. The `enqueue` call runs on a separate database connection from the entity `update` inside `_executeCommandInternal`.
+By default — with no `transactionProvider` configured — `RuntimeEngine` does **not** share a transaction boundary between entity state mutation and outbox enqueue. The `enqueue` call runs on a separate database connection from the entity `update` inside `_executeCommandInternal`. In that mode, if the entity mutation succeeds but `outboxStore.enqueue` fails, the state change is persisted without a durable outbox row. The runtime logs the failure to `stderr` as `[Manifest Runtime] OutboxStore.enqueue failed`, and the `CommandResult` is not affected — the command still returns success to your caller.
 
-This means: if the entity mutation succeeds but `outboxStore.enqueue` fails, the state change is persisted without a durable outbox row. The runtime logs the failure to `stderr` as:
+**Recommended: engine-managed atomicity.** Set a `transactionProvider` in `RuntimeOptions` and the engine wraps each command attempt — command body, its outbox enqueue, and its idempotency record — in a single `withTransaction` call, so those writes commit or roll back together. A failed enqueue now rolls the mutation back and surfaces `OUTBOX_ENQUEUE_FAILED` instead of silently dropping the event.
 
+```typescript
+import { Pool } from 'pg';
+import { RuntimeEngine } from '@angriff36/manifest';
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { PostgresTransactionProvider } from '@angriff36/manifest/transactions/postgres';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const runtime = new RuntimeEngine(ir, context, {
+  outboxStore: new PostgresOutboxStore({ pool }),
+  transactionProvider: new PostgresTransactionProvider({ pool }),
+});
 ```
-[Manifest Runtime] OutboxStore.enqueue failed
-```
 
-The `CommandResult` is not affected — the command still returns success to your caller.
-
-**Mitigation:** `PostgresOutboxStore.enqueue(entries, tx)` accepts a caller-supplied `PoolClient`. If you open your own transaction and pass the same client to both a `PostgresStore` write and `PostgresOutboxStore.enqueue(entries, sameClient)`, you get atomicity at the adapter level. Making `RuntimeEngine` open and thread that transaction automatically is deferred to a future release.
+**Adapter-level alternative:** `PostgresOutboxStore.enqueue(entries, tx)` also accepts a caller-supplied `PoolClient`. If you open your own transaction and pass the same client to both a `PostgresStore` write and `PostgresOutboxStore.enqueue(entries, sameClient)`, you get atomicity without a provider. Use this when you already manage transactions yourself.
 
 
 ## Import paths

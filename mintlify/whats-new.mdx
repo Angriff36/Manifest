@@ -1,0 +1,143 @@
+---
+title: "What's new in 3.0"
+sidebarTitle: "What's new (3.0)"
+description: 'Manifest 3.0 makes generated backends runnable with zero hand-written glue: emitted companions, shipped outbox/job/schedule workers, an atomic transaction boundary, coherent routes and clients, webhooks, and a runtime event bus. Includes breaking changes.'
+---
+
+Manifest 3.0 closes the gap between "code was generated" and "the backend actually
+runs." Where earlier releases emitted types and route bodies but left you to
+hand-write the runtime factory, response helpers, drain loops, and worker wiring,
+3.0 ships those pieces — and makes the generated routes, clients, and schemas agree
+on one contract.
+
+<Note>
+This release contains **breaking changes** to generated output (zod schema names,
+the routes projection's default paths, hono/express `basePath`, and the react-query
+command envelope). See [Breaking changes](#breaking-changes) before upgrading.
+</Note>
+
+## Docs are now gated against the compiler
+
+Every ` ```manifest ` snippet in the published docs is compiled by the real
+compiler in CI (`scripts/check-doc-snippets.mjs`), internal links are resolved
+(`check-doc-links.mjs`), and page frontmatter and spec headers are enforced
+(`check-doc-metadata.mjs`, `check-spec-integrity.mjs`). Doc examples that stop
+compiling now fail the build, so what you read here matches what the compiler
+accepts.
+
+## Generated companions: zero hand-written files
+
+The five server projections — **Next.js, Hono, Express, Remix, and SvelteKit** —
+now emit the modules their generated route code imports, so a fresh `generate`
+produces code that compiles with no hand-written files. Emission is on by default
+(`emitCompanions: true`).
+
+For the Next.js projection the companions surface writes:
+
+- **Runtime factory** — `createManifestRuntime` (default `@/lib/manifest-runtime`), which embeds the compiled IR and constructs a `RuntimeEngine` with your `RuntimeOptions`.
+- **HTTP envelope helpers** — `manifestSuccessResponse`, `manifestErrorResponse`, and `normalizeCommandResult` (default `@/lib/manifest-response`).
+- **Database client**, **auth stub**, and **tenant lookup helper** companions when the generated routes need them.
+
+Generate them explicitly, or as part of a normal build:
+
+```bash
+# Just the companions
+manifest generate ir/app.ir.json --projection nextjs --surface companions --output app/api/
+
+# Or the whole surface set (companions included)
+manifest generate ir/app.ir.json --projection nextjs --surface all --output app/api/
+```
+
+To keep your own implementations instead, set `emitCompanions: false` — the
+projection then emits nothing and leaves your hand-written modules untouched.
+
+## Drains, jobs, cron, and idempotency ship as workers
+
+You no longer hand-write the loops that drive durable delivery and async work.
+
+- **Outbox drain** — `runOutboxWorker(store, deliver)` (a polling worker) and `drainOutboxOnce(store, deliver)` (one pass) from `@angriff36/manifest/outbox/worker` own the claim/deliver/mark loop; pass your publish function as `deliver`. A Redis-backed outbox store is available at `@angriff36/manifest/outbox/redis`.
+- **Async job queue** — `PostgresJobQueue` (`@angriff36/manifest/jobs/postgres`) is a durable `JobQueue`; `runJobWorker` / `drainJobsOnce` (`@angriff36/manifest/jobs/worker`) drain and execute enqueued async commands. Apply `src/manifest/jobs/stores/postgres.sql` once.
+- **Schedules** — a real 5-field cron matcher backs `startScheduleWorker` and `runSchedulesOnce` (`@angriff36/manifest/schedule-worker`). On Vercel, the Next.js projection emits one cron route per schedule plus maintenance routes for approval expiry and async-job draining, and a `vercel.json` that registers them — schedules fire with no extra setup.
+- **Idempotency** — `MemoryIdempotencyStore` (`@angriff36/manifest/idempotency/memory`) and `PostgresIdempotencyStore` (`@angriff36/manifest/idempotency/postgres`) record command results keyed by an `idempotencyKey` so retried commands do not double-execute.
+
+See [Async commands](/language/async-commands) and the [Outbox adapter](/adapters/outbox).
+
+## Atomic transaction boundary
+
+Set a `transactionProvider` in `RuntimeOptions` and the engine wraps each command
+attempt — the command body, its outbox enqueue, and its idempotency record — in a
+single `withTransaction` call. Those writes now commit or roll back together; a
+failed outbox enqueue rolls the mutation back and returns `OUTBOX_ENQUEUE_FAILED`
+instead of silently persisting state without a durable event. `PostgresTransactionProvider`
+ships at `@angriff36/manifest/transactions/postgres`.
+
+```typescript
+import { Pool } from 'pg';
+import { RuntimeEngine } from '@angriff36/manifest';
+import { PostgresOutboxStore } from '@angriff36/manifest/outbox/postgres';
+import { PostgresTransactionProvider } from '@angriff36/manifest/transactions/postgres';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const runtime = new RuntimeEngine(ir, context, {
+  outboxStore: new PostgresOutboxStore({ pool }),
+  transactionProvider: new PostgresTransactionProvider({ pool }),
+});
+```
+
+Without a provider, the prior default behavior is unchanged: mutation and outbox
+enqueue run on separate connections and the gap is logged, not enforced.
+
+## Wiring, config, exports, and CLI
+
+- **One shared route contract.** Routes, clients, zod schemas, and hono/express handlers now derive their paths, envelope keys, and schema names from a single contract module, so a client generated from the same `appDir` as its routes cannot target a stale prefix.
+- **Plugins load.** Plugins declared in config now register their CLI commands, and a runtime seam threads plugin registries into `RuntimeOptions`. The config schema covers all projection targets.
+- **New CLI subcommands** are registered: `analyze`, `seed`, `profile`, `pack`, `unpack`, and `generate-from-prompt`, alongside `manifest build --all` and `manifest generate --all` for config-driven, whole-project builds.
+- **New export subpaths** back the features above: `@angriff36/manifest/outbox/worker`, `/jobs/postgres`, `/jobs/worker`, `/schedule-worker`, `/idempotency/memory`, `/idempotency/postgres`, `/transactions/postgres`, `/webhooks`, `/events`, `/events/redis`, `/outbox/redis`, and `/federation`.
+
+## Route and client coherence
+
+The projections that make up an HTTP surface now agree on one contract:
+
+- The **routes** projection emits dispatcher-style command paths by default.
+- **ts.client** emits typed command callers with configurable base paths.
+- **react-query** command hooks call the dispatcher path using the raw command name, resolved through the shared contract.
+- **zod** command-params schema names are now entity-prefixed so hono/express imports resolve against them.
+
+## Webhooks execute
+
+`handleWebhookRequest` (`@angriff36/manifest/webhooks`) turns an inbound HTTP
+request into a Manifest command execution. It is **fail-closed**: HMAC signature
+verification, idempotency, and the payload transform all run before any command
+executes, and a missing or invalid signature is rejected. The Next.js, Hono, and
+Express projections emit webhook routes (`--surface webhook`).
+
+## Realtime and the event bus
+
+The runtime now publishes committed events to a connected `EventBus` **after**
+the transaction commits. `connectEventBus` wires a bus onto a `RuntimeEngine`;
+`EventBus` and a Redis-backed implementation ship at `@angriff36/manifest/events`
+and `@angriff36/manifest/events/redis`. The Next.js shared runtime wires the bus
+automatically, and `realtime.requireEventBus` makes a missing bus a hard error
+rather than a silent single-instance fallback (`--surface realtime`). See
+[Realtime subscriptions](/extensibility/realtime-subscriptions).
+
+## Breaking changes
+
+<Warning>
+These change the shape of **generated code**. Regenerate all surfaces together
+(`manifest generate --all` or `manifest build --all`) so routes, clients, and
+schemas stay on the same contract, and review the diff before committing.
+</Warning>
+
+- **Zod schema names are entity-prefixed.** The zod projection now emits `${Entity}${Command}ParamsSchema` (e.g. `RecipeCreateParamsSchema`) instead of the un-prefixed `${Command}ParamsSchema` (e.g. `CreateParamsSchema`). Update any code importing the old names. This is what lets hono/express imports resolve against the emitted schemas.
+- **The routes projection emits dispatcher paths by default.** Generated command paths now default to the dispatcher layout. If you depended on the previous default path shape, set your client and server to the same surface or update your callers.
+- **hono/express `basePath` now applies.** The `basePath` option (default `/api`) is now prefixed onto emitted routes; previously it was effectively ignored. Routes generated with a non-default `basePath` will move.
+- **react-query command envelope/paths changed.** Command hooks now target the dispatcher path with the raw command name via the shared contract; regenerate client and server together.
+
+## Upgrading
+
+1. Regenerate every surface from one build: `manifest build --all` (or `manifest generate --all`).
+2. Review the diff, paying attention to zod schema imports, route paths, and `basePath`.
+3. If you had hand-written a runtime factory or `manifest-response` helper, delete it and let the companions surface emit it — unless you intentionally keep `emitCompanions: false`.
+4. To close the outbox transactional gap, configure a `transactionProvider`.

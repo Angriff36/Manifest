@@ -25,7 +25,7 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": ["introduction", "quickstart", "installation"]
+            "pages": ["introduction", "quickstart", "installation", "whats-new"]
           },
           {
             "group": "Language",

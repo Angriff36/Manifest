@@ -41,7 +41,7 @@ import type {
   ProjectionDiagnostic,
 } from '../interface';
 import type { SvelteKitProjectionOptions } from './types';
-import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 
 // ============================================================================
 // Surface constants

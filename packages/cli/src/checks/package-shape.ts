@@ -103,6 +103,25 @@ const SUBPATHS: Array<{ subpath: string; expectedExports: string[] }> = [
   { subpath: '@angriff36/manifest/outbox', expectedExports: [] },
   { subpath: '@angriff36/manifest/outbox/memory', expectedExports: ['MemoryOutboxStore'] },
   { subpath: '@angriff36/manifest/outbox/postgres', expectedExports: ['PostgresOutboxStore'] },
+  { subpath: '@angriff36/manifest/outbox/redis', expectedExports: ['RedisOutboxStore'] },
+  { subpath: '@angriff36/manifest/outbox/worker', expectedExports: ['runOutboxWorker'] },
+  { subpath: '@angriff36/manifest/jobs/postgres', expectedExports: ['PostgresJobQueue'] },
+  { subpath: '@angriff36/manifest/jobs/worker', expectedExports: ['runJobWorker'] },
+  { subpath: '@angriff36/manifest/schedule-worker', expectedExports: ['startScheduleWorker'] },
+  { subpath: '@angriff36/manifest/idempotency/memory', expectedExports: ['MemoryIdempotencyStore'] },
+  { subpath: '@angriff36/manifest/idempotency/postgres', expectedExports: ['PostgresIdempotencyStore'] },
+  { subpath: '@angriff36/manifest/transactions/postgres', expectedExports: ['PostgresTransactionProvider'] },
+  { subpath: '@angriff36/manifest/webhooks', expectedExports: ['handleWebhookRequest'] },
+  { subpath: '@angriff36/manifest/events', expectedExports: ['MemoryEventBus'] },
+  { subpath: '@angriff36/manifest/events/redis', expectedExports: ['RedisEventBus'] },
+  { subpath: '@angriff36/manifest/federation', expectedExports: ['FederationRegistry'] },
+  { subpath: '@angriff36/manifest/config', expectedExports: ['resolveProjectionOptions'] },
+  // Resolution-only guards: these two projections top-level import shared
+  // helpers, so a missing `.js` on that relative import (invalid in published
+  // ESM) makes the subpath throw on import. Kept as `[]` to assert the module
+  // loads, which is exactly what catches that class of packaging regression.
+  { subpath: '@angriff36/manifest/projections/routes', expectedExports: [] },
+  { subpath: '@angriff36/manifest/projections/analytics', expectedExports: [] },
 ];
 
 /** Tarball entries every conforming build MUST include. */
@@ -110,6 +129,9 @@ const REQUIRED_TARBALL_ENTRIES = [
   'package.json',
   'src/manifest/audit/sinks/postgres.sql',
   'src/manifest/outbox/stores/postgres.sql',
+  'src/manifest/approval/stores/postgres.sql',
+  'src/manifest/jobs/stores/postgres.sql',
+  'src/manifest/idempotency/stores/postgres.sql',
 ];
 
 /** Tarball entry GLOBS — at least one matching file must be present. */

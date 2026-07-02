@@ -22,7 +22,7 @@ import type {
   ProjectionDiagnostic,
   RemixProjectionOptions,
 } from '../interface';
-import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions';
+import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
 
 /**
  * Re-export the projection-interface types so downstream consumers of
