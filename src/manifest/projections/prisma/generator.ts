@@ -338,9 +338,17 @@ function emitPropertyLine(
     if (phys !== prop.name) attrs.push(`@map("${phys}")`);
   }
 
+  // Native-type precedence: an explicit `precision` entry wins, then an
+  // explicit `dbAttributes` entry, then the default @db.Decimal for decimal
+  // scalars. Previously dbAttributes was SKIPPED whenever the default
+  // @db.Decimal fired, so `money`-typed columns could never be annotated
+  // @db.Money — an explicit per-field override must beat a derived default.
   const prec = options.precision?.[entity.name]?.[prop.name];
+  const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
   if (prec) {
     attrs.push(`@db.Decimal(${prec.precision}, ${prec.scale})`);
+  } else if (dbAttr) {
+    attrs.push(`@db.${dbAttr}`);
   } else if (isDecimalScalar(scalar)) {
     attrs.push(`@db.Decimal(${DEFAULT_DECIMAL_PRECISION}, ${DEFAULT_DECIMAL_SCALE})`);
   }
@@ -350,14 +358,6 @@ function emitPropertyLine(
     if (!idTypeOverride || idTypeOverride === 'String') {
       attrs.push('@db.ObjectId');
     }
-  }
-
-  // Generic @db.* attribute emission from config.
-  // Skip if a @db.Decimal was already emitted by the precision path above.
-  const hasDbDecimal = attrs.some(a => a.startsWith('@db.Decimal'));
-  const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
-  if (dbAttr && !hasDbDecimal) {
-    attrs.push(`@db.${dbAttr}`);
   }
 
   // `= now()` / `= today()` default: emit a store-level `@default(now())` so the
@@ -1148,10 +1148,11 @@ function emitPrismaConfigTs(envVar = 'DATABASE_URL'): string {
     "import { defineConfig } from 'prisma/config';",
     '',
     'export default defineConfig({',
-    '  datasources: {',
-    '    db: {',
-    `      url: process.env.${envVar},`,
-    '    },',
+    // PrismaConfig (prisma >= 7.8 types) takes a singular flat `datasource`;
+    // the legacy plural nested form typechecks red and was silently ignored
+    // at runtime (the CLI fell back to env loading).
+    '  datasource: {',
+    `    url: process.env.${envVar},`,
     '  },',
     '});',
     '',

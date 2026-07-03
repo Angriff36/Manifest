@@ -4,6 +4,27 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.1.1] - 2026-07-03
+
+Two Prisma-projection follow-ups from the same capsule-pro reconciliation
+that drove 3.1.0.
+
+### Fixed
+
+- **`prisma.config.ts` companion emits the Prisma 7.8 config shape.** The
+  emitted companion used the legacy plural nested form
+  (`datasources: { db: { url } }`), which the `PrismaConfig` type rejects
+  (TS2561 — "Did you mean to write 'datasource'?") and the CLI silently
+  ignored at runtime, falling back to env loading. It now emits the singular
+  flat `datasource: { url: process.env.<VAR> }`.
+- **Explicit `dbAttributes` beats the derived default `@db.Decimal`.** An
+  explicit per-field `dbAttributes` entry was skipped whenever the default
+  `@db.Decimal(12, 2)` fired for `money`/`decimal` scalars, so a `money`
+  column could never be annotated `@db.Money`/`@db.Numeric`. Native-type
+  precedence is now: explicit `precision` → explicit `dbAttributes` → derived
+  `@db.Decimal` default. Attribute order in emitted lines is unchanged for
+  SQL providers.
+
 ## [3.1.0] - 2026-07-02
 
 Upstream correctness fixes surfaced by capsule-pro's schema-vs-database

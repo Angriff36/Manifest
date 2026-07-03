@@ -171,6 +171,10 @@ describe('PrismaProjection — generic fixture (Widget)', () => {
     const code = result.artifacts[0].code;
     expect(result.artifacts[1].id).toBe('prisma.config.ts');
     expect(result.artifacts[1].code).toMatch(/DATABASE_URL/);
+    // PrismaConfig (prisma >= 7.8): singular flat `datasource` — the plural
+    // nested form typechecks red and was silently ignored by the CLI.
+    expect(result.artifacts[1].code).toMatch(/^\s+datasource: \{$/m);
+    expect(result.artifacts[1].code).not.toMatch(/datasources/);
 
     expect(code).toMatch(/datasource db \{/);
     expect(code).toMatch(/provider = "postgresql"/);
@@ -459,6 +463,52 @@ describe('PrismaProjection — `money` / `decimal` types and default precision',
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
     const code = result.artifacts[0].code;
     expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(12, 2\)$/m);
+  });
+
+  it('an explicit dbAttributes entry beats the default @db.Decimal (e.g. @db.Money)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'unitCost', type: { name: 'money', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { dbAttributes: { Widget: { unitCost: 'Money' } } },
+    });
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0);
+    const code = result.artifacts[0].code;
+    expect(code).toMatch(/^\s+unitCost Decimal @db\.Money$/m);
+    expect(code).not.toMatch(/unitCost Decimal @db\.Decimal/);
+  });
+
+  it('an explicit precision entry still beats dbAttributes (both explicit — precision is narrower)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'unitCost', type: { name: 'money', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const result = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {
+        dbAttributes: { Widget: { unitCost: 'Money' } },
+        precision: { Widget: { unitCost: { precision: 10, scale: 4 } } },
+      },
+    });
+    const code = result.artifacts[0].code;
+    expect(code).toMatch(/^\s+unitCost Decimal @db\.Decimal\(10, 4\)$/m);
+    expect(code).not.toMatch(/@db\.Money/);
   });
 
   it('maps `decimal` to Prisma `Decimal` with the same default precision', () => {
@@ -1638,7 +1688,7 @@ describe('PrismaProjection — dbAttributes config', () => {
     expect(code).not.toMatch(/@db\.Decimal\(18, 4\)/);
   });
 
-  it('SKIPS dbAttributes when @db.Decimal was auto-emitted for decimal/money type (no override)', () => {
+  it('dbAttributes BEATS the auto-emitted default @db.Decimal for decimal/money types (v3.1.1)', () => {
     const ir = emptyIR();
     ir.entities.push({
       name: 'Widget',
@@ -1650,14 +1700,17 @@ describe('PrismaProjection — dbAttributes config', () => {
     });
     ir.stores.push(durableStore('Widget'));
 
-    // money type auto-emits @db.Decimal(12, 2); dbAttributes should be suppressed.
+    // An explicit per-field dbAttributes entry must beat the DERIVED default
+    // @db.Decimal(12, 2) — otherwise money-typed columns can never be
+    // annotated @db.Money/@db.Numeric. (Explicit `precision` still wins over
+    // dbAttributes — pinned in the money/decimal describe block.)
     const code = new PrismaProjection().generate(ir, {
       surface: 'prisma.schema',
       options: { dbAttributes: { Widget: { cost: 'Numeric' } } },
     }).artifacts[0].code;
 
-    expect(code).toMatch(/^\s+cost Decimal @db\.Decimal\(12, 2\)$/m);
-    expect(code).not.toMatch(/@db\.Numeric/);
+    expect(code).toMatch(/^\s+cost Decimal @db\.Numeric$/m);
+    expect(code).not.toMatch(/cost Decimal @db\.Decimal/);
   });
 
   it('emits dbAttributes on the id field (not blocked by @id)', () => {
