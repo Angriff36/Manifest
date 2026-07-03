@@ -6352,7 +6352,7 @@ import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -6399,7 +6399,7 @@ import { database } from "@/lib/database";
 import { manifestErrorResponse, manifestSuccessResponse } from "@/lib/manifest-response";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

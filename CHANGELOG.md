@@ -4,6 +4,15 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.1.2] - 2026-07-03
+
+### Fixed
+
+- **Next.js detail routes no longer emit a dead `request` parameter.** No
+  detail-route body variant consumes it, so consumers with
+  `noUnusedParameters` got a TS6133 in every emitted file (capsule-pro: 159
+  files). Emitted as `_request` — TypeScript's unused-parameter opt-out.
+
 ## [3.1.1] - 2026-07-03
 
 Two Prisma-projection follow-ups from the same capsule-pro reconciliation

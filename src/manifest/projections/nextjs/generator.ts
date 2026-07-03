@@ -2033,7 +2033,10 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     if (authImport) lines.push(authImport);
     lines.push('');
     lines.push('export async function GET(');
-    lines.push('  request: NextRequest,');
+    // Underscore-prefixed: no detail-route body variant consumes the request,
+    // and consumers with noUnusedParameters flagged the dead param (TS6133)
+    // in every emitted file. The prefix is TypeScript's unused-param opt-out.
+    lines.push('  _request: NextRequest,');
     lines.push('  { params }: { params: Promise<{ id: string }> }');
     lines.push(') {');
     lines.push('  try {');
