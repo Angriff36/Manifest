@@ -390,6 +390,7 @@ describe('OpenApiProjection', () => {
           property dttm: datetime
           property uid: uuid
           property em: email
+          property doc: json
         }
       `;
       const result = await compileToIR(source);
@@ -406,6 +407,8 @@ describe('OpenApiProjection', () => {
       expect(schema.properties.dttm).toEqual({ type: 'string', format: 'date-time' });
       expect(schema.properties.uid).toEqual({ type: 'string', format: 'uuid' });
       expect(schema.properties.em).toEqual({ type: 'string', format: 'email' });
+      // json is a JSON document, not a string (the old unknown-type fallback).
+      expect(schema.properties.doc).toEqual({ type: 'object', additionalProperties: true });
     });
 
     it('handles nullable types with type arrays', async () => {

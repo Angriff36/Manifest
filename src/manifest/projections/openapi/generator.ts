@@ -138,6 +138,9 @@ function irTypeToJsonSchema(irType: IRType): JsonSchema {
     uri: { type: 'string', format: 'uri' },
     any: {},
     object: { type: 'object', additionalProperties: true },
+    // Native json type: a JSON document — object-shaped for OpenAPI consumers
+    // (previously fell through the unknown-type branch and emitted string).
+    json: { type: 'object', additionalProperties: true },
   };
 
   const mapped = typeMap[irType.name];

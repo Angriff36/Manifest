@@ -4,6 +4,17 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.1.3] - 2026-07-03
+
+### Fixed
+
+- **OpenAPI projection: `json` maps to an object schema.** The native `json`
+  type had no entry in the scalar map and fell through the unknown-type
+  branch, declaring `type: string` for every json-typed property and command
+  parameter — wrong documentation for API consumers (clients send JSON
+  documents, and downstream spec-vs-IR audits flagged the drift). Now emits
+  `{ type: "object", additionalProperties: true }`, matching `object`.
+
 ## [3.1.2] - 2026-07-03
 
 ### Fixed
