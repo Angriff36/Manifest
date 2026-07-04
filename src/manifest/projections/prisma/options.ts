@@ -172,8 +172,12 @@ export interface PrismaProjectionOptions {
    * Emitted as `@db.<value>` after `@map` and before any `@db.Decimal`
    * precision annotation.
    *
-   *   dbAttributes: { Widget: { id: "Uuid", createdAt: "Timestamptz(6)" } }
-   * → emits `@db.Uuid` / `@db.Timestamptz(6)` on those fields.
+   *   dbAttributes: { Widget: { createdAt: "Timestamptz(6)" } }
+   * → emits `@db.Timestamptz(6)` on that field.
+   *
+   * Note: `uuid`-typed fields do NOT need a `Uuid` entry here — the projection
+   * derives `@db.Uuid` automatically on PostgreSQL/CockroachDB. Only use this
+   * to override (e.g. `Uuid(4)`) or to annotate non-`uuid`-typed columns.
    *
    * This is the generic `@db.*` emission path. The only other `@db.*`
    * emissions are `@db.Decimal(p,s)` (via `precision` config) and

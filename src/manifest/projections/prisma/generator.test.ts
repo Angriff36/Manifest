@@ -1600,6 +1600,113 @@ describe('PrismaProjection — dbAttributes config', () => {
     expect(code).toMatch(/^\s+externalRef String @db\.Uuid$/m);
   });
 
+  it('auto-derives @db.Uuid for a uuid-typed field on postgresql', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+        { name: 'externalRef', type: { name: 'uuid', nullable: true }, modifiers: [] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql' },
+    }).artifacts[0].code;
+
+    // uuid maps to String scalar, and the pg-native @db.Uuid is derived — no
+    // per-field dbAttributes config needed.
+    expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
+    expect(code).toMatch(/^\s+externalRef String\? @db\.Uuid$/m);
+  });
+
+  it('auto-derives @db.Uuid for a uuid-typed field on cockroachdb', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'cockroachdb' },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id @db\.Uuid$/m);
+  });
+
+  it('does NOT derive @db.Uuid for a uuid field on non-postgres providers', () => {
+    for (const provider of ['mysql', 'sqlite', 'sqlserver'] as const) {
+      const ir = emptyIR();
+      ir.entities.push({
+        name: 'Widget',
+        properties: [
+          { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+        ],
+        computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+      });
+      ir.stores.push(durableStore('Widget'));
+
+      const code = new PrismaProjection().generate(ir, {
+        surface: 'prisma.schema',
+        options: { provider },
+      }).artifacts[0].code;
+
+      expect(code).toMatch(/^\s+id String @id$/m);
+      expect(code).not.toMatch(/@db\.Uuid/);
+    }
+  });
+
+  it('does NOT derive @db.Uuid when no provider is set (models-only emit)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // Provider unknown → the projection can't know the DB dialect, so it must
+    // not emit a pg-only native type. Consumers wanting it pass provider or dbAttributes.
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: {},
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id$/m);
+    expect(code).not.toMatch(/@db\.Uuid/);
+  });
+
+  it('lets an explicit dbAttributes override win over the derived @db.Uuid', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'uuid', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { provider: 'postgresql', dbAttributes: { Widget: { id: 'Uuid(4)' } } },
+    }).artifacts[0].code;
+
+    expect(code).toMatch(/^\s+id String @id @db\.Uuid\(4\)$/m);
+    // exactly one @db.* on the line — the override, not a doubled derivation
+    expect(code).not.toMatch(/@db\.Uuid @db\.Uuid/);
+  });
+
   it('emits @db.Timestamptz(6) on a DateTime field via dbAttributes', () => {
     const ir = emptyIR();
     ir.entities.push({

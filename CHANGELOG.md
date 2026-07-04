@@ -4,6 +4,21 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.2.0] - 2026-07-05
+
+### Added
+
+- **Prisma projection derives `@db.Uuid` from the `uuid` type.** A Manifest
+  `uuid` field maps to the Prisma `String` scalar, but on PostgreSQL /
+  CockroachDB the physical column is a native `uuid`. The projection now emits
+  `@db.Uuid` automatically for `uuid`-typed fields under those providers, so
+  consumers no longer repeat `dbAttributes: { Entity: { field: 'Uuid' } }` per
+  column (capsule-pro's config carried hundreds of these). Gated to the
+  Postgres family — MySQL/SQLite/SQL Server/Mongo have no `@db.Uuid`, and when
+  `provider` is unset the dialect is unknown so nothing is derived. An explicit
+  `dbAttributes` (or `precision`) entry still wins, so overrides like `Uuid(4)`
+  and opt-outs are unaffected.
+
 ## [3.1.3] - 2026-07-03
 
 ### Fixed

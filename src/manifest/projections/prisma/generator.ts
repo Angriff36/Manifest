@@ -345,12 +345,20 @@ function emitPropertyLine(
   // @db.Money — an explicit per-field override must beat a derived default.
   const prec = options.precision?.[entity.name]?.[prop.name];
   const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
+  // A Manifest `uuid` maps to the `String` scalar, but on PostgreSQL/CockroachDB
+  // the physical column is a native `uuid` — so derive `@db.Uuid` automatically
+  // instead of making every consumer repeat it per field in `dbAttributes`.
+  // Postgres family only: MySQL/SQLite/SQL Server/Mongo have no `@db.Uuid`, and
+  // when `provider` is unset the dialect is unknown so we stay conservative.
+  const isPgFamily = options.provider === 'postgresql' || options.provider === 'cockroachdb';
   if (prec) {
     attrs.push(`@db.Decimal(${prec.precision}, ${prec.scale})`);
   } else if (dbAttr) {
     attrs.push(`@db.${dbAttr}`);
   } else if (isDecimalScalar(scalar)) {
     attrs.push(`@db.Decimal(${DEFAULT_DECIMAL_PRECISION}, ${DEFAULT_DECIMAL_SCALE})`);
+  } else if (effectiveTypeName === 'uuid' && isPgFamily) {
+    attrs.push('@db.Uuid');
   }
 
   if (isId && isMongo && scalar === 'String') {
