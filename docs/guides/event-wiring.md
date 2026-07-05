@@ -210,7 +210,7 @@ export async function publishOutboxEvents() {
 
 The patterns below wire events **host-side** via `runtime.onEvent` — the right tool for *external* infrastructure (Ably, queues, webhooks, the outbox). But when an event should simply dispatch **another Manifest command**, prefer a **declarative reaction** in the `.manifest` source instead of a host-side handler. Reactions are part of the IR, run synchronously inside the same command turn, propagate `correlationId`/`causationId` automatically, and are covered by conformance tests:
 
-```manifest
+```manifest fragment
 // Declarative: order completes -> create its invoice (no host-side onEvent needed)
 on OrderCompleted run Invoice.createFromOrder
   resolve payload._subject.id
