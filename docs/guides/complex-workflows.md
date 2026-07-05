@@ -247,7 +247,7 @@ entity PrepTask {
   command claim(userId: string) {
     guard self.status == "open"
 
-    constraint warnOverdue:warn self.isOverdue == true "This task is overdue"
+    constraint warnOverdue:warn (self.dueByDate != null and now() > self.dueByDate) "This task is overdue"
 
     mutate status = "claimed"
     mutate claimedBy = userId

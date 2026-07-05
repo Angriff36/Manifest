@@ -100,7 +100,10 @@ async function main() {
   const failures = [];
 
   for (const rel of files) {
-    const src = await readFile(path.join(ROOT, rel), 'utf-8');
+    // Normalize CRLF → LF: the fence regex's `$` won't match a line ending in
+    // `\r`, so on a Windows checkout (autocrlf) CRLF files yield zero blocks and
+    // silently pass. Normalize so local runs match CI's LF checkout.
+    const src = (await readFile(path.join(ROOT, rel), 'utf-8')).replace(/\r\n/g, '\n');
     for (const block of extractManifestBlocks(src)) {
       if (block.annotation.includes('fragment')) {
         skipped++;
