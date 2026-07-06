@@ -129,11 +129,11 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
   <Accordion title="What is the difference between read, execute, and all policy scopes?">
     Policy scope controls when a policy is enforced during command processing:
 
-    - **`read`** — NOT enforced by default. Reads are application-defined and may bypass the runtime entirely, querying storage directly.
+    - **`read`** — Enforced at the runtime read gate: `getInstance` / `getAllInstances`. A denied read fails closed (`getInstance` returns `undefined`, `getAllInstances` omits the row). Note that generated projections may bypass the engine and query storage directly; those reads are not gated.
     - **`execute`** — Enforced during command execution. Use this for policies that must block mutations.
-    - **`all`** — Enforced during all operations.
+    - **`all`** — Enforced during command execution AND at the read gate.
 
-    If you define a `read` policy and it does not appear to be enforced, this is correct behavior. Only `execute` and `all` scoped policies are checked by the runtime during `runCommand`. See also: [Read policies not enforced](/troubleshooting) in the troubleshooting guide.
+    `read` policies are enforced only when reads go through the engine's `getInstance` / `getAllInstances`, not on the store and not inside `runCommand` (the internal execution read path is un-gated so command results are unchanged).
   </Accordion>
 
   <Accordion title="What are constraint severity levels?">
@@ -154,11 +154,9 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
   </Accordion>
 
   <Accordion title="Are read operations (GET) validated by the runtime?">
-    No. Per the language specification, policies scoped to `read` are not enforced by default.
+    Reads that go through the engine are gated. `read` (and `all`) policies are enforced at a central read gate in `getInstance` / `getAllInstances`: a denied read fails closed (`getInstance` returns `undefined`, `getAllInstances` omits the denied rows).
 
-    Reads are application-defined. Generated projections (for example, Next.js GET route handlers) may bypass the runtime entirely and query storage directly. Only mutations — commands executed via `runtime.runCommand()` — go through the full guard, policy, constraint, and event pipeline.
-
-    If you need language-level enforcement of read policies, that requires adding read execution semantics to the spec, defining policy enforcement behavior, writing conformance tests, and updating the runtime accordingly.
+    However, generated projections (for example, Next.js GET route handlers) may bypass the engine entirely and query storage directly; those reads are not gated by the runtime. Mutations — commands executed via `runtime.runCommand()` — go through the full guard, policy, constraint, and event pipeline, and their internal reads are deliberately un-gated so command results stay deterministic.
   </Accordion>
 
   <Accordion title="What are vNext features?">
@@ -167,7 +165,7 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
     - **Constraint severity and outcomes** — `block`, `warn`, `ok` severity levels with `nonBlockingViolations` in `CommandResult`
     - **Command-level constraints** — Constraints attached to individual commands, not just entities
     - **Entity concurrency controls** — Optimistic concurrency on entity mutations
-    - **Policy-based authorization** — `execute` and `all` scoped policies enforced at runtime; `read`-scoped policies are available but have no independent runtime read gate (reads bypass `runCommand` entirely)
+    - **Policy-based authorization** — `execute` and `all` scoped policies enforced at command execution; `read` (and `all`) scoped policies enforced at the runtime read gate (`getInstance` / `getAllInstances`, fail-closed)
     - **IR caching** — Compiled IR can be cached to disk to avoid recompilation on every request
 
     See the vNext spec and migration guide for adoption instructions.

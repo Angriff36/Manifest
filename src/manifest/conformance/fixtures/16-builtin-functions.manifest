@@ -13,13 +13,13 @@ entity ItemContainer {
 
   command generateItemId() {
     guard uuid() != ""
-    compute itemId = uuid()
+    mutate itemId = uuid()
     emit ItemGenerated
   }
 
   command verifyUuid(testId: string) {
     guard testId != "" and uuid() != ""
-    compute verifyId = testId
+    mutate verifyId = testId
   }
 }
 

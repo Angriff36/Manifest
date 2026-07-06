@@ -117,8 +117,8 @@ export interface IRApproval {
   stages: IRApprovalStage[];
   /** Timeout in hours (optional) */
   timeout?: number;
-  /** Behavior on timeout */
-  onTimeout?: 'cancel' | 'escalate';
+  /** Behavior on timeout. Only 'cancel' is supported; 'escalate' is rejected at compile time. */
+  onTimeout?: 'cancel';
   /** Lifecycle events emitted */
   emits: string[];
 }
@@ -231,6 +231,12 @@ export interface IRConstraint {
   expression: IRExpression;
   /** Constraint severity level (default: block) */
   severity?: 'ok' | 'warn' | 'block';
+  /**
+   * Expression polarity. When true, a truthy expression marks a VIOLATION
+   * (passed = !expr). When false/absent, a falsy expression marks a violation
+   * (passed = !!expr) — the default "required condition" polarity.
+   */
+  failWhen?: boolean;
   message?: string;
   /** Template for error messages with interpolation */
   messageTemplate?: string;
@@ -446,6 +452,14 @@ export interface IREmitPayloadField {
 
 export interface IRAction {
   kind: 'mutate' | 'emit' | 'compute' | 'effect' | 'publish' | 'persist';
+  /**
+   * Kind-dependent target:
+   * - `mutate`: the entity property to assign the evaluated value to.
+   * - `compute`: the local binding name introduced into command scope (no write).
+   * - `emit`/`publish`: the NAMED IR event to deliver (must match a declared event).
+   * - `effect`: optional name passed to the host effect handler.
+   * - `persist`: unused.
+   */
   target?: string;
   expression: IRExpression;
 }

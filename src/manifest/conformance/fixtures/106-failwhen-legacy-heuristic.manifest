@@ -1,0 +1,34 @@
+// Fixture 106: legacy severity-name heuristic backward compatibility
+// A constraint whose name starts with "severity" is treated as negative polarity
+// (failWhen=true) at compile time. The compiler emits a CONSTRAINT_POLARITY_NAME_HEURISTIC
+// deprecation warning. Runtime behavior is identical to explicit failWhen: true.
+
+entity Ledger {
+  property id: string
+  property balance: number = 0
+  property status: string = "active"
+
+  // Legacy negative-polarity: name starts with "severity" → failWhen=true at compile
+  // Deprecation warning emitted. Behavior: expression true = violation.
+  constraint severityOverdrawn:block self.balance < 0 "Account is overdrawn"
+
+  // Explicit failWhen suppresses the heuristic AND the warning (migration complete)
+  constraint failWhen inDebt:warn self.balance < -100 "Account is significantly overdrawn"
+
+  command deposit(amount: number) {
+    guard input.amount > 0 "Amount must be positive"
+    mutate balance = self.balance + input.amount
+  }
+
+  command withdraw(amount: number) {
+    guard input.amount > 0 "Amount must be positive"
+    mutate balance = self.balance - input.amount
+  }
+}
+
+event LedgerDeposited: "ledger.deposited" {
+  ledgerId: string
+  amount: number
+}
+
+store Ledger in memory

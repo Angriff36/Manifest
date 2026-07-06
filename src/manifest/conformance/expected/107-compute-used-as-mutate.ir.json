@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "1b862e99f6db0defe636f6d449eb23afe9e446f34bc66456413866a2a5200e0d",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Counter",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "count",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "lastAmount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "bump"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Counter",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "bump",
+      "entity": "Counter",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "lastAmount",
+          "expression": {
+            "kind": "identifier",
+            "name": "amount"
+          }
+        },
+        {
+          "kind": "compute",
+          "target": "count",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "identifier",
+              "name": "count"
+            },
+            "right": {
+              "kind": "identifier",
+              "name": "amount"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

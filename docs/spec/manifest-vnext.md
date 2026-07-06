@@ -112,12 +112,12 @@ Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
 
 #### Runtime behavior for composite FK
 
-The Manifest runtime engine is a single-key memory store. Composite FKs are a Prisma projection concern only. At runtime:
+The Manifest runtime engine resolves both single- and multi-column foreign keys. At runtime:
 
 - Single-column FK (`fields.length === 1`): `belongsTo` resolution uses `fields[0]` as the FK property name.
-- Composite FK (`fields.length > 1`): resolution **fails closed** — the runtime raises a structured `COMPOSITE_FK_UNSUPPORTED` error rather than guessing a row from a single column or the `${relationshipName}Id` convention (either of which could resolve to the wrong row).
+- Composite FK (`fields.length > 1`): resolution **matches every column**. The runtime pairs each local `fields` column with its `references` target column (absent/mismatched → the target entity's declared `key` columns, else the field names) and selects the target row where all pairs are equal — so it picks the exact row even when several targets share a first-column value. The inverse `hasMany`/`hasOne` sides match symmetrically. If any local FK column is unset, resolution yields `null`/`[]`.
 
-Consumers requiring composite FK resolution MUST supply a `storeProvider` backed by a real database.
+A composite-key entity (`entity.key`) is likewise addressable at runtime by its encoded key-tuple identity (see the runtime semantics spec, §Composite Keys).
 
 ### Constraint Blocks
 

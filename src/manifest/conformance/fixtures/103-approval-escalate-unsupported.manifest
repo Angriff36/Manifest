@@ -1,0 +1,26 @@
+// Test: Approval declaring onTimeout: 'escalate' is a hard compile error.
+// APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED — escalation target model is not implemented.
+// Use onTimeout: 'cancel' instead (same observable behavior until escalation is designed).
+// This is a shouldFail fixture — the compiler must emit an error diagnostic.
+
+entity PurchaseOrder {
+  property id: string required
+  property status: string = "draft"
+
+  store memory
+
+  command submit() {
+    mutate status = "submitted"
+  }
+
+  approval escalateApproval {
+    command: submit
+    stages {
+      manager {
+        policy: user.role == "manager"
+        required: 1
+      }
+    }
+    on_timeout: "escalate"
+  }
+}

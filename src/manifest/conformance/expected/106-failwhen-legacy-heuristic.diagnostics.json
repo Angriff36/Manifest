@@ -1,0 +1,9 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "CONSTRAINT_POLARITY_NAME_HEURISTIC: Constraint 'severityOverdrawn' uses the legacy name-prefix heuristic for negative polarity. Declare 'failWhen: true' explicitly and rename the constraint to suppress this warning."
+    }
+  ]
+}

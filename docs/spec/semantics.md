@@ -106,7 +106,7 @@ not authoritative for Manifest semantics.
 - For `belongsTo` and `ref`: The foreign key property on the source instance contains the ID of the target instance. The runtime MUST look up the target instance by that ID.
 - For `hasOne`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query the target entity where the foreign key equals the current instance's ID.
 - For `hasMany`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
-- Composite foreign keys (`foreignKey.fields` with more than one column) are NOT supported by the reference runtime. When resolving a relationship whose (source or inverse) foreign key is composite, the runtime MUST fail closed by raising a structured error with code `COMPOSITE_FK_UNSUPPORTED` rather than resolving by a single column or the `${relName}Id` convention (either of which may return the wrong row). Composite-key relationship resolution requires a store adapter that supports composite keys (e.g. Prisma).
+- Composite foreign keys (`foreignKey.fields` with more than one column) ARE resolved by the reference runtime. The runtime MUST pair each local FK column with the target column it references (via `foreignKey.references`; absent/mismatched, the target entity's declared `key` columns are paired positionally, else the local field names are assumed to match) and select the target row where every paired column is equal. This picks the exact row even when several targets share a first-column value. When any local FK column is unset, the relationship resolves to `null`/`[]`.
 
 #### Relationship Constraints
 - Relationship resolution is synchronous within the current store context.
@@ -129,6 +129,13 @@ not authoritative for Manifest semantics.
     - `conflictCode`: Stable code for categorizing the conflict type
 - Commands receiving a `ConcurrencyConflict` MUST NOT apply mutations and SHOULD surface the conflict to the caller.
 
+#### Composite Keys (vNext)
+- An entity MAY declare `key`: an ordered list of property names forming its primary identity (e.g. `key [region, code]`). When present, the runtime's identity for an instance is the ordered tuple of those property values, encoded deterministically into a single canonical key string (each component percent-encodes `%` and the `|` separator, then components are joined with `|`). All identity-bearing operations — create, get, update, delete, relationship resolution, and the command working copy — key off this composite identity. When `key` is absent the identity is the `id` property, unchanged.
+- On create, the runtime persists the instance under its composite identity string (assigned to `id`), so a composite-key entity is addressable by that string via `getInstance`/`updateInstance`/`deleteInstance` and `runCommand`'s `instanceId`. A composite-key entity is not required to declare a separate `id` property.
+- Two instances differing in any key component are distinct, even if they share another column's value; this makes per-tenant/region reuse of a code safe when the discriminator is part of `key`.
+- A `belongsTo`/`ref` relationship whose foreign key spans multiple columns resolves the target by matching every mapped `foreignKey.fields`/`references` column (see Relationship Resolution Rules).
+- `alternateKeys` remain projection-level unique constraints; the runtime does not enforce alternate-key uniqueness in this version.
+
 #### State Transitions (vNext)
 - Entities MAY define `transitions`: an array of `IRTransition` objects specifying allowed state changes.
 - Each `IRTransition` has: `property` (the field name), `from` (current value), `to` (array of allowed new values).
@@ -148,6 +155,13 @@ not authoritative for Manifest semantics.
 - `warn` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation but do not halt execution.
 - `block` constraints produce a `ConstraintOutcome` with `passed` based on expression evaluation and halt execution on failure.
 
+#### Constraint Polarity: `failWhen` (vNext)
+- The optional `failWhen` field on `IRConstraint` controls expression polarity.
+- `failWhen: false` (default — positive polarity): a **falsy** expression result is a violation (`passed = !!expr`).
+- `failWhen: true` (negative polarity): a **truthy** expression result is a violation (`passed = !expr`). Write expressions as "condition that signals a problem."
+- The compiler collapses the legacy `name.startsWith('severity')` name-prefix heuristic into `failWhen: true` at compile time and emits a `CONSTRAINT_POLARITY_NAME_HEURISTIC` deprecation warning. Rename the constraint and add `failWhen: true` explicitly to suppress the warning.
+- Runtimes MUST read only the `failWhen` field; they MUST NOT inspect constraint names for polarity.
+
 #### Constraint Codes (vNext)
 - Each constraint has a `code` field that provides a stable identifier for overrides and auditing.
 - The `code` defaults to the constraint `name` if not specified.
@@ -161,7 +175,7 @@ not authoritative for Manifest semantics.
   - `formatted`: String representation of the constraint expression
   - `message`: Optional message from the constraint
   - `details`: Resolved `detailsMapping` key-value pairs
-  - `passed`: Boolean indicating if expression evaluated truthily
+  - `passed`: Boolean. For `ok` severity, always `true`. For `warn`/`block`, derived from expression result and `failWhen` polarity.
   - `overridden`: Boolean indicating if constraint was overridden
   - `overriddenBy`: User ID who authorized the override (if applicable)
   - `resolved`: Array of `{expression, value}` pairs for debugging
@@ -239,7 +253,9 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
 - Policies are boolean expressions with an action scope.
 - The default runtime behavior is:
   - Policies with action `execute` or `all` MUST be checked for command execution.
-  - Policies with action `read`, `write`, or `delete` are not enforced by default.
+  - Policies with action `read` (or `all`) ARE enforced at the runtime read gate: a single central boundary in `getInstance` / `getAllInstances`, above masking. Denied reads fail closed — `getInstance` returns `undefined` (indistinguishable from not-found, no existence leak) and `getAllInstances` omits denied rows. Read policies are evaluated in IR declaration order, with the row bound as `self` / `this` and `user` / `context` from the runtime context; a policy that references `self.*` is evaluated per row, a context-only policy (no `self` / `this`) once per `getAllInstances` call (deny ⇒ empty result without scanning rows). Policy-level `rateLimit` and thrown-expression fail-closed semantics match the command policy gate. An entity-scoped read policy (declared with an `entity`) gates that entity; an unscoped `read`/`all` policy is a global read gate.
+  - Policies with action `write` or `delete` are enforced only at command execution (via `command.policies`); there is no separate write/delete data-mutation gate on the store.
+  - The internal execution read path (guards, actions, computed properties, relationship resolution) uses the raw, un-gated read and always sees all rows — the read gate is a projection of the *external* read surface only, so it never changes command execution results (determinism preserved).
   - Policies with action `override` MUST be checked when authorizing constraint overrides (vNext).
 - A policy with an `entity` applies only to commands bound to that entity.
 
@@ -391,12 +407,25 @@ See also:
 - `adapters.md`
 
 ## Actions
-- `mutate`: Evaluate expression and, if a current instance is bound, assign the result to the target field and return the value. If no instance is bound, the action has no storage effect and returns the value.
-- `emit`: Evaluate expression; return the value. Runtimes MAY emit a generic action event.
-- `publish`: Evaluate expression; return the value. Runtimes MAY emit a generic action event.
-- `persist`: Evaluate expression; return the value. Runtimes MAY persist via adapters.
-- `compute`: Evaluate expression; return the value.
-- `effect`: Evaluate expression; return the value. Runtimes MAY invoke side effects via adapters.
+Actions execute in declaration order. Kinds:
+- `mutate`: evaluate the expression and, if the command is bound to an instance, assign the result to `target` on the working copy (batched; see § "Batched Persistence"). Returns the value. With no bound instance, no storage effect. The only kind that writes entity state.
+- `compute`: evaluate the expression and, if the action names a binding (`compute <name> = <expr>`), bind `<name>` into the command's evaluation scope for subsequent actions, emits, and event payloads. `compute` MUST NOT mutate entity state. Returns the value. A `compute` binding is command-scoped: it is available to later actions and to event payload expressions within the same command execution, and is discarded when the command returns. It is never persisted and never appears in `getInstance`/`getAllInstances`.
+- `emit`: emit the **named** IR event `target` into the in-process event log and local listeners (consumable by reactions/sagas), with the same event shape as `command.emits`. The optional expression supplies the payload. The compiler MUST reject an `emit` action whose `target` is missing or does not match a declared event (`EMIT_ACTION_UNKNOWN_EVENT`).
+- `publish`: **external delivery** of the named event `target` through the configured outward publisher (outbox, bridged to the event bus post-commit), distinct from `emit`. An adapter action: forbidden in deterministic mode; fails closed (`MISSING_OUTBOX_STORE`) when no outbox is configured. The compiler applies the same `EMIT_ACTION_UNKNOWN_EVENT` target check as `emit`.
+- `effect`: invoke the host `effectHandler` (`RuntimeOptions.effectHandler`) with the evaluated value and action/command context; its resolved value is the action result. An adapter action: forbidden in deterministic mode; fails closed (`MISSING_EFFECT_HANDLER`) when no handler is configured. An optional `effect <name> = <expr>` form names the effect (`name` is passed to the handler).
+- `persist`: explicitly flush the command's pending working-copy state to the store (see § "`persist` action" below). An adapter action: forbidden in deterministic mode.
+
+Adapter actions (`publish`, `effect`, `persist`) enforce the effect boundary: in deterministic mode each throws `ManifestEffectBoundaryError` and performs no side effect.
+
+Action-emitted events (`emit`/`publish` actions) interleave with `command.emits` (which fire after the action loop) in a single per-command emit sequence: `emitIndex` is a shared, monotonic per-command counter, so ordering is deterministic across both sources. Action-emitted events participate in `CommandResult.emittedEvents`, reaction dispatch, and the outbound event-bus bridge exactly like command-declared events.
+
+### `persist` action
+A `persist` action explicitly flushes the command's pending working-copy changes to the store at its point in the action sequence, then clears the pending change set (the working copy is retained). `persist` does not open, commit, or close a transaction and does not finalize the command.
+
+- Under a `TransactionProvider`, the flush threads the active transaction handle: the write joins the command's transaction and is durably committed only when that transaction commits. A subsequent failing action rolls the whole transaction back, undoing the `persist` (atomic-on-failure preserved).
+- Without a provider (e.g. memory/localStorage), the flush is an immediate, non-transactional store write. A later failing action does NOT undo it; there is no rollback. Authors requiring atomicity across an explicit `persist` MUST configure a `TransactionProvider`.
+- Multiple `persist` actions are permitted; each flushes only the deltas accumulated since the previous flush.
+- `persist` is an adapter action: in deterministic mode it throws `ManifestEffectBoundaryError` and performs no write.
 
 ### Deterministic Mode (vNext)
 - When `deterministicMode` is `true`, a conforming runtime MUST throw `ManifestEffectBoundaryError` for `persist`, `publish`, and `effect` action kinds instead of the default no-op behavior.
@@ -586,6 +615,12 @@ When this diagnostic fires, compilation MUST fail (`ir` is null), same as other 
 
 Compilation MUST fail (`ir` is null) when this diagnostic is emitted. Conformance fixture `101-foreignkey-through-conflict.manifest` is the canonical test case.
 
+### Unsupported: join-table relationships (`through`) (error)
+
+Many-to-many relationships declared via `through` are **not supported** in this version — not at runtime, and not in the Prisma or Drizzle projections. The compiler MUST reject any relationship that sets `through` with an **error**-severity diagnostic `RELATION_THROUGH_UNSUPPORTED`, naming the entity and relationship and directing the author to model the join entity explicitly with two `belongsTo` relationships. Compilation MUST fail (`ir` is null). Setting both `foreignKey` and `through` on one relationship is additionally rejected as `RELATION_FK_THROUGH_EXCLUSIVE` (the mutual-exclusivity previously documented only in JSDoc is now a compile error enforced by the checks above). Conformance fixture `102-through-unsupported.manifest` is the canonical test case.
+
+Migration: model the join table as a first-class entity with two `belongsTo` sides, one back to each end of the relationship.
+
 ### One-sided relationships (warning)
 
 When `Child` belongsTo `Parent` but `Parent` has no `hasMany`/`hasOne` back to `Child`, the compiler MUST emit a **warning**. Minimal relationship fixtures (e.g. conformance Author/Book) may omit the inverse side; product manifests SHOULD declare both sides.
@@ -634,6 +669,12 @@ For each `on Event run Entity.command` reaction:
 - **Orphan event**: ERROR when no command emits that event.
 - **Invalid payload reference**: ERROR when `payload.X` references a field not present on the emitting command's parameters, the event's declared payload schema, enriched fields (`_subject`, `_eventName`, `_channel`), or (for create emitters) valid `payload.result.Y` entity properties.
 - **Non-create `payload.result.*` member access**: ERROR — non-create commands set `result` to the last action value, not the instance; use `payload._subject.id` or an input param instead.
+
+### Unsupported: approval `onTimeout: "escalate"` (error)
+
+Only `onTimeout: "cancel"` is supported. `escalate` is **not implemented** — the runtime has no escalation target model. The compiler MUST reject an approval declaring `onTimeout: "escalate"` with an **error**-severity diagnostic `APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED`, naming the approval and directing the author to use `cancel`. Compilation MUST fail (`ir` is null). The `IRApproval.onTimeout` field is narrowed to `"cancel"` only in the IR schema; the `"escalate"` union member is removed. When escalation is designed in a future version this diagnostic is lifted. Conformance fixture `103-approval-escalate-unsupported.manifest` is the canonical test case.
+
+Migration: change `on_timeout: "escalate"` to `on_timeout: "cancel"` — the runtime already produced identical behavior (setting `status: "expired"`) for both values.
 
 ## Expressions
 - Literal, identifier, member access, unary, binary, call, conditional, array, object, and lambda expressions are supported.

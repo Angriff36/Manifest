@@ -9,6 +9,7 @@ import {
   IRAction,
   IRType,
   IRConstraint,
+  IRForeignKey,
   ConstraintOutcome,
   OverrideRequest,
   ConcurrencyConflict,
@@ -330,6 +331,22 @@ export interface RuntimeOptions {
   sleep?: (ms: number) => Promise<void>;
   /** Deterministic jitter override for retry delays (used when retry.jitter is true) */
   retryJitter?: (delayMs: number) => number;
+  /**
+   * Host side-effect dispatcher for `effect` actions. Invoked (outside
+   * deterministic mode) with the evaluated expression value and action/command
+   * context; its resolved value becomes the action result. Absent handler ⇒
+   * the effect action fails closed with MISSING_EFFECT_HANDLER.
+   */
+  effectHandler?: (info: {
+    /** action.target when present (names the effect), else undefined */
+    name?: string;
+    /** evaluated action expression value */
+    value: unknown;
+    commandName: string;
+    entityName?: string;
+    instanceId?: string;
+    context: RuntimeContext;
+  }) => Promise<unknown> | unknown;
 }
 
 // Re-export adapter contract types at the package root so consumers can do
@@ -863,6 +880,14 @@ export class RuntimeEngine {
   /** Last transition validation error (set by updateInstance, checked by _executeCommandInternal) */
   private lastTransitionError: string | null = null;
 
+  /**
+   * Last fail-closed action error (set by executeAction for adapter actions that
+   * cannot proceed — MISSING_OUTBOX_STORE / MISSING_EFFECT_HANDLER — checked by
+   * _executeCommandInternal after each action so the command fails and persists
+   * nothing, mirroring the MISSING_JOB_QUEUE / MISSING_TENANT_CONTEXT convention).
+   */
+  private lastActionError: string | null = null;
+
   /** Last concurrency conflict (set by updateInstance, checked by _executeCommandInternal) */
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
 
@@ -1208,9 +1233,8 @@ export class RuntimeEngine {
           targetEntity: rel.target,
           // Only extract the FK field name for single-column FKs. Composite FKs
           // (fields.length > 1) are left undefined here; resolveRelationship
-          // detects them from the raw IR and fails closed with
-          // COMPOSITE_FK_UNSUPPORTED rather than guessing a row. Composite FK
-          // resolution requires a full store adapter (e.g. Prisma).
+          // reads the raw IR and matches every mapped fields/references column
+          // (see fkColumnPairs) instead of a single indexed field name.
           foreignKey: rel.foreignKey && rel.foreignKey.fields.length === 1
             ? rel.foreignKey.fields[0]
             : undefined,
@@ -1270,7 +1294,12 @@ export class RuntimeEngine {
       return null;
     }
 
-    const sourceId = instance.id;
+    // Source identity: composite tuple when the source entity declares `key`,
+    // else the bare `id`. Used for single-column inverse matching and memo keys.
+    const sourceEntity = this.getEntity(entityName);
+    const sourceId = sourceEntity?.key && sourceEntity.key.length > 0
+      ? this.compositeId(sourceEntity, instance)
+      : instance.id;
     if (!sourceId) {
       return null;
     }
@@ -1284,29 +1313,28 @@ export class RuntimeEngine {
       return cached.result;
     }
 
-    // Fail closed on composite foreign keys. The reference runtime resolves
-    // single-column FKs only; guessing a row from `${relName}Id` or from
-    // `fields[0]` of a multi-column key can silently return the WRONG row.
-    const compositeFkError = (relEntity: string, relName: string, cols: number): Error => {
-      const err = new Error(
-        `COMPOSITE_FK_UNSUPPORTED: relationship '${relEntity}.${relName}' declares a composite foreign key ` +
-        `(${cols} columns); the reference runtime resolves single-column foreign keys only and will not ` +
-        `guess a row from a partial key. Use a store adapter that supports composite keys (e.g. Prisma) ` +
-        `or model a single-column foreign key.`
-      );
-      (err as Error & { code?: string }).code = 'COMPOSITE_FK_UNSUPPORTED';
-      return err;
-    };
-
     let result: EntityInstance | EntityInstance[] | null = null;
 
     switch (rel.kind) {
       case 'belongsTo':
       case 'ref': {
-        // For belongsTo/ref the composite FK lives on the source relationship.
-        const rawRel = this.getEntity(entityName)?.relationships.find(r => r.name === relationshipName);
+        // For belongsTo/ref the foreign key lives on the source relationship.
+        const rawRel = sourceEntity?.relationships.find(r => r.name === relationshipName);
         if (rawRel?.foreignKey && rawRel.foreignKey.fields.length > 1) {
-          throw compositeFkError(entityName, relationshipName, rawRel.foreignKey.fields.length);
+          // Composite FK: resolve the target by matching every FK column against
+          // the target's referenced columns. Generalizes the single-column
+          // `instance[fk] === target.id` lookup to N columns; picks the exact
+          // row even when several targets share an `id`/first-column value.
+          const targetEntity = this.getEntity(rel.targetEntity);
+          const pairs = this.fkColumnPairs(rawRel.foreignKey, targetEntity);
+          const unset = pairs.some(([local]) => instance[local] === undefined || instance[local] === null);
+          if (unset) {
+            result = null;
+          } else {
+            const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
+            result = allTargets.find(t => pairs.every(([local, remote]) => t[remote] === instance[local])) ?? null;
+          }
+          break;
         }
         // For belongsTo/ref: the foreign key on the source instance contains the target ID
         const fkProperty = rel.foreignKey || `${rel.relationshipName}Id`;
@@ -1336,7 +1364,12 @@ export class RuntimeEngine {
 
         if (inverseRel) {
           if (inverseRel.foreignKey && inverseRel.foreignKey.fields.length > 1) {
-            throw compositeFkError(rel.targetEntity, inverseRel.name, inverseRel.foreignKey.fields.length);
+            // Composite inverse: match target rows whose FK columns equal the
+            // source's referenced key columns (target[local] === source[remote]).
+            const pairs = this.fkColumnPairs(inverseRel.foreignKey, sourceEntity);
+            const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
+            result = allTargets.find(t => pairs.every(([local, remote]) => t[local] === instance[remote])) ?? null;
+            break;
           }
           // Use the inverse relationship's foreign key
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
@@ -1367,7 +1400,12 @@ export class RuntimeEngine {
 
         if (inverseRel) {
           if (inverseRel.foreignKey && inverseRel.foreignKey.fields.length > 1) {
-            throw compositeFkError(rel.targetEntity, inverseRel.name, inverseRel.foreignKey.fields.length);
+            // Composite inverse: all target rows whose FK columns equal the
+            // source's referenced key columns (target[local] === source[remote]).
+            const pairs = this.fkColumnPairs(inverseRel.foreignKey, sourceEntity);
+            const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
+            result = allTargets.filter(t => pairs.every(([local, remote]) => t[local] === instance[remote]));
+            break;
           }
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
@@ -1406,6 +1444,46 @@ export class RuntimeEngine {
 
   private getNow(): number {
     return this.options.now ? this.options.now() : Date.now();
+  }
+
+  /**
+   * Composite-key runtime identity (docs/spec/semantics.md, "Composite Keys").
+   *
+   * When an entity declares `key` (an ordered list of property names), its
+   * canonical identity is the ordered tuple of those property values, encoded
+   * into a single deterministic string. Components percent-encode `%` and the
+   * `|` separator so joins are unambiguous (`"a|b"` vs `["a","b"]` never
+   * collide). When `key` is absent the identity is the `id` property, byte-for-
+   * byte identical to the pre-composite runtime. Pure and order-stable: no
+   * clock/random, so identical IR + instance ⇒ identical key.
+   */
+  private compositeId(entity: IREntity | undefined, instance: Record<string, unknown>): string {
+    if (entity?.key && entity.key.length > 0) {
+      return entity.key.map(k => this.encodeKeyComponent(String(instance[k]))).join('|');
+    }
+    return String(instance.id);
+  }
+
+  /** Percent-encode `%` then `|` so composite key components join unambiguously. */
+  private encodeKeyComponent(raw: string): string {
+    return raw.replace(/%/g, '%25').replace(/\|/g, '%7C');
+  }
+
+  /**
+   * Pair each local foreign-key column with the target column it references.
+   * `references` is used when present and length-matched; otherwise the target
+   * entity's declared `key` columns are paired positionally; as a last resort
+   * the local field names are assumed to match remote column names. Generalizes
+   * the single-column `${relName}Id`/`fields[0]` convention to N columns.
+   */
+  private fkColumnPairs(fk: IRForeignKey, referencedEntity?: IREntity): Array<[string, string]> {
+    const fields = fk.fields;
+    const refs = fk.references && fk.references.length === fields.length
+      ? fk.references
+      : (referencedEntity?.key && referencedEntity.key.length === fields.length
+          ? referencedEntity.key
+          : fields);
+    return fields.map((f, i) => [f, refs[i]] as [string, string]);
   }
 
   /**
@@ -1914,8 +1992,9 @@ export class RuntimeEngine {
    */
   async getAllInstances(entityName: string): Promise<EntityInstance[]> {
     const all = await this.getAllInstancesRaw(entityName);
+    const visible = await this.applyReadGateToRows(entityName, all);
     const masked: EntityInstance[] = [];
-    for (const inst of all) {
+    for (const inst of visible) {
       masked.push(await this.applyMasking(entityName, inst));
     }
     return masked;
@@ -1947,7 +2026,10 @@ export class RuntimeEngine {
    */
   async getInstance(entityName: string, id: string): Promise<EntityInstance | undefined> {
     const inst = await this.getInstanceRaw(entityName, id);
-    return inst ? await this.applyMasking(entityName, inst) : inst;
+    if (!inst) return inst;
+    // Read gate: a denied read fails closed as undefined (no existence leak).
+    if (!(await this.passesReadGate(entityName, inst))) return undefined;
+    return await this.applyMasking(entityName, inst);
   }
 
   /** Internal read path: tenant filter + decryption, NO masking. */
@@ -2060,6 +2142,151 @@ export class RuntimeEngine {
     return out;
   }
 
+  // ── Read-policy gate (docs/spec/semantics.md, "Policies") ───────────
+  //
+  // Read policies (action `read`/`all`) are enforced at the public read surface
+  // only (getInstance/getAllInstances), above masking. The internal `*Raw`
+  // execution read path stays un-gated so command results are unchanged
+  // (determinism preserved) — the gate is observational, not executional.
+
+  /** Read policies applicable to an entity, in IR declaration order (cached, IR is immutable at runtime). */
+  private readPoliciesCache = new Map<string, IRPolicy[]>();
+  private selectReadPolicies(entityName: string): IRPolicy[] {
+    let cached = this.readPoliciesCache.get(entityName);
+    if (cached) return cached;
+    cached = this.ir.policies.filter(
+      p =>
+        (p.action === 'read' || p.action === 'all') &&
+        (p.entity === undefined || p.entity === entityName)
+    );
+    this.readPoliciesCache.set(entityName, cached);
+    return cached;
+  }
+
+  /**
+   * A read policy is context-only (instance-independent) when its expression
+   * never references `self`/`this`. Such a policy is evaluated once per
+   * getAllInstances call; a self-referencing policy is evaluated per row.
+   */
+  private isContextOnlyExpression(expr: IRExpression): boolean {
+    const keys = this.extractContextKeys(expr);
+    return !keys.some(k => k === 'self' || k === 'this' || k.startsWith('self.') || k.startsWith('this.'));
+  }
+
+  /**
+   * Evaluate a single read policy against an eval context. Fail-closed: a
+   * rate-limit denial, a falsey expression, or a thrown expression all DENY.
+   * A thrown expression additionally surfaces a diagnostic (never compensating,
+   * mirroring the masking unmaskWhen contract).
+   */
+  private async evaluateReadPolicy(
+    policy: IRPolicy,
+    evalContext: Record<string, unknown>,
+    entityName: string
+  ): Promise<boolean> {
+    if (policyHasRateLimit(policy) && policy.rateLimit) {
+      const tenantValue = this.ir.tenant ? this.resolveTenantValue() : this.context.tenantId;
+      const rl = checkRateLimitGate(
+        this.rateLimiter,
+        policy.rateLimit,
+        evalContext,
+        tenantValue,
+        this.getNow(),
+        `policy:${policy.name}`
+      );
+      if (!rl.allowed) return false;
+    }
+    try {
+      const result = await this.evaluateExpression(policy.expression, evalContext);
+      return !!result;
+    } catch (error) {
+      let resolved: unknown[] = [];
+      try {
+        resolved = await this.resolveExpressionValues(policy.expression, evalContext);
+      } catch {
+        // resolution itself failed — report without resolved values
+      }
+      console.warn(
+        `[Manifest Runtime] read policy '${policy.name}' evaluation error for '${entityName}' (read denied):`,
+        {
+          expression: this.formatExpression(policy.expression),
+          resolved,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Read gate for a single instance (getInstance). Returns true only if every
+   * applicable read policy allows; the row is bound as `self`/`this`.
+   */
+  private async passesReadGate(entityName: string, instance: EntityInstance): Promise<boolean> {
+    const policies = this.selectReadPolicies(entityName);
+    if (policies.length === 0) return true;
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      const evalContext = this.buildEvalContext({}, instance, entityName);
+      for (const policy of policies) {
+        if (!(await this.evaluateReadPolicy(policy, evalContext, entityName))) return false;
+      }
+      return true;
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
+  }
+
+  /**
+   * Read gate for a row set (getAllInstances). Context-only policies are
+   * evaluated once (deny ⇒ empty result, no row scan); self-referencing
+   * policies are evaluated per row and denied rows are omitted (no existence
+   * leak, mirroring the tenant filter).
+   */
+  private async applyReadGateToRows(
+    entityName: string,
+    rows: EntityInstance[]
+  ): Promise<EntityInstance[]> {
+    const policies = this.selectReadPolicies(entityName);
+    if (policies.length === 0) return rows;
+
+    const contextOnly: IRPolicy[] = [];
+    const rowLevel: IRPolicy[] = [];
+    for (const p of policies) {
+      if (this.isContextOnlyExpression(p.expression)) contextOnly.push(p);
+      else rowLevel.push(p);
+    }
+
+    const ownsEvalBudget = this.initEvalBudget();
+    try {
+      // Context-only policies are instance-independent: evaluate once.
+      if (contextOnly.length > 0) {
+        const ctx = this.buildEvalContext({}, undefined, entityName);
+        for (const policy of contextOnly) {
+          if (!(await this.evaluateReadPolicy(policy, ctx, entityName))) return [];
+        }
+      }
+
+      if (rowLevel.length === 0) return rows;
+
+      const visible: EntityInstance[] = [];
+      for (const row of rows) {
+        const ctx = this.buildEvalContext({}, row, entityName);
+        let allowed = true;
+        for (const policy of rowLevel) {
+          if (!(await this.evaluateReadPolicy(policy, ctx, entityName))) {
+            allowed = false;
+            break;
+          }
+        }
+        if (allowed) visible.push(row);
+      }
+      return visible;
+    } finally {
+      if (ownsEvalBudget) this.clearEvalBudget();
+    }
+  }
+
   /**
    * Check entity constraints against instance data
    * Returns array of constraint failures (empty if all pass)
@@ -2140,6 +2367,15 @@ export class RuntimeEngine {
       const now = this.getNow();
       mergedData.createdAt = now;
       mergedData.updatedAt = now;
+    }
+
+    // Composite key: the runtime's identity is the encoded key tuple. Persist
+    // under that canonical string so the entity is addressable by it via
+    // getInstance/updateInstance/deleteInstance and the command working copy.
+    // Computed after tenant/version/timestamp injection so a tenant/version
+    // discriminator that participates in `key` uses its resolved value.
+    if (entity.key && entity.key.length > 0) {
+      mergedData.id = this.compositeId(entity, mergedData);
     }
 
     return mergedData;
@@ -3673,7 +3909,22 @@ export class RuntimeEngine {
     try {
       this.profilingBridge.startPhase('actionExecution');
       for (const action of command.actions) {
-        const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject);
+        const actionResult = await this.executeAction(action, evalContext, options, emitCounter, workflowMeta, baseSubject, emittedEvents, commandName);
+
+        // Fail closed on an adapter-action configuration fault (MISSING_OUTBOX_STORE
+        // / MISSING_EFFECT_HANDLER). Returning here skips the flush below: a failed
+        // command persists nothing.
+        if (this.lastActionError) {
+          const actionError = this.lastActionError;
+          this.lastActionError = null;
+          return {
+            success: false,
+            error: actionError,
+            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
 
         // Check for transition validation errors after mutate/compute actions.
         // Returning here skips the flush below: a failed command persists nothing.
@@ -3725,7 +3976,11 @@ export class RuntimeEngine {
           };
         }
 
-        if ((action.kind === 'mutate' || action.kind === 'compute') && options.instanceId && options.entityName) {
+        // Only `mutate` changes the instance now (compute is a non-persisting
+        // local binding, set directly into evalContext by executeAction), so the
+        // post-action instance refresh runs for mutate alone — refreshing after a
+        // compute would clobber the fresh binding with re-fetched instance fields.
+        if (action.kind === 'mutate' && options.instanceId && options.entityName) {
           const currentInstance = await this.getInstanceRaw(options.entityName, options.instanceId);
           // Enrich re-fetched instance with _entity for relationship resolution
           const enriched = currentInstance ? { ...currentInstance, _entity: options.entityName } : currentInstance;
@@ -3747,12 +4002,9 @@ export class RuntimeEngine {
 
       // Flush the accumulated field changes in a single store write. Runs before
       // event emission and reaction dispatch so emitted events and any reactions
-      // observe the final committed command state.
-      const cb = this.commandBuffer;
-      if (cb && Object.keys(cb.patch).length > 0) {
-        const cbStore = this.stores.get(cb.entityName);
-        if (cbStore) await cbStore.update(cb.id, cb.patch, this.activeTx ?? undefined);
-      }
+      // observe the final committed command state. An explicit `persist` action
+      // may already have flushed and cleared the patch; this flushes the remainder.
+      await this.flushCommandBuffer();
     } finally {
       this.commandBuffer = prevBuffer;
     }
@@ -4300,7 +4552,9 @@ export class RuntimeEngine {
     options: { entityName?: string; instanceId?: string },
     emitCounter: { value: number },
     workflowMeta: { correlationId?: string; causationId?: string },
-    subject?: EventSubject
+    subject: EventSubject | undefined,
+    emittedEvents: EmittedEvent[],
+    commandName: string,
   ): Promise<unknown> {
     // Effect boundary enforcement: in deterministic mode, adapter actions hard-error.
     // Sources, in precedence order: options.deterministicMode (explicit caller intent),
@@ -4325,50 +4579,133 @@ export class RuntimeEngine {
         await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
         return value;
 
-      case 'emit':
-      case 'publish': {
-        const prov = this.ir.provenance;
-        const event: EmittedEvent = {
-          name: 'action_event',
-          channel: 'default',
-          payload: value,
-          ...(subject ? { subject } : {}),
-          timestamp: this.getNow(),
-          ...(prov ? {
-            provenance: {
-              contentHash: prov.contentHash,
-              compilerVersion: prov.compilerVersion,
-              schemaVersion: prov.schemaVersion,
-            },
-          } : {}),
-          ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
-          ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
-          emitIndex: emitCounter.value++,
-        };
+      case 'emit': {
+        // Named, in-process event: same shape as command.emits. Consumable by
+        // reactions/sagas (it lands in emittedEvents, iterated by the reaction pass)
+        // and by the outbound event-bus bridge (via CommandResult.emittedEvents).
+        const event = this.buildActionEvent(action, value, subject, workflowMeta, emitCounter);
+        emittedEvents.push(event);
         this.eventLog.push(event);
         this.notifyListeners(event);
-        await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
+        await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
+        return value;
+      }
+
+      case 'publish': {
+        // External delivery: fail closed when no outbox is configured — publishing
+        // to nowhere is a configuration fault, not a silent no-op. When an outbox
+        // IS configured, the event is delivered in-process (reactions/bus bridge)
+        // AND durably enqueued to the outbox by the command's post-success
+        // enqueueOutbox pass, which threads the active transaction so the durable
+        // write joins the command commit. This is what distinguishes publish from
+        // emit: publish REQUIRES the durable outbox path (and is deterministic-
+        // forbidden above); emit is in-process and always available.
+        if (!this.options.outboxStore) {
+          this.lastActionError = `MISSING_OUTBOX_STORE: publish action in command '${commandName}' requires RuntimeOptions.outboxStore, but none is configured`;
+          return value;
+        }
+        const event = this.buildActionEvent(action, value, subject, workflowMeta, emitCounter);
+        emittedEvents.push(event);
+        this.eventLog.push(event);
+        this.notifyListeners(event);
+        await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
         return value;
       }
 
       case 'persist':
+        // Explicit flush of the pending working-copy patch. Threads the active
+        // transaction under a provider (durable at command commit); immediate and
+        // non-reversible without one. Clears the patch so the end-of-loop flush
+        // does not re-write the same fields. See docs/spec/semantics.md § "persist action".
+        await this.flushCommandBuffer();
         await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
         return value;
 
       case 'compute':
-        if (action.target && options.instanceId && options.entityName) {
-          await this.updateInstance(options.entityName, options.instanceId, {
-            [action.target]: value,
-          });
+        // Calculate WITHOUT mutation: bind the value into command scope for
+        // subsequent actions and event payloads. Never touches the working copy,
+        // never persists, never appears in reads.
+        if (action.target) {
+          evalContext[action.target] = value;
         }
         await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
         return value;
 
       case 'effect':
-      default:
-        await this.notifyActionTrace(traceIndex, action.kind, undefined, options);
-        return value;
+      default: {
+        // Host side-effect hook. Fail closed when no handler is configured.
+        if (!this.options.effectHandler) {
+          this.lastActionError = `MISSING_EFFECT_HANDLER: effect action in command '${commandName}' requires RuntimeOptions.effectHandler, but none is configured`;
+          return value;
+        }
+        const result = await this.options.effectHandler({
+          ...(action.target ? { name: action.target } : {}),
+          value,
+          commandName,
+          ...(options.entityName ? { entityName: options.entityName } : {}),
+          ...(options.instanceId ? { instanceId: options.instanceId } : {}),
+          context: this.context,
+        });
+        await this.notifyActionTrace(traceIndex, action.kind, action.target, options);
+        return result;
+      }
     }
+  }
+
+  /**
+   * Build a NAMED EmittedEvent for an `emit`/`publish` action, mirroring the
+   * shape of a `command.emits` event (channel from the declared IR event,
+   * provenance, correlation/causation, and a monotonic per-command emitIndex).
+   * Payload is the evaluated expression value: a plain object is used directly,
+   * a scalar is wrapped as `{ result: value }`, and null/undefined becomes `{}`.
+   */
+  private buildActionEvent(
+    action: IRAction,
+    value: unknown,
+    subject: EventSubject | undefined,
+    workflowMeta: { correlationId?: string; causationId?: string },
+    emitCounter: { value: number },
+  ): EmittedEvent {
+    const eventName = action.target ?? 'action_event';
+    const irEvent = this.ir.events.find(e => e.name === eventName);
+    const prov = this.ir.provenance;
+    const payload: unknown = value == null
+      ? {}
+      : (typeof value === 'object' && !Array.isArray(value))
+        ? value
+        : { result: value };
+    return {
+      name: eventName,
+      channel: irEvent?.channel || eventName,
+      payload,
+      ...(subject ? { subject } : {}),
+      timestamp: this.getNow(),
+      ...(prov ? {
+        provenance: {
+          contentHash: prov.contentHash,
+          compilerVersion: prov.compilerVersion,
+          schemaVersion: prov.schemaVersion,
+        },
+      } : {}),
+      ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+      ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+      emitIndex: emitCounter.value++,
+    };
+  }
+
+  /**
+   * Flush the current command buffer's accumulated patch to the store, threading
+   * the active transaction. Clears the patch afterward (retaining the working
+   * copy) so a later end-of-loop flush or a subsequent explicit `persist` does
+   * not re-write the same fields. No-op when no buffer/patch is present. Used by
+   * both the `persist` action and the end-of-command-loop flush.
+   */
+  private async flushCommandBuffer(): Promise<void> {
+    const cb = this.commandBuffer;
+    if (!cb || Object.keys(cb.patch).length === 0) return;
+    const cbStore = this.stores.get(cb.entityName);
+    if (cbStore) await cbStore.update(cb.id, cb.patch, this.activeTx ?? undefined);
+    cb.patch = {};
   }
 
   async evaluateExpression(expr: IRExpression, context: Record<string, unknown>): Promise<unknown> {
@@ -4870,11 +5207,13 @@ export class RuntimeEngine {
   ): Promise<ConstraintOutcome> {
     const result = await this.evaluateExpression(constraint.expression, evalContext);
 
-    // Hybrid constraint semantics:
-    // - Negative-type constraints (name starts with "severity"): fire when TRUE (bad state detected)
-    // - Positive-type constraints: fail when FALSE (required condition not met)
-    const isNegativeType = constraint.name.startsWith('severity');
-    const passed = isNegativeType ? !result : !!result;
+    // Polarity: failWhen field in IR (set by compiler from explicit declaration or legacy heuristic).
+    // - failWhen=true: truthy expression = VIOLATION (passed = !expr)
+    // - failWhen absent/false: falsy expression = violation (passed = !!expr) — positive polarity
+    const raw = !!result;
+    const rawPassed = constraint.failWhen ? !raw : raw;
+    // Item 1 — ok severity forces passed=true; expression still evaluated above for details/resolved.
+    const passed = (constraint.severity ?? 'block') === 'ok' ? true : rawPassed;
 
     // Build details mapping if specified
     let details: Record<string, unknown> | undefined = undefined;

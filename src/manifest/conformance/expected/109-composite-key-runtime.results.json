@@ -1,0 +1,74 @@
+{
+  "testCases": [
+    {
+      "name": "renames a composite-key Warehouse addressed by its encoded key tuple",
+      "setup": {
+        "createInstance": {
+          "entity": "Warehouse",
+          "data": { "region": "us-west", "code": "w1", "name": "Old" }
+        }
+      },
+      "command": {
+        "name": "rename",
+        "entityName": "Warehouse",
+        "instanceId": "us-west|w1",
+        "input": { "newName": "West Depot" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "West Depot",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "region": "us-west",
+        "code": "w1",
+        "name": "West Depot",
+        "id": "us-west|w1"
+      }
+    },
+    {
+      "name": "updates a composite-key Bin addressed by its three-column key tuple",
+      "setup": {
+        "createInstances": [
+          { "entity": "Warehouse", "data": { "region": "us-west", "code": "w1", "name": "West Depot" } },
+          { "entity": "Warehouse", "data": { "region": "us-east", "code": "w1", "name": "East Depot" } },
+          { "entity": "Bin", "data": { "region": "us-east", "warehouseCode": "w1", "slot": "a1", "label": "L1" } }
+        ]
+      },
+      "command": {
+        "name": "relabel",
+        "entityName": "Bin",
+        "instanceId": "us-east|w1|a1",
+        "input": { "newLabel": "L2" }
+      },
+      "expectedResult": {
+        "success": true,
+        "result": "L2",
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "region": "us-east",
+        "warehouseCode": "w1",
+        "slot": "a1",
+        "label": "L2",
+        "id": "us-east|w1|a1"
+      }
+    },
+    {
+      "name": "resolves a composite belongsTo to the exact Warehouse (disambiguates shared code)",
+      "setup": {
+        "createInstances": [
+          { "entity": "Warehouse", "data": { "region": "us-west", "code": "w1", "name": "West Depot" } },
+          { "entity": "Warehouse", "data": { "region": "us-east", "code": "w1", "name": "East Depot" } },
+          { "entity": "Bin", "data": { "region": "us-east", "warehouseCode": "w1", "slot": "a1", "label": "L1" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Bin",
+        "instanceId": "us-east|w1|a1",
+        "property": "warehouseName"
+      },
+      "expectedValue": "East Depot"
+    }
+  ]
+}

@@ -61,7 +61,7 @@
       }
     },
     {
-      "name": "uuid() in compute action generates deterministic ID",
+      "name": "uuid() in mutate action generates deterministic ID",
       "setup": {
         "createInstance": {
           "entity": "ItemContainer",

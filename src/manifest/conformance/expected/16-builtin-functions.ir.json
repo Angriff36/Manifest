@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "c67b8f40551511d79750729dba5219113913ea17d12912d033eb51020abc062a",
+    "irHash": "4f2bfb12db786c61264fac7a72add7f4d0c49e178b16fd2d1f21bd35ed6eac6d",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -189,7 +189,7 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "itemId",
           "expression": {
             "kind": "call",
@@ -261,7 +261,7 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "verifyId",
           "expression": {
             "kind": "identifier",

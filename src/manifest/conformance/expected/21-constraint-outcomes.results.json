@@ -55,16 +55,10 @@
       ]
     },
     {
-      "name": "recently created order triggers severityInfo constraint (ok)",
+      "name": "ok severity forces passed=true — severityInfo never appears as failure",
       "entity": "Order",
       "data": { "id": "o6", "customerId": "c6", "status": "pending", "amount": 100, "priority": "normal", "createdAt": 0 },
-      "expectedConstraintFailures": [
-        {
-          "constraintName": "severityInfo",
-          "expression": "self.createdAt == 0",
-          "severity": "ok"
-        }
-      ]
+      "expectedConstraintFailures": []
     },
     {
       "name": "updateStatus with same status triggers infoUpdate constraint (ok)",
@@ -207,7 +201,7 @@
       }
     },
     {
-      "name": "multiple constraint failures simultaneously (mixed severities)",
+      "name": "multiple constraint failures simultaneously (mixed severities, ok never fails)",
       "entity": "Order",
       "data": { "id": "o14", "customerId": "c14", "status": "cancelled", "amount": 2000, "priority": "high", "createdAt": 0 },
       "expectedConstraintFailures": [
@@ -220,11 +214,6 @@
           "constraintName": "severityWarning",
           "expression": "self.priority == \"high\" and self.amount > 1000",
           "severity": "warn"
-        },
-        {
-          "constraintName": "severityInfo",
-          "expression": "self.createdAt == 0",
-          "severity": "ok"
         }
       ]
     },

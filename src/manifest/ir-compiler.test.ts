@@ -1541,7 +1541,7 @@ describe('IRCompiler', () => {
       expect(command?.parameters[1].defaultValue?.kind).toBe('object');
     });
 
-    it('should handle through relationships', async () => {
+    it('rejects through relationships with RELATION_THROUGH_UNSUPPORTED', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
         entity User {
@@ -1549,8 +1549,11 @@ describe('IRCompiler', () => {
         }
       `);
 
-      const relationship = result.ir?.entities[0].relationships[0];
-      expect(relationship?.through).toBe('AuthorPost');
+      expect(result.ir).toBeNull();
+      const errors = result.diagnostics.filter(d => d.severity === 'error');
+      expect(errors).toHaveLength(1);
+      expect(errors[0].message).toContain("uses 'through'");
+      expect(errors[0].message).toContain('not supported');
     });
 
     it('should handle foreign key relationships (with clause → structured FK)', async () => {
@@ -1664,18 +1667,18 @@ describe('IRCompiler', () => {
         expect(rel?.onUpdate).toBe('restrict');
       });
 
-      it('through relation has no foreignKey and no onDelete/onUpdate', async () => {
+      it('through relation alone emits RELATION_THROUGH_UNSUPPORTED and fails compilation', async () => {
         const compiler = new IRCompiler();
         const result = await compiler.compileToIR(`
           entity Post {
             hasMany tags: Tag through PostTag
           }
         `);
-        expect(result.diagnostics.filter(d => d.severity === 'error')).toHaveLength(0);
-        const rel = result.ir?.entities[0].relationships[0];
-        expect(rel?.through).toBe('PostTag');
-        expect(rel?.foreignKey).toBeUndefined();
-        expect(rel?.onDelete).toBeUndefined();
+        expect(result.ir).toBeNull();
+        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].message).toContain("uses 'through'");
+        expect(errors[0].message).toContain('not supported');
       });
 
       it('emits an error when both foreignKey fields and through are set on the same relationship', async () => {

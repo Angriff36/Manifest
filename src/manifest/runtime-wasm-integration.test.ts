@@ -145,7 +145,7 @@ describe('RuntimeEngine with WASM evaluator', () => {
       expect(failed[0].passed).toBe(false);
     });
 
-    it('should evaluate severity-* constraints with negative semantics', async () => {
+    it('should evaluate failWhen=true constraints with negative polarity', async () => {
       const ir = createTestIR();
       const engine = new RuntimeEngine(ir, {}, { now: () => 1234567890 });
 
@@ -158,20 +158,22 @@ describe('RuntimeEngine with WASM evaluator', () => {
         commands: [],
         constraints: [
           {
-            name: 'severityCheck',
-            code: 'severityCheck',
+            name: 'hasErrorCheck',
+            code: 'hasErrorCheck',
             expression: ident('hasError'),
             severity: 'warn',
+            // failWhen: true means expression=true → VIOLATION (passed=false)
+            failWhen: true,
           },
         ],
         policies: [],
       });
 
-      // hasError = true → severity check fails
+      // hasError = true → violation (failWhen reverses polarity)
       const failed = await engine.checkConstraints('TestEntity', { hasError: true });
       expect(failed).toHaveLength(1);
 
-      // hasError = false → severity check passes
+      // hasError = false → passes
       const passed = await engine.checkConstraints('TestEntity', { hasError: false });
       expect(passed).toEqual([]);
     });

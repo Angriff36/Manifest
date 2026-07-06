@@ -1,0 +1,300 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "2abbf2db8c3f5aaaad922f35ebba6a00aa3188139078e526d81f719f559b0326",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Ledger",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "balance",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "deposit",
+        "withdraw"
+      ],
+      "constraints": [
+        {
+          "name": "severityOverdrawn",
+          "code": "severityOverdrawn",
+          "expression": {
+            "kind": "binary",
+            "operator": "<",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "block",
+          "failWhen": true,
+          "message": "Account is overdrawn",
+          "overrideable": false
+        },
+        {
+          "name": "inDebt",
+          "code": "inDebt",
+          "expression": {
+            "kind": "binary",
+            "operator": "<",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "unary",
+              "operator": "-",
+              "operand": {
+                "kind": "literal",
+                "value": {
+                  "kind": "number",
+                  "value": 100
+                }
+              }
+            }
+          },
+          "severity": "warn",
+          "failWhen": true,
+          "message": "Account is significantly overdrawn",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Ledger",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "LedgerDeposited",
+      "channel": "ledger.deposited",
+      "payload": [
+        {
+          "name": "ledgerId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        },
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "deposit",
+      "entity": "Ledger",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "Amount must be positive"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "balance",
+          "expression": {
+            "kind": "binary",
+            "operator": "+",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "input"
+              },
+              "property": "amount"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "withdraw",
+      "entity": "Ledger",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "Amount must be positive"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "balance",
+          "expression": {
+            "kind": "binary",
+            "operator": "-",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "input"
+              },
+              "property": "amount"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

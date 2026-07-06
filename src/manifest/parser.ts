@@ -1391,11 +1391,30 @@ export class Parser {
   }
 
   private parseAction(): ActionNode {
+    const position = this.current()?.position;
     let kind: ActionNode['kind'] = 'compute', target: string | undefined;
     if (this.check('KEYWORD', 'mutate')) { this.advance(); kind = 'mutate'; target = this.consumeIdentifier().value; this.consume('OPERATOR', '='); }
-    else if (this.check('KEYWORD', 'emit')) { this.advance(); kind = 'emit'; }
-    else if (this.check('KEYWORD', 'effect')) { this.advance(); kind = 'effect'; }
-    else if (this.check('KEYWORD', 'publish')) { this.advance(); kind = 'publish'; }
+    else if (this.check('KEYWORD', 'emit') || this.check('KEYWORD', 'publish')) {
+      kind = this.advance().value as 'emit' | 'publish';
+      // Named target event: `emit EventName` / `publish EventName [payloadExpr]`.
+      // The event name is required (compiler enforces EMIT_ACTION_UNKNOWN_EVENT);
+      // an optional inline expression supplies the payload, else it defaults to {}.
+      if (this.check('IDENTIFIER')) target = this.consumeIdentifier().value;
+      if (this.atStatementEnd()) {
+        return { type: 'Action', kind, target, position, expression: { type: 'Literal', value: null, dataType: 'null' } };
+      }
+      return { type: 'Action', kind, target, position, expression: this.parseExpr() };
+    }
+    else if (this.check('KEYWORD', 'effect')) {
+      this.advance(); kind = 'effect';
+      // Optional naming form mirrors compute: `effect <name> = <expr>` names the
+      // effect for the host handler; bare `effect <expr>` is unnamed.
+      const nextToken = this.tokens[this.pos + 1];
+      if (this.check('IDENTIFIER') && nextToken?.type === 'OPERATOR' && nextToken?.value === '=') {
+        target = this.consumeIdentifier().value;
+        this.consume('OPERATOR', '=');
+      }
+    }
     else if (this.check('KEYWORD', 'persist')) { this.advance(); kind = 'persist'; }
     else if (this.check('KEYWORD', 'compute')) {
       this.advance(); kind = 'compute';
@@ -1406,7 +1425,12 @@ export class Parser {
         this.consume('OPERATOR', '=');
       }
     }
-    return { type: 'Action', kind, target, expression: this.parseExpr() };
+    return { type: 'Action', kind, target, position, expression: this.parseExpr() };
+  }
+
+  /** True when the current token ends the current action (newline, block close, or EOF). */
+  private atStatementEnd(): boolean {
+    return this.check('NEWLINE') || this.check('PUNCTUATION', '}') || this.isEnd();
   }
 
   private parseConstraint(): ConstraintNode {
@@ -1419,11 +1443,19 @@ export class Parser {
       overrideable = true;
     }
 
+    // Check for failWhen modifier (before the name)
+    let failWhenModifier: boolean | undefined;
+    if (this.check('KEYWORD', 'failWhen')) {
+      this.advance();
+      failWhenModifier = true;
+    }
+
     const name = this.consumeIdentifier().value;
 
     // Declare variables that may be used in both paths
     let code: string | undefined;
     let severity: 'ok' | 'warn' | 'block' | undefined;
+    let failWhen: boolean | undefined = failWhenModifier;
     let message: string | undefined;
     let messageTemplate: string | undefined;
     let detailsMapping: Record<string, ExpressionNode> | undefined;
@@ -1466,6 +1498,11 @@ export class Parser {
           case 'overridePolicy':
             overridePolicyRef = this.consumeIdentifier().value;
             break;
+          case 'failWhen': {
+            const fw = this.consumeIdentifierOrKeyword().value;
+            failWhen = fw === 'true' || fw === 'yes';
+            break;
+          }
           case 'details':
             detailsMapping = {};
             if (this.check('PUNCTUATION', '{')) {
@@ -1503,6 +1540,7 @@ export class Parser {
         code,
         expression,
         severity: severity || 'block',
+        failWhen,
         message,
         messageTemplate,
         detailsMapping,
@@ -1580,6 +1618,7 @@ export class Parser {
       code,
       expression,
       severity: severity || 'block',
+      failWhen,
       message,
       messageTemplate,
       detailsMapping,

@@ -1,7 +1,7 @@
 {
   "testCases": [
     {
-      "name": "addItem with assignment form creates computed property",
+      "name": "addItem with assignment form binds a local then persists via mutate",
       "setup": {
         "createInstance": {
           "entity": "Inventory",
@@ -22,8 +22,7 @@
       "expectedInstanceState": {
         "id": "inv-1",
         "quantity": 15,
-        "lowStock": false,
-        "newQuantity": 15
+        "lowStock": false
       }
     },
     {
@@ -48,8 +47,7 @@
       "expectedInstanceState": {
         "id": "inv-2",
         "quantity": 10,
-        "lowStock": false,
-        "newQuantity": 10
+        "lowStock": false
       }
     },
     {
@@ -74,8 +72,7 @@
       "expectedInstanceState": {
         "id": "inv-3",
         "quantity": 350,
-        "lowStock": false,
-        "newQuantity": 350
+        "lowStock": false
       }
     }
   ]

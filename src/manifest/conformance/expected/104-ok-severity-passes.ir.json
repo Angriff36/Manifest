@@ -1,0 +1,173 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "481a15d68a9836a948a6e61c506a92ecbe2f20b971f9d4738040f82db0dac184",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Widget",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        },
+        {
+          "name": "score",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [],
+      "constraints": [
+        {
+          "name": "infoNameProvided",
+          "code": "infoNameProvided",
+          "expression": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "name"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          },
+          "severity": "ok",
+          "message": "Name is provided",
+          "overrideable": false
+        },
+        {
+          "name": "infoScoreNonNeg",
+          "code": "infoScoreNonNeg",
+          "expression": {
+            "kind": "binary",
+            "operator": ">=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "score"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "ok",
+          "message": "Score is non-negative",
+          "overrideable": false
+        },
+        {
+          "name": "warnNameMissing",
+          "code": "warnNameMissing",
+          "expression": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "name"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          },
+          "severity": "warn",
+          "message": "Name should be provided",
+          "overrideable": false
+        },
+        {
+          "name": "requireId",
+          "code": "requireId",
+          "expression": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "id"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          },
+          "severity": "block",
+          "message": "ID is required",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Widget",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

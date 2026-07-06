@@ -28,7 +28,7 @@ entity Task {
   }
 
   command setTimestamp() {
-    compute createdAt = now()
+    mutate createdAt = now()
     emit TaskCreated
   }
 

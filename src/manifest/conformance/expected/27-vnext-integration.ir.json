@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "863b97e793438fd6fe6282c8c07fcd25e7a5427f238b20d567924be9bbf08099",
+    "irHash": "3aa7ddc0dd3d757c40b9eba8b0fd807723cb4f2788690db206933adefc5ac867",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -227,6 +227,7 @@
             }
           },
           "severity": "warn",
+          "failWhen": true,
           "message": "Warning: High concurrency version detected",
           "overrideable": false
         }

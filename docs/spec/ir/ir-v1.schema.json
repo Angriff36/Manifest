@@ -510,8 +510,8 @@
         },
         "onTimeout": {
           "type": "string",
-          "enum": ["cancel", "escalate"],
-          "description": "Behavior when approval times out"
+          "enum": ["cancel"],
+          "description": "Behavior when approval times out. Only 'cancel' is supported; 'escalate' is rejected at compile time (APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED)."
         },
         "emits": {
           "type": "array",
@@ -748,6 +748,10 @@
             "block"
           ],
           "description": "Constraint severity level (default: block)"
+        },
+        "failWhen": {
+          "type": "boolean",
+          "description": "Expression polarity. When true, a truthy expression marks a VIOLATION (passed = !expr). Absent or false means a falsy expression is a violation (default positive polarity)."
         },
         "messageTemplate": {
           "type": "string",

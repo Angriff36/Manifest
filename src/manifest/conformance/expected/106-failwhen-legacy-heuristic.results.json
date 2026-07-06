@@ -1,0 +1,47 @@
+{
+  "testCases": [
+    {
+      "name": "legacy severity-prefixed constraint — positive balance passes (failWhen=true, expression false)",
+      "entity": "Ledger",
+      "data": { "id": "l1", "balance": 50, "status": "active" },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "legacy severity-prefixed constraint — negative balance fails (failWhen=true, expression true)",
+      "entity": "Ledger",
+      "data": { "id": "l2", "balance": -10, "status": "active" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityOverdrawn",
+          "expression": "self.balance < 0"
+        }
+      ]
+    },
+    {
+      "name": "explicit failWhen inDebt — moderately negative does not trigger inDebt (expression false)",
+      "entity": "Ledger",
+      "data": { "id": "l3", "balance": -50, "status": "active" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityOverdrawn",
+          "expression": "self.balance < 0"
+        }
+      ]
+    },
+    {
+      "name": "explicit failWhen inDebt — deeply negative triggers inDebt warn (expression true = violation)",
+      "entity": "Ledger",
+      "data": { "id": "l4", "balance": -200, "status": "active" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "severityOverdrawn",
+          "expression": "self.balance < 0"
+        },
+        {
+          "constraintName": "inDebt",
+          "expression": "self.balance < -100"
+        }
+      ]
+    }
+  ]
+}

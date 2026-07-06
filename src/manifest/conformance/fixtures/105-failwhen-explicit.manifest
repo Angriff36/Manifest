@@ -1,0 +1,39 @@
+// Fixture 105: explicit failWhen modifier (negative polarity)
+// failWhen: true — expression true = violation (passed = !expr)
+// No legacy name-prefix heuristic: explicit field, no deprecation warning.
+
+entity Account {
+  property id: string
+  property balance: number = 0
+  property status: string = "active"
+  property name: string = ""
+
+  // Positive polarity (default): false expression = violation
+  constraint hasName: self.name != "" "Account must have a name"
+
+  // Explicit negative polarity (failWhen modifier): true expression = violation
+  constraint failWhen overdrawn: self.balance < 0 "Account is overdrawn"
+
+  // Explicit negative polarity + warn severity
+  constraint failWhen suspendedWarn:warn self.status == "suspended" "Account is suspended"
+
+  command open(name: string) {
+    mutate name = input.name
+    mutate status = "active"
+  }
+
+  command suspend() {
+    mutate status = "suspended"
+  }
+
+  command withdraw(amount: number) {
+    guard input.amount > 0 "Amount must be positive"
+    mutate balance = self.balance - input.amount
+  }
+}
+
+event AccountOpened: "account.opened" {
+  accountId: string
+}
+
+store Account in memory

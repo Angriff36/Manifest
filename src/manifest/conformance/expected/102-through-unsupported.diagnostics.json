@@ -1,0 +1,13 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Relationship 'tags' on entity 'Post' uses 'through' (many-to-many via join entity), which is not supported in this version. Model the join entity 'PostTag' explicitly with two belongsTo relationships."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Post' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    }
+  ]
+}

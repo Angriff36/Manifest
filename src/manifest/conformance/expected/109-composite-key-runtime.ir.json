@@ -1,0 +1,220 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "0488b04954dbd038216594055c4c49a2d354896884ee55067bce74a6793462b0",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Warehouse",
+      "properties": [
+        {
+          "name": "region",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "code",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "bins",
+          "kind": "hasMany",
+          "target": "Bin"
+        }
+      ],
+      "commands": [
+        "rename"
+      ],
+      "constraints": [],
+      "policies": [],
+      "key": [
+        "region",
+        "code"
+      ]
+    },
+    {
+      "name": "Bin",
+      "properties": [
+        {
+          "name": "region",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "warehouseCode",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "slot",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "label",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "warehouseName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "warehouse"
+            },
+            "property": "name"
+          },
+          "dependencies": [
+            "warehouse"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "warehouse",
+          "kind": "belongsTo",
+          "target": "Warehouse",
+          "foreignKey": {
+            "fields": [
+              "warehouseCode",
+              "region"
+            ],
+            "references": [
+              "code",
+              "region"
+            ]
+          }
+        }
+      ],
+      "commands": [
+        "relabel"
+      ],
+      "constraints": [],
+      "policies": [],
+      "key": [
+        "region",
+        "warehouseCode",
+        "slot"
+      ]
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Warehouse",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Bin",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "rename",
+      "entity": "Warehouse",
+      "parameters": [
+        {
+          "name": "newName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "identifier",
+            "name": "newName"
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "relabel",
+      "entity": "Bin",
+      "parameters": [
+        {
+          "name": "newLabel",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "label",
+          "expression": {
+            "kind": "identifier",
+            "name": "newLabel"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

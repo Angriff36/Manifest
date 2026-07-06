@@ -346,6 +346,12 @@ export interface ConstraintNode extends ASTNode {
   expression: ExpressionNode;
   /** Constraint severity level (default: block) */
   severity?: 'ok' | 'warn' | 'block';
+  /**
+   * Expression polarity. When true, a truthy expression marks a VIOLATION
+   * (passed = !expr). When false/absent, a falsy expression marks a violation
+   * (passed = !!expr) — the default "required condition" polarity.
+   */
+  failWhen?: boolean;
   message?: string;
   /** Template for error messages with interpolation */
   messageTemplate?: string;

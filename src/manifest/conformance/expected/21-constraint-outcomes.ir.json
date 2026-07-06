@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "fb1771f7f63385d8cb9c62c5ba5ae1083529ad574372383829321368ac36f8a3",
+    "irHash": "475e8aa9172bd7f945d00997a10984dde84103983cfb727df3a05991167724e9",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -213,6 +213,7 @@
             }
           },
           "severity": "ok",
+          "failWhen": true,
           "message": "Order created recently",
           "overrideable": false
         },
@@ -262,6 +263,7 @@
             }
           },
           "severity": "warn",
+          "failWhen": true,
           "message": "High priority order with large amount",
           "overrideable": false
         },
@@ -311,6 +313,7 @@
             }
           },
           "severity": "block",
+          "failWhen": true,
           "message": "Cannot modify cancelled orders with non-zero amount",
           "overrideable": false
         },

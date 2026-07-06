@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "EMIT_ACTION_UNKNOWN_EVENT: publish action in command 'ship' targets event 'OrderShipped', which is not declared. Declare 'event OrderShipped { ... }' or reference an existing event.",
+      "line": 11,
+      "column": 12
+    }
+  ]
+}

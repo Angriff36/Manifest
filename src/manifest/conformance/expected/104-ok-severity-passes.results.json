@@ -1,0 +1,32 @@
+{
+  "testCases": [
+    {
+      "name": "ok constraint with false expression — passed forced to true, never a failure",
+      "entity": "Widget",
+      "data": { "id": "w1", "name": "", "score": 0 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "warnNameMissing",
+          "expression": "self.name != \"\""
+        }
+      ]
+    },
+    {
+      "name": "ok constraint with true expression — also passed=true, also never a failure",
+      "entity": "Widget",
+      "data": { "id": "w2", "name": "hello", "score": 5 },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "block constraint with false expression — passed=false, appears as failure",
+      "entity": "Widget",
+      "data": { "id": "", "name": "hello", "score": 0 },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "requireId",
+          "expression": "self.id != \"\""
+        }
+      ]
+    }
+  ]
+}

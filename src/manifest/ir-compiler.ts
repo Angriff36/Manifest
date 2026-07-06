@@ -291,6 +291,10 @@ function collectCommandIntentEntries(program: ManifestProgram, sourcePath?: stri
 export class IRCompiler {
   private diagnostics: IRDiagnostic[] = [];
   private cache: IRCache;
+  /** Declared event names, populated before command transform for action-emit validation. */
+  private declaredEventNames: Set<string> = new Set();
+  /** Entity name → its declared property names, for compute-as-mutate detection. */
+  private entityPropertyNames: Map<string, Set<string>> = new Map();
 
   constructor(cache?: IRCache) {
     this.cache = cache ?? globalIRCache;
@@ -440,6 +444,20 @@ export class IRCompiler {
       ...program.events.map(e => this.transformEvent(e)),
       ...program.modules.flatMap(m => m.events.map(e => this.transformEvent(e))),
     ];
+
+    // Populate lookup tables consulted by transformCommand's action validation
+    // (EMIT_ACTION_UNKNOWN_EVENT, COMPUTE_USED_AS_MUTATE). Built here so they are
+    // ready before any command is transformed below.
+    this.declaredEventNames = new Set(events.map(e => e.name));
+    this.entityPropertyNames = new Map();
+    const allEntities = [
+      ...program.entities,
+      ...program.modules.flatMap(m => m.entities),
+    ];
+    for (const e of allEntities) {
+      this.entityPropertyNames.set(e.name, new Set(e.properties.map(p => p.name)));
+    }
+
     const commands: IRCommand[] = [
       ...program.commands.map(c => this.transformCommand(c)),
       ...program.modules.flatMap(m => m.commands.map(c => this.transformCommand(c, m.name))),
@@ -748,7 +766,20 @@ export class IRCompiler {
       emits: a.emits,
     };
     if (a.timeout !== undefined) node.timeout = a.timeout;
-    if (a.onTimeout !== undefined) node.onTimeout = a.onTimeout;
+    if (a.onTimeout !== undefined) {
+      if (a.onTimeout === 'escalate') {
+        // APPROVAL_ONTIMEOUT_ESCALATE_UNSUPPORTED: escalation target model is not implemented.
+        // Use 'cancel' instead (identical observable behavior until escalation is designed).
+        this.emitDiagnostic(
+          'error',
+          `Approval '${a.name}' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.`,
+          a.position?.line,
+          a.position?.column,
+        );
+      } else {
+        node.onTimeout = a.onTimeout;
+      }
+    }
     return node;
   }
 
@@ -880,6 +911,13 @@ export class IRCompiler {
         'error',
         `Relationship '${r.name}' on entity '${entityName}' cannot set both 'foreignKey' and 'through' — they are mutually exclusive.`,
       );
+    } else if (r.through) {
+      // RELATION_THROUGH_UNSUPPORTED: many-to-many via join entity is not implemented.
+      // Model the join entity explicitly with two belongsTo relationships instead.
+      this.emitDiagnostic(
+        'error',
+        `Relationship '${r.name}' on entity '${entityName}' uses 'through' (many-to-many via join entity), which is not supported in this version. Model the join entity '${r.through}' explicitly with two belongsTo relationships.`,
+      );
     }
     return {
       name: r.name,
@@ -893,11 +931,23 @@ export class IRCompiler {
   }
 
   private transformConstraint(c: ConstraintNode): IRConstraint {
+    // Resolve polarity: explicit failWhen wins over the legacy name-prefix heuristic.
+    let failWhen: boolean | undefined = c.failWhen;
+    if (failWhen === undefined && c.name.startsWith('severity')) {
+      // Legacy heuristic: names starting with "severity" are treated as negative polarity.
+      // Emit a deprecation warning so authors migrate to explicit failWhen.
+      failWhen = true;
+      this.emitDiagnostic(
+        'warning',
+        `CONSTRAINT_POLARITY_NAME_HEURISTIC: Constraint '${c.name}' uses the legacy name-prefix heuristic for negative polarity. Declare 'failWhen: true' explicitly and rename the constraint to suppress this warning.`,
+      );
+    }
     return {
       name: c.name,
       code: c.code || c.name, // Default to name if code not specified
       expression: this.transformExpression(c.expression),
       severity: c.severity || 'block', // Default to block
+      ...(failWhen !== undefined ? { failWhen } : {}),
       message: c.message,
       messageTemplate: c.messageTemplate,
       detailsMapping: c.detailsMapping
@@ -1046,6 +1096,7 @@ export class IRCompiler {
   }
 
   private transformCommand(c: CommandNode, moduleName?: string, entityName?: string, entityDefaultPolicies?: string[]): IRCommand {
+    this.validateCommandActions(c, entityName);
     const constraints = (c.constraints || []).map(con => this.transformConstraint(con));
     if (c.constraints && c.constraints.length > 0) {
       const scope = entityName ? `command '${entityName}.${c.name}'` : `command '${c.name}'`;
@@ -1300,6 +1351,45 @@ export class IRCompiler {
       target: a.target,
       expression: this.transformExpression(a.expression),
     };
+  }
+
+  /**
+   * Semantic validation of command actions (action-kind contract):
+   * - `emit`/`publish` MUST name a declared event → EMIT_ACTION_UNKNOWN_EVENT (error).
+   * - `compute <name> = …` where `<name>` is a declared property of the bound
+   *   entity is almost certainly a mis-used `mutate` (compute no longer persists)
+   *   → COMPUTE_USED_AS_MUTATE (warning) so no silent data-loss reaches production.
+   */
+  private validateCommandActions(c: CommandNode, entityName?: string): void {
+    const props = entityName ? this.entityPropertyNames.get(entityName) : undefined;
+    for (const a of c.actions) {
+      const line = a.position?.line;
+      const column = a.position?.column;
+      if (a.kind === 'emit' || a.kind === 'publish') {
+        if (!a.target) {
+          this.emitDiagnostic(
+            'error',
+            `EMIT_ACTION_UNKNOWN_EVENT: ${a.kind} action in command '${c.name}' must name an event to ${a.kind}, e.g. '${a.kind} SomeEvent'.`,
+            line,
+            column,
+          );
+        } else if (!this.declaredEventNames.has(a.target)) {
+          this.emitDiagnostic(
+            'error',
+            `EMIT_ACTION_UNKNOWN_EVENT: ${a.kind} action in command '${c.name}' targets event '${a.target}', which is not declared. Declare 'event ${a.target} { ... }' or reference an existing event.`,
+            line,
+            column,
+          );
+        }
+      } else if (a.kind === 'compute' && a.target && props?.has(a.target)) {
+        this.emitDiagnostic(
+          'warning',
+          `COMPUTE_USED_AS_MUTATE: compute '${a.target}' in command '${c.name}' assigns to a declared property but 'compute' no longer persists. Change 'compute' to 'mutate' to keep persisting '${a.target}', or keep 'compute' for an ephemeral local binding.`,
+          line,
+          column,
+        );
+      }
+    }
   }
 
   private transformPolicy(p: PolicyNode, moduleName?: string, entityName?: string): IRPolicy {

@@ -912,31 +912,29 @@ command increment() {
 
 ### `compute`
 
-Evaluates an expression and returns the value in the action result.
-
-**Store-write behavior:** `compute` writes to the store when **all three** are true: the action has a `target` property name, the command was called with an `instanceId`, and it has an `entityName`. When any of those is absent, `compute` is pure — it returns the value without persisting. Use `effect` if you need a derivation that must never write to the store.
+Calculates a value **without mutating** entity state. `compute <name> = <expr>` binds `<name>` as a command-scoped local into the evaluation scope (available to later actions and event-payload expressions); it is never persisted and never appears in reads. To persist a field, use `mutate`. The compiler warns `COMPUTE_USED_AS_MUTATE` when a compute target matches a declared property.
 
 ```manifest
-command setTimestamp() {
-  compute createdAt = now()
-  emit TaskCreated
+command addItem(amount: number) {
+  compute newQuantity = quantity + amount   // ephemeral local, not persisted
+  mutate quantity = newQuantity              // persists
 }
 ```
 
 ### `publish`
 
-Sends the expression result to an external message broker or outbox adapter. In the default (no-adapter) runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+External delivery of the named event `target`. Requires `RuntimeOptions.outboxStore` — fails closed with `MISSING_OUTBOX_STORE` when absent; when configured the event is delivered in-process AND durably enqueued to the outbox. In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 ### `persist`
 
-Invokes a persistence adapter with the expression result. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+Explicitly flushes the command's pending working-copy changes to the store, then clears them. Under a `TransactionProvider` it joins the command transaction; without one it is an immediate, non-reversible write. Multiple persists allowed. In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 ### `effect`
 
-Invokes a side-effect adapter. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+Invokes the host `RuntimeOptions.effectHandler` with the evaluated value and command context; its result becomes the action result. Fails closed with `MISSING_EFFECT_HANDLER` when no handler is configured. In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 
-`publish`, `persist`, and `effect` are no-ops unless you configure an adapter. When `deterministicMode` is `true`, calling any of them throws `ManifestEffectBoundaryError` — this is by design to enforce the effect boundary contract.
+`publish` and `effect` are fail-closed: without `outboxStore` / `effectHandler` the command returns `{ success: false }`. When `deterministicMode` is `true`, calling `publish`, `persist`, or `effect` throws `ManifestEffectBoundaryError` — this is by design to enforce the effect boundary contract.
 
 
 ## The `emits` keyword

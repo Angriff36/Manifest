@@ -1,0 +1,15 @@
+// Fixture 108: a publish action targeting an undeclared event is a hard compile error.
+// EMIT_ACTION_UNKNOWN_EVENT — emit/publish actions must name a declared event so the
+// emitted event has a real shape and channel. This is a shouldFail fixture.
+
+entity Order {
+  property id: string
+  property status: string = "new"
+
+  command ship() {
+    mutate status = "shipped"
+    publish OrderShipped
+  }
+}
+
+store Order in memory

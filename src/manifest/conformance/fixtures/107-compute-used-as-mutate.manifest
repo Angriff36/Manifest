@@ -1,0 +1,18 @@
+// Fixture 107: compute assigning to a declared property emits COMPUTE_USED_AS_MUTATE (warning).
+// Per spec (semantics.md § Actions), `compute` binds a command-scoped local and no
+// longer persists. Assigning to a declared property is almost certainly a mis-used
+// `mutate`, so the compiler warns (author should switch to `mutate` to keep persisting,
+// or keep `compute` for an ephemeral local). Compilation still succeeds (warning only).
+
+entity Counter {
+  property id: string
+  property count: number = 0
+  property lastAmount: number = 0
+
+  command bump(amount: number) {
+    mutate lastAmount = amount
+    compute count = count + amount
+  }
+}
+
+store Counter in memory

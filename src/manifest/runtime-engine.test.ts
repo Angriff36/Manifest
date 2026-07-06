@@ -1390,10 +1390,10 @@ describe('RuntimeEngine', () => {
     //  the single-column (1-element) and composite (n-element) case."
     //
     // The runtime engine extracts foreignKey.fields[0] during buildRelationshipIndex
-    // and uses that string as the FK property name for instance lookup.
-    // Composite FKs are unsupported: resolveRelationship fails closed with
-    // COMPOSITE_FK_UNSUPPORTED rather than guessing a row (the runtime is
-    // single-key-only by design).
+    // and uses that string as the FK property name for single-column lookup.
+    // Composite FKs (fields.length > 1) are resolved by matching every mapped
+    // fields/references column, so the exact row is selected even when several
+    // targets share a first-column value.
 
     it('resolves belongsTo via single-column FK (with <field> syntax)', async () => {
       const ir = await compileToIR(`
@@ -1414,30 +1414,32 @@ describe('RuntimeEngine', () => {
       expect(authorName).toBe('Alice');
     });
 
-    it('composite FK (fields.length > 1) fails closed with COMPOSITE_FK_UNSUPPORTED, never a silent wrong match', async () => {
-      // Composite FKs are a Prisma projection concern. The runtime deliberately does NOT
-      // attempt to resolve by fields[0] alone or via the `${relName}Id` convention:
-      // doing so would silently return the wrong row in multi-tenant schemas where
-      // fields[0] is a shared tenantId, not a unique identity. Instead the runtime
-      // fails closed with a structured COMPOSITE_FK_UNSUPPORTED error.
+    it('composite FK (fields.length > 1) resolves the exact row, never a wrong single-column match', async () => {
+      // In multi-tenant schemas fields[0] is a shared tenantId, not a unique
+      // identity. The runtime matches ALL composite FK columns, so it picks the
+      // right target even when two targets share the tenantId — a single-column
+      // resolution would have returned the wrong row.
       const ir = await compileToIR(`
         entity Tenant {
+          property tenantId: string
+          property orgId: string
           property tenantName: string
+          key [tenantId, orgId]
         }
         entity Item {
           property tenantId: string
           property orgId: string
-          belongsTo tenant: Tenant fields [tenantId, orgId]
+          belongsTo tenant: Tenant fields [tenantId, orgId] references [tenantId, orgId]
           computed resolvedTenantName: string = self.tenant.tenantName
         }
       `);
       const runtime = new RuntimeEngine(ir);
-      await runtime.createInstance('Tenant', { tenantName: 'Acme Corp' });
-      const item = await runtime.createInstance('Item', { tenantId: 'some-tenant', orgId: 'org-123' });
-      // Resolving the composite relationship must throw, not resolve to an ambiguous match.
-      await expect(
-        runtime.evaluateComputed('Item', item!.id, 'resolvedTenantName')
-      ).rejects.toThrow(/COMPOSITE_FK_UNSUPPORTED/);
+      // Two tenants share tenantId 't1'; only (tenantId, orgId) is unique.
+      await runtime.createInstance('Tenant', { tenantId: 't1', orgId: 'o1', tenantName: 'Acme Corp' });
+      await runtime.createInstance('Tenant', { tenantId: 't1', orgId: 'o2', tenantName: 'Beta LLC' });
+      const item = await runtime.createInstance('Item', { tenantId: 't1', orgId: 'o2' });
+      const resolved = await runtime.evaluateComputed('Item', item!.id, 'resolvedTenantName');
+      expect(resolved).toBe('Beta LLC');
     });
   });
 

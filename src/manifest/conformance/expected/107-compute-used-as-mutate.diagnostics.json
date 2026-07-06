@@ -1,0 +1,11 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "COMPUTE_USED_AS_MUTATE: compute 'count' in command 'bump' assigns to a declared property but 'compute' no longer persists. Change 'compute' to 'mutate' to keep persisting 'count', or keep 'compute' for an ephemeral local binding.",
+      "line": 14,
+      "column": 12
+    }
+  ]
+}

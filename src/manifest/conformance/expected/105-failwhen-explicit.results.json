@@ -1,0 +1,43 @@
+{
+  "testCases": [
+    {
+      "name": "failWhen overdrawn — positive balance passes (expression false, no violation)",
+      "entity": "Account",
+      "data": { "id": "a1", "balance": 100, "status": "active", "name": "Alice" },
+      "expectedConstraintFailures": []
+    },
+    {
+      "name": "failWhen overdrawn — negative balance fails (expression true = violation)",
+      "entity": "Account",
+      "data": { "id": "a2", "balance": -50, "status": "active", "name": "Bob" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "overdrawn",
+          "expression": "self.balance < 0"
+        }
+      ]
+    },
+    {
+      "name": "positive polarity hasName — empty name fails (expression false = violation)",
+      "entity": "Account",
+      "data": { "id": "a3", "balance": 0, "status": "active", "name": "" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "hasName",
+          "expression": "self.name != \"\""
+        }
+      ]
+    },
+    {
+      "name": "failWhen suspendedWarn — suspended status warns but does not block",
+      "entity": "Account",
+      "data": { "id": "a4", "balance": 0, "status": "suspended", "name": "Carol" },
+      "expectedConstraintFailures": [
+        {
+          "constraintName": "suspendedWarn",
+          "expression": "self.status == \"suspended\""
+        }
+      ]
+    }
+  ]
+}

@@ -153,9 +153,9 @@ The runtime returns a failure diagnostic that includes:
 
 ### What is the difference between `read`, `execute`, and `all` policy scopes?
 
-- **`read`**: NOT enforced by default (application-defined reads)
+- **`read`**: Enforced at the runtime read gate (`getInstance`/`getAllInstances`), fail-closed. Reads that bypass the engine (e.g. direct-DB projection routes) are not gated.
 - **`execute`**: Enforced during command execution
-- **`all`**: Enforced during all operations
+- **`all`**: Enforced during command execution AND at the read gate
 
 See: `docs/spec/semantics.md` → Authorization
 
@@ -169,9 +169,9 @@ Non-blocking constraints are recorded in the result under `constraintOutcomes`.
 
 ### Are read operations (GET) validated?
 
-No. Per `docs/spec/semantics.md`, policies scoped to `read` are NOT enforced by default.
+Reads that go through the engine are gated: per `docs/spec/semantics.md` § Policies, `read` (and `all`) policies are enforced at a central read gate in `getInstance`/`getAllInstances` (denied reads fail closed — `undefined` / row omitted).
 
-Reads are application-defined and may use direct storage queries. Only mutations require runtime command execution.
+Reads that bypass the engine (e.g. generated direct-DB projection routes) are not gated by the runtime. Mutations require runtime command execution.
 
 See: `docs/guides/usage-patterns.md` → Read vs. Write Strategy
 

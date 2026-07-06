@@ -1,0 +1,9 @@
+{
+  "shouldFail": false,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "message": "Entity 'Widget' is persisted (has store) but has no commands and is not referenced by any relationship — it is unreachable in the product. Add commands or relationships, or remove the entity."
+    }
+  ]
+}

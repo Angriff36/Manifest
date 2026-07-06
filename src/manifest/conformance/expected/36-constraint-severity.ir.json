@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "bdc8c1faa174ce89a9ef126ac45e6f07d0037e691e551bcf20b5f7fddcfb9968",
+    "irHash": "7dc6cd296e2dcf52cbd997e190dbd3a3433de831d1c0b7d31b1ff735ae6ea92e",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -201,6 +201,7 @@
             }
           },
           "severity": "warn",
+          "failWhen": true,
           "message": "Task is overdue",
           "overrideable": false
         },
@@ -223,6 +224,7 @@
             }
           },
           "severity": "block",
+          "failWhen": true,
           "message": "Cannot modify cancelled tasks",
           "overrideable": false
         }

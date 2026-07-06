@@ -1,0 +1,23 @@
+// Fixture 104: ok severity always forces passed=true regardless of expression result
+// Spec: semantics.md "ok constraints are informational only; the runtime MUST force
+// passed=true regardless of expression truthiness."
+
+entity Widget {
+  property id: string
+  property name: string = ""
+  property score: number = 0
+
+  // ok with positive polarity — expression FALSE → passed must still be true
+  constraint infoNameProvided:ok self.name != "" "Name is provided"
+
+  // ok with a positive-polarity expression that is TRUE → also passed=true
+  constraint infoScoreNonNeg:ok self.score >= 0 "Score is non-negative"
+
+  // warn with same false expression — must still return passed=false
+  constraint warnNameMissing:warn self.name != "" "Name should be provided"
+
+  // block with false expression — must return passed=false and block
+  constraint requireId:block self.id != "" "ID is required"
+}
+
+store Widget in memory

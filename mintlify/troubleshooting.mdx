@@ -237,11 +237,11 @@ The issues below cover the most common problems reported when working with Manif
 
     **Why it happens**
 
-    This is correct behavior. Per the Manifest language specification, `read`-scoped policies are **not** enforced by default. Read operations are application-defined and may bypass the runtime entirely to query storage directly.
+    `read`-scoped policies ARE enforced by the runtime — but only at the engine's read gate (`getInstance` / `getAllInstances`). If your reads bypass the engine — for example generated Next.js GET routes that query the database directly — they are not gated. The policy is enforced only when a read flows through `runtime.getInstance` / `runtime.getAllInstances`.
 
     **How to fix it**
 
-    If you need a policy enforced during command execution, use the `execute` or `all` scope instead. Policies are entity-level declarations with the form `policy Name scope: expression`:
+    Route reads through the engine's `getInstance` / `getAllInstances` to have `read` (or `all`) policies enforced (a denied read returns `undefined` / omits the row). If you instead want a policy enforced during command execution, use the `execute` or `all` scope. Policies are entity-level declarations with the form `policy Name scope: expression`:
 
     ```manifest
     entity Resource {
@@ -259,7 +259,7 @@ The issues below cover the most common problems reported when working with Manif
     store Resource in memory
     ```
 
-    `execute` is enforced during `runCommand`. `all` is enforced during all operations. Only use `read` if you are implementing application-level read authorization outside the runtime.
+    `execute` is enforced during `runCommand`. `all` is enforced during command execution AND at the read gate. `read` is enforced at the read gate only.
   </Accordion>
 
   <Accordion title="Generated Next.js routes don't work">

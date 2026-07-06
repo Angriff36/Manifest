@@ -31,7 +31,7 @@ export const KEYWORDS = new Set([
   // vNext default policy keyword
   'default',
   // vNext constraint keywords
-  'overrideable', 'ok', 'warn', 'block',
+  'overrideable', 'failWhen', 'ok', 'warn', 'block',
   // vNext optimistic concurrency keywords
   'versionProperty', 'versionAtProperty',
   // vNext state transition keywords

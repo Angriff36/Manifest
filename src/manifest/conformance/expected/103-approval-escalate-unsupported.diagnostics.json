@@ -1,0 +1,11 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Approval 'escalateApproval' declares onTimeout: 'escalate', which is not supported in this version. Use onTimeout: 'cancel' instead.",
+      "line": 16,
+      "column": 11
+    }
+  ]
+}

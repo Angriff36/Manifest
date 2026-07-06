@@ -2,7 +2,7 @@
   "version": "1.0",
   "provenance": {
     "contentHash": "normalized-content-hash",
-    "irHash": "715e1ef4233c92e72b8ffcc166b3fceb67b6ce8bf3ae7569d6cb45def25e3f2d",
+    "irHash": "d5efdba100739ac0553310692f9b64916386fbde4e8d928deb0506adf47bbc3b",
     "compilerVersion": "normalized-compiler-version",
     "schemaVersion": "1.0",
     "compiledAt": "2024-01-01T00:00:00.000Z"
@@ -621,7 +621,7 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "cleaned",
           "expression": {
             "kind": "call",
@@ -638,7 +638,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "partCount",
           "expression": {
             "kind": "call",
@@ -671,7 +671,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "hasPrefix",
           "expression": {
             "kind": "call",
@@ -695,7 +695,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "hasSuffix",
           "expression": {
             "kind": "call",
@@ -719,7 +719,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "swapped",
           "expression": {
             "kind": "call",
@@ -750,7 +750,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "upper",
           "expression": {
             "kind": "call",
@@ -767,7 +767,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "lower",
           "expression": {
             "kind": "call",
@@ -784,7 +784,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "charCount",
           "expression": {
             "kind": "call",
@@ -801,7 +801,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "slice",
           "expression": {
             "kind": "call",
@@ -832,7 +832,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "foundAt",
           "expression": {
             "kind": "call",
@@ -893,7 +893,7 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "absolute",
           "expression": {
             "kind": "call",
@@ -910,7 +910,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "rounded",
           "expression": {
             "kind": "call",
@@ -927,7 +927,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "floored",
           "expression": {
             "kind": "call",
@@ -944,7 +944,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "ceiled",
           "expression": {
             "kind": "call",
@@ -961,7 +961,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "smallest",
           "expression": {
             "kind": "call",
@@ -992,7 +992,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "largest",
           "expression": {
             "kind": "call",
@@ -1060,7 +1060,7 @@
       "constraints": [],
       "actions": [
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "total",
           "expression": {
             "kind": "call",
@@ -1093,7 +1093,7 @@
           }
         },
         {
-          "kind": "compute",
+          "kind": "mutate",
           "target": "itemCount",
           "expression": {
             "kind": "call",

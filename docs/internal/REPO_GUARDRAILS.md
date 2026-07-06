@@ -169,12 +169,13 @@ This document defines automated guardrails and development protocols that protec
 
 ### 6. Effect Boundary Contracts
 
-**Invariant**: Actions `persist`, `publish`, and `effect` are adapter hooks with default no-op behavior.
+**Invariant** *(updated 2026-07-06, Wave-2 Item 3)*: Adapter actions are **fail-closed**, not no-ops.
 
-**Required Behavior** (from `docs/spec/adapters.md:83-96`):
-- No adapter installed: Action is no-op, returns evaluated expression value
-- Adapter installed: Delegates to adapter implementation
-- Adapters must be deterministic for conformance tests
+**Required Behavior** (from `docs/spec/adapters.md` § "Action Adapters"):
+- `persist`: flushes the command's working-copy buffer to the store (`flushCommandBuffer`); needs no adapter. Joins the command transaction under a `TransactionProvider`.
+- `publish`: requires `RuntimeOptions.outboxStore` — fails closed `MISSING_OUTBOX_STORE` when absent; durable via the post-success `enqueueOutbox` pass.
+- `effect`: requires `RuntimeOptions.effectHandler` — fails closed `MISSING_EFFECT_HANDLER` when absent.
+- All three throw `ManifestEffectBoundaryError` in deterministic mode. Adapters must be deterministic for conformance tests.
 
 **Protection Mechanisms**:
 - Action execution at runtime-engine.ts:1194-1246

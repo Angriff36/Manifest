@@ -105,7 +105,7 @@ Quick-reference for every runtime primitive. Use this to decide what to reach fo
 | **What** | When `true`, `persist`, `publish`, and `effect` action kinds throw `ManifestEffectBoundaryError` instead of executing. Guarantees no side effects leak through. |
 | **Configure** | `RuntimeOptions.deterministicMode: true` |
 | **Scope** | Per engine instance. |
-| **Default** | `false` — side-effect actions use their adapter (or no-op if no adapter). |
+| **Default** | `false` — side-effect actions run: `persist` flushes the working-copy buffer, `publish` requires `outboxStore` (else fails closed `MISSING_OUTBOX_STORE`), `effect` requires `effectHandler` (else fails closed `MISSING_EFFECT_HANDLER`). |
 | **Use when** | Replay verification, conformance testing, unit testing where you want to prove no side effects. |
 | **Limitations** | Throws a hard error (not a `CommandResult` failure) because effect boundary violations are programming mistakes. Callers must catch `ManifestEffectBoundaryError` if they expect it. |
 | **Spec** | `docs/spec/manifest-vnext.md` § "Effect Boundary Enforcement", `docs/spec/adapters.md` § "Deterministic Mode" |
@@ -166,7 +166,7 @@ Three levels, evaluated during command execution:
 
 | Severity | Blocks Execution? | Overrideable? | Use For |
 |----------|------------------|---------------|---------|
-| `ok` | Never | No | Informational logging. At runtime `passed` is derived from the expression result (same as `warn`), so an `ok` constraint CAN have `passed: false`. This diverges from `docs/spec/semantics.md:139` which states ok always passes — see spec-vs-code conflict note. |
+| `ok` | Never | No | Informational logging. The runtime forces `passed = true` regardless of expression result — an `ok` constraint never appears as a failure. The expression is still evaluated for observability (details, resolved values). |
 | `warn` | Never | No | Non-blocking alerts. UI shows yellow warning, operator sees it, proceeds. |
 | `block` | Yes (unless overridden) | If `overrideable: true` | Hard stops. Inventory stockout, capacity exceeded, invalid data. |
 
@@ -230,8 +230,8 @@ Three levels, evaluated during command execution:
 | **Scope** | Per entity. |
 | **Default** | No policies → all operations permitted. |
 | **Use when** | Role-based access control, tenant isolation at the rule layer. |
-| **Limitations** | Rate-limit is checked first, then policies, then command-level constraints, then guards. A denied policy returns immediately. |
-| **Spec** | `docs/spec/semantics.md` § "Commands" |
+| **Limitations** | For `execute`/`all` policies at command time: rate-limit is checked first, then policies, then command-level constraints, then guards; a denied policy returns immediately. `read`/`all` policies are ALSO enforced at the runtime read gate (`getInstance`/`getAllInstances`): a denied read fails closed (`undefined` / row omitted), evaluated per row for `self.*` policies. `write`/`delete` scopes are not enforced on the store. |
+| **Spec** | `docs/spec/semantics.md` § "Commands", § "Policies" |
 
 ### Computed Properties
 

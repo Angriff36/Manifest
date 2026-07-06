@@ -1,0 +1,32 @@
+// Composite-key runtime identity — end-to-end (create / update / get + relationship).
+// The runtime keys a `key`-declaring entity by its encoded key tuple, so it is
+// addressable by that canonical string via createInstance/getInstance/runCommand,
+// and a multi-column belongsTo resolves the exact target row.
+entity Warehouse {
+  property region: string required
+  property code: string required
+  property name: string
+  key [region, code]
+  hasMany bins: Bin
+
+  command rename(newName: string) {
+    mutate name = newName
+  }
+}
+
+entity Bin {
+  property region: string required
+  property warehouseCode: string required
+  property slot: string required
+  property label: string
+  key [region, warehouseCode, slot]
+  belongsTo warehouse: Warehouse fields [warehouseCode, region] references [code, region]
+  computed warehouseName: string = self.warehouse.name
+
+  command relabel(newLabel: string) {
+    mutate label = newLabel
+  }
+}
+
+store Warehouse in memory
+store Bin in memory

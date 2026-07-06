@@ -99,12 +99,12 @@ The expression after the scope keyword is evaluated before any command runs. If 
 | Scope     | When enforced |
 |-----------|---------------|
 | `execute` | Before any command execution |
-| `read`    | On entity read operations (not enforced by default runtime) |
+| `read`    | At the runtime read gate — `getInstance` / `getAllInstances` |
 | `write`   | On entity write operations (not enforced by default runtime) |
-| `all`     | Equivalent to `execute` in the default runtime |
+| `all`     | Both command execution and the read gate |
 | `override` | Before authorizing a constraint override (vNext) |
 
-The runtime enforces `execute` and `all` scopes by default. `read`, `write`, and `delete` scopes are not enforced by the default runtime — they are available for custom adapter or projection logic.
+The runtime enforces `execute` and `all` scopes before command execution. `read` (and `all`) scopes are **also** enforced at a single central read gate in `getInstance` / `getAllInstances`: a denied read fails closed — `getInstance` returns `undefined` (no existence leak) and `getAllInstances` omits the denied rows. A read policy referencing `self.*` is evaluated per row; a context-only policy is evaluated once per call. The internal execution read path (guards, actions, computed properties) is un-gated, so read policies never change command results. `write` and `delete` scopes are still enforced only at command execution (via `command.policies`), not on the store — they are otherwise available for custom adapter or projection logic.
 
 ### Binding a policy to an entity
 

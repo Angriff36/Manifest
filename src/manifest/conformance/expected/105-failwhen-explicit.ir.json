@@ -1,0 +1,317 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "134e063f37aca6fef8ce74b5076bd1044cf7be0e187924d087bf3435790b1281",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Account",
+      "properties": [
+        {
+          "name": "id",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "balance",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "number",
+            "value": 0
+          },
+          "modifiers": []
+        },
+        {
+          "name": "status",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": "active"
+          },
+          "modifiers": []
+        },
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "open",
+        "suspend",
+        "withdraw"
+      ],
+      "constraints": [
+        {
+          "name": "hasName",
+          "code": "hasName",
+          "expression": {
+            "kind": "binary",
+            "operator": "!=",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "name"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": ""
+              }
+            }
+          },
+          "severity": "block",
+          "message": "Account must have a name",
+          "overrideable": false
+        },
+        {
+          "name": "overdrawn",
+          "code": "overdrawn",
+          "expression": {
+            "kind": "binary",
+            "operator": "<",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "number",
+                "value": 0
+              }
+            }
+          },
+          "severity": "block",
+          "failWhen": true,
+          "message": "Account is overdrawn",
+          "overrideable": false
+        },
+        {
+          "name": "suspendedWarn",
+          "code": "suspendedWarn",
+          "expression": {
+            "kind": "binary",
+            "operator": "==",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "status"
+            },
+            "right": {
+              "kind": "literal",
+              "value": {
+                "kind": "string",
+                "value": "suspended"
+              }
+            }
+          },
+          "severity": "warn",
+          "failWhen": true,
+          "message": "Account is suspended",
+          "overrideable": false
+        }
+      ],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Account",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [
+    {
+      "name": "AccountOpened",
+      "channel": "account.opened",
+      "payload": [
+        {
+          "name": "accountId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "open",
+      "entity": "Account",
+      "parameters": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "name"
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "active"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "suspend",
+      "entity": "Account",
+      "parameters": [],
+      "guards": [],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "status",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "suspended"
+            }
+          }
+        }
+      ],
+      "emits": []
+    },
+    {
+      "name": "withdraw",
+      "entity": "Account",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": {
+            "name": "number",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "member",
+            "object": {
+              "kind": "identifier",
+              "name": "input"
+            },
+            "property": "amount"
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "compute",
+          "expression": {
+            "kind": "literal",
+            "value": {
+              "kind": "string",
+              "value": "Amount must be positive"
+            }
+          }
+        },
+        {
+          "kind": "mutate",
+          "target": "balance",
+          "expression": {
+            "kind": "binary",
+            "operator": "-",
+            "left": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "balance"
+            },
+            "right": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "input"
+              },
+              "property": "amount"
+            }
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [],
+  "reactions": []
+}

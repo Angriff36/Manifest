@@ -3,6 +3,14 @@
   "diagnostics": [
     {
       "severity": "warning",
+      "message": "CONSTRAINT_POLARITY_NAME_HEURISTIC: Constraint 'severityWarnOverdue' uses the legacy name-prefix heuristic for negative polarity. Declare 'failWhen: true' explicitly and rename the constraint to suppress this warning."
+    },
+    {
+      "severity": "warning",
+      "message": "CONSTRAINT_POLARITY_NAME_HEURISTIC: Constraint 'severityBlockCancelled' uses the legacy name-prefix heuristic for negative polarity. Declare 'failWhen: true' explicitly and rename the constraint to suppress this warning."
+    },
+    {
+      "severity": "warning",
       "message": "Entity 'Task' is persisted (has store) but has no commands and is not referenced by any relationship — it is unreachable in the product. Add commands or relationships, or remove the entity."
     }
   ]

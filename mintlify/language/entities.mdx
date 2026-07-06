@@ -128,7 +128,7 @@ Each constraint has a severity that controls what happens when it evaluates to `
 
 | Severity | Behavior |
 |----------|----------|
-| `ok`     | Informational only. Does not halt execution. The `passed` field still reflects the actual expression result at the reference runtime (behaves like `warn` in practice). |
+| `ok`     | Informational only. Does not halt execution. The runtime forces `passed = true` — an `ok` constraint never appears as a failure. The expression is still evaluated for observability. |
 | `warn`   | Produces a `ConstraintOutcome` with the real result but does **not** halt execution. |
 | `block`  | Halts execution when the expression evaluates to `false` (default). |
 
@@ -215,7 +215,7 @@ entity Order {
 }
 ```
 
-When the Prisma projection sees a `key`, it emits `@@id([tenantId, id])` instead of a single `@id` field. The reference runtime ignores `entity.key` and always resolves instances by `'id'`; composite-key enforcement is a projection concern only.
+When the Prisma projection sees a `key`, it emits `@@id([tenantId, id])` instead of a single `@id` field. The reference runtime also honors `entity.key`: it derives a deterministic canonical identity string from the key tuple (each component percent-encodes `%` and `|`, joined with `|`) and persists each instance under that string, so a composite-key entity is addressable by it through `getInstance`/`updateInstance`/`deleteInstance` and `runCommand`'s `instanceId`. Instances differing in any key component are distinct even when they share another column's value.
 
 ### Alternate keys
 
@@ -251,7 +251,7 @@ belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenan
 
 `fields` names properties on the current entity; `references` names the corresponding columns on the target. If `references` is omitted, `[id]` is assumed.
 
-**Runtime note**: The Manifest runtime uses a single-key in-memory store. Composite FKs are a projection concern — the runtime only resolves single-column FKs. A `belongsTo` with `fields.length > 1` fails closed at runtime with a structured `COMPOSITE_FK_UNSUPPORTED` error (it never guesses a row from a partial key). Use a `storeProvider` adapter backed by a real database when composite-FK resolution is required.
+**Runtime note**: The Manifest runtime resolves composite foreign keys. A `belongsTo`/`ref` with `fields.length > 1` (and the inverse `hasMany`/`hasOne`) selects the target row where every mapped `fields`/`references` column is equal, so it picks the exact row even when several targets share a first-column value. Local FK columns are paired with target columns via `references`; when `references` is absent or mismatched, the target entity's declared `key` columns are paired positionally, else the field names are assumed to match. If any local FK column is unset the relationship resolves to `null`/`[]`.
 
 ### Referential actions
 

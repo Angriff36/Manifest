@@ -96,19 +96,20 @@ The following actions are adapter hooks:
 - `publish`
 - `effect`
 
-### Default Behavior
-- If no adapter is installed for an action kind, the runtime MUST treat the action as a no-op and return the evaluated expression value.
+### Default Behavior (vNext — fail-closed)
+Each adapter action has real, distinct semantics (see `semantics.md` § "Actions"). Missing configuration is a fault, not a silent no-op:
+- `persist`: flushes the command's pending working-copy patch to the store via `store.update(..., activeTx)` and clears the patch. Needs no adapter — it uses the entity's store. Under a `TransactionProvider` it joins the command transaction (atomic-on-failure); without one it is an immediate, non-reversible write. Multiple `persist` actions per command are permitted, each flushing only the deltas since the previous flush.
+- `publish`: external delivery of the NAMED event. Requires `RuntimeOptions.outboxStore`; when absent the action **fails closed** with a `MISSING_OUTBOX_STORE` command error (returns `{ success: false }`, persists nothing). When configured, the event is delivered in-process AND durably enqueued by the command's post-success `enqueueOutbox` pass (threading the active transaction).
+- `effect`: invokes `RuntimeOptions.effectHandler` with `{ name?, value, commandName, entityName?, instanceId?, context }`; the handler's resolved value becomes the action result. When absent the action **fails closed** with a `MISSING_EFFECT_HANDLER` command error.
 
 ### Optional Adapter Contracts
-Implementations MAY add adapters with the following contracts:
-- `persist`: persist current instance state and return a persisted value or confirmation.
-- `publish`: publish the evaluated value to an external event bus.
-- `effect`: invoke external side effects (HTTP, storage, timers, custom).
+- `RuntimeOptions.effectHandler`: host side-effect dispatcher for `effect` actions.
+- `RuntimeOptions.outboxStore`: durable delivery target for `publish` actions (and all command-emitted events). See § "Outbox Store".
 
 Adapters MUST be deterministic with respect to a deterministic runtime configuration when used in conformance tests.
 
 ### Deterministic Mode Exception (vNext)
-When `RuntimeOptions.deterministicMode` is `true`, the default no-op behavior for `persist`, `publish`, and `effect` is replaced with a hard error (`ManifestEffectBoundaryError`). This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures. See `semantics.md` for the normative command execution order.
+When `RuntimeOptions.deterministicMode` is `true` (or `context.deterministic` is `true`), `persist`, `publish`, and `effect` throw a hard error (`ManifestEffectBoundaryError`) **before** any evaluation or fail-closed check. This enforces the effect boundary contract: adapter actions in a deterministic context are programming errors, not runtime domain failures. See `semantics.md` for the normative command execution order.
 
 ### IdempotencyStore (vNext)
 A conforming runtime MAY accept an `IdempotencyStore` via `RuntimeOptions`. The `IdempotencyStore` interface provides:
@@ -119,8 +120,8 @@ A conforming runtime MAY accept an `IdempotencyStore` via `RuntimeOptions`. The 
 When configured, the runtime MUST require a caller-provided `idempotencyKey` in command options. Both successful and failed `CommandResult` values are cached. The idempotency check runs before any command evaluation (see `semantics.md` for placement in the execution order).
 
 ### Nonconformance
-- ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~
-- **CORRECT BEHAVIOR (2026-02-05)**: Per spec, the default behavior when no adapter is installed IS to treat actions as no-ops and return the evaluated expression value. The runtime correctly implements this default behavior at runtime-engine.ts:881-894.
+- ~~The IR runtime treats `persist`, `publish`, and `effect` as no-ops.~~ *(Superseded 2026-07-06, Wave-2 Item 3.)*
+- **CURRENT BEHAVIOR (2026-07-06)**: adapter actions are fail-closed, not no-ops. `persist` flushes the working-copy buffer; `publish` requires `outboxStore` (else `MISSING_OUTBOX_STORE`); `effect` requires `effectHandler` (else `MISSING_EFFECT_HANDLER`). All three throw `ManifestEffectBoundaryError` in deterministic mode. Implemented in `runtime-engine.ts` `executeAction`.
 
 ## Canonical Dispatcher (Transport Boundary)
 

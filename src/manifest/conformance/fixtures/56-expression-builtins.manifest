@@ -14,16 +14,16 @@ entity StringUtils {
 
   command testStringOps(input: string) {
     guard input != ""
-    compute cleaned = trim(input)
-    compute partCount = count(split(input, ","))
-    compute hasPrefix = startsWith(input, "hello")
-    compute hasSuffix = endsWith(input, "world")
-    compute swapped = replace(input, "old", "new")
-    compute upper = toUpperCase(input)
-    compute lower = toLowerCase(input)
-    compute charCount = length(input)
-    compute slice = substring(input, 0, 5)
-    compute foundAt = indexOf(input, "world")
+    mutate cleaned = trim(input)
+    mutate partCount = count(split(input, ","))
+    mutate hasPrefix = startsWith(input, "hello")
+    mutate hasSuffix = endsWith(input, "world")
+    mutate swapped = replace(input, "old", "new")
+    mutate upper = toUpperCase(input)
+    mutate lower = toLowerCase(input)
+    mutate charCount = length(input)
+    mutate slice = substring(input, 0, 5)
+    mutate foundAt = indexOf(input, "world")
     emit StringOpsCompleted
   }
 }
@@ -42,12 +42,12 @@ entity MathUtils {
 
   command testMathOps(value: number) {
     guard value != 0
-    compute absolute = abs(value)
-    compute rounded = round(value)
-    compute floored = floor(value)
-    compute ceiled = ceil(value)
-    compute smallest = min(value, 0, 100)
-    compute largest = max(value, 0, 100)
+    mutate absolute = abs(value)
+    mutate rounded = round(value)
+    mutate floored = floor(value)
+    mutate ceiled = ceil(value)
+    mutate smallest = min(value, 0, 100)
+    mutate largest = max(value, 0, 100)
     emit MathOpsCompleted
   }
 }
@@ -59,8 +59,8 @@ entity ArrayUtils {
 
   command testArrayOps(scores: string) {
     guard scores != ""
-    compute total = sum(split(scores, ","))
-    compute itemCount = count(split(scores, ","))
+    mutate total = sum(split(scores, ","))
+    mutate itemCount = count(split(scores, ","))
     emit ArrayOpsCompleted
   }
 }
