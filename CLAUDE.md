@@ -312,7 +312,28 @@ Active: [new session]
 Last: [first session]
 
 ## Last Session Bridge
-[Emergency bridge — running bridge was not updated]
-Files: src/manifest/projections/prisma/generator.test.ts (edit), src/manifest/projections/prisma/generator.ts (edit), CHANGELOG.md (edit), src/manifest/projections/prisma/options.ts (edit), check-uuid.mjs (create), C:/Projects/capsule-pro/manifest/source/_base.manifest (edit)
+[pre-compact bridge — saved before context compaction]
+Files (31):
+  C:/Users/Ryan/AppData/Local/Temp/claude/C--Projects-Manifest/44b2d1d4-7984-4636-b5be-4433c541aad5/scratchpad/feature-status-matrix.md (create)
+  irexplained.md (edit)
+  mintlify/adapters/custom-stores.mdx (edit)
+  mintlify/projections/convex.mdx (edit)
+  mintlify/language/entities.mdx (edit)
+  mintlify/introduction.mdx (edit)
+  mintlify/language/commands.mdx (edit)
+  mintlify/faq.mdx (edit)
+  mintlify/language/stores.mdx (edit)
+  mintlify/integration/embedded-runtime.mdx (edit)
+  mintlify/language/approvals.mdx (edit)
+  mintlify/integration/overview.mdx (edit)
+  mintlify/language/guards-policies.mdx (edit)
+  mintlify/extensibility/runtime-middleware.mdx (edit)
+  mintlify/language/types.mdx (edit)
+  mintlify/whats-new.mdx (edit)
+  docs/features/entity-inheritance.md (edit)
+  mintlify/language/roles.mdx (edit)
+  docs/guides/primitives-reference.md (edit)
+  docs/features/approval-workflows.md (edit)
+  ... +11 more
 
 # === END COGNILAYER ===
