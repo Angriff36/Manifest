@@ -166,7 +166,7 @@ Three levels, evaluated during command execution:
 
 | Severity | Blocks Execution? | Overrideable? | Use For |
 |----------|------------------|---------------|---------|
-| `ok` | Never | No | Informational logging. Always passes regardless of expression result. |
+| `ok` | Never | No | Informational logging. At runtime `passed` is derived from the expression result (same as `warn`), so an `ok` constraint CAN have `passed: false`. This diverges from `docs/spec/semantics.md:139` which states ok always passes — see spec-vs-code conflict note. |
 | `warn` | Never | No | Non-blocking alerts. UI shows yellow warning, operator sees it, proceeds. |
 | `block` | Yes (unless overridden) | If `overrideable: true` | Hard stops. Inventory stockout, capacity exceeded, invalid data. |
 
@@ -230,7 +230,7 @@ Three levels, evaluated during command execution:
 | **Scope** | Per entity. |
 | **Default** | No policies → all operations permitted. |
 | **Use when** | Role-based access control, tenant isolation at the rule layer. |
-| **Limitations** | Policies run first, then command-level constraints, then guards. A denied policy returns immediately. |
+| **Limitations** | Rate-limit is checked first, then policies, then command-level constraints, then guards. A denied policy returns immediately. |
 | **Spec** | `docs/spec/semantics.md` § "Commands" |
 
 ### Computed Properties
@@ -338,13 +338,15 @@ Reactions connect events to commands declaratively: when an event is emitted, th
 Every `runCommand` call follows this fixed order. No primitive changes it:
 
 ```
-1. Idempotency check       → cached result returned if key exists (when configured)
-2. Policies                → authorization (deny = immediate failure)
-3. Command constraints     → severity-based (block = failure unless overridden)
-4. Guards                  → preconditions (first false = failure)
-5. Actions                 → mutations (transition validation during mutate), effects
-6. Events                  → emitted in declaration order
-7. Return CommandResult
+1. Tenant gate             → MISSING_TENANT_CONTEXT when required and absent
+2. Idempotency check       → cached result returned if key exists (when configured)
+3. Rate-limit check        → RATE_LIMIT_EXCEEDED before any domain logic
+4. Policies                → authorization (deny = immediate failure)
+5. Command constraints     → severity-based (block = failure unless overridden)
+6. Guards                  → preconditions (first false = failure)
+7. Actions                 → mutations (transition validation during mutate), effects
+8. Events                  → emitted in declaration order
+9. Return CommandResult
 ```
 
 Budget tracking (`EvaluationLimits`) wraps the entire flow. If any expression evaluation exceeds the budget during steps 2–7, the command fails.

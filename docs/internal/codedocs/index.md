@@ -26,7 +26,7 @@ Manifest is a TypeScript-first domain modeling language and runtime that compile
 
 ## The Solution
 
-Manifest turns domain logic into a compiled contract. The compiler in `src/manifest/ir-compiler.ts` produces a canonical IR, and the runtime in `src/manifest/runtime-engine.ts` executes commands in a fixed order: tenant gate, idempotency, policies, constraints, guards, actions, emits, then adapter hooks such as audit and outbox.
+Manifest turns domain logic into a compiled contract. The compiler in `src/manifest/ir-compiler.ts` produces a canonical IR, and the runtime in `src/manifest/runtime-engine.ts` executes commands in a fixed order: tenant gate, idempotency, rate-limit, policies, constraints, guards, actions, emits, then adapter hooks such as audit and outbox.
 
 ```ts
 import { RuntimeEngine } from '@angriff36/manifest';

@@ -212,7 +212,7 @@ policy canApproveLargeAmounts override:
   "Only managers and admins can approve large amounts"
 ```
 
-If the override policy passes, the constraint outcome is marked `overridden: true` and the runtime emits a synthetic `OverrideApplied` event. Attempts to override a constraint that is not marked `overrideable` are always rejected.
+If the override policy passes, the constraint outcome is marked `overridden: true`. Note: this auto-policy path does **not** emit a synthetic `OverrideApplied` event — only an explicit `OverrideRequest` supplied by the caller produces an `OverrideApplied` audit event. Attempts to override a constraint that is not marked `overrideable` are always rejected.
 
 ## Default-deny enforcement
 

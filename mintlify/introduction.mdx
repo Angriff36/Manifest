@@ -11,7 +11,7 @@ Manifest is a formal language for expressing domain logic — the rules, constra
 Every Manifest program moves through two stages:
 
 1. **Compile** — your `.manifest` source is parsed and transformed to IR v1 JSON. The IR is the canonical contract between the compiler and everything downstream.
-2. **Execute** — the `RuntimeEngine` accepts the IR plus a runtime context (user identity, tenant, etc.) and runs commands. Execution always follows the same order: policies → guards → actions → event emissions.
+2. **Execute** — the `RuntimeEngine` accepts the IR plus a runtime context (user identity, tenant, etc.) and runs commands. Execution always follows the same order: rate-limit → policies → constraints → guards → actions → event emissions.
 
 Because the IR is immutable at runtime, all variability enters through the runtime context. Identical IR plus identical context always produces identical results.
 

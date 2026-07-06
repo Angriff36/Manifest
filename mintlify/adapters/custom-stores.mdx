@@ -141,7 +141,7 @@ The runtime ships with first-party support for the following targets:
 | `dynamodb` | AWS DynamoDB. Single-table design with composite keys. See [DynamoDB adapter](/adapters/dynamodb). |
 | `redis` | Redis hash-based storage with pub/sub events. See [Redis adapter](/adapters/redis). |
 | `turso` | Turso / libSQL edge database. See [Turso adapter](/adapters/turso). |
-| `event-sourced` | Append-only event log with snapshotting and replay. See [Event-sourced store](/adapters/event-sourced-store). |
+| `event-sourced` | Not a working runtime target. `store X in eventSourced` parses and records the target in IR, but no store class backs it — there is no snapshotting, replay, or auto-instantiation. See [Event-sourced store](/adapters/event-sourced-store) for patterns using real shipped primitives. |
 
 ## Unsupported targets throw — there is no silent fallback
 

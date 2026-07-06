@@ -39,6 +39,8 @@ role Admin extends Manager {
 - `hasPermission(action, target?)` — checks if the current user's role grants a permission (reads `context.user.role`)
 - `roleAllows(roleName, action)` — checks if a named role allows an action
 
+**Role name matching is exact and case-sensitive.** `'Admin'` and `'admin'` are treated as different roles. A caller supplying the wrong case silently receives `false` with no error. Ensure role names in `context.user.role` match the declared role names exactly.
+
 ## Context-Sensitive `role` Keyword
 
 The `role` keyword is context-sensitive — it is emitted as an identifier rather than a reserved keyword, so `property role: string` and `mutate role = "admin"` continue to parse without reserved-word errors.

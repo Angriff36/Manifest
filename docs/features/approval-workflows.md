@@ -47,7 +47,7 @@ entity PurchaseOrder {
 
 ## Runtime Behavior
 
-Execution gate order: policies → constraints → guards → **approval gate** → actions → emits
+Execution gate order: rate-limit → policies → constraints → guards → **approval gate** → actions → emits
 
 When a command has a matching approval declaration:
 1. The runtime evaluates each stage's `when` condition to determine required stages

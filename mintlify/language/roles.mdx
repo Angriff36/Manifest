@@ -81,6 +81,10 @@ Deny is not a suggestion; it is a hard rule. If `User` denies `impersonate`, the
 
 If a user's role does not match any declared role, the runtime returns `false` for all permission checks. There are no permissive defaults — an unrecognized role has no permissions. This is consistent with Manifest's default-deny posture. See [Guards and policies](/language/guards-policies) for the broader authorization model.
 
+<Warning>
+Role matching is **exact and case-sensitive**. `'Admin'` and `'admin'` are treated as different roles. A caller passing the wrong casing silently gets `false` with no error — the runtime treats it as an unknown role, not a near-miss. Ensure that the role strings your identity system produces exactly match the names declared in the `.manifest` file.
+</Warning>
+
 ## Using roles in policies
 
 Reference roles in policy expressions via the `user.role` binding and the built-in permission functions. Authorization is declared at the entity level with named `policy <name> execute:` rules (or a `default policy`); command bodies do not accept a `policy` clause:

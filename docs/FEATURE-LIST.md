@@ -1602,7 +1602,7 @@ Delete these debug files (permission denied in CLI):
 - Pre-existing TypeScript errors in `src/manifest/projections/openapi/generator.ts` and a `replaceAll` issue at `runtime-engine.ts:747` are unrelated to this feature
 - The `timestamps` modifier is idempotent — if a user manually declares `createdAt` or `updatedAt` properties, the auto-injection skips those fields
 - Runtime uses the existing `getNow()` method (respects `RuntimeOptions.now` for deterministic testing)
-- The `createdAt`/`updatedAt` properties are injected with the `readonly` modifier to prevent manual mutation
+- The `createdAt`/`updatedAt` properties are injected with the `readonly` modifier to signal they should not be mutated (the reference runtime does not enforce readonly at write time — projections consume the modifier for generated type safety)
 
 </details>
 

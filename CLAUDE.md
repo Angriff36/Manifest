@@ -313,6 +313,6 @@ Last: [first session]
 
 ## Last Session Bridge
 [Emergency bridge — running bridge was not updated]
-No changes or facts in this session.
+Files: src/manifest/projections/prisma/generator.test.ts (edit), src/manifest/projections/prisma/generator.ts (edit), CHANGELOG.md (edit), src/manifest/projections/prisma/options.ts (edit), check-uuid.mjs (create), C:/Projects/capsule-pro/manifest/source/_base.manifest (edit)
 
 # === END COGNILAYER ===

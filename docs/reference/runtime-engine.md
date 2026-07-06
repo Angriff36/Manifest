@@ -34,6 +34,7 @@ sequenceDiagram
 
   App->>Runtime: runCommand(name, input, options)
   Runtime->>Runtime: tenant gate and idempotency
+  Runtime->>Runtime: rate-limit check (if declared)
   Runtime->>Policy: evaluate command policies
   Runtime->>Runtime: evaluate command constraints
   Runtime->>Guard: run guards in order
@@ -46,7 +47,7 @@ sequenceDiagram
 
 The constructor builds store instances up front. `initializeStores()` walks every IR entity and either uses `RuntimeOptions.storeProvider` or falls back to the built-in memory or `localStorage` stores. This is why the root runtime stays browser-safe: server-only stores are injected, not imported directly.
 
-The main entry point is `runCommand()`. It first enforces `requireTenantContext`, then consults `idempotencyStore` if one is configured. The actual domain work happens in `_executeCommandInternal()`, which clears relationship memoization, resets concurrency tracking, resolves the command, builds the evaluation context, checks policies, evaluates command constraints, runs guards, executes actions, and then emits declared command events.
+The main entry point is `runCommand()`. It first enforces `requireTenantContext`, then consults `idempotencyStore` if one is configured. The actual domain work happens in `_executeCommandInternal()`, which clears relationship memoization, resets concurrency tracking, resolves the command, builds the evaluation context, enforces rate-limit (if declared), checks policies, evaluates command constraints, runs guards, executes actions, and then emits declared command events.
 
 Expression evaluation is handled by `evaluateExpression()`. It supports literals, identifiers, member access, binary and unary operators, calls, conditionals, arrays, objects, and lambdas. Built-ins such as `now()` and `uuid()` are injected by `getBuiltins()`. Member access on `self.someRelation` can trigger relationship resolution through `resolveRelationship()`, which indexes relationships once and memoizes resolved lookups per command execution.
 

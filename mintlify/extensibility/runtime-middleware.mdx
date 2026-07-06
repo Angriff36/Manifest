@@ -22,16 +22,17 @@ Each middleware declares which lifecycle hooks it participates in via a `hooks` 
 Hooks execute in a deterministic order that matches the command lifecycle documented in [Commands](/language/commands):
 
 1. Build evaluation context
-2. **`before-policy`** middleware
-3. Evaluate policies
-4. Evaluate command constraints
-5. **`before-guard`** middleware
-6. Evaluate guards
-7. **`before-action`** middleware
-8. Execute actions
-9. Emit declared events
-10. **`after-emit`** middleware
-11. Return `CommandResult`
+2. Evaluate rate limits (no middleware hook — returns `rateLimitExceeded` immediately if exceeded)
+3. **`before-policy`** middleware
+4. Evaluate policies
+5. Evaluate command constraints
+6. **`before-guard`** middleware
+7. Evaluate guards
+8. **`before-action`** middleware
+9. Execute actions
+10. Emit declared events
+11. **`after-emit`** middleware
+12. Return `CommandResult`
 
 ## The `MiddlewareContext` object
 

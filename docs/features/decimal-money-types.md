@@ -30,7 +30,9 @@ These types do not introduce runtime arithmetic or validation of their own. The 
 
 ## How it maps to projections
 
-The summary states the intent for `decimal`/`money` to map to Postgres `NUMERIC` and to a decimal library such as `Decimal.js` or `big.js` in generated TypeScript, with compile-time precision/scale validation. What is verified in source is the IR-level representation — the `params` object carrying precision and scale — which is the input a projection would consume. The specific generator mappings and compile-time precision validation are described as intent in the summary and are not present in the type/parser/compiler code reviewed.
+`IRType.params` carries precision and scale in the IR, but **no projection reads `IRType.params` directly**. The Prisma and Drizzle projections apply precision and scale from a separate `options.precision[Entity][property]` config object (e.g., `PrismaProjectionOptions.precision`), defaulting to `(12, 2)` when absent. `IRType.params` is currently stranded — compile-time precision/scale information is not propagated into generated schemas via the IR; callers must supply it through projection options.
+
+The summary states the intent for `decimal`/`money` to map to Postgres `NUMERIC` and to a decimal library such as `Decimal.js` or `big.js` in generated TypeScript. The specific generator mappings are projection-level choices; compile-time precision/scale validation is not implemented in the parser or IR compiler.
 
 ## Notes & limitations
 

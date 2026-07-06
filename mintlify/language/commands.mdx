@@ -4,7 +4,7 @@ description: "Declare named operations on entities that enforce guards and polic
 sidebarTitle: "Commands"
 ---
 
-A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order: policies → constraints → guards → actions → emits → return. Nothing in that order can be rearranged or skipped.
+A command is a named operation bound to an entity. When you call `runCommand`, the runtime executes the command in a strict, deterministic order: rate-limit → policies → constraints → guards → actions → emits → return. Nothing in that order can be rearranged or skipped.
 
 ## Declaring a command
 
@@ -36,6 +36,9 @@ The runtime executes every command in exactly this order:
 <Steps>
   <Step title="Build evaluation context">
     Bind `self` and `this` to the current entity instance, inject command parameters, and attach the runtime context (`user`, `context.*`).
+  </Step>
+  <Step title="Check rate limit">
+    If the command declares a `rateLimit`, check whether the caller has exceeded the configured window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
   </Step>
   <Step title="Evaluate policies">
     Check every applicable policy (entity-level defaults first, then command-level). If any policy denies, execution stops immediately with a `policyDenial` result.
@@ -99,18 +102,18 @@ command setTimestamp() {
 
 ### `publish`
 
-Sends the expression result to an external message broker or outbox adapter. In the default (no-adapter) runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+Intended for sending the expression result to an external message broker or outbox adapter. In the default (no-adapter) runtime, `publish` behaves identically to `emit` — it logs an anonymous `action_event` to the event log with the evaluated value as the payload. There is no per-action call to an external bus; the event bus publish happens post-command for all declared `emits`. In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 ### `persist`
 
-Invokes a persistence adapter with the expression result. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+Intended for invoking a persistence adapter with the expression result. In the default runtime, `persist` is a no-op — it evaluates the expression but performs no store write. Real persistence happens only via `mutate` and `compute` (which call `updateInstance`). In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 ### `effect`
 
-Invokes a side-effect adapter. In the default runtime, behaves like `compute`. In deterministic mode, throws `ManifestEffectBoundaryError`.
+Intended for invoking a side-effect adapter. In the default runtime, `effect` evaluates the expression but invokes no side-effect hook and discards the result. In deterministic mode, throws `ManifestEffectBoundaryError`.
 
 <Warning>
-`publish`, `persist`, and `effect` are no-ops unless you configure an adapter. When `deterministicMode` is `true`, calling any of them throws `ManifestEffectBoundaryError` — this is by design to enforce the effect boundary contract.
+`persist` and `effect` perform no meaningful work without a configured adapter. `publish` always logs an anonymous `action_event` to the local event log but does not call an external message bus unless one is wired. When `deterministicMode` is `true`, calling any of them throws `ManifestEffectBoundaryError` — this is by design to enforce the effect boundary contract.
 </Warning>
 
 ## The `emits` keyword

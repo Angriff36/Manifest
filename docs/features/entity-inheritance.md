@@ -1,8 +1,10 @@
 # Entity Inheritance and Generics
 
-> **Status: Planned.** Conformance fixtures `77`–`85` and this document describe intended syntax. The current parser does **not** accept `extends`, `mixin`, or generic `entity Name<T>` / `entity Alias = Template<T>` forms — compiling those fixtures yields parse errors (`Expected {, got extends` / `mixin` / `<`). Do not use this syntax in production programs until parser + IR compiler support lands.
+Manifest supports three patterns for structuring entity types: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics.
 
-Manifest will support three patterns for structuring entity types: single inheritance with `extends`, composition with `mixin`, and parameterized templates with generics. All three are intended as compile-time features — the IR and runtime would see fully flattened entities.
+**Status:** `extends` and `mixin` are **implemented** — the parser, IR compiler, and runtime all handle them (conformance fixtures `77`–`81`). Generic entity syntax (`entity Name<T>` / `entity Alias = Template<T>`) is **not yet implemented** — the parser produces a parse error for those forms (conformance fixture `84` is a pinned shouldFail test: `Expected {, got <`). Do not use generic entity syntax in production programs.
+
+`extends` and `mixin` are compile-time features — the IR and runtime see fully flattened entities.
 
 ## Entity Inheritance (`extends`)
 
@@ -31,7 +33,7 @@ entity Product extends BaseEntity {
 - Child inherits all properties, computed properties, constraints, commands, and policies from the parent.
 - Own declarations take precedence over inherited ones (override by name).
 - Child declarations appear after inherited ones in the merged arrays.
-- The `IREntity` stores a `parent?: string` field for traceability, but all members are resolved directly into the entity's flat arrays.
+- The `IREntity` stores a `parent?: string` field for traceability only — all members are pre-flattened by the IR compiler before IR is produced; no projection reads the `parent` field for member resolution.
 
 **Validation:**
 
@@ -66,7 +68,7 @@ entity Article mixin Timestampable, SoftDeletable {
 **Behavior:**
 
 - Multiple mixins are listed comma-separated: `entity Foo mixin A, B, C { ... }`.
-- The `IREntity` stores `mixins?: string[]` for traceability, but all members are resolved into flat arrays.
+- The `IREntity` stores `mixins?: string[]` for traceability only — all members are pre-flattened by the IR compiler; no projection reads the `mixins` field for member resolution. Mixin source entities remain as standalone entries in `ir.entities`.
 - Resolution order for a given member name: own declarations first, then mixins in declaration order, then inherited parent.
 
 **Validation:**
@@ -88,28 +90,17 @@ The resulting `IREntity` has both `parent: "BaseEntity"` and `mixins: ["Timestam
 
 ## Generic / Parameterized Entity Types
 
-Generic entities define type parameters that are substituted during compilation, producing concrete entity instantiations.
+> **Status: Not yet implemented.** The generic entity syntax (`entity Name<T>` / `entity Alias = Template<T>`) produces parse errors in the current compiler (`Expected {, got <`). Conformance fixture `84-generic-entity.manifest` is a pinned shouldFail test. The description below documents the intended design only; do not use this syntax in production programs.
 
-```text
-entity Paginated<T> {
-  property page: number = 0
-  property total: number = 0
-  property items: T = ""
-  hasMany items: T
-}
+Generic entities would define type parameters that are substituted during compilation, producing concrete entity instantiations.
 
-entity ItemList = Paginated<Item> {
-  property category: string = "all"
-}
-```
-
-**Behavior:**
+**Intended behavior (design):**
 
 - Generic templates are compile-time only. Only concrete instantiations appear in the IR. Template entities are omitted from the IR output.
 - Type parameters are substituted wherever they appear in property types, computed property types, and relationship targets within the template body.
 - Instantiation bodies can add extra properties, relationships, commands, constraints, and policies. Members with the same name as template members take precedence (override).
 
-**Validation:**
+**Validation (intended):**
 
 - Instantiation must reference a known generic entity. Referencing a non-generic or unknown entity produces a compile error.
 - Type argument count must match the template's type parameter count (arity validation). Mismatches produce a compile error.
@@ -141,14 +132,14 @@ The IR compiler's `resolveEntityInheritance()` method:
 4. Merges inherited members with own declarations, with own declarations taking precedence.
 5. Produces flat entity nodes with all members directly in their arrays.
 
-For generics, `resolveGenericInstantiations()`:
+For generics (intended design, not yet implemented — see status note above), `resolveGenericInstantiations()` would:
 
-1. Identifies generic template entities (with `typeParameters`).
-2. Finds instantiations referencing those templates.
-3. Validates arity (type argument count matches parameter count).
-4. Clones the template body and substitutes type parameter references.
-5. Merges any extra body members from the instantiation.
-6. Emits only concrete entities in the IR.
+1. Identify generic template entities (with `typeParameters`).
+2. Find instantiations referencing those templates.
+3. Validate arity (type argument count matches parameter count).
+4. Clone the template body and substitute type parameter references.
+5. Merge any extra body members from the instantiation.
+6. Emit only concrete entities in the IR.
 
 ## Conformance Fixtures
 
@@ -157,13 +148,13 @@ For generics, `resolveGenericInstantiations()`:
 - `79-entity-extends-and-mixin.manifest` -- Both combined
 - `80-entity-extends-unknown-parent.manifest` -- Error: unknown parent reference
 - `81-entity-extends-cycle.manifest` -- Error: circular inheritance detected
-- `84-generic-entity.manifest` -- Generic template + instantiation with type substitution
-- `85-generic-arity-mismatch.manifest` -- Error: wrong type argument count
+- `84-generic-entity.manifest` -- Pinned **parse-failure** test (`shouldFail: true`); fixture exercises generic syntax that currently produces errors
+- `85-generic-arity-mismatch.manifest` -- Pinned **parse-failure** test; exercises arity mismatch (also not yet implemented)
 
 ## Notes
 
 - The `mixin` keyword is now a reserved word. It cannot be used as an entity, property, command, or parameter name.
 - Entity order in the IR output is preserved as declaration order (not sorted alphabetically).
 - Override semantics: if a child entity declares a member with the same name as one from a parent or mixin, the child's declaration wins and appears after inherited members in the merged array.
-- Module generics: `typeParameters` is stored on `IRModule` for traceability. The feature fully supports entity generics within modules; the existing template resolution mechanism works identically for module-scoped entities.
+- Module generics: `typeParameters` is stored on `IRModule` for traceability. However, the generic entity syntax is not yet implemented in the parser, so this field is not populated at present.
 - All member types are flattened: `properties`, `commands`, `policies`, `defaultPolicies`, and `constraints` arrays contain all inherited and composed members directly.

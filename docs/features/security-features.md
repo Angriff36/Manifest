@@ -125,5 +125,6 @@ Retry policies apply to action execution, not to guard or policy failures.
 ## Notes
 
 - Masking is enforced on `getInstance` / `getAllInstances` read paths, not on raw create results
-- Rate limiting is enforced by the runtime engine before command execution
+- Rate limiting is enforced by the runtime engine before command execution. Rate-limit state is **in-memory only and resets on process restart** — no durable adapter is shipped. For multi-process deployments each process has an independent counter.
+- `retryOn` recognizes only `CONCURRENCY_CONFLICT` and `TIMEOUT` as retryable error codes. Other values (e.g., `NETWORK_TIMEOUT`, `SUPPLIER_UNAVAILABLE`, custom strings) never match the runtime's error codes and are effectively dead config.
 - Retry policies apply to the command's action execution, not to guard or policy failures

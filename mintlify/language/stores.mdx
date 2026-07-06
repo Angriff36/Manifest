@@ -158,7 +158,7 @@ See [Custom Stores](/adapters/custom-stores) for the full `Store` interface cont
 
 ## Store and `localStorage`
 
-The `localStorage` target is available for browser environments. Like `postgres` and `supabase`, it requires an adapter. The runtime does not bundle a `localStorage` implementation — you supply one via `storeProvider`.
+The `localStorage` target is available for browser environments. It is auto-instantiated by the runtime — no `storeProvider` is required. Instances are persisted in the browser's `localStorage` under a key derived from the entity name.
 
 ```manifest
 store Preferences in localStorage

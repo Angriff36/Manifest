@@ -28,7 +28,7 @@ entity Order {
 
 ## Runtime Behavior
 
-1. Synchronous validation: policies → constraints → guards (fail-fast)
+1. Synchronous validation: rate-limit → policies → constraints → guards (fail-fast)
 2. Enqueue `JobRecord` via `JobQueue` adapter
 3. Returns `{ jobId, status: 'pending', enqueuedAt }` immediately
 4. Worker re-entry: `context.source === 'job'` bypasses async branch during worker execution
@@ -44,9 +44,17 @@ interface JobQueue {
 }
 ```
 
+### Production Setup
+
+**No worker is auto-started.** The host must:
+1. Provide `RuntimeOptions.jobQueue` (implement `JobQueue` or use a shipped adapter). Without it, every async command returns `MISSING_JOB_QUEUE`.
+2. Separately poll the queue via `runtime.drainJobs()` or `runJobWorker()` in a background process or cron job.
+
+The completionEvent convention is `${commandName}Completed` on channel `jobs.${commandName}`; failureEvent follows the same pattern with `Failed`.
+
 ### Deterministic Testing
 
-`drainJobs()` public method drains pending jobs in FIFO order. `MemoryJobQueue` is the default implementation for testing.
+`drainJobs()` public method drains pending jobs in FIFO order. `MemoryJobQueue` is the in-process implementation used for testing — it is not suitable for production (data is lost on restart).
 
 ## Conformance Fixtures
 

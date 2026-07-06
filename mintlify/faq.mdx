@@ -77,8 +77,8 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
     The runtime **must** support `memory`. The following targets **may** be supported depending on your environment:
 
     - `localStorage` (browser)
-    - `postgres` (Node.js)
-    - `supabase` (Node.js / Edge)
+    - `postgres` (Node.js) — requires a `storeProvider` supplying the adapter; the runtime does not auto-instantiate it
+    - `supabase` (Node.js / Edge) — requires a `storeProvider` supplying the adapter; the runtime does not auto-instantiate it
     - Custom stores via the `Store` interface and `storeProvider`
 
     Unsupported targets emit diagnostics — there is no silent fallback unless you explicitly configure one.
@@ -97,12 +97,13 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
   <Accordion title="What is the execution order for commands?">
     Manifest commands execute in a fixed, deterministic order defined in the language specification:
 
-    1. **Policy check** — evaluated for `execute` or `all` scope
-    2. **Guard evaluation** — evaluated in declaration order; halts on the first falsey result
-    3. **Constraint validation** — checked by severity (`block`, `warn`, `ok`)
-    4. **Action execution** — `persist`, `publish`, `effect` actions run in order
-    5. **Event emission** — events emitted in declaration order
-    6. **Return** — `CommandResult` is returned to the caller
+    1. **Rate-limit check** — per-user, per-tenant, or global limits declared on the command; returns `rateLimitExceeded` immediately if exceeded
+    2. **Policy check** — evaluated for `execute` or `all` scope
+    3. **Constraint validation** — checked by severity (`block`, `warn`, `ok`); `block`-severity violations halt execution
+    4. **Guard evaluation** — evaluated in declaration order; halts on the first falsey result
+    5. **Action execution** — actions run in order
+    6. **Event emission** — events emitted in declaration order
+    7. **Return** — `CommandResult` is returned to the caller
 
     This order is not configurable. If a step fails, execution halts immediately and the result includes the relevant failure details.
   </Accordion>
@@ -166,7 +167,7 @@ Manifest is an IR-first domain-specific language for encoding business rules, au
     - **Constraint severity and outcomes** — `block`, `warn`, `ok` severity levels with `nonBlockingViolations` in `CommandResult`
     - **Command-level constraints** — Constraints attached to individual commands, not just entities
     - **Entity concurrency controls** — Optimistic concurrency on entity mutations
-    - **Policy-based authorization** — `read`, `execute`, and `all` scoped policies with full enforcement semantics
+    - **Policy-based authorization** — `execute` and `all` scoped policies enforced at runtime; `read`-scoped policies are available but have no independent runtime read gate (reads bypass `runCommand` entirely)
     - **IR caching** — Compiled IR can be cached to disk to avoid recompilation on every request
 
     See the vNext spec and migration guide for adoption instructions.

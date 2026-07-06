@@ -60,11 +60,13 @@ This page explains the boundary between them, how to decide which to reach for f
     The runtime enforces the full execution order on every `runCommand` call:
 
     1. Build evaluation context (`self`, `this`, params, runtime context)
-    2. Evaluate applicable policies
-    3. Evaluate guards in declared order — halts on the first failure
-    4. Execute actions in declared order
-    5. Emit declared events
-    6. Return `CommandResult`
+    2. Evaluate rate limits — returns `rateLimitExceeded` immediately if exceeded
+    3. Evaluate applicable policies
+    4. Evaluate command constraints — `block`-severity violations halt execution
+    5. Evaluate guards in declared order — halts on the first failure
+    6. Execute actions in declared order
+    7. Emit declared events
+    8. Return `CommandResult`
   </Tab>
 </Tabs>
 

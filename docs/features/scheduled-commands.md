@@ -65,7 +65,7 @@ Schedules are resolved at compile time and emitted to the IR as `IRSchedule` obj
 
 Projection targets consume schedule metadata:
 
-- **Next.js projection** (`nextjs.schedule` surface): Generates one cron route per schedule at `<appDir>/cron/<schedule-name>/route.ts`, maintenance routes for approval expiry and async-job draining when the program needs them, and a `vercel.json` registering them all so Vercel invokes them on schedule.
+- **Next.js projection** (`nextjs.schedule` surface): Generates cron routes only for schedules whose `trigger.kind === 'cron'`. `interval` and `every` schedules are filtered out by the projection and produce no Vercel cron route; they require the `startScheduleWorker()` package for execution.
 - **Express/Hono**: Route handlers for external scheduler invocation.
 - **Terraform projection**: CloudWatch Event rules or similar scheduled resources.
 
@@ -96,7 +96,7 @@ Conformance fixture `src/manifest/conformance/fixtures/76-scheduled-commands.man
 
 ## Notes
 
-- On Vercel, the generated cron routes plus the emitted `vercel.json` fire schedules with no extra setup. On other hosts, run `startScheduleWorker(runtime)` from `@angriff36/manifest/schedule-worker` (a tick loop that also sweeps approval expiry) or invoke `runSchedule(name)` from your own scheduler. Cron triggers are matched in UTC to the minute.
+- On Vercel, **cron-kind schedules only**: the generated cron routes plus the emitted `vercel.json` fire them with no extra setup. `interval` and `every` schedules are not emitted to Vercel routes; run `startScheduleWorker(runtime)` from `@angriff36/manifest/schedule-worker` (a tick loop that also sweeps approval expiry) to execute those, or invoke `runSchedule(name)` from your own scheduler. Cron triggers are matched in UTC to the minute.
 - The `schedule`, `cron`, `interval`, and `every` keywords are added to the lexer's KEYWORDS set.
 - Schedules are entity-bound by default when using `Entity.command` syntax, but can also be declared globally at the program or module level.
 - An Inngest projection is not yet implemented. The `IRSchedule` shape supports both cron and interval triggers, making a future Inngest projection straightforward (map to `inngest.createFunction` with cron triggers).

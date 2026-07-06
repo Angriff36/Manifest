@@ -95,8 +95,10 @@ interface IRSaga {
 
 interface IRSagaStep {
   name: string;
-  command: string;       // "Entity.command" reference
-  compensate?: string;   // Optional compensating command
+  commandEntity: string;       // Entity on which the forward command is invoked
+  command: string;             // "Entity.command" reference
+  compensate?: string;         // Optional compensating command
+  compensateEntity?: string;   // Optional: target entity for compensation when it differs from the forward step's entity
 }
 ```
 

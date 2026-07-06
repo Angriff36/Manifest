@@ -58,6 +58,9 @@ Each stage inside the `stages` block has three fields:
 The approval gate sits between guards and actions in the command execution pipeline. See [Commands](/language/commands) for the full pipeline description.
 
 <Steps>
+  <Step title="Check rate limit">
+    If the command declares a `rateLimit`, check whether the caller has exceeded the configured window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.
+  </Step>
   <Step title="Evaluate policies">
     Check every applicable policy. If any policy denies, execution stops immediately with a `policyDenial` result.
   </Step>

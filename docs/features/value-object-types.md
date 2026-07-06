@@ -47,7 +47,14 @@ A property whose type name matches a declared value object is identified by chec
 
 ## How it maps to projections
 
-The code generator's `genValueObject()` (`src/manifest/generator.ts`) emits a TypeScript interface for each value object. The Prisma projection (`src/manifest/projections/prisma/generator.ts`) detects a property whose type matches a declared value object and emits it as a `Json` (JSONB) column rather than a foreign-key relationship or a separate table.
+The code generator's `genValueObject()` (`src/manifest/generator.ts`) emits a TypeScript interface for each value object. The Prisma projection (`src/manifest/projections/prisma/generator.ts`) detects a property whose type matches a declared value object and emits it as a `Json` (JSONB) column rather than a foreign-key relationship or a separate table. The Drizzle projection behaves the same way (jsonb column).
+
+Value-object embedding is only supported for SQL-persistence projections (Prisma, Drizzle, prisma-store). Other projections handle them as follows:
+- **Convex**: hard-errors (`CONVEX_UNKNOWN_TYPE`) and skips the property.
+- **OpenAPI**: silently emits `{ type: 'string' }` — the schema loses all structure.
+- **Zod**: emits `z.unknown()` — no field-level validation is generated.
+
+The reference runtime carries embedded value-object data as ordinary property data with no structural validation.
 
 ## Notes & limitations
 
