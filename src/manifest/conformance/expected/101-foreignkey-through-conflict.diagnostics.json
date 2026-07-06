@@ -1,0 +1,13 @@
+{
+  "shouldFail": true,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "message": "Relationship 'tags' on entity 'Post' cannot set both 'foreignKey' and 'through' — they are mutually exclusive."
+    },
+    {
+      "severity": "warning",
+      "message": "Entity 'Post' is declared but unused: no store, no entity-scoped commands, and not referenced by any relationship. Remove it or wire it into the domain."
+    }
+  ]
+}

@@ -362,6 +362,8 @@ export interface CommandResult {
   deniedBy?: string;
   guardFailure?: GuardFailure;
   policyDenial?: PolicyDenial;
+  /** Missing required command parameter (fails before rate-limit/policy/guard). */
+  parameterFailure?: ParameterFailure;
   /** All constraint evaluation outcomes (vNext) */
   constraintOutcomes?: ConstraintOutcome[];
   /** Pending override requests (vNext) */
@@ -397,6 +399,13 @@ export interface GuardFailure {
   expression: IRExpression;
   formatted: string;
   resolved?: GuardResolvedValue[];
+}
+
+export interface ParameterFailure {
+  /** Name of the missing required parameter. */
+  parameter: string;
+  /** Declared parameter type name, when available. */
+  expectedType?: string;
 }
 
 export interface PolicyDenial {
@@ -858,6 +867,23 @@ export class RuntimeEngine {
   private lastConcurrencyConflict: ConcurrencyConflict | null = null;
 
   /**
+   * Last modifier write-rejection from updateInstance (readonly change or unique
+   * collision). Set by updateInstance, surfaced by _executeCommandInternal after
+   * a mutate/compute action so a command reports the rejection instead of silently
+   * persisting nothing.
+   */
+  private lastWriteRejection: { code: string; message: string; property?: string } | null = null;
+
+  /**
+   * Nesting depth of in-flight command executions (>0 while inside runCommand).
+   * The readonly-modifier exemption for a just-created instance applies only while
+   * a command runs (its create + mutate actions are one operation); a direct
+   * createInstance/updateInstance pair outside a command is two operations, so
+   * readonly blocks there.
+   */
+  private commandExecutionDepth = 0;
+
+  /**
    * The transaction handle for the command attempt currently in flight, or
    * null when no provider transaction is open. Set by runCommand's provider-mode
    * wrapper and threaded into every store/outbox/idempotency/job/approval write
@@ -1180,11 +1206,11 @@ export class RuntimeEngine {
           relationshipName: rel.name,
           kind: rel.kind,
           targetEntity: rel.target,
-          // Only extract the FK field name for single-column FKs.
-          // Composite FKs (fields.length > 1) are left undefined so the runtime
-          // falls back to the `${relName}Id` convention rather than silently
-          // resolving by fields[0] alone and potentially returning the wrong row.
-          // Composite FK resolution requires a full store adapter (e.g. Prisma).
+          // Only extract the FK field name for single-column FKs. Composite FKs
+          // (fields.length > 1) are left undefined here; resolveRelationship
+          // detects them from the raw IR and fails closed with
+          // COMPOSITE_FK_UNSUPPORTED rather than guessing a row. Composite FK
+          // resolution requires a full store adapter (e.g. Prisma).
           foreignKey: rel.foreignKey && rel.foreignKey.fields.length === 1
             ? rel.foreignKey.fields[0]
             : undefined,
@@ -1258,11 +1284,30 @@ export class RuntimeEngine {
       return cached.result;
     }
 
+    // Fail closed on composite foreign keys. The reference runtime resolves
+    // single-column FKs only; guessing a row from `${relName}Id` or from
+    // `fields[0]` of a multi-column key can silently return the WRONG row.
+    const compositeFkError = (relEntity: string, relName: string, cols: number): Error => {
+      const err = new Error(
+        `COMPOSITE_FK_UNSUPPORTED: relationship '${relEntity}.${relName}' declares a composite foreign key ` +
+        `(${cols} columns); the reference runtime resolves single-column foreign keys only and will not ` +
+        `guess a row from a partial key. Use a store adapter that supports composite keys (e.g. Prisma) ` +
+        `or model a single-column foreign key.`
+      );
+      (err as Error & { code?: string }).code = 'COMPOSITE_FK_UNSUPPORTED';
+      return err;
+    };
+
     let result: EntityInstance | EntityInstance[] | null = null;
 
     switch (rel.kind) {
       case 'belongsTo':
       case 'ref': {
+        // For belongsTo/ref the composite FK lives on the source relationship.
+        const rawRel = this.getEntity(entityName)?.relationships.find(r => r.name === relationshipName);
+        if (rawRel?.foreignKey && rawRel.foreignKey.fields.length > 1) {
+          throw compositeFkError(entityName, relationshipName, rawRel.foreignKey.fields.length);
+        }
         // For belongsTo/ref: the foreign key on the source instance contains the target ID
         const fkProperty = rel.foreignKey || `${rel.relationshipName}Id`;
         const targetId = instance[fkProperty] as string | undefined;
@@ -1290,6 +1335,9 @@ export class RuntimeEngine {
         );
 
         if (inverseRel) {
+          if (inverseRel.foreignKey && inverseRel.foreignKey.fields.length > 1) {
+            throw compositeFkError(rel.targetEntity, inverseRel.name, inverseRel.foreignKey.fields.length);
+          }
           // Use the inverse relationship's foreign key
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
@@ -1318,6 +1366,9 @@ export class RuntimeEngine {
         );
 
         if (inverseRel) {
+          if (inverseRel.foreignKey && inverseRel.foreignKey.fields.length > 1) {
+            throw compositeFkError(rel.targetEntity, inverseRel.name, inverseRel.foreignKey.fields.length);
+          }
           const fkProperty = inverseRel.foreignKey?.fields[0] ?? `${inverseRel.name}Id`;
           const allTargets = await this.getAllInstancesRaw(rel.targetEntity);
           result = allTargets.filter(t => t[fkProperty] === sourceId);
@@ -1934,6 +1985,17 @@ export class RuntimeEngine {
     return cached;
   }
 
+  /** Cache of `private`-modifier property names, per entity (IR is immutable at runtime). */
+  private privatePropertiesCache = new Map<string, string[]>();
+  private privateProperties(entityName: string): string[] {
+    let cached = this.privatePropertiesCache.get(entityName);
+    if (cached) return cached;
+    const entity = this.getEntity(entityName);
+    cached = entity ? entity.properties.filter(p => p.modifiers.includes('private')).map(p => p.name) : [];
+    this.privatePropertiesCache.set(entityName, cached);
+    return cached;
+  }
+
   /**
    * Apply read-time masking to an instance (after decryption and tenant filtering).
    * - `private` wins over `masked`: the property is excluded entirely.
@@ -1944,9 +2006,16 @@ export class RuntimeEngine {
    */
   private async applyMasking(entityName: string, instance: EntityInstance): Promise<EntityInstance> {
     const maskedProps = this.maskedProperties(entityName);
-    if (maskedProps.length === 0) return instance;
+    const privateProps = this.privateProperties(entityName);
+    if (maskedProps.length === 0 && privateProps.length === 0) return instance;
 
     const out = { ...instance };
+    // `private` wins: strip every private property (with or without `masked`) from
+    // the public read (docs/spec/semantics.md, "Property Masking"). Execution paths
+    // use getInstanceRaw/getAllInstancesRaw and still observe the real value.
+    for (const name of privateProps) {
+      delete out[name];
+    }
     for (const prop of maskedProps) {
       if (prop.modifiers.includes('private')) {
         delete out[prop.name];
@@ -2103,8 +2172,9 @@ export class RuntimeEngine {
     const entity = this.getEntity(entityName);
     if (!entity) return {};
 
+    const requiredOutcomes = this.requiredModifierOutcomes(entity, data);
     const mergedData = this.prepareCreateData(entity, data);
-    return this.persistPreparedCreate(entityName, entity, mergedData);
+    return this.persistPreparedCreate(entityName, entity, mergedData, requiredOutcomes);
   }
 
   /** Date/time primitive write-time validation (docs/spec/semantics.md, Date/Time Types). */
@@ -2152,13 +2222,128 @@ export class RuntimeEngine {
     return outcomes;
   }
 
+  /**
+   * Auto-managed field names the runtime supplies outside caller data. Mirrors the
+   * create-null compile check so required-modifier enforcement does not flag fields
+   * the engine fills itself (id, tenant, version, timestamps, composite key, FKs).
+   */
+  private autoManagedFieldNames(entity: IREntity): Set<string> {
+    const auto = new Set<string>(['id']);
+    if (this.ir.tenant?.property) auto.add(this.ir.tenant.property);
+    if (entity.versionProperty) auto.add(entity.versionProperty);
+    if (entity.versionAtProperty) auto.add(entity.versionAtProperty);
+    if (entity.timestamps) {
+      auto.add('createdAt');
+      auto.add('updatedAt');
+    }
+    for (const k of entity.key ?? []) auto.add(k);
+    for (const r of entity.relationships) {
+      for (const fk of r.foreignKey?.fields ?? []) auto.add(fk);
+    }
+    return auto;
+  }
+
+  /**
+   * `required` modifier enforcement (docs/spec/semantics.md, "Modifier enforcement").
+   * A required property is satisfied only by a supplied value, a defaultValue,
+   * autoNow, an auto-managed field, or a field the creating command writes — a
+   * zero-filled type default does NOT satisfy it. Returns a blocking `E_REQUIRED`
+   * outcome for each unsatisfied required property.
+   */
+  private requiredModifierOutcomes(
+    entity: IREntity,
+    provided: Record<string, unknown>,
+    producedByCommand?: Set<string>,
+  ): ConstraintOutcome[] {
+    const outcomes: ConstraintOutcome[] = [];
+    const auto = this.autoManagedFieldNames(entity);
+    for (const prop of entity.properties) {
+      if (!prop.modifiers.includes('required')) continue;
+      const supplied = provided[prop.name] !== undefined && provided[prop.name] !== null;
+      if (supplied) continue;
+      if (prop.defaultValue !== undefined) continue;
+      if (prop.autoNow) continue;
+      if (auto.has(prop.name)) continue;
+      if (producedByCommand?.has(prop.name)) continue;
+      const message = `Property '${prop.name}' is required but was not provided`;
+      outcomes.push({
+        code: 'E_REQUIRED',
+        constraintName: prop.name,
+        severity: 'block',
+        passed: false,
+        formatted: message,
+        message,
+        details: { property: prop.name, modifier: 'required' },
+      });
+    }
+    return outcomes;
+  }
+
+  /**
+   * Fields a create command's actions write (mutate/compute/persist targets).
+   * Used to exempt those fields from required-modifier enforcement, since they are
+   * set immediately after the auto-create persist.
+   */
+  private commandProducedFields(command: IRCommand): Set<string> {
+    const produced = new Set<string>();
+    for (const a of command.actions) {
+      if (a.target && (a.kind === 'mutate' || a.kind === 'compute' || a.kind === 'persist')) {
+        produced.add(a.target);
+      }
+    }
+    return produced;
+  }
+
+  /**
+   * `unique` modifier enforcement (docs/spec/semantics.md, "Modifier enforcement").
+   * Rejects a create/update that sets a unique property to a non-null value another
+   * instance already holds, scanning instances in the active tenant scope.
+   * // ponytail: O(n) scan per unique property; move to store-level uniqueness when
+   * // the store adapter exposes a uniqueness constraint.
+   */
+  private async uniqueModifierOutcomes(
+    entityName: string,
+    entity: IREntity,
+    candidate: Record<string, unknown>,
+    excludeId?: string,
+    onlyProps?: Set<string>,
+  ): Promise<ConstraintOutcome[]> {
+    const uniqueProps = entity.properties.filter(
+      p => p.modifiers.includes('unique') && (!onlyProps || onlyProps.has(p.name)),
+    );
+    if (uniqueProps.length === 0) return [];
+    const existing = await this.getAllInstancesRaw(entityName);
+    const outcomes: ConstraintOutcome[] = [];
+    for (const prop of uniqueProps) {
+      const value = candidate[prop.name];
+      if (value === undefined || value === null) continue;
+      const collides = existing.some(row => row.id !== excludeId && row[prop.name] === value);
+      if (collides) {
+        const message = `Property '${prop.name}' must be unique; value already exists`;
+        outcomes.push({
+          code: 'E_UNIQUE',
+          constraintName: prop.name,
+          severity: 'block',
+          passed: false,
+          formatted: message,
+          message,
+          details: { property: prop.name, modifier: 'unique', value },
+        });
+      }
+    }
+    return outcomes;
+  }
+
   private async persistPreparedCreate(
     entityName: string,
     entity: IREntity,
-    mergedData: Record<string, unknown>
+    mergedData: Record<string, unknown>,
+    requiredOutcomes: ConstraintOutcome[] = [],
   ): Promise<{ instance?: EntityInstance; constraintOutcomes?: ConstraintOutcome[] }> {
     const constraintOutcomes = [
+      ...requiredOutcomes,
       ...this.validateDateTimeTypes(entity, mergedData),
+      ...await this.uniqueModifierOutcomes(entityName, entity, mergedData),
       ...await this.validateConstraints(entity, mergedData),
     ];
     if (!this.reportConstraintOutcomes(constraintOutcomes)) {
@@ -2205,6 +2390,39 @@ export class RuntimeEngine {
 
     const ownsEvalBudget = this.initEvalBudget();
     try {
+      // ── readonly modifier (docs/spec/semantics.md, "Modifier enforcement") ──
+      // Block a post-creation change to a readonly property. Writes issued while
+      // the creating command runs are allowed (its id is just-created within the
+      // same command); a same-value write is a no-op and passes.
+      const createdWithinCommand = this.commandExecutionDepth > 0 && this.justCreatedInstanceIds.has(id);
+      if (!createdWithinCommand) {
+        for (const prop of entity.properties) {
+          if (!prop.modifiers.includes('readonly')) continue;
+          if (!(prop.name in data)) continue;
+          if (data[prop.name] === existing[prop.name]) continue;
+          this.lastWriteRejection = {
+            code: 'E_READONLY',
+            property: prop.name,
+            message: `Property '${prop.name}' is readonly and cannot be modified after creation`,
+          };
+          return undefined;
+        }
+      }
+
+      // ── unique modifier: reject an update colliding with another instance ──
+      const uniqueOutcomes = await this.uniqueModifierOutcomes(
+        entityName, entity, data, id, new Set(Object.keys(data)),
+      );
+      if (uniqueOutcomes.length > 0) {
+        const first = uniqueOutcomes[0];
+        this.lastWriteRejection = {
+          code: first.code ?? 'E_UNIQUE',
+          property: first.constraintName,
+          message: first.message ?? first.formatted ?? 'unique constraint violation',
+        };
+        return undefined;
+      }
+
       // Optimistic concurrency control: check version if entity has versionProperty
       if (entity.versionProperty) {
         const existingVersion = existing[entity.versionProperty] as number | undefined;
@@ -2961,6 +3179,35 @@ export class RuntimeEngine {
   }
 
   /**
+   * Command parameter processing (docs/spec/semantics.md, "Commands").
+   * Applies a declared parameter `defaultValue` to any argument the caller
+   * omitted, then rejects a call that omits a `required` parameter with no
+   * default. An explicit `undefined` is treated as absent; `null` counts as
+   * supplied. Returns the augmented input on success, or the first missing
+   * required parameter as a structured failure (fail-closed before any gate).
+   */
+  private processCommandParameters(
+    command: IRCommand,
+    input: Record<string, unknown>,
+  ): { ok: true; input: Record<string, unknown> } | { ok: false; failure: ParameterFailure } {
+    const params = command.parameters;
+    if (!params || params.length === 0) return { ok: true, input };
+    let next: Record<string, unknown> | undefined;
+    for (const p of params) {
+      if (input[p.name] !== undefined) continue;
+      if (p.defaultValue !== undefined) {
+        next = next ?? { ...input };
+        next[p.name] = this.irValueToJs(p.defaultValue);
+        continue;
+      }
+      if (p.required) {
+        return { ok: false, failure: { parameter: p.name, expectedType: p.type?.name } };
+      }
+    }
+    return { ok: true, input: next ?? input };
+  }
+
+  /**
    * Validate an async command synchronously (policies, constraints, guards)
    * without executing actions. Used for fail-fast before enqueuing a job.
    */
@@ -2983,6 +3230,19 @@ export class RuntimeEngine {
         emittedEvents: [],
       };
     }
+
+    // Parameter processing mirrors the synchronous path so an async command
+    // fails fast (before enqueue) on a missing required parameter.
+    const paramResult = this.processCommandParameters(command, input);
+    if (!paramResult.ok) {
+      return {
+        success: false,
+        error: `MISSING_REQUIRED_PARAMETER: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
+        parameterFailure: paramResult.failure,
+        emittedEvents: [],
+      };
+    }
+    input = paramResult.input;
 
     const instance = options.instanceId && options.entityName
       ? await this.getInstanceRaw(options.entityName, options.instanceId)
@@ -3172,10 +3432,14 @@ export class RuntimeEngine {
     // Clear concurrency conflict tracking
     this.lastConcurrencyConflict = null;
 
+    // Clear modifier write-rejection tracking (readonly/unique on update)
+    this.lastWriteRejection = null;
+
     this.actionTraceCounter = 0;
 
     // Initialize evaluation budget for bounded complexity enforcement
     const ownsEvalBudget = this.initEvalBudget();
+    this.commandExecutionDepth += 1;
     try {
 
     const command = this.getCommand(commandName, options.entityName);
@@ -3188,6 +3452,22 @@ export class RuntimeEngine {
         emittedEvents: [],
       };
     }
+
+    // Command parameter processing (spec: Commands): apply declared parameter
+    // defaults to the input, then fail closed on a missing required parameter
+    // before any gate (rate-limit/policy/constraint/guard) runs.
+    const paramResult = this.processCommandParameters(command, input);
+    if (!paramResult.ok) {
+      return {
+        success: false,
+        error: `MISSING_REQUIRED_PARAMETER: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
+        parameterFailure: paramResult.failure,
+        ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+        ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),
+        emittedEvents: [],
+      };
+    }
+    input = paramResult.input;
 
     const shouldAutoCreateInstance = commandName === 'create' && !!options.entityName && !options.instanceId;
     let autoCreateEntity: IREntity | undefined;
@@ -3324,7 +3604,8 @@ export class RuntimeEngine {
       const createResult = await this.persistPreparedCreate(
         options.entityName,
         autoCreateEntity,
-        autoCreatePreparedData
+        autoCreatePreparedData,
+        this.requiredModifierOutcomes(autoCreateEntity, input, this.commandProducedFields(command)),
       );
       this.profilingBridge.endPhase('autoCreate');
       createConstraintOutcomes = createResult.constraintOutcomes;
@@ -3400,6 +3681,29 @@ export class RuntimeEngine {
           return {
             success: false,
             error: this.lastTransitionError,
+            ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
+            ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
+            emittedEvents: [],
+          };
+        }
+
+        // Check for a modifier write-rejection (readonly change / unique collision)
+        // after mutate/compute actions. A rejected write persists nothing.
+        if (this.lastWriteRejection) {
+          const rej: { code: string; message: string; property?: string } = this.lastWriteRejection;
+          this.lastWriteRejection = null;
+          return {
+            success: false,
+            error: `${rej.code}: ${rej.message}`,
+            constraintOutcomes: [{
+              code: rej.code,
+              constraintName: rej.property ?? rej.code,
+              severity: 'block',
+              passed: false,
+              formatted: rej.message,
+              message: rej.message,
+              ...(rej.property ? { details: { property: rej.property } } : {}),
+            }],
             ...(workflowMeta.correlationId !== undefined ? { correlationId: workflowMeta.correlationId } : {}),
             ...(workflowMeta.causationId !== undefined ? { causationId: workflowMeta.causationId } : {}),
             emittedEvents: [],
@@ -3664,6 +3968,7 @@ export class RuntimeEngine {
       }
       throw e; // re-throw other errors (ManifestEffectBoundaryError, etc.)
     } finally {
+      this.commandExecutionDepth -= 1;
       if (ownsEvalBudget) this.clearEvalBudget();
     }
   }
@@ -4646,6 +4951,21 @@ export class RuntimeEngine {
             if (authorized) {
               outcome.overridden = true;
               outcome.overriddenBy = 'policy:' + policy.name;
+              // Emit the same OverrideApplied audit event the explicit-override
+              // path emits, so an auto-policy override is not silently unaudited.
+              // authorizedBy is derived from the acting user in context; the
+              // reason records the authorizing policy.
+              const actingUser = (evalContext.user as { id?: string } | null | undefined)?.id;
+              const syntheticReq: OverrideRequest = {
+                constraintCode: constraint.code,
+                reason: `Auto-authorized by policy '${policy.name}'`,
+                authorizedBy: actingUser ?? ('policy:' + policy.name),
+                timestamp: this.getNow(),
+              };
+              const event = this.buildOverrideAppliedEvent(constraint, syntheticReq, commandContext);
+              overrideEvents.push(event);
+              this.eventLog.push(event);
+              this.notifyListeners(event);
             }
           }
         }

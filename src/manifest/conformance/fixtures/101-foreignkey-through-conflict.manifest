@@ -1,0 +1,7 @@
+// Test: Relationship with both foreignKey fields and through is a compile error.
+// foreignKey and through are mutually exclusive (ir.ts:219,222 JSDoc).
+// This is a shouldFail fixture — the compiler must emit an error diagnostic.
+
+entity Post {
+  hasMany tags: Tag through PostTag fields [tagId]
+}

@@ -667,6 +667,10 @@
         "kind",
         "target"
       ],
+      "not": {
+        "required": ["foreignKey", "through"],
+        "description": "foreignKey and through are mutually exclusive. The compiler enforces this and emits an error diagnostic if both are present."
+      },
       "properties": {
         "name": {
           "type": "string"
@@ -683,10 +687,12 @@
           "type": "string"
         },
         "foreignKey": {
-          "$ref": "#/definitions/IRForeignKey"
+          "$ref": "#/definitions/IRForeignKey",
+          "description": "Structured FK column mapping. Mutually exclusive with 'through' — the compiler rejects programs that supply both."
         },
         "through": {
-          "type": "string"
+          "type": "string",
+          "description": "Join-table entity name for many-to-many. Mutually exclusive with 'foreignKey' — the compiler rejects programs that supply both."
         },
         "onDelete": {
           "type": "string",

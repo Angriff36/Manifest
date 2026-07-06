@@ -34,8 +34,11 @@ Parameters are typed with the same types as properties: `string`, `number`, `boo
 The runtime executes every command in exactly this order:
 
 <Steps>
+  <Step title="Process parameters">
+    Apply each declared parameter's `defaultValue` to any omitted argument, then fail closed with a `parameterFailure` (`MISSING_REQUIRED_PARAMETER`) when a `required` parameter with no default is absent. An explicit `undefined` is treated as absent; `null` counts as supplied.
+  </Step>
   <Step title="Build evaluation context">
-    Bind `self` and `this` to the current entity instance, inject command parameters, and attach the runtime context (`user`, `context.*`).
+    Bind `self` and `this` to the current entity instance, inject command parameters (with defaults already applied), and attach the runtime context (`user`, `context.*`).
   </Step>
   <Step title="Check rate limit">
     If the command declares a `rateLimit`, check whether the caller has exceeded the configured window. If the limit is exceeded, execution stops immediately with a `rateLimitDenial` result.

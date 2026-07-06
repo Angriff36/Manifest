@@ -26,6 +26,7 @@ import type {
   IRPolicy,
   IRExpression,
   IRValue,
+  IRValueObject,
 } from '../../ir';
 import type {
   ProjectionTarget,
@@ -99,20 +100,28 @@ const SURFACES = [SURFACE_SPEC] as const;
 
 /**
  * Map a Manifest IR type to a JSON Schema object.
+ *
+ * @param irType - The IR type to map.
+ * @param valueObjectMap - Lookup of known IRValueObject definitions.  When the
+ *   type name matches an entry, a `$ref` to `#/components/schemas/{name}` is
+ *   returned instead of the generic `{ type: 'string' }` fallback.
  */
-function irTypeToJsonSchema(irType: IRType): JsonSchema {
+function irTypeToJsonSchema(
+  irType: IRType,
+  valueObjectMap?: Map<string, IRValueObject>,
+): JsonSchema {
   const base: JsonSchema = {};
 
   // Map generic types first (array, map, etc.)
   if (irType.name === 'array' && irType.generic) {
     base.type = 'array';
-    base.items = irTypeToJsonSchema(irType.generic);
+    base.items = irTypeToJsonSchema(irType.generic, valueObjectMap);
     return base;
   }
 
   if (irType.name === 'map' && irType.generic) {
     base.type = 'object';
-    base.additionalProperties = irTypeToJsonSchema(irType.generic);
+    base.additionalProperties = irTypeToJsonSchema(irType.generic, valueObjectMap);
     return base;
   }
 
@@ -146,6 +155,10 @@ function irTypeToJsonSchema(irType: IRType): JsonSchema {
   const mapped = typeMap[irType.name];
   if (mapped) {
     Object.assign(base, mapped);
+  } else if (valueObjectMap?.has(irType.name)) {
+    // Value-object type: reference the component schema by name.
+    // The schema itself is registered in components/schemas by buildOpenApiSpec.
+    return { $ref: `#/components/schemas/${irType.name}` };
   } else {
     // Unknown type — treat as string
     base.type = 'string';
@@ -157,14 +170,17 @@ function irTypeToJsonSchema(irType: IRType): JsonSchema {
 /**
  * Map an IR type to a JSON Schema, handling nullable.
  */
-function irTypeToSchema(irType: IRType): JsonSchema {
-  const schema = irTypeToJsonSchema(irType);
+function irTypeToSchema(
+  irType: IRType,
+  valueObjectMap?: Map<string, IRValueObject>,
+): JsonSchema {
+  const schema = irTypeToJsonSchema(irType, valueObjectMap);
   if (irType.nullable) {
     // OpenAPI 3.1 uses type arrays for nullable
     if (schema.type && typeof schema.type === 'string') {
       schema.type = [schema.type, 'null'];
     } else if (!schema.type) {
-      // any type stays open
+      // any type stays open (covers $ref and {} schemas)
     }
   }
   return schema;
@@ -230,17 +246,50 @@ function irValueToJson(value: IRValue): unknown {
 // ============================================================================
 
 /**
+ * Build a JSON Schema for a value object's properties (registered in
+ * components/schemas so entity/command schemas can reference it via $ref).
+ */
+function buildValueObjectSchema(
+  vo: IRValueObject,
+  valueObjectMap: Map<string, IRValueObject>,
+): JsonSchema {
+  const properties: Record<string, JsonSchema> = {};
+  const required: string[] = [];
+
+  for (const prop of vo.properties) {
+    const schema = irTypeToSchema(prop.type, valueObjectMap);
+    properties[prop.name] = schema;
+    if (prop.modifiers.includes('required')) {
+      required.push(prop.name);
+    }
+  }
+
+  const schema: JsonSchema = {
+    type: 'object',
+    properties,
+    additionalProperties: false,
+  };
+
+  if (required.length > 0) {
+    schema.required = required;
+  }
+
+  return schema;
+}
+
+/**
  * Build a JSON Schema for an entity's properties (for response bodies).
  */
 function buildEntitySchema(
   entity: IREntity,
   _options?: OpenApiProjectionOptions,
+  valueObjectMap?: Map<string, IRValueObject>,
 ): JsonSchema {
   const properties: Record<string, JsonSchema> = {};
   const required: string[] = [];
 
   for (const prop of entity.properties) {
-    const schema = irTypeToSchema(prop.type);
+    const schema = irTypeToSchema(prop.type, valueObjectMap);
     if (prop.defaultValue !== undefined) {
       schema.default = irValueToJson(prop.defaultValue);
     }
@@ -255,7 +304,7 @@ function buildEntitySchema(
 
   // Include computed properties as readOnly
   for (const computed of entity.computedProperties) {
-    const schema = irTypeToSchema(computed.type);
+    const schema = irTypeToSchema(computed.type, valueObjectMap);
     schema.readOnly = true;
     schema.description = `Computed: ${expressionToString(computed.expression)}`;
     properties[computed.name] = schema;
@@ -278,7 +327,10 @@ function buildEntitySchema(
  * Build a JSON Schema for creating/updating an entity (request body).
  * Excludes readOnly properties and computed properties.
  */
-function buildEntityWriteSchema(entity: IREntity): JsonSchema {
+function buildEntityWriteSchema(
+  entity: IREntity,
+  valueObjectMap?: Map<string, IRValueObject>,
+): JsonSchema {
   const properties: Record<string, JsonSchema> = {};
   const required: string[] = [];
 
@@ -286,7 +338,7 @@ function buildEntityWriteSchema(entity: IREntity): JsonSchema {
     // Skip readOnly in write schemas
     if (prop.modifiers.includes('readonly')) continue;
 
-    const schema = irTypeToSchema(prop.type);
+    const schema = irTypeToSchema(prop.type, valueObjectMap);
     if (prop.defaultValue !== undefined) {
       schema.default = irValueToJson(prop.defaultValue);
     }
@@ -312,7 +364,10 @@ function buildEntityWriteSchema(entity: IREntity): JsonSchema {
 /**
  * Build a JSON Schema for command parameters (request body).
  */
-function buildCommandRequestSchema(command: IRCommand): JsonSchema {
+function buildCommandRequestSchema(
+  command: IRCommand,
+  valueObjectMap?: Map<string, IRValueObject>,
+): JsonSchema {
   if (command.parameters.length === 0) {
     return { type: 'object', properties: {}, additionalProperties: false };
   }
@@ -321,7 +376,7 @@ function buildCommandRequestSchema(command: IRCommand): JsonSchema {
   const required: string[] = [];
 
   for (const param of command.parameters) {
-    const schema = irTypeToSchema(param.type);
+    const schema = irTypeToSchema(param.type, valueObjectMap);
     if (param.defaultValue !== undefined) {
       schema.default = irValueToJson(param.defaultValue);
     }
@@ -632,6 +687,7 @@ function buildCommandOperation(
   basePath: string,
   options: OpenApiProjectionOptions,
   allPolicies: IRPolicy[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): { path: string; operation: OpenApiOperation } | null {
   if (!command.entity) return null;
 
@@ -644,11 +700,11 @@ function buildCommandOperation(
     : undefined;
 
   // Build request body
-  const requestSchema = buildCommandRequestSchema(command);
+  const requestSchema = buildCommandRequestSchema(command, valueObjectMap);
 
   // Build response
   const responseSchema = command.returns
-    ? irTypeToSchema(command.returns)
+    ? irTypeToSchema(command.returns, valueObjectMap)
     : entity
       ? { $ref: `#/components/schemas/${entity.name}` }
       : { type: 'object', additionalProperties: true };
@@ -717,6 +773,12 @@ function buildOpenApiSpec(
     entityByName.set(entity.name, entity);
   }
 
+  // Build value-object lookup so type-mapping functions can emit $ref instead
+  // of the generic { type: 'string' } fallback.
+  const valueObjectMap = new Map<string, IRValueObject>(
+    (ir.values ?? []).map(v => [v.name, v]),
+  );
+
   // Build title
   const title = options.info?.title ??
     (ir.modules.length > 0 && ir.modules[0].name
@@ -758,7 +820,7 @@ function buildOpenApiSpec(
     }
 
     const entity = entityByName.get(command.entity);
-    const cmdOp = buildCommandOperation(command, entity, basePath, options, ir.policies);
+    const cmdOp = buildCommandOperation(command, entity, basePath, options, ir.policies, valueObjectMap);
     if (cmdOp) {
       if (!paths[cmdOp.path]) paths[cmdOp.path] = {};
       paths[cmdOp.path].post = cmdOp.operation;
@@ -768,15 +830,20 @@ function buildOpenApiSpec(
   // Build schemas in components
   const schemas: Record<string, JsonSchema> = {};
 
+  // Register value object schemas first so entity schemas can reference them
+  for (const vo of (ir.values ?? [])) {
+    schemas[vo.name] = buildValueObjectSchema(vo, valueObjectMap);
+  }
+
   for (const entity of sortedEntities) {
-    schemas[entity.name] = buildEntitySchema(entity, options);
-    schemas[`${entity.name}Write`] = buildEntityWriteSchema(entity);
+    schemas[entity.name] = buildEntitySchema(entity, options, valueObjectMap);
+    schemas[`${entity.name}Write`] = buildEntityWriteSchema(entity, valueObjectMap);
   }
 
   for (const command of sortedCommands) {
     if (command.parameters.length > 0 && command.entity) {
       schemas[`${toPascalCase(command.entity)}${toPascalCase(command.name)}Request`] =
-        buildCommandRequestSchema(command);
+        buildCommandRequestSchema(command, valueObjectMap);
     }
   }
 

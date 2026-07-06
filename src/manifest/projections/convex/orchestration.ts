@@ -77,41 +77,195 @@ export function generateCrons(ir: IR, rawOptions: Record<string, unknown> | unde
 // Webhooks → http
 // ---------------------------------------------------------------------------
 
+/**
+ * Derive a SCREAMING_SNAKE_CASE environment-variable name from an IR context
+ * path string (e.g. `"context.stripeWebhookSecret"` → `"STRIPE_WEBHOOK_SECRET"`).
+ * Strips a leading `context.` / `user.` segment, then converts camelCase
+ * segments to UPPER_SNAKE.
+ */
+function secretToEnvVar(contextPath: string): string {
+  const parts = contextPath.split('.');
+  const segments = (parts[0] === 'context' || parts[0] === 'user') ? parts.slice(1) : parts;
+  return segments
+    .map(s => s.replace(/([a-z])([A-Z])/g, '$1_$2'))
+    .join('_')
+    .toUpperCase();
+}
+
+/**
+ * Inline helper functions emitted when any webhook declares HMAC signature
+ * verification. Uses Web Crypto `subtle.verify` for constant-time comparison.
+ */
+const HMAC_HELPERS =
+  `/** Strip a sha256= / sha512= prefix from a signature value (GitHub convention). */\n` +
+  `function _stripSigPrefix(sig: string): string {\n` +
+  `  const eq = sig.indexOf("=");\n` +
+  `  if (eq > 0) {\n` +
+  `    const pre = sig.slice(0, eq).toLowerCase();\n` +
+  `    if (pre === "sha256" || pre === "sha512") return sig.slice(eq + 1);\n` +
+  `  }\n` +
+  `  return sig;\n` +
+  `}\n\n` +
+  `/** Decode a hex string to an ArrayBuffer; returns null on invalid input. */\n` +
+  `function _hexToBuffer(hex: string): ArrayBuffer | null {\n` +
+  `  if (hex.length % 2 !== 0) return null;\n` +
+  `  const arr = new Uint8Array(hex.length / 2);\n` +
+  `  for (let i = 0; i < hex.length; i += 2) {\n` +
+  `    const b = parseInt(hex.slice(i, i + 2), 16);\n` +
+  `    if (Number.isNaN(b)) return null;\n` +
+  `    arr[i >> 1] = b;\n` +
+  `  }\n` +
+  `  return arr.buffer;\n` +
+  `}\n\n` +
+  `/**\n` +
+  ` * Constant-time HMAC verification via Web Crypto subtle.verify.\n` +
+  ` * Returns false for any malformed or non-matching signature.\n` +
+  ` */\n` +
+  `async function _verifyHmac(\n` +
+  `  rawBody: string,\n` +
+  `  algorithm: "hmac-sha256" | "hmac-sha512",\n` +
+  `  secret: string,\n` +
+  `  provided: string,\n` +
+  `): Promise<boolean> {\n` +
+  `  const hashAlg = algorithm === "hmac-sha512" ? "SHA-512" : "SHA-256";\n` +
+  `  const sigBytes = _hexToBuffer(_stripSigPrefix(provided).toLowerCase());\n` +
+  `  if (!sigBytes) return false;\n` +
+  `  const cryptoKey = await crypto.subtle.importKey(\n` +
+  `    "raw",\n` +
+  `    new TextEncoder().encode(secret),\n` +
+  `    { name: "HMAC", hash: hashAlg },\n` +
+  `    false,\n` +
+  `    ["verify"],\n` +
+  `  );\n` +
+  `  return crypto.subtle.verify("HMAC", cryptoKey, sigBytes, new TextEncoder().encode(rawBody));\n` +
+  `}`;
+
 export function generateHttp(ir: IR, rawOptions: Record<string, unknown> | undefined): OrchestrationResult {
-  void normalizeOptions(rawOptions);
+  const options = normalizeOptions(rawOptions);
   const diagnostics: ProjectionDiagnostic[] = [];
+
+  const webhooks = (ir.webhooks ?? []) as IRWebhook[];
+  const hasSignature = webhooks.some(w => !!w.signature);
+  const hasIdempotency = webhooks.some(w => !!w.idempotencyHeader);
+
+  // --- Per-route code blocks ---
   const routes: string[] = [];
 
-  for (const wh of (ir.webhooks ?? []) as IRWebhook[]) {
+  for (const wh of webhooks) {
     const ref = wh.entity ? mutationRef(wh.entity, wh.command) : `api.mutations.${wh.command}`;
+    const method = (wh.method ?? 'POST').toUpperCase();
+    const needsRawBody = !!wh.signature;
+
+    const bodyLines: string[] = [];
+
+    // Body reading: raw text when signature verification is required (HMAC is
+    // computed over the exact bytes), plain json() otherwise.
+    if (needsRawBody) {
+      bodyLines.push(`    const _rawBody = await request.text();`);
+    }
+
+    // 1. HMAC signature verification (fail-closed, matches handler.ts pipeline).
+    if (wh.signature) {
+      const sig = wh.signature;
+      const envVar = secretToEnvVar(sig.secret);
+      bodyLines.push(
+        `    const _secret = process.env[${JSON.stringify(envVar)}];`,
+        `    if (!_secret)`,
+        `      return new Response(JSON.stringify({ error: "Webhook '${wh.name}' signature secret not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });`,
+        `    const _sig = request.headers.get(${JSON.stringify(sig.header)});`,
+        `    if (!_sig)`,
+        `      return new Response(JSON.stringify({ error: "Missing signature header '${sig.header}'" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
+        `    if (!(await _verifyHmac(_rawBody, ${JSON.stringify(sig.algorithm)}, _secret, _sig)))`,
+        `      return new Response(JSON.stringify({ error: "Invalid webhook signature" }), { status: 401, headers: { "Content-Type": "application/json" } });`,
+      );
+    }
+
+    // 2. Idempotency dedup (fail-closed, matches handler.ts pipeline).
+    if (wh.idempotencyHeader) {
+      bodyLines.push(
+        `    const _ikey = request.headers.get(${JSON.stringify(wh.idempotencyHeader)});`,
+        `    if (!_ikey)`,
+        `      return new Response(JSON.stringify({ error: "Missing idempotency header '${wh.idempotencyHeader}'" }), { status: 400, headers: { "Content-Type": "application/json" } });`,
+        `    const _isNew = await ctx.runMutation(internal.http._checkIdempotencyKey, { key: _ikey, webhookName: ${JSON.stringify(wh.name)} });`,
+        `    if (!_isNew) return new Response(null, { status: 200 }); // duplicate delivery`,
+      );
+    }
+
+    // 3. Body parsing (after verification so HMAC was over the raw bytes).
+    if (needsRawBody) {
+      bodyLines.push(
+        `    let body: unknown;`,
+        `    try { body = JSON.parse(_rawBody); } catch { return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400 }); }`,
+      );
+    } else {
+      bodyLines.push(`    const body = await request.json();`);
+    }
+
+    // 4. Transform + dispatch.
     const transformEntries: string[] = [];
     for (const t of wh.transform ?? []) {
       const { code, unresolved } = renderExpression(t.expression, { selfVar: 'body', globals: ['body', ...DEFAULT_GLOBALS] });
-      if (unresolved.length) { diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM', message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.` }); continue; }
+      if (unresolved.length) {
+        diagnostics.push({ severity: 'warning', code: 'CONVEX_UNRESOLVED_WEBHOOK_PARAM', message: `webhook '${wh.name}' param '${t.name}' unresolved; omitted.` });
+        continue;
+      }
       transformEntries.push(`${t.name}: ${code}`);
     }
-    const method = (wh.method ?? 'POST').toUpperCase();
+    bodyLines.push(
+      `    await ctx.runMutation(${ref}, { ${transformEntries.join(', ')} } as any);`,
+      `    return new Response(null, { status: 200 });`,
+    );
+
     routes.push(
       `http.route({\n` +
       `  path: ${JSON.stringify(wh.path)},\n` +
       `  method: ${JSON.stringify(method)},\n` +
       `  handler: httpAction(async (ctx, request) => {\n` +
-      `    const body = await request.json();\n` +
-      `    await ctx.runMutation(${ref}, { ${transformEntries.join(', ')} } as any);\n` +
-      `    return new Response(null, { status: 200 });\n` +
+      `${bodyLines.join('\n')}\n` +
       `  }),\n` +
       `});`,
     );
   }
 
-  if (routes.length === 0) diagnostics.push({ severity: 'info', code: 'CONVEX_NO_WEBHOOKS', message: 'No webhooks declared; emitted an empty http router.' });
+  if (routes.length === 0) {
+    diagnostics.push({ severity: 'info', code: 'CONVEX_NO_WEBHOOKS', message: 'No webhooks declared; emitted an empty http router.' });
+  }
+
+  // --- Idempotency mutation (exported so Convex registers it as internal.http._checkIdempotencyKey) ---
+  const idempotencyMutation = hasIdempotency
+    ? (
+      `/** Atomic idempotency check-and-set. Returns true if the key is new, false if already seen. */\n` +
+      `export const _checkIdempotencyKey = internalMutation({\n` +
+      `  args: { key: v.string(), webhookName: v.string() },\n` +
+      `  handler: async (ctx, { key, webhookName }) => {\n` +
+      `    const existing = await ctx.db\n` +
+      `      .query(${JSON.stringify(options.idempotencyTable)})\n` +
+      `      .withIndex("by_key", (q) => q.eq("key", key))\n` +
+      `      .first();\n` +
+      `    if (existing !== null) return false;\n` +
+      `    await ctx.db.insert(${JSON.stringify(options.idempotencyTable)}, { key, webhookName, seenAt: Date.now() });\n` +
+      `    return true;\n` +
+      `  },\n` +
+      `});`
+    )
+    : '';
+
+  // --- Imports ---
+  const serverImports = hasIdempotency ? `httpAction, internalMutation` : `httpAction`;
+  const apiImports = hasIdempotency ? `api, internal` : `api`;
+  const importLines = [
+    `import { httpRouter } from "convex/server";`,
+    `import { ${serverImports} } from "./_generated/server";`,
+    `import { ${apiImports} } from "./_generated/api";`,
+    ...(hasIdempotency ? [`import { v } from "convex/values";`] : []),
+  ];
 
   const code =
     `${HEADER}\n// ${routes.length} webhook route(s).\n\n` +
-    `import { httpRouter } from "convex/server";\n` +
-    `import { httpAction } from "./_generated/server";\n` +
-    `import { api } from "./_generated/api";\n\n` +
-    `const http = httpRouter();\n\n` +
+    `${importLines.join('\n')}\n` +
+    (hasSignature ? `\n${HMAC_HELPERS}\n` : '') +
+    (hasIdempotency ? `\n${idempotencyMutation}\n` : '') +
+    `\nconst http = httpRouter();\n\n` +
     `${routes.join('\n\n')}${routes.length ? '\n\n' : '\n'}` +
     `export default http;\n`;
   return { code, diagnostics };

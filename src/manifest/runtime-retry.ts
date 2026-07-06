@@ -80,9 +80,12 @@ export function computeRetryDelays(config: RetryConfig, maxAttempts?: number): R
 
 /**
  * Determine if an error code is retryable given the retry config.
- * Only CONCURRENCY_CONFLICT and TIMEOUT are retryable per spec.
+ * An error code is retryable when it appears in `config.retryOn`. The two
+ * built-in codes (CONCURRENCY_CONFLICT, TIMEOUT) are surfaced by
+ * `extractRetryErrorCode`, but any structured error code a command raises
+ * (e.g. SUPPLIER_UNAVAILABLE) is equally retryable once listed in `retryOn`.
  *
- * @param errorCode - The error code (e.g., from CommandResult.concurrencyConflict, or TIMEOUT)
+ * @param errorCode - The error code (from CommandResult, via extractRetryErrorCode)
  * @param config - Retry configuration
  * @returns true if the error should trigger a retry
  */

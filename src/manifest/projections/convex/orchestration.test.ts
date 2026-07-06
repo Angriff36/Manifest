@@ -59,6 +59,164 @@ describe('convex.http', () => {
   });
 });
 
+describe('convex.http — HMAC signature verification', () => {
+  it('emits HMAC helper functions and secret env-var read when signature declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
+      signature: { algorithm: 'hmac-sha256', header: 'X-Hub-Signature-256', secret: 'context.stripeWebhookSecret' },
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    // HMAC helper functions present
+    expect(code).toContain('_verifyHmac(');
+    expect(code).toContain('crypto.subtle.importKey(');
+    expect(code).toContain('crypto.subtle.verify(');
+    // Secret resolved from env var (context.stripeWebhookSecret → STRIPE_WEBHOOK_SECRET)
+    expect(code).toContain('process.env["STRIPE_WEBHOOK_SECRET"]');
+    // Config error (no secret) → 500
+    expect(code).toContain('status: 500');
+    // Signature header read
+    expect(code).toContain('"X-Hub-Signature-256"');
+    // Missing header or invalid sig → 401
+    expect(code).toContain('status: 401');
+  });
+
+  it('emits SHA-512 hash algo for hmac-sha512', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'gh', path: '/webhooks/gh', method: 'POST', command: 'push', entity: 'Repo',
+      signature: { algorithm: 'hmac-sha512', header: 'X-Signature', secret: 'context.ghSecret' },
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).toContain('"SHA-512"');
+    expect(code).toContain('"hmac-sha512"');
+    expect(code).toContain('process.env["GH_SECRET"]');
+  });
+
+  it('does NOT emit HMAC helpers when no signature declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'simple', path: '/webhooks/simple', method: 'POST', command: 'act', entity: 'Foo',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).not.toContain('_verifyHmac');
+    expect(code).not.toContain('process.env');
+    expect(code).not.toContain('crypto.subtle');
+    // existing body-read pattern unchanged
+    expect(code).toContain('const body = await request.json();');
+  });
+
+  it('reads raw body as text (not json) when signature is declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'gh', path: '/webhooks/gh', method: 'POST', command: 'push', entity: 'Repo',
+      signature: { algorithm: 'hmac-sha256', header: 'X-Sig', secret: 'context.secret' },
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).toContain('request.text()');
+    expect(code).not.toContain('request.json()');
+  });
+});
+
+describe('convex.http — idempotency dedup', () => {
+  it('emits internalMutation + key check when idempotencyHeader declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
+      idempotencyHeader: 'Idempotency-Key',
+    }] as IRWebhook[];
+    const result = gen(ir, 'convex.http');
+    const code = result.artifacts[0].code;
+    expect(result.diagnostics.some(d => d.severity === 'error')).toBe(false);
+    // Import additions
+    expect(code).toContain('internalMutation');
+    expect(code).toContain('internal');
+    expect(code).toContain('import { v } from "convex/values";');
+    // Exported idempotency mutation
+    expect(code).toContain('export const _checkIdempotencyKey');
+    expect(code).toContain('.withIndex("by_key"');
+    // httpAction references it
+    expect(code).toContain('internal.http._checkIdempotencyKey');
+    expect(code).toContain('"Idempotency-Key"');
+    // Missing header → 400
+    expect(code).toContain('status: 400');
+    // Duplicate delivery (replay) → 200
+    expect(code).toContain('status: 200');
+  });
+
+  it('does NOT emit idempotency mutation when no idempotencyHeader declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'simple', path: '/webhooks/simple', method: 'POST', command: 'act', entity: 'Foo',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    expect(code).not.toContain('_checkIdempotencyKey');
+    expect(code).not.toContain('internalMutation');
+    expect(code).not.toContain('internal.http');
+  });
+
+  it('HMAC check runs before idempotency check when both declared', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
+      signature: { algorithm: 'hmac-sha256', header: 'X-Hub-Signature-256', secret: 'context.stripeWebhookSecret' },
+      idempotencyHeader: 'Idempotency-Key',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    const hmacPos = code.indexOf('_verifyHmac(');
+    const idempPos = code.indexOf('_checkIdempotencyKey');
+    expect(hmacPos).toBeGreaterThanOrEqual(0);
+    expect(idempPos).toBeGreaterThanOrEqual(0);
+    // HMAC verification (in the route handler) must appear before idempotency check
+    // Find positions within the route body (after the helper definitions)
+    const httpRoutePos = code.indexOf('http.route(');
+    const hmacInRoute = code.indexOf('_verifyHmac(', httpRoutePos);
+    const idempInRoute = code.indexOf('_checkIdempotencyKey', httpRoutePos);
+    expect(hmacInRoute).toBeLessThan(idempInRoute);
+  });
+
+  it('stores idempotency key using the configured table name', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'pay', path: '/webhooks/pay', method: 'POST', command: 'handle', entity: 'Tx',
+      idempotencyHeader: 'X-Idempotency',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.http').artifacts[0].code;
+    // Default table name
+    expect(code).toContain('"webhookIdempotencyKeys"');
+  });
+});
+
+describe('convex.schema — idempotency table', () => {
+  it('emits idempotency table when any webhook has idempotencyHeader', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record', entity: 'Payment',
+      idempotencyHeader: 'Idempotency-Key',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.schema').artifacts[0].code;
+    expect(code).toContain('webhookIdempotencyKeys');
+    expect(code).toContain('by_key');
+    expect(code).toContain('key: v.string()');
+    expect(code).toContain('webhookName: v.string()');
+    expect(code).toContain('seenAt: v.number()');
+  });
+
+  it('does NOT emit idempotency table when no webhook has idempotencyHeader', () => {
+    const ir = emptyIR();
+    ir.webhooks = [{
+      name: 'stripe', path: '/webhooks/stripe', method: 'POST', command: 'record',
+    }] as IRWebhook[];
+    const code = gen(ir, 'convex.schema').artifacts[0].code;
+    expect(code).not.toContain('webhookIdempotencyKeys');
+  });
+
+  it('does NOT emit idempotency table when no webhooks at all', () => {
+    const code = gen(emptyIR(), 'convex.schema').artifacts[0].code;
+    expect(code).not.toContain('webhookIdempotencyKeys');
+  });
+});
+
 describe('convex.sagas', () => {
   function sagaIR(onFailure: 'compensate' | 'abort'): IR {
     const ir = emptyIR();

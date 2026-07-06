@@ -488,6 +488,21 @@ export class ConvexProjection implements ProjectionTarget {
       );
     }
 
+    // Idempotency table — auto-emitted when any webhook declares idempotencyHeader.
+    // The generated convex/http.ts references this same table name for dedup storage.
+    const hasIdempotencyWebhook = (ir.webhooks ?? []).some(w => !!w.idempotencyHeader);
+    if (hasIdempotencyWebhook) {
+      const idemTbl = options.idempotencyTable;
+      blocks.push(
+        `  ${idemTbl}: defineTable({\n` +
+        `    key: v.string(),\n` +
+        `    webhookName: v.string(),\n` +
+        `    seenAt: v.number(),\n` +
+        `  })\n` +
+        `    .index("by_key", ["key"])`,
+      );
+    }
+
     if (entityBlockCount === 0) {
       diagnostics.push({
         severity: 'warning',

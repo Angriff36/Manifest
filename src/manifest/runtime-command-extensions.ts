@@ -90,6 +90,12 @@ export function toRetryConfig(retry: IRRetry): RetryConfig {
 
 export function extractRetryErrorCode(result: CommandResult): string | undefined {
   if (result.concurrencyConflict) return 'CONCURRENCY_CONFLICT';
+  // Structured (ManifestError-style) failures surface as `CODE: message`
+  // (e.g. `SUPPLIER_UNAVAILABLE: upstream is down`). Propagate that leading
+  // code so user-declared `retryOn` entries beyond the two built-ins match.
+  const structured = /^([A-Z][A-Z0-9_]+):/.exec(result.error ?? '');
+  if (structured) return structured[1];
+  // Fallback for unstructured errors that merely mention a timeout.
   if (result.error?.includes('TIMEOUT')) return 'TIMEOUT';
   return undefined;
 }

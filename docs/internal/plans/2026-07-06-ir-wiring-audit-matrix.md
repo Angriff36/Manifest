@@ -27,7 +27,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | IRCommand interface shape (§34) | incorrect | — | irexplained.md:1713-1729 vs ir.ts:402-427 | omits `module?` |
 | IRModule interface shape (§4) | partial | — | irexplained.md:178-188 vs ir.ts:65-78 | ellipsis hides reactions/sagas/roles/schedules/webhooks arrays |
 | IRAggregate op union (§47) | wired | — | irexplained.md:2275-2320; ir.ts:516 | accurate (count-only) |
-| foreignKey/through mutual-exclusion *claim* (§20) | wired | — | ir.ts:219,222 JSDoc | claim matches the JSDoc — but enforcement is absent (see keys-relations row) |
+| foreignKey/through mutual-exclusion *claim* (§20) | wired | — | ir.ts:219,222 JSDoc; ir-compiler.ts:transformRelationship (enforced); irexplained.md:~1047 | claim now matches enforcement: compile-time error when both fields are set |
 | BuiltinStoreTarget enum (§26) | wired | — | ir.ts:301 | exact match |
 | IRAction kind union (§37) | wired | — | ir.ts:448 | exact match |
 | RefAction union (§21) | wired | — | ir.ts:206 | exact match |
@@ -47,7 +47,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | IRProvenance.compilerVersion | wired | — | version.ts:13; ir-compiler.ts:101; version.test.ts:15-20 | prior 1.0.0 hardcode resolved; no change |
 | IRType.nullable | wired | — | ir-compiler.ts:1459; prisma/generator.ts:304 | none |
 | IRType.generic | wired | — | ir-compiler.ts:1458; prisma/generator.ts:250 | none |
-| IRType.params (precision/scale) | partial | projections | ir-compiler.ts:1460; prisma/generator.ts:346 uses options.precision NOT type.params | §44 must warn params is stranded |
+| IRType.params (precision/scale) | wired | — | ir-compiler.ts:1460; prisma/generator.ts now reads type.params as fallback (options.precision wins); drizzle/generator.ts same; tests: prisma "IRType.params precision/scale" (3), drizzle "IRType.params precision/scale" (3) | §44 updated |
 | IRValue kinds (6) | wired | — | ir.ts:497-503; runtime-engine.ts:4345-4360 | none |
 | IRExpression kinds literal…object (9) | wired | — | ir-compiler.ts:1464-1577; runtime-engine.ts:4094-4207 | none |
 | IRExpression kind: lambda | partial | projections (Convex stubs) | runtime-engine.ts:4209-4217; convex/expression.ts:191-193 | §46 must note Convex can't transpile |
@@ -73,11 +73,11 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 
 | Feature | Final status | Missing layers | Key evidence | Doc impact |
 |---|---|---|---|---|
-| required modifier | partial | runtime validation | prisma/generator.ts:300-302 (dropped); runtime-engine.ts (no check) | §16 must state runtime does NOT enforce required |
-| unique modifier | partial | runtime uniqueness | prisma/generator.ts:312; runtime-engine.ts (no dup check) | §16 "validation/form behavior" aspirational |
-| indexed modifier | partial | Prisma/Drizzle emit no index; runtime none | convex/generator.ts:347; prisma/generator.ts (no @@index) | none (doc doesn't over-claim) |
-| private modifier | partial | plain-private runtime filter; Prisma/Drizzle/Zod/OpenAPI | runtime-engine.ts:1951-1953 (only strips if also masked) | §16 must clarify plain private is NOT filtered |
-| readonly modifier | partial | runtime write-block; most DB projections | openapi/generator.ts:247; runtime-engine.ts (no block) | none |
+| required modifier | wired | — (runtime create-time enforcement added) | runtime-engine.ts requiredModifierOutcomes (E_REQUIRED, satisfied by input/default/autoNow/auto-managed/command-produced); runtime-modifier-enforcement.test.ts | §16 now: runtime rejects unsatisfied required on create |
+| unique modifier | wired | — (runtime create/update scan added) | runtime-engine.ts uniqueModifierOutcomes (E_UNIQUE, tenant-scoped O(n) scan; ponytail note to move store-level); runtime-modifier-enforcement.test.ts | §16 now: runtime enforces uniqueness |
+| indexed modifier | partial | runtime none | convex/generator.ts:347; prisma/generator.ts now emits @@index([prop]) for indexed properties; drizzle/generator.ts emits index().on(); tests: prisma "indexed modifier emits @@index" (3), drizzle "indexed modifier emits index()" (3) | none (doc doesn't over-claim) |
+| private modifier | wired | — (plain-private runtime filter added) | runtime-engine.ts applyMasking + privateProperties (strips all private from reads; raw path unaffected); runtime-modifier-enforcement.test.ts | §16 now: all private stripped from reads |
+| readonly modifier | wired | — (runtime write-block added) | runtime-engine.ts updateInstance E_READONLY (blocks post-create change; creating-command + same-value writes allowed); runtime-modifier-enforcement.test.ts | §16 now: runtime blocks post-create readonly change |
 | optional modifier | partial | runtime; most projections use required-absence | nextjs/generator.ts:568; runtime (never read) | none |
 | searchable modifier | partial | runtime search; Convex/OpenAPI/Zod/Next.js | prisma/generator.ts:1080; drizzle GIN | §16 projection claim accurate |
 | encrypted modifier | wired | — | runtime-engine.ts:991-1045; conformance 91 | none |
@@ -92,7 +92,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | entity parent inheritance (extends) | **wired** *(verifier corrected from partial)* | — | entity-composition.ts:154-166; conformance 79.ir.json:73-147 + conformance.test.ts:273 deep-equal | §7 "flatten or preserve depending on projection" is wrong: always pre-flattened |
 | mixin composition | wired | — | entity-composition.ts:169-184; conformance 78.ir.json:73-147 | §7 same correction; mixins field traceability-only |
 | IRModule grouping (output organization) | partial | no projection splits output by module | prisma/generator.ts:95 (@@schema); openapi title only | §4 "prevent one giant pile" not delivered |
-| IRValueObject embedding | partial | Convex errors, OpenAPI→string, Zod→z.unknown(); runtime no validation | prisma/generator.ts:253-262 (Json OK); convex/generator.ts:231-240 (error) | §5 must scope to SQL persistence projections |
+| IRValueObject embedding | partial | Convex still hard-errors; runtime no structural validation | prisma/generator.ts:253-262 (Json OK); convex/generator.ts:231-240 (error); openapi/generator.ts:buildValueObjectSchema+$ref wired 2026-07-06; zod/generator.ts:buildValueObjectZod wired 2026-07-06 | §5 OpenAPI now emits proper $ref object schema; Zod now emits z.object({...}); Convex still errors; runtime still no structural validation |
 | external entities | wired | — | ir-compiler.ts:694; prisma/generator.ts:1223-1230; drizzle test:266-274 | §12 accurate |
 
 ### Group: keys-relations
@@ -101,10 +101,10 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 |---|---|---|---|---|
 | composite key[] (entity.key) | partial | runtime (always uses 'id') | prisma/generator.ts:1043 (@@id); runtime-engine.ts:1184-1187 comment | §8 must warn runtime ignores entity.key |
 | alternateKeys[][] (unique [...]) | partial | runtime; convex/kysely/openapi/zod | prisma/generator.ts:1054; runtime (no ref) | §8 note only prisma/drizzle emit constraints |
-| relationships hasMany/hasOne/belongsTo/ref | **partial** *(verifier corrected from wired)* | runtime end-to-end tests for hasOne + ref | runtime-engine.ts:1263-1331 (all 4 cases); conformance 02 only covers hasMany+belongsTo | hasOne/ref runtime paths untested E2E |
-| foreignKey fields[]/references[] | partial | runtime composite FK (single-col only) | prisma/generator.ts:545-779; runtime-engine.ts:1188-1190 drops composite | §20 must warn runtime = single-col FK only |
+| relationships hasMany/hasOne/belongsTo/ref | **wired** *(was partial — E2E tests added 2026-07-06)* | — | runtime-engine.ts:1263-1331 (all 4 cases); conformance 02 (hasMany+belongsTo), conformance 98 (hasOne E2E), conformance 99 (ref E2E) | hasOne/ref runtime paths now tested E2E |
+| foreignKey fields[]/references[] | partial (fail-closed) | runtime composite FK unsupported (single-col only) — now fails closed, not wrong-row | prisma/generator.ts:545-779; runtime-engine.ts resolveRelationship throws COMPOSITE_FK_UNSUPPORTED on composite (was silent drop); runtime-composite-fk.test.ts | §20 warns single-col only; composite now raises COMPOSITE_FK_UNSUPPORTED (no wrong-row) |
 | through join entities (M2M) | partial | runtime + Prisma + Drizzle all unimplemented | prisma/generator.ts:575-587 (UNIMPLEMENTED diag); runtime-engine.ts:1174-1193 ignores through | §20 must state through is not implemented anywhere |
-| foreignKey/through mutual-exclusivity enforcement | incorrect | parser + compiler + schema (no oneOf) | ir.ts:219 JSDoc only; ir-compiler.ts (no diagnostic); irexplained.md:1026 | doc says "explicitly … mutually exclusive" implying enforcement — none exists |
+| foreignKey/through mutual-exclusivity enforcement | wired | — | ir-compiler.ts:transformRelationship (emits error when both set); conformance 101-foreignkey-through-conflict; ir-compiler.test.ts; ir-v1.schema.json not-constraint; semantics.md §foreignKey/through; irexplained.md:~1047 | compile-enforced: error diagnostic + ir:null; was JSDoc-only |
 | RefAction cascade/restrict/setNull/setDefault/noAction | partial | runtime never enforces; kysely no emit | prisma/generator.ts:774-779; runtime-engine.ts (zero refs) | §21 must state DB-only, never runtime-enforced |
 
 ### Group: entity-runtime-flags
@@ -124,7 +124,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | messageTemplate interpolation | wired | — | runtime-engine.ts:4586-4589,4524-4557; conformance 21 | none |
 | detailsMapping | wired | — | runtime-engine.ts:4575-4581,4597; conformance 21 | none |
 | overrideable + overridePolicyRef | wired | — | runtime-engine.ts:4623,4641-4651; conformance 52/53 | none |
-| OverrideRequest/ConstraintOutcome runtime flow | partial | auto-policy path emits no OverrideApplied audit event | runtime-engine.ts:4641-4651 (no buildOverrideAppliedEvent) | §23 must clarify auto-policy override not audited |
+| OverrideRequest/ConstraintOutcome runtime flow | wired | — | runtime-engine.ts evaluateCommandConstraints auto-policy path now emits OverrideApplied (buildOverrideAppliedEvent, authorizedBy from context); runtime-override-auto-policy.test.ts; conformance 22 | §23 now documents auto-policy override IS audited |
 | entity-level vs command-level constraints | partial | entity-level override never evaluated | runtime-engine.ts:2159-2165 (no override) vs 4610-4663 | §22 override only for command-level constraints |
 | Constraint expression polarity ('severity' name prefix) | incorrect | — (undocumented magic) | runtime-engine.ts:4569-4572,3775-3781; semantics.md silent | §22 must DOCUMENT name-prefix polarity inversion |
 
@@ -133,7 +133,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | Feature | Final status | Missing layers | Key evidence | Doc impact |
 |---|---|---|---|---|
 | guards ordering + halt-on-first-falsey | wired | — | runtime-engine.ts:3282-3303; conformance 11 | none |
-| parameters required/defaults validation | partial | runtime (never reads command.parameters) | runtime-engine.ts (zero 'parameters'); openapi:323-331 | §34 note runtime skips param validation |
+| parameters required/defaults validation | wired | — (runtime now reads command.parameters) | runtime-engine.ts processCommandParameters (applies defaultValue, rejects missing required with MISSING_REQUIRED_PARAMETER + parameterFailure, before all gates; also in async pre-enqueue path); runtime-modifier-enforcement.test.ts | §34 now: runtime validates params + applies defaults |
 | action kind: mutate | wired | — | runtime-engine.ts:4014-4021 | none |
 | action kind: emit | partial | runtime emits anonymous 'action_event', ignores target | parser.ts:863; runtime-engine.ts:4023-4047 | §37 note anonymous event |
 | action kind: compute | wired | — | runtime-engine.ts:4053-4060 | §37 note compute == mutate at runtime |
@@ -150,8 +150,8 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 |---|---|---|---|---|
 | async:true + completionEvent/failureEvent | wired | — | ir-compiler.ts:1081-1084,458-492; runtime-engine.ts:2413,3053-3144; runtime-async.test.ts | §40 replace "apparently"; note no worker auto-started |
 | JobRecord/JobQueue (Memory + Postgres) | wired | — | runtime-engine.ts:631-658; jobs/stores/postgres.ts:122; jobs/worker.test.ts:148 | §40 note host must configure jobQueue + poll |
-| IRRetry maxAttempts/backoff/jitter/retryOn | partial | retryOn≠CONCURRENCY_CONFLICT/TIMEOUT is dead; no projection; no results.json | runtime-command-extensions.ts:91-95; runtime-retry.ts:83 | §24 (1228-1229) SUPPLIER_UNAVAILABLE never matches |
-| IRRateLimit user/tenant/global + burstAllowance | partial | in-memory only (no durable); no projection exposes it; policy path no results test | runtime-rate-limit.ts:4,41-105; runtime-engine.ts:3215-3233,3716-3735 | §25 note in-memory, resets per process |
+| IRRetry maxAttempts/backoff/jitter/retryOn | partial | retryOn custom codes NOW wired; still no projection exposes retry; no conformance results.json | runtime-command-extensions.ts extractRetryErrorCode now surfaces structured `CODE:` from result.error; runtime-command-extensions.test.ts | §24 corrected: SUPPLIER_UNAVAILABLE-style codes match when listed |
+| IRRateLimit user/tenant/global + burstAllowance | partial | in-memory only (no durable); no projection exposes it | runtime-rate-limit.ts:4,41-105; runtime-engine.ts:3215-3233,3716-3735; conformance 100 (policy rateLimit E2E, added 2026-07-06) | §25 note in-memory, resets per process |
 
 ### Group: events-reactions-sagas
 
@@ -172,8 +172,8 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 | IRSchedule — cron trigger | wired | — | runtime-engine.ts:1748-1798; schedule-worker.ts:98-157; conformance 76 | §30 snippet missing name/module/entityName |
 | IRSchedule — interval/every triggers | partial | Next.js/Vercel projection emits cron only | schedule-generator.ts:23-24 (cron filter); convex ok | §30 warn interval/every need schedule-worker pkg |
 | IRWebhook — path/method/command/entity/transform | wired | — | webhooks/handler.ts:65-205; nextjs/express/hono generators | §31:1623 caveat now factually WRONG (see incorrect row) |
-| IRWebhook — signature HMAC (sha256/sha512) | partial | Convex projection skips HMAC entirely | webhooks/handler.ts:97-129; convex/orchestration.ts:85-104 | §32 note Convex skips verification |
-| IRWebhook — idempotencyHeader dedup | partial | Convex projection ignores it | webhooks/handler.ts:131-149; convex/orchestration.ts:85-104 | §33 note fail-closed + Convex gap |
+| IRWebhook — signature HMAC (sha256/sha512) | wired | — | webhooks/handler.ts:97-129; convex/orchestration.ts generateHttp emits `_verifyHmac` (Web Crypto subtle.verify, constant-time) + env-var secret resolution + 500/401 fail-closed; test: orchestration.test.ts "emits HMAC helper functions" | §32 Convex gap now wired (2026-07-06) |
+| IRWebhook — idempotencyHeader dedup | wired | — | webhooks/handler.ts:131-149; convex/orchestration.ts generateHttp emits `_checkIdempotencyKey` internalMutation + 400/200-replay fail-closed; convex/generator.ts auto-emits `webhookIdempotencyKeys` table in schema; test: orchestration.test.ts "emits internalMutation + key check" | §33 Convex gap now wired (2026-07-06) |
 | IRSchedule/IRWebhook interface snapshots | incorrect | — | irexplained.md:1519-1523,1570-1579,1623 vs ir.ts:287-298,383-400 | shapes incomplete; 1623 caveat wrong |
 
 ### Group: authz-approvals
@@ -182,7 +182,7 @@ Counts: **wired 60 · partial 41 · incorrect 11 · ir-only 0 · total 112.**
 |---|---|---|---|---|
 | IRPolicy action=execute/all enforcement | wired | — | runtime-engine.ts:3699-3755; conformance 06 | none |
 | IRPolicy action=read/write/delete enforcement | partial | no separate runtime read-gate (getAllInstances no policy check) | runtime-engine.ts:3706-3710,1864-1870 | §41 clarify no independent read gate |
-| IRPolicy rateLimit | partial | no runtime conformance test (75 has IR only) | runtime-engine.ts:3716-3736; conformance 75.ir.json only | §25 policy path exists but untested |
+| IRPolicy rateLimit | partial | in-memory only (no durable); no projection exposes it | runtime-engine.ts:3716-3736; conformance 75.ir.json; conformance 100 (execution: warmup+deny E2E, added 2026-07-06) | §25 policy rateLimit path now has E2E conformance test |
 | IRRole parent inheritance + effectivePermissions | wired | — | ir-compiler.ts:1342-1448; runtime-engine.ts:1196-1216; conformance 71 | §42 accurate |
 | IRRole allow/deny + custom permissions | wired | — | ir-compiler.ts:1317-1331,1392-1448; convex functions:344-351 | §43 accurate |
 | roleAllows case-sensitivity | wired | — | runtime-engine.ts:1199,1210,1583-1589 | §42-43 must note exact case-sensitive matching |
@@ -219,7 +219,7 @@ Numbered, actionable edits. Items 1-8 are the fidelity-group interface transcrip
 15. **§18 masking output examples** — all three examples misstate actual output (masking.ts): redact returns `***` (3 stars, not `********`); phone returns `***-***-XXXX` (not `(***) ***-1234`); last4 returns `****XXXX` (4 stars, not `********1234`). Fix each example to the real format.
 16. **§7 extends/mixin** — doc: compiler can "flatten or preserve these concepts depending on the target projection." Correct: parent + mixin members are **always pre-flattened at AST time** (entity-composition.ts:154-184) before IR is produced; the `parent`/`mixins` fields in IR are traceability-only and no projection reads them. Mixin source entities remain as standalone entries in `ir.entities`.
 17. **§4 modules** — doc: modules "let generators organize output and prevent the entire application from becoming one giant undifferentiated pile." Correct: no projection splits output artifacts by module. Only Prisma uses `entity.module` for `@@schema` (opt-in multiSchema) and OpenAPI uses the first module name for the API title. The "prevent one giant pile" claim is not delivered.
-18. **§5 value objects** — doc: value objects are "embedded, not separate tables." Accurate only for Prisma/Drizzle/prisma-store (Json/jsonb). Add: Convex hard-errors (CONVEX_UNKNOWN_TYPE, convex/generator.ts:231-240), OpenAPI silently emits `{ type: 'string' }`, Zod emits `z.unknown()`; only SQL persistence projections handle value-object types, and the runtime does no structural validation.
+18. **§5 value objects** — *(Partially fixed 2026-07-06.)* OpenAPI now emits a proper `object` schema in `components/schemas` referenced via `$ref`; Zod now emits `z.object({...})`. Still add: Convex hard-errors (CONVEX_UNKNOWN_TYPE, convex/generator.ts:231-240); the runtime does no structural validation of embedded value-object data.
 19. **§8 composite key** — add warning: the runtime ignores `entity.key` and always uses `'id'` for identity/relationship resolution (runtime-engine.ts:1184-1187). Composite-key identity is unsupported at runtime.
 20. **§8 alternateKeys** — add: only Prisma/Drizzle emit `@@unique`; the runtime does not enforce alternate-key uniqueness; Convex/Kysely/OpenAPI/Zod ignore it.
 21. **§20 foreignKey (fields/references)** — add warning: the runtime supports **single-column FK only**; a composite `fields.length > 1` is silently dropped and the engine falls back to the `${relName}Id` convention, which may return the wrong row (runtime-engine.ts:1188-1190).
@@ -242,8 +242,8 @@ Numbered, actionable edits. Items 1-8 are the fidelity-group interface transcrip
 38. **§24 retryOn** (lines 1228-1229) — doc lists `NETWORK_TIMEOUT` and `SUPPLIER_UNAVAILABLE` as example retryOn values. Correct: `extractRetryErrorCode` only ever produces `CONCURRENCY_CONFLICT` or `TIMEOUT` (runtime-command-extensions.ts:91-95); `NETWORK_TIMEOUT` matches incidentally (contains "TIMEOUT") but `SUPPLIER_UNAVAILABLE` never matches. retryOn does not accept arbitrary custom error codes — other codes are dead config.
 39. **§25 rateLimit** (lines 1293-1295) — appropriately hedged, but add: enforcement is **in-memory only and resets on process restart** (runtime-rate-limit.ts:4; no durable adapter shipped); command rateLimit is enforced before policy evaluation; policy rateLimit adds a check inside the policy gate; no projection exposes rateLimit in generated API/docs.
 40. **§30 interval/every schedules** — add: the Next.js/Vercel projection only emits cron-kind schedules (schedule-generator.ts:23-24 filters `kind==='cron'`); interval/every schedules produce no Vercel cron route and require the separately-published `./schedule-worker` (`startScheduleWorker()`).
-41. **§32 webhook signature** — accurate on the fields, but add: the Convex projection ignores `IRWebhook.signature` entirely (convex/orchestration.ts:85-104) — generated Convex httpActions have no HMAC verification.
-42. **§33 idempotencyHeader** — add: fail-closed behavior (500 if `idempotencyHeader` declared but no IdempotencyStore configured; 400 if header missing) and note the Convex projection does not implement idempotency (duplicate deliveries re-run the mutation).
+41. **§32 webhook signature** — FIXED 2026-07-06: `generateHttp` now emits `_verifyHmac` (Web Crypto `subtle.verify`, constant-time), resolves the secret from `process.env[SCREAMING_SNAKE]`, and returns 500 (unresolved secret) / 401 (missing or invalid sig) fail-closed. No remaining Convex gap; no doc caveat needed.
+42. **§33 idempotencyHeader** — add: fail-closed behavior (500 if `idempotencyHeader` declared but no IdempotencyStore configured; 400 if header missing). FIXED 2026-07-06: `generateHttp` emits `export const _checkIdempotencyKey = internalMutation(...)` and the schema surface auto-emits `webhookIdempotencyKeys` table; httpAction returns 400 (missing key) / 200 replay (duplicate). No remaining Convex gap.
 43. **§31 (line 1623)** — the caveat "this interface does not prove there is an actual HTTP server implementation registering the routes" is now factually WRONG. `src/manifest/webhooks/handler.ts` is the reference runtime handler (published as the `./webhooks` subpath) and the Next.js/Express/Hono projections generate functional routes that call it. Replace the caveat with a description of `webhooks/handler.ts` and which projections wire it.
 44. **§41 read/write/delete policies** — doc: "Policies can cover: reading, writing, deletion, …" without qualification. Add: there is **no separate runtime read-gate** — `getAllInstances`/`getInstanceRaw` apply masking + tenant filter but no policy check (runtime-engine.ts:1864-1870); read/write/delete policies fire only at command-execution time when linked via `command.policies`.
 45. **§42-43 roleAllows** — add: role matching is **exact and case-sensitive** — `'Admin'` and `'admin'` are different roles (runtime-engine.ts:1199,1210); a caller passing the wrong case silently gets `false` (fail-closed, no error). (MEMORY.md notes 61 latently-wrong capsule tests from this.)
@@ -259,10 +259,10 @@ Numbered, actionable edits. Items 1-8 are the fidelity-group interface transcrip
 Genuine code gaps (partial/incorrect-enforcement features). For the human — these are missing implementation, not doc edits.
 
 **Runtime enforcement missing (IR compiles, runtime ignores):**
-- `required` / `unique` modifiers not enforced at runtime — no missing-field or duplicate check on create/update (runtime-engine.ts).
-- `readonly` modifier does not block writes at runtime.
-- Plain `private` (without `masked`) not stripped on read — only `private + masked` is filtered (runtime-engine.ts:1951-1953).
-- Command **parameter validation absent** — runtime never reads `command.parameters`; `required` not enforced, `defaultValue` never applied to command input.
+- ~~`required` / `unique` modifiers not enforced at runtime~~ FIXED 2026-07-06: create rejects unsatisfied `required` (E_REQUIRED); create/update reject duplicate `unique` values (E_UNIQUE, tenant-scoped scan).
+- ~~`readonly` modifier does not block writes at runtime~~ FIXED 2026-07-06: post-create change to a readonly property is rejected (E_READONLY).
+- ~~Plain `private` (without `masked`) not stripped on read~~ FIXED 2026-07-06: all `private` properties are stripped from getInstance/getAllInstances; raw execution path unaffected.
+- ~~Command parameter validation absent~~ FIXED 2026-07-06: runtime applies parameter `defaultValue` and rejects a missing `required` parameter (MISSING_REQUIRED_PARAMETER) before all gates.
 - `command.returns` never validated/coerced at runtime.
 - **Composite keys**: runtime ignores `entity.key`, always assumes `'id'` (runtime-engine.ts:1184-1187).
 - **Composite FK** (`fields.length > 1`): silently dropped; may return wrong row (runtime-engine.ts:1188-1190).
@@ -285,13 +285,13 @@ Genuine code gaps (partial/incorrect-enforcement features). For the human — th
 - `compute` action: identical to `mutate` (no distinct behavior).
 
 **Projection gaps:**
-- `IRType.params` (precision/scale) read by no projection (Prisma/Drizzle use parallel `options.precision`).
+- `IRType.params` (precision/scale): now consumed by Prisma and Drizzle as fallback when `options.precision` is absent; `options.precision` still wins as explicit override. (wired 2026-07-06)
 - Lambda expressions not transpilable in Convex.
-- Value objects: Convex errors, OpenAPI emits `{type:'string'}`, Zod emits `z.unknown()`.
-- `indexed` modifier: Prisma/Drizzle emit no index (only Convex consumes it).
+- Value objects: Convex still hard-errors. ~~OpenAPI emits `{type:'string'}`, Zod emits `z.unknown()`.~~ Fixed 2026-07-06: OpenAPI emits proper `$ref` object schema; Zod emits `z.object({...})`.
+- `indexed` modifier: Prisma emits `@@index([prop])` and Drizzle emits `index().on(prop)` for properties with the indexed modifier (only Convex was consuming it before). (wired 2026-07-06)
 - Framework projections (Next.js/SvelteKit/Remix/Express/Hono) don't derive tenant behavior from `ir.tenant`.
 - No projection splits output artifacts by `module`.
-- Convex webhook projection skips both HMAC signature verification and idempotency.
+- ~~Convex webhook projection skips both HMAC signature verification and idempotency.~~ Fixed 2026-07-06: convex/orchestration.ts now generates HMAC verification and idempotency dedup.
 - Next.js/Vercel schedule projection drops interval/every schedules (cron only).
 - No projection consumes the `retry` or `rateLimit` IR fields for generated API/docs.
 
@@ -301,8 +301,9 @@ Genuine code gaps (partial/incorrect-enforcement features). For the human — th
 - RedisEventBus never wired into a RuntimeEngine outside tests (orphan/test-only module).
 - Stores postgres/supabase/durable/mongodb: not auto-instantiated — `storeProvider` required (by design, but zero-config gap).
 - Approval `onTimeout='escalate'` unimplemented (behaves as cancel).
-- Policy `read/write/delete`: no independent runtime read-gate; policy `rateLimit`: no runtime conformance test.
-- `hasOne` / `ref` relationship runtime paths exist but are untested end-to-end.
+- Policy `read/write/delete`: no independent runtime read-gate.
+- ~~`hasOne` / `ref` relationship runtime paths exist but are untested end-to-end.~~ **Fixed 2026-07-06**: conformance 98 (hasOne) + conformance 99 (ref) added.
+- ~~Policy `rateLimit`: no runtime conformance test.~~ **Fixed 2026-07-06**: conformance 100 (policy rateLimit warmup+deny E2E) added.
 
 ---
 
@@ -312,7 +313,7 @@ For each partial/incorrect feature: grep keywords for other docs (docs/**, READM
 
 | Grep keywords | If a doc says (overclaim) → change to |
 |---|---|
-| `precision`, `scale`, `@db.Decimal`, `decimal(` | "decimals carry precision/scale into projections" → "projections read precision from `options.precision` config, not from the IR type; `IRType.params` is not consumed" |
+| `precision`, `scale`, `@db.Decimal`, `decimal(` | "decimals carry precision/scale into projections" → "projections read precision from `IRType.params` (compiled into IR) and from `options.precision` config (explicit override wins)" |
 | `lambda`, `.all(`, `.any(`, `arr.all` | "lambdas work across projections" → "lambdas evaluate only in the reference runtime; Convex cannot transpile them" |
 | `count(`, `aggregate`, `predicate pushdown` | "count() is efficient" → "count() is a full table scan with no predicate pushdown" |
 | `tenant`, `multiTenant`, `tenantId`, `RLS`, `row-level` | "tenant declaration makes all projections tenant-aware" → "only Prisma/Convex read `ir.tenant`; framework projections rely on generator options; the runtime enforces tenant isolation" |
@@ -322,7 +323,7 @@ For each partial/incorrect feature: grep keywords for other docs (docs/**, READM
 | `mask`, `redact`, `********`, `last4`, `phone` | any `********`/`(***) ***-1234`/`********1234` example → real formats `***`, `***-***-XXXX`, `****XXXX` |
 | `extends`, `mixin`, `inheritance`, `flatten`, `preserve` | "projections choose to flatten or preserve inheritance" → "parent/mixin members are always pre-flattened at compile time; IR `parent`/`mixins` are traceability-only" |
 | `module`, `organize output`, `separate files`, `namespace` | "modules split/organize generated output" → "modules affect only Prisma @@schema (multiSchema) and OpenAPI title; no projection emits per-module files" |
-| `value object`, `value X`, `embedded`, `jsonb`, `Json` | "value objects work everywhere / are embedded" → "only SQL persistence projections (Prisma/Drizzle/prisma-store) embed as Json/jsonb; Convex errors, OpenAPI→string, Zod→z.unknown()" |
+| `value object`, `value X`, `embedded`, `jsonb`, `Json` | "value objects work everywhere / are embedded" → "SQL persistence projections (Prisma/Drizzle/prisma-store) embed as Json/jsonb; OpenAPI emits a proper `$ref` object schema; Zod emits `z.object({...})`; Convex hard-errors; the runtime carries value-object data as ordinary property data with no structural validation" |
 | `composite key`, `key [`, `@@id`, `composite PK` | "composite keys are used at runtime" → "composite keys emit @@id in Prisma/Drizzle only; the runtime always uses `id`" |
 | `alternateKeys`, `unique [`, `@@unique` | "alternate keys are enforced" → "emitted as @@unique in Prisma/Drizzle only; not runtime-enforced" |
 | `foreignKey`, `fields [`, `references [`, `composite FK` | "composite FKs resolve at runtime" → "runtime supports single-column FK only; composite FK is dropped" |
@@ -340,11 +341,11 @@ For each partial/incorrect feature: grep keywords for other docs (docs/**, READM
 | `retryOn`, `retry`, `SUPPLIER_UNAVAILABLE`, `NETWORK_TIMEOUT` | "retryOn accepts custom error codes" → "only CONCURRENCY_CONFLICT and TIMEOUT are retryable; other codes never match" |
 | `rateLimit`, `rate limit`, `burstAllowance`, `durable` | "rate limits are durable/enforced everywhere" → "in-memory only, resets per process; no durable adapter; no projection exposes it" |
 | `schedule`, `interval`, `every`, `vercel.json`, `cron` | "all schedules run on Vercel" → "Next.js/Vercel projection emits cron-kind only; interval/every need the schedule-worker package" |
-| `webhook`, `signature`, `hmac`, `idempotency`, `Convex webhook` | "Convex webhooks verify signatures / dedupe" → "Convex projection skips HMAC verification and idempotency; the reference handler and Next.js/Express/Hono enforce both" |
+| `webhook`, `signature`, `hmac`, `idempotency`, `Convex webhook` | Fixed 2026-07-06: the Convex projection now generates HMAC verification (`_verifyHmac` via Web Crypto subtle.verify) and idempotency dedup (`_checkIdempotencyKey` internalMutation + `webhookIdempotencyKeys` schema table). All projections enforce both. No doc correction needed. |
 | `HTTP server`, `register routes`, `webhook handler` | "no HTTP server implementation exists for webhooks" → "webhooks/handler.ts is the reference handler; Next.js/Express/Hono generate routes that call it" |
 | `policy`, `read policy`, `write policy`, `read gate` | "read/write/delete policies gate reads" → "no separate runtime read-gate; they fire only at command execution via command.policies" |
 | `role`, `roleAllows`, `case`, `Admin`, `permission` | "role names are case-insensitive" → "role matching is exact and case-sensitive ('Admin' ≠ 'admin'), fail-closed with no error" |
 | `approval`, `onTimeout`, `escalate` | "escalate is supported" → "escalate is not implemented; behaves as cancel (status=expired)" |
 | `postgres`, `supabase`, `mongodb`, `durable`, `storeProvider` | "postgres/mongodb/etc. work out of the box" → "only memory/localStorage auto-instantiate; other targets require a storeProvider" |
 | `Redis`, `RedisEventBus`, `cross-process events` | "Redis event bus is wired" → "RedisEventBus is shipped and unit-tested but never wired into a RuntimeEngine outside tests" |
-| `indexed`, `@@index`, `.index(` | "indexed properties get DB indexes" → "only Convex consumes `indexed`; Prisma/Drizzle emit no index for it" |
+| `indexed`, `@@index`, `.index(` | "indexed properties get DB indexes" → now accurate: Prisma emits `@@index([prop])` and Drizzle emits `index().on(prop)`; only the runtime has no enforcement |

@@ -1,0 +1,15 @@
+// hasOne relationship — runtime end-to-end (verifier-item 1)
+entity User {
+  property name: string required
+  hasOne profile: Profile
+  computed profileName: string = self.profile.displayName
+}
+
+entity Profile {
+  property displayName: string required
+  property userId: string
+  belongsTo user: User
+}
+
+store User in memory
+store Profile in memory

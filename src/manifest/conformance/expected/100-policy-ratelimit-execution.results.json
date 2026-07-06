@@ -1,0 +1,54 @@
+{
+  "testCases": [
+    {
+      "name": "first rename call succeeds within rate limit (maxRequests: 1)",
+      "context": {
+        "role": "user"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Widget",
+          "data": { "id": "widget-1", "name": "" }
+        }
+      },
+      "command": {
+        "name": "rename",
+        "entityName": "Widget",
+        "instanceId": "widget-1",
+        "input": { "n": "gadget" }
+      },
+      "expectedResult": {
+        "success": true,
+        "emittedEvents": []
+      },
+      "expectedInstanceState": {
+        "id": "widget-1",
+        "name": "gadget"
+      }
+    },
+    {
+      "name": "second rename call is rejected by policy rateLimit (N+1th call denied)",
+      "context": {
+        "role": "user"
+      },
+      "setup": {
+        "createInstance": {
+          "entity": "Widget",
+          "data": { "id": "widget-2", "name": "" }
+        }
+      },
+      "command": {
+        "name": "rename",
+        "entityName": "Widget",
+        "instanceId": "widget-2",
+        "warmupCount": 1,
+        "input": { "n": "gadget" }
+      },
+      "expectedResult": {
+        "success": false,
+        "error": "Rate limit exceeded for policy 'SpamGuard'",
+        "emittedEvents": []
+      }
+    }
+  ]
+}

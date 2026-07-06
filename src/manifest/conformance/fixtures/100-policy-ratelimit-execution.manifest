@@ -1,0 +1,13 @@
+// Policy rateLimit — runtime execution proves N+1th call is rejected (verifier-item 2)
+policy SpamGuard execute: context.role != "blocked" rateLimit { maxRequests: 1 windowMs: 60000 scope: global }
+
+entity Widget {
+  property name: string = ""
+
+  command rename(n: string) {
+    guard length(n) > 0
+    mutate name = n
+  }
+}
+
+store Widget in memory

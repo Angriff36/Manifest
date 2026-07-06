@@ -343,7 +343,21 @@ function emitPropertyLine(
   // scalars. Previously dbAttributes was SKIPPED whenever the default
   // @db.Decimal fired, so `money`-typed columns could never be annotated
   // @db.Money — an explicit per-field override must beat a derived default.
-  const prec = options.precision?.[entity.name]?.[prop.name];
+  //
+  // Precision-resolution order (highest to lowest priority):
+  //   1. options.precision[entity][prop]  — explicit consumer override
+  //   2. prop.type.params                — precision/scale compiled into IR
+  //   3. Default @db.Decimal(12,2)       — applied below for decimal scalars
+  const optPrec = options.precision?.[entity.name]?.[prop.name];
+  const typeParams = prop.type.params;
+  const prec = optPrec ?? (
+    typeParams && (typeParams.precision !== undefined || typeParams.scale !== undefined)
+      ? {
+          precision: typeParams.precision ?? DEFAULT_DECIMAL_PRECISION,
+          scale: typeParams.scale ?? DEFAULT_DECIMAL_SCALE,
+        }
+      : undefined
+  );
   const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
   // A Manifest `uuid` maps to the `String` scalar, but on PostgreSQL/CockroachDB
   // the physical column is a native `uuid` — so derive `@db.Uuid` automatically
@@ -1064,6 +1078,19 @@ function emitModel(
   if (idx && idx.length > 0) {
     if (!hadModelAttr) lines.push('');
     for (const entry of idx) lines.push(buildIndexLine(entry));
+  }
+
+  // @@index for properties with the `indexed` modifier — emit one @@index per
+  // such property, but skip any that are already covered by options.indexes.
+  const indexedModifierProps = entity.properties.filter(p => p.modifiers.includes('indexed'));
+  for (const indexedProp of indexedModifierProps) {
+    const alreadyInOptions = (idx ?? []).some(entry =>
+      Array.isArray(entry) ? entry.includes(indexedProp.name) : entry.fields.includes(indexedProp.name)
+    );
+    if (!alreadyInOptions) {
+      if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+      lines.push(`  @@index([${indexedProp.name}])`);
+    }
   }
 
   if (ir.tenant) {

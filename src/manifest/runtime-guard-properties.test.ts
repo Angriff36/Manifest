@@ -48,7 +48,10 @@ function createTestIR(): IR {
       entity: 'TestEntity',
       parameters: [
         { name: 'value', type: { name: 'number', nullable: false }, required: true },
-        { name: 'threshold', type: { name: 'number', nullable: false }, required: true },
+        // Optional: guard tests reference threshold only when they supply it in input;
+        // the runtime now enforces required params, so a fixture-required threshold that
+        // most cases omit would (correctly) be rejected before guards run.
+        { name: 'threshold', type: { name: 'number', nullable: false }, required: false },
       ],
       guards: [],
       actions: [],

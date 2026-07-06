@@ -1084,3 +1084,144 @@ describe('DrizzleProjection — composite FK with referential actions', () => {
     expect(code).toMatch(/onDelete: 'Cascade'/);
   });
 });
+
+// ============================================================================
+// IRType.params precision/scale
+// ============================================================================
+
+describe('DrizzleProjection — IRType.params precision/scale', () => {
+  it('uses IRType.params precision/scale for decimal when options.precision is absent', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'price',
+          type: { name: 'decimal', nullable: false, params: { precision: 20, scale: 6 } },
+          modifiers: ['required'],
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    expect(code).toMatch(/price: numeric\("price", \{ precision: 20, scale: 6 \}\)/);
+    expect(code).not.toMatch(/precision: 12, scale: 2/);
+  });
+
+  it('options.precision beats IRType.params (explicit config wins)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'price',
+          type: { name: 'decimal', nullable: false, params: { precision: 20, scale: 6 } },
+          modifiers: ['required'],
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new DrizzleProjection().generate(ir, {
+      surface: 'drizzle.schema',
+      options: { precision: { Widget: { price: { precision: 10, scale: 4 } } } },
+    }).artifacts[0].code;
+    expect(code).toMatch(/price: numeric\("price", \{ precision: 10, scale: 4 \}\)/);
+    expect(code).not.toMatch(/precision: 20, scale: 6/);
+  });
+
+  it('falls back to default precision when IRType.params is absent (existing behavior)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'cost', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    expect(code).toMatch(/cost: numeric\("cost", \{ precision: 12, scale: 2 \}\)/);
+  });
+});
+
+// ============================================================================
+// indexed modifier → Drizzle index()
+// ============================================================================
+
+describe('DrizzleProjection — indexed modifier emits index()', () => {
+  it('emits an index for a property with the indexed modifier', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    expect(code).toMatch(/index\("widget_tenantId_idx"\)/);
+    expect(code).toMatch(/\.on\(widget\.tenantId\)/);
+    expect(code).toMatch(/import \{ index \} from/);
+  });
+
+  it('does not duplicate index when property already in options.indexes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    // Generate with options.indexes already covering the indexed property
+    const codeWithOptionsIndex = new DrizzleProjection().generate(ir, {
+      surface: 'drizzle.schema',
+      options: { indexes: { Widget: [['tenantId']] } },
+    }).artifacts[0].code;
+
+    // Generate with modifier only (no options.indexes) — same index should be emitted
+    const codeModifierOnly = new DrizzleProjection().generate(ir, {
+      surface: 'drizzle.schema',
+    }).artifacts[0].code;
+
+    // Both should produce exactly one index export block for tenantId
+    const exportBlocksWithOptions = codeWithOptionsIndex.match(/export const .* = index\(.*tenantId/g) ?? [];
+    const exportBlocksModifier = codeModifierOnly.match(/export const .* = index\(.*tenantId/g) ?? [];
+    expect(exportBlocksWithOptions).toHaveLength(1);
+    expect(exportBlocksModifier).toHaveLength(1);
+  });
+
+  it('emits indexes for multiple indexed properties', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'accountId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+        { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new DrizzleProjection().generate(ir, { surface: 'drizzle.schema' }).artifacts[0].code;
+    expect(code).toMatch(/widget_accountId_idx/);
+    expect(code).toMatch(/widget_status_idx/);
+    expect(code).toMatch(/\.on\(widget\.accountId\)/);
+    expect(code).toMatch(/\.on\(widget\.status\)/);
+  });
+});

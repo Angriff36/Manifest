@@ -106,6 +106,13 @@ export interface ConvexProjectionOptions {
   eventsTable?: string;
 
   /**
+   * Name of the webhook idempotency-keys table auto-emitted in the schema when
+   * any webhook declares `idempotencyHeader`. Default `"webhookIdempotencyKeys"`.
+   * The generated http surface also references this table name.
+   */
+  idempotencyTable?: string;
+
+  /**
    * Authorization-policy enforcement in generated mutations. Default
    * `'enforce'`. Set to `'skip'` for dev/demo builds that have no auth context
    * configured: the role/policy (authorization) checks are omitted, while
@@ -154,6 +161,7 @@ export const CONVEX_PROJECTION_DEFAULTS = {
   referenceMode: 'convexId' as ReferenceMode,
   emitEventsTable: true,
   eventsTable: 'manifestEvents',
+  idempotencyTable: 'webhookIdempotencyKeys',
   policyMode: 'enforce' as 'enforce' | 'skip',
   includeTenantFilter: true,
   includeSoftDeleteFilter: true,
@@ -174,7 +182,7 @@ export const CONVEX_DEFAULT_NAMING: NamingConventionInput = {
  * Single trust boundary: after this, the projection trusts the contents.
  */
 export function normalizeOptions(raw: Record<string, unknown> | undefined): Required<
-  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'policyMode' | 'includeTenantFilter' | 'includeSoftDeleteFilter' | 'deletedAtProperty'>
+  Pick<ConvexProjectionOptions, 'output' | 'referenceMode' | 'tableMappings' | 'typeMappings' | 'indexes' | 'references' | 'emitEventsTable' | 'eventsTable' | 'idempotencyTable' | 'policyMode' | 'includeTenantFilter' | 'includeSoftDeleteFilter' | 'deletedAtProperty'>
 > & Pick<ConvexProjectionOptions, 'naming' | 'tenantIdProperty'> {
   const input = (raw ?? {}) as Partial<ConvexProjectionOptions>;
   return {
@@ -186,6 +194,7 @@ export function normalizeOptions(raw: Record<string, unknown> | undefined): Requ
     references: input.references ?? {},
     emitEventsTable: input.emitEventsTable ?? CONVEX_PROJECTION_DEFAULTS.emitEventsTable,
     eventsTable: input.eventsTable ?? CONVEX_PROJECTION_DEFAULTS.eventsTable,
+    idempotencyTable: input.idempotencyTable ?? CONVEX_PROJECTION_DEFAULTS.idempotencyTable,
     policyMode: input.policyMode ?? CONVEX_PROJECTION_DEFAULTS.policyMode,
     includeTenantFilter: input.includeTenantFilter ?? CONVEX_PROJECTION_DEFAULTS.includeTenantFilter,
     includeSoftDeleteFilter: input.includeSoftDeleteFilter ?? CONVEX_PROJECTION_DEFAULTS.includeSoftDeleteFilter,

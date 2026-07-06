@@ -2892,3 +2892,131 @@ describe('PrismaProjection — enum types', () => {
     expect(errs).toHaveLength(0);
   });
 });
+
+// ============================================================================
+// IRType.params precision/scale
+// ============================================================================
+
+describe('PrismaProjection — IRType.params precision/scale', () => {
+  it('uses IRType.params precision/scale for decimal when options.precision is absent', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'price',
+          type: { name: 'decimal', nullable: false, params: { precision: 20, scale: 6 } },
+          modifiers: ['required'],
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+price Decimal @db\.Decimal\(20, 6\)$/m);
+    expect(code).not.toMatch(/@db\.Decimal\(12, 2\)/);
+  });
+
+  it('options.precision beats IRType.params (explicit config wins)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        {
+          name: 'price',
+          type: { name: 'decimal', nullable: false, params: { precision: 20, scale: 6 } },
+          modifiers: ['required'],
+        },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { precision: { Widget: { price: { precision: 10, scale: 4 } } } },
+    }).artifacts[0].code;
+    expect(code).toMatch(/^\s+price Decimal @db\.Decimal\(10, 4\)$/m);
+    expect(code).not.toMatch(/@db\.Decimal\(20, 6\)/);
+  });
+
+  it('falls back to default precision when IRType.params is absent (existing behavior)', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'cost', type: { name: 'decimal', nullable: false }, modifiers: ['required'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+cost Decimal @db\.Decimal\(12, 2\)$/m);
+  });
+});
+
+// ============================================================================
+// indexed modifier → @@index
+// ============================================================================
+
+describe('PrismaProjection — indexed modifier emits @@index', () => {
+  it('emits @@index for a property with the indexed modifier', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+@@index\(\[tenantId\]\)$/m);
+  });
+
+  it('does not duplicate @@index when property already in options.indexes', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'tenantId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, {
+      surface: 'prisma.schema',
+      options: { indexes: { Widget: [['tenantId']] } },
+    }).artifacts[0].code;
+    // Should appear exactly once
+    const matches = code.match(/@@index\(\[tenantId\]\)/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
+
+  it('emits @@index for multiple indexed properties', () => {
+    const ir = emptyIR();
+    ir.entities.push({
+      name: 'Widget',
+      properties: [
+        { name: 'id', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+        { name: 'accountId', type: { name: 'string', nullable: false }, modifiers: ['required', 'indexed'] },
+        { name: 'status', type: { name: 'string', nullable: false }, modifiers: ['indexed'] },
+      ],
+      computedProperties: [], relationships: [], commands: [], constraints: [], policies: [],
+    });
+    ir.stores.push(durableStore('Widget'));
+
+    const code = new PrismaProjection().generate(ir, { surface: 'prisma.schema' }).artifacts[0].code;
+    expect(code).toMatch(/^\s+@@index\(\[accountId\]\)$/m);
+    expect(code).toMatch(/^\s+@@index\(\[status\]\)$/m);
+  });
+});

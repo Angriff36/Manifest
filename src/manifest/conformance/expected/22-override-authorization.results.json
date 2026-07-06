@@ -51,6 +51,20 @@
         "success": true,
         "emittedEvents": [
           {
+            "name": "OverrideApplied",
+            "channel": "system",
+            "payload": {
+              "constraintCode": "requiresApproval",
+              "reason": "Auto-authorized by policy 'canApproveLargeAmounts'",
+              "authorizedBy": "manager-1",
+              "timestamp": 1000000000000,
+              "commandName": "process",
+              "entityName": "FinancialRecord",
+              "instanceId": "record-2"
+            },
+            "timestamp": 1000000000000
+          },
+          {
             "name": "RecordProcessed",
             "channel": "financial.record.processed",
             "timestamp": 1000000000000

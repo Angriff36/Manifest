@@ -789,6 +789,91 @@ describe('ZodProjection', () => {
   });
 
   // ========================================================================
+  // Value object types
+  // ========================================================================
+
+  describe('value object types', () => {
+    it('emits z.object({...}) for a value object property (not z.unknown())', () => {
+      const ir = makeMinimalIR({
+        values: [
+          {
+            name: 'Address',
+            properties: [
+              { name: 'street', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'zip',    type: { name: 'string', nullable: false }, modifiers: [] },
+            ],
+          },
+        ],
+        entities: [bareEntity('Customer', [
+          { name: 'id',      type: { name: 'string',  nullable: false }, modifiers: ['required'] },
+          { name: 'address', type: { name: 'Address', nullable: false }, modifiers: ['required'] },
+        ])],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity', options: { emitTypes: false } });
+      const code = firstCode(result);
+
+      // Must contain the value object as z.object({...}) not z.unknown()
+      expect(code).toContain('z.object({');
+      expect(code).toContain('street: z.string()');
+      // zip is not required, so it gets .optional()
+      expect(code).toContain('zip: z.string().optional()');
+      expect(code).not.toContain('z.unknown()');
+    });
+
+    it('emits no ZOD_UNKNOWN_TYPE diagnostic for value object types', () => {
+      const ir = makeMinimalIR({
+        values: [
+          { name: 'Point', properties: [
+            { name: 'x', type: { name: 'number', nullable: false }, modifiers: [] },
+            { name: 'y', type: { name: 'number', nullable: false }, modifiers: [] },
+          ] },
+        ],
+        entities: [bareEntity('Shape', [
+          { name: 'id',     type: { name: 'string', nullable: false }, modifiers: ['required'] },
+          { name: 'origin', type: { name: 'Point',  nullable: false }, modifiers: [] },
+        ])],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.entity' });
+      const warnings = result.diagnostics.filter(d => d.code === 'ZOD_UNKNOWN_TYPE');
+      expect(warnings).toHaveLength(0);
+    });
+
+    it('emits value object types correctly in command parameter schemas', () => {
+      const ir = makeMinimalIR({
+        values: [
+          {
+            name: 'Money',
+            properties: [
+              { name: 'amount',   type: { name: 'number', nullable: false }, modifiers: ['required'] },
+              { name: 'currency', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+          },
+        ],
+        commands: [{
+          name: 'charge',
+          entity: 'Order',
+          parameters: [
+            { name: 'amount', type: { name: 'Money', nullable: false }, required: true },
+          ],
+          guards: [],
+          actions: [],
+          emits: [],
+        }],
+      });
+
+      const result = projection.generate(ir, { surface: 'zod.command', options: { emitTypes: false } });
+      const code = firstCode(result);
+
+      expect(code).toContain('z.object({');
+      expect(code).toContain('amount: z.number()');
+      expect(code).toContain('currency: z.string()');
+      expect(code).not.toContain('z.unknown()');
+    });
+  });
+
+  // ========================================================================
   // Date/time primitive types
   // ========================================================================
 

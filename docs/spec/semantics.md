@@ -69,9 +69,16 @@ not authoritative for Manifest semantics.
 
 ### Properties
 - Each property has a type, optional defaultValue, and modifiers.
-- Modifiers are declarative; the runtime MAY enforce them but is not required to.
+- Modifiers are declarative. The runtime enforces the subset listed under "Modifier enforcement" below; the remaining modifiers (`indexed`, `optional`, `searchable`) are projection hints with no independent runtime behavior.
 - When creating an instance, if a property is omitted from the provided data, the runtime MUST apply the property's defaultValue if present, or the type's default value if no defaultValue is specified.
 - If a property is explicitly provided (even with an empty string `""`), that value is used and defaults do not apply.
+
+#### Modifier enforcement (runtime)
+- `required`: creating an instance MUST fail closed when a property carrying the `required` modifier has no value from any source — it is absent from the provided data, has no `defaultValue`, is not `autoNow`, is not an auto-managed field (`id`, the tenant property, `versionProperty`/`versionAtProperty`, `createdAt`/`updatedAt` when `timestamps` is set, composite-key columns, relationship foreign keys), and is not written by the creating command's actions. The failure is a blocking constraint outcome with code `E_REQUIRED`. A zero-filled type default (e.g. `""`, `0`, `false`) does NOT satisfy an explicit `required` modifier.
+- `readonly`: once an instance exists, an update that changes a `readonly` property to a different value MUST be rejected (the update returns no instance; through a command it fails with `E_READONLY`). Writing a `readonly` property while the creating command runs is allowed, as is an update that writes the property's current value (a no-op).
+- `unique`: on create and on update, if a property carrying the `unique` modifier is set to a non-null value already held by another instance, the write MUST be rejected (blocking outcome / rejection with code `E_UNIQUE`). Uniqueness is evaluated by scanning existing instances within the active tenant scope — a full scan; a runtime MAY delegate to a store-level uniqueness constraint where the adapter supports it. Null/undefined values are not uniqueness-checked.
+- `private`: excluded entirely from public reads — see Property Masking.
+- `encrypted` and `masked` are enforced as described in their own sections.
 
 ### Computed Properties
 - A computed property MUST be derived by evaluating its expression in a context containing:
@@ -99,6 +106,7 @@ not authoritative for Manifest semantics.
 - For `belongsTo` and `ref`: The foreign key property on the source instance contains the ID of the target instance. The runtime MUST look up the target instance by that ID.
 - For `hasOne`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query the target entity where the foreign key equals the current instance's ID.
 - For `hasMany`: The inverse `belongsTo` relationship on the target entity is used. The runtime MUST query all target instances where the foreign key equals the current instance's ID.
+- Composite foreign keys (`foreignKey.fields` with more than one column) are NOT supported by the reference runtime. When resolving a relationship whose (source or inverse) foreign key is composite, the runtime MUST fail closed by raising a structured error with code `COMPOSITE_FK_UNSUPPORTED` rather than resolving by a single column or the `${relName}Id` convention (either of which may return the wrong row). Composite-key relationship resolution requires a store adapter that supports composite keys (e.g. Prisma).
 
 #### Relationship Constraints
 - Relationship resolution is synchronous within the current store context.
@@ -209,7 +217,7 @@ Examples: `partial(0, 4)` on `"123-45-6789"` → `"*******6789"`; `email` on `"a
 ### Runtime semantics
 
 - Masking is applied in `getInstance` / `getAllInstances`, **after** `encrypted` decryption (masking operates on plaintext) and after tenant filtering, before returning data.
-- If a property is both `private` and `masked`, `private` wins: the property is excluded entirely from `getInstance` / `getAllInstances` results.
+- A `private` property is excluded entirely from `getInstance` / `getAllInstances` results, whether or not it also carries `masked` (`private` wins over `masked`). Execution paths (guards, constraints, computed properties, relationship resolution, command actions) use the internal raw read path and still observe the real value.
 - `unmaskWhen` bindings are the spec-guaranteed bindings only: `self.*` / `this.*` (the instance being read, real values) and `user.*` / `context.*` from the engine's runtime context. With no user in context, `user.*` resolves undefined → falsy → masked.
 - **Secure by default; diagnostics explain, never compensate**: if `unmaskWhen` evaluates falsy, the value stays masked. If `unmaskWhen` *throws*, the value stays masked AND the runtime surfaces a diagnostic carrying the expression and resolved values — the diagnostic never changes the masked outcome.
 - Masking is a read-projection transform only: guards, constraints, computed properties, relationship resolution in expressions, and command actions always see real values. Identical IR + identical runtime context still produce identical execution results.
@@ -307,8 +315,12 @@ In this example:
 - Different entities MAY define the same normal command names, such as `create`, `update`, or `delete`; canonical duplicate checks are scoped to the same entity or resolved entity alias.
 - If an entity references a command name that does not exist in the root command list, compilation MUST fail.
 - Commands take parameters, optional guards, actions, emits, and optional return type.
+- Before building the evaluation context, the runtime MUST process the declared `parameters` against the command input:
+  - A parameter absent from the input that declares a `defaultValue` MUST have that default applied to the input.
+  - A parameter absent from the input that declares no `defaultValue` and is `required` MUST fail closed with a `parameterFailure` on the CommandResult (code `MISSING_REQUIRED_PARAMETER`) before rate-limit, policy, constraint, or guard evaluation.
+  - A parameter present in the input (including `null`) is used as-is; an explicit `undefined` is treated as absent.
 - On execution, a runtime MUST:
-  1) Build an evaluation context containing `self`, `this`, input parameters, and runtime context.
+  1) Build an evaluation context containing `self`, `this`, input parameters (with parameter defaults already applied), and runtime context.
   2) If the command declares `rateLimit`, evaluate the rate-limit gate for the configured scope (`user`, `tenant`, or `global`). If denied, execution MUST stop with a `rateLimitDenial` on the CommandResult.
   3) Evaluate applicable policies (see Policies). Policy-level `rateLimit` gates run before each policy expression. If any policy fails (expression or rate limit), execution MUST stop with a denial.
   4) Evaluate command-level constraints (see Command Constraints). If any `block` constraint fails without an authorized override, execution MUST stop.
@@ -316,7 +328,7 @@ In this example:
   6) Execute actions in order.
   7) Emit declared events in order.
   8) Return a CommandResult with success status, emitted events, and the last action result.
-- Commands may declare a `retry` policy. When present, the runtime wraps execution and retries only on `CONCURRENCY_CONFLICT` and `TIMEOUT` outcomes (or the explicit `retryOn` list). Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
+- Commands may declare a `retry` policy. When present, the runtime wraps execution and retries a failed attempt whose error code appears in the command's `retryOn` list. The runtime derives that code from the failed `CommandResult`: a concurrency conflict yields `CONCURRENCY_CONFLICT`; a structured (`CODE: message`) error surfaces its leading `CODE` verbatim (so a command that fails with `SUPPLIER_UNAVAILABLE: …` is retryable when `retryOn` lists `SUPPLIER_UNAVAILABLE`); an unstructured error mentioning `TIMEOUT` falls back to `TIMEOUT`. Policy denials, guard failures, and blocking constraint outcomes MUST NOT be retried.
 - `schedule` declarations compile to IR `schedules`. Runtimes expose `getSchedules()` and `runSchedule(name)`. The `RuntimeEngine` itself has no timer, so adapters decide when to invoke schedules; the reference package ships an optional worker (`startScheduleWorker` / `runSchedulesOnce` from `@angriff36/manifest/schedule-worker`) that evaluates cron and interval/every triggers on a tick loop and, when the IR declares approvals, sweeps approval expiry. Cron is matched in UTC to the minute (day-of-month and day-of-week follow the standard OR rule when both are restricted).
 - Entity `extends` and `mixin` composition is resolved at compile time. Precedence on name collision: own > later mixin > earlier mixin > parent. Cycles and unknown parents are compile errors.
 
@@ -340,6 +352,9 @@ In this example:
   2. If `overridePolicyRef` is specified, the referenced policy is evaluated
   3. If policy passes, the constraint outcome is marked with `overridden: true` and `overriddenBy` set to the authorizer
   4. An `OverrideApplied` event MUST be emitted with the override details
+- Two override paths exist and BOTH MUST emit an `OverrideApplied` audit event:
+  1. **Explicit request**: the caller supplies an `OverrideRequest`; `authorizedBy` is the request's authorizer.
+  2. **Auto-policy**: no `OverrideRequest` is supplied but the constraint's `overridePolicyRef` policy passes for the acting context. In this path `authorizedBy` is derived from the acting user in context (`context.user.id`, falling back to `policy:<name>` when no user is present) and the event `reason` records the authorizing policy.
 - Constraints NOT marked `overrideable` MAY NOT be overridden; override attempts MUST be rejected.
 
 ### Generated Artifacts
@@ -562,6 +577,14 @@ When entity `Child` declares a property or required command parameter `{parent}I
 Cross-cutting ids (`tenantId`, `userId`, `ownerId`, etc.) are excluded.
 
 When this diagnostic fires, compilation MUST fail (`ir` is null), same as other error-severity diagnostics.
+
+### foreignKey/through mutual exclusivity (error)
+
+`IRRelationship.foreignKey` and `IRRelationship.through` are mutually exclusive. A relationship MUST NOT set both. When a relationship declaration supplies both a `fields [...]` / `with <col>` clause (which populates `foreignKey`) and a `through <Entity>` clause, the compiler MUST emit an **error** diagnostic:
+
+> Relationship '\<name\>' on entity '\<entity\>' cannot set both 'foreignKey' and 'through' — they are mutually exclusive.
+
+Compilation MUST fail (`ir` is null) when this diagnostic is emitted. Conformance fixture `101-foreignkey-through-conflict.manifest` is the canonical test case.
 
 ### One-sided relationships (warning)
 

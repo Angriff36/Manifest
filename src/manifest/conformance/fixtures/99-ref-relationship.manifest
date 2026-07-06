@@ -1,0 +1,9 @@
+// ref relationship — runtime end-to-end (verifier-item 1)
+entity Article {
+  property title: string required
+  property relatedId: string
+  ref related: Article
+  computed relatedTitle: string = self.related.title
+}
+
+store Article in memory

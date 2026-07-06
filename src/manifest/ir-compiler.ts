@@ -678,7 +678,7 @@ export class IRCompiler {
       module: moduleName,
       properties,
       computedProperties: e.computedProperties.map(cp => this.transformComputedProperty(cp)),
-      relationships: e.relationships.map(r => this.transformRelationship(r)),
+      relationships: e.relationships.map(r => this.transformRelationship(r, e.name)),
       commands: [...(e.inheritedCommandNames || []), ...e.commands.map(c => c.name)],
       constraints,
       policies: regularPolicies,
@@ -869,11 +869,17 @@ export class IRCompiler {
     return result;
   }
 
-  private transformRelationship(r: RelationshipNode): IRRelationship {
+  private transformRelationship(r: RelationshipNode, entityName: string): IRRelationship {
     let foreignKey: IRForeignKey | undefined;
     if (r.fields) {
       foreignKey = { fields: r.fields };
       if (r.references) foreignKey.references = r.references;
+    }
+    if (foreignKey && r.through) {
+      this.emitDiagnostic(
+        'error',
+        `Relationship '${r.name}' on entity '${entityName}' cannot set both 'foreignKey' and 'through' — they are mutually exclusive.`,
+      );
     }
     return {
       name: r.name,

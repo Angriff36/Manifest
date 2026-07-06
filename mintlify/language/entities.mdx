@@ -42,14 +42,14 @@ Place modifiers between the `property` keyword and the name:
 
 | Modifier     | Meaning |
 |--------------|---------|
-| `required`   | The caller must supply a value (or a `defaultValue` must exist). |
+| `required`   | The caller must supply a value. The runtime rejects a create (`E_REQUIRED`) when the property has no supplied value, `defaultValue`, `autoNow`, auto-managed field, or creating-command action; a zero-filled type default does not satisfy it. |
 | `optional`   | Explicitly marks the property as not required. Equivalent to the default behavior. |
-| `readonly`   | Prevents mutation after creation (enforced by convention; scanner warns on violation). |
-| `unique`     | Signals to adapters that values must be unique within the entity collection. |
+| `readonly`   | Immutable after creation. The runtime rejects an update that changes the value (`E_READONLY`); writes during the creating command and same-value writes are allowed. |
+| `unique`     | Values must be unique within the entity collection. The runtime rejects a create/update whose non-null value another instance already holds (`E_UNIQUE`, scanned within the active tenant scope); adapters may additionally emit a database unique constraint. |
 | `encrypted`  | Declares the property for field-level encryption. The runtime encrypts at store-write boundaries and decrypts on read. Requires an `EncryptionProvider` in runtime options. |
 | `masked`     | Applies dynamic data masking to the property value on read. Write `masked` alone for the default `redact` strategy, or `masked(strategy, ...numbers)` to pick a strategy with optional numeric parameters. Strategies are exactly: `redact`, `partial`, `email`, `phone`, `last4`. Add a trailing `unmask when <expr>` clause to bypass masking for authorized readers. |
 | `searchable` | Declares the property for full-text search indexing (string-only). Adds a `search(text, query)` built-in with AND-semantics whole-word matching. Projections emit platform-specific full-text indexes (e.g., Prisma `@@fulltext`, Drizzle GIN tsvector). |
-| `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes. The reference runtime does **not** strip plain `private` fields from reads — only properties that are **both** `private` and `masked` are filtered at runtime. |
+| `private`    | Prevents inclusion in public API projections. The property is omitted from generated client types and API response shapes, and the reference runtime strips every `private` property (with or without `masked`) from `getInstance`/`getAllInstances`. Execution paths (guards, constraints, computed properties) use the raw read path and still see the real value. |
 | `indexed`    | Signals to adapters that the property should be indexed for faster lookups. Projections emit platform-specific index declarations. |
 
 ```manifest
@@ -251,7 +251,7 @@ belongsTo proposal: Proposal fields [proposalId, tenantId] references [id, tenan
 
 `fields` names properties on the current entity; `references` names the corresponding columns on the target. If `references` is omitted, `[id]` is assumed.
 
-**Runtime note**: The Manifest runtime uses a single-key in-memory store. Composite FKs are a projection concern — the runtime only resolves single-column FKs. A `belongsTo` with `fields.length > 1` returns `null` at runtime. Use a `storeProvider` adapter backed by a real database when composite-FK resolution is required.
+**Runtime note**: The Manifest runtime uses a single-key in-memory store. Composite FKs are a projection concern — the runtime only resolves single-column FKs. A `belongsTo` with `fields.length > 1` fails closed at runtime with a structured `COMPOSITE_FK_UNSUPPORTED` error (it never guesses a row from a partial key). Use a `storeProvider` adapter backed by a real database when composite-FK resolution is required.
 
 ### Referential actions
 

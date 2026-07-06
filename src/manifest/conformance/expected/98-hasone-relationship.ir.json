@@ -1,0 +1,110 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "902221101d9b500b8d5f58c489b75350955fd2584edc18cfd1235bf72b27666a",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "User",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "profileName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "profile"
+            },
+            "property": "displayName"
+          },
+          "dependencies": [
+            "profile"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "profile",
+          "kind": "hasOne",
+          "target": "Profile"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    },
+    {
+      "name": "Profile",
+      "properties": [
+        {
+          "name": "displayName",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "userId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [
+        {
+          "name": "user",
+          "kind": "belongsTo",
+          "target": "User"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "User",
+      "target": "memory",
+      "config": {}
+    },
+    {
+      "entity": "Profile",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

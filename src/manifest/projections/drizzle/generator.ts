@@ -174,7 +174,21 @@ function emitPropertyColumn(
   const builderParams: string[] = [`"${colName}"`];
 
   // Type-specific parameters
-  const prec = options.precision?.[entity.name]?.[prop.name];
+  //
+  // Precision-resolution order (highest to lowest priority):
+  //   1. options.precision[entity][prop]  — explicit consumer override
+  //   2. prop.type.params                — precision/scale compiled into IR
+  //   3. Default numeric(12, 2)          — applied below for decimal scalars
+  const optPrec = options.precision?.[entity.name]?.[prop.name];
+  const typeParams = prop.type.params;
+  const prec = optPrec ?? (
+    typeParams && (typeParams.precision !== undefined || typeParams.scale !== undefined)
+      ? {
+          precision: typeParams.precision ?? DEFAULT_DECIMAL_PRECISION,
+          scale: typeParams.scale ?? DEFAULT_DECIMAL_SCALE,
+        }
+      : undefined
+  );
   if (isNumericType({ builder }) || (prec && (colType.builder === 'numeric'))) {
     if (prec) {
       builderParams.push(`{ precision: ${prec.precision}, scale: ${prec.scale} }`);
@@ -620,6 +634,22 @@ function emitIndexes(entity: IREntity, options: DrizzleProjectionOptions): strin
       const name = !Array.isArray(entry) && entry.name ? entry.name : `${varName}_${fields.join('_')}_idx`;
       lines.push(`export const ${name.replace(/[^a-zA-Z0-9_]/g, '_')} = index("${name}")`);
       lines.push(`  .on(${fields.map(f => `${varName}.${f}`).join(', ')});`);
+      lines.push(``);
+    }
+  }
+
+  // Indexes for `indexed` modifier on properties — emit one index per such
+  // property, but skip any that are already covered by options.indexes.
+  const indexedProps = entity.properties.filter(p => p.modifiers.includes('indexed'));
+  for (const indexedProp of indexedProps) {
+    const alreadyInOptions = (idx ?? []).some(entry => {
+      const fields = Array.isArray(entry) ? entry : entry.fields;
+      return fields.includes(indexedProp.name);
+    });
+    if (!alreadyInOptions) {
+      const name = `${varName}_${indexedProp.name}_idx`;
+      lines.push(`export const ${name} = index("${name}")`);
+      lines.push(`  .on(${varName}.${indexedProp.name});`);
       lines.push(``);
     }
   }

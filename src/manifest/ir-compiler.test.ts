@@ -1678,6 +1678,21 @@ describe('IRCompiler', () => {
         expect(rel?.onDelete).toBeUndefined();
       });
 
+      it('emits an error when both foreignKey fields and through are set on the same relationship', async () => {
+        const compiler = new IRCompiler();
+        const result = await compiler.compileToIR(`
+          entity Post {
+            hasMany tags: Tag through PostTag fields [tagId]
+          }
+        `);
+        expect(result.ir).toBeNull();
+        const errors = result.diagnostics.filter(d => d.severity === 'error');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].message).toBe(
+          "Relationship 'tags' on entity 'Post' cannot set both 'foreignKey' and 'through' — they are mutually exclusive."
+        );
+      });
+
       it('computed properties do not appear in key or alternateKeys', async () => {
         const compiler = new IRCompiler();
         const result = await compiler.compileToIR(`

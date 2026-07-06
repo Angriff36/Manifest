@@ -859,6 +859,119 @@ describe('OpenApiProjection', () => {
   });
 
   // ========================================================================
+  // Value object types
+  // ========================================================================
+
+  describe('value object types', () => {
+    it('registers value object as an object schema in components (not string)', () => {
+      const ir = makeMinimalIR({
+        values: [
+          {
+            name: 'Address',
+            properties: [
+              { name: 'street', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'city',   type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'zip',    type: { name: 'string', nullable: false }, modifiers: [] },
+            ],
+          },
+        ],
+        entities: [
+          {
+            name: 'Customer',
+            properties: [
+              { name: 'id',      type: { name: 'string',  nullable: false }, modifiers: ['required'] },
+              { name: 'address', type: { name: 'Address', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'openapi.spec' });
+      const spec = parseSpec(result);
+
+      // Value object must appear as a proper object schema in components
+      expect(spec.components.schemas.Address).toBeDefined();
+      expect(spec.components.schemas.Address.type).toBe('object');
+      expect(spec.components.schemas.Address.properties.street).toEqual({ type: 'string' });
+      expect(spec.components.schemas.Address.properties.city).toEqual({ type: 'string' });
+      expect(spec.components.schemas.Address.properties.zip).toEqual({ type: 'string' });
+      // required list contains the required fields
+      expect(spec.components.schemas.Address.required).toContain('street');
+      expect(spec.components.schemas.Address.required).toContain('city');
+    });
+
+    it('references value object via $ref in entity property (not { type: "string" })', () => {
+      const ir = makeMinimalIR({
+        values: [
+          {
+            name: 'Address',
+            properties: [
+              { name: 'street', type: { name: 'string', nullable: false }, modifiers: ['required'] },
+            ],
+          },
+        ],
+        entities: [
+          {
+            name: 'Customer',
+            properties: [
+              { name: 'id',      type: { name: 'string',  nullable: false }, modifiers: ['required'] },
+              { name: 'address', type: { name: 'Address', nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'openapi.spec' });
+      const spec = parseSpec(result);
+
+      const customerSchema = spec.components.schemas.Customer;
+      const addrProp = customerSchema.properties.address;
+      // Must be a $ref, not { type: 'string' }
+      expect(addrProp.$ref).toBe('#/components/schemas/Address');
+      expect(addrProp.type).toBeUndefined();
+    });
+
+    it('emits no diagnostic warnings for value object types', () => {
+      const ir = makeMinimalIR({
+        values: [
+          { name: 'Point', properties: [
+            { name: 'x', type: { name: 'number', nullable: false }, modifiers: [] },
+            { name: 'y', type: { name: 'number', nullable: false }, modifiers: [] },
+          ] },
+        ],
+        entities: [
+          {
+            name: 'Shape',
+            properties: [
+              { name: 'id',     type: { name: 'string', nullable: false }, modifiers: ['required'] },
+              { name: 'origin', type: { name: 'Point',  nullable: false }, modifiers: [] },
+            ],
+            computedProperties: [],
+            relationships: [],
+            commands: [],
+            constraints: [],
+            policies: [],
+          },
+        ],
+      });
+
+      const result = projection.generate(ir, { surface: 'openapi.spec' });
+      // No warnings emitted for known value object types
+      expect(result.diagnostics.filter(d => d.severity === 'warning')).toHaveLength(0);
+    });
+  });
+
+  // ========================================================================
   // Artifact metadata
   // ========================================================================
 

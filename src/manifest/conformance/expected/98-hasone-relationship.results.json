@@ -1,0 +1,36 @@
+{
+  "testCases": [
+    {
+      "name": "hasOne resolves linked profile displayName (E2E runtime path)",
+      "setup": {
+        "createInstances": [
+          { "entity": "User", "data": { "id": "user-1", "name": "Alice" } },
+          { "entity": "Profile", "data": { "id": "profile-1", "displayName": "Alice A", "userId": "user-1" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "User",
+        "instanceId": "user-1",
+        "property": "profileName"
+      },
+      "expectedValue": "Alice A"
+    },
+    {
+      "name": "hasOne resolves different user's profile independently",
+      "setup": {
+        "createInstances": [
+          { "entity": "User", "data": { "id": "user-2", "name": "Bob" } },
+          { "entity": "User", "data": { "id": "user-3", "name": "Carol" } },
+          { "entity": "Profile", "data": { "id": "profile-2", "displayName": "Bob B", "userId": "user-2" } },
+          { "entity": "Profile", "data": { "id": "profile-3", "displayName": "Carol C", "userId": "user-3" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "User",
+        "instanceId": "user-3",
+        "property": "profileName"
+      },
+      "expectedValue": "Carol C"
+    }
+  ]
+}

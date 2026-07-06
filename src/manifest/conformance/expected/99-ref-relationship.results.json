@@ -1,0 +1,35 @@
+{
+  "testCases": [
+    {
+      "name": "ref resolves the target article's title via relatedId FK (E2E runtime path)",
+      "setup": {
+        "createInstances": [
+          { "entity": "Article", "data": { "id": "article-2", "title": "Target Article", "relatedId": "" } },
+          { "entity": "Article", "data": { "id": "article-1", "title": "Source Article", "relatedId": "article-2" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Article",
+        "instanceId": "article-1",
+        "property": "relatedTitle"
+      },
+      "expectedValue": "Target Article"
+    },
+    {
+      "name": "ref chain: article-1 refs article-2 not article-3",
+      "setup": {
+        "createInstances": [
+          { "entity": "Article", "data": { "id": "article-3", "title": "Other Article", "relatedId": "" } },
+          { "entity": "Article", "data": { "id": "article-4", "title": "Primary", "relatedId": "article-3" } },
+          { "entity": "Article", "data": { "id": "article-5", "title": "Decoy", "relatedId": "" } }
+        ]
+      },
+      "computedProperty": {
+        "entity": "Article",
+        "instanceId": "article-4",
+        "property": "relatedTitle"
+      },
+      "expectedValue": "Other Article"
+    }
+  ]
+}

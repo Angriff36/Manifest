@@ -1,0 +1,132 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "a866b92e96f155f34c33c59b356084a817c0f70395ad37be75a3b120dcdc7f2b",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Widget",
+      "properties": [
+        {
+          "name": "name",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "defaultValue": {
+            "kind": "string",
+            "value": ""
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [],
+      "relationships": [],
+      "commands": [
+        "rename"
+      ],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Widget",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [
+    {
+      "name": "rename",
+      "entity": "Widget",
+      "parameters": [
+        {
+          "name": "n",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "required": true
+        }
+      ],
+      "guards": [
+        {
+          "kind": "binary",
+          "operator": ">",
+          "left": {
+            "kind": "call",
+            "callee": {
+              "kind": "identifier",
+              "name": "length"
+            },
+            "args": [
+              {
+                "kind": "identifier",
+                "name": "n"
+              }
+            ]
+          },
+          "right": {
+            "kind": "literal",
+            "value": {
+              "kind": "number",
+              "value": 0
+            }
+          }
+        }
+      ],
+      "constraints": [],
+      "actions": [
+        {
+          "kind": "mutate",
+          "target": "name",
+          "expression": {
+            "kind": "identifier",
+            "name": "n"
+          }
+        }
+      ],
+      "emits": []
+    }
+  ],
+  "policies": [
+    {
+      "name": "SpamGuard",
+      "action": "execute",
+      "expression": {
+        "kind": "binary",
+        "operator": "!=",
+        "left": {
+          "kind": "member",
+          "object": {
+            "kind": "identifier",
+            "name": "context"
+          },
+          "property": "role"
+        },
+        "right": {
+          "kind": "literal",
+          "value": {
+            "kind": "string",
+            "value": "blocked"
+          }
+        }
+      },
+      "rateLimit": {
+        "maxRequests": 1,
+        "windowMs": 60000,
+        "scope": "global"
+      }
+    }
+  ],
+  "reactions": []
+}

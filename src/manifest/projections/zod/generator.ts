@@ -22,6 +22,7 @@ import type {
   IRType,
   IRComputedProperty,
   IRParameter,
+  IRValueObject,
 } from '../../ir';
 import type {
   ProjectionTarget,
@@ -75,20 +76,30 @@ const TYPE_MAP: Record<string, string> = {
 // ============================================================================
 
 /** Convert an IRType to a Zod expression string, handling generics recursively. */
-function irTypeToZod(type: IRType, diagnostics: ProjectionDiagnostic[]): string {
+function irTypeToZod(
+  type: IRType,
+  diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
+): string {
   // Handle generic types first (array, map) before TYPE_MAP lookup
   if (type.name === 'array' && type.generic) {
-    const inner = irTypeToZod(type.generic, diagnostics);
+    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap);
     return `z.array(${inner})`;
   }
 
   if (type.name === 'map' && type.generic) {
-    const inner = irTypeToZod(type.generic, diagnostics);
+    const inner = irTypeToZod(type.generic, diagnostics, valueObjectMap);
     return `z.record(${inner})`;
   }
 
   const base = TYPE_MAP[type.name];
   if (base === undefined) {
+    // Check for a known value-object definition before falling back.
+    // valueObjectMap is defined when vo is found (?.get returned a result).
+    const vo = valueObjectMap?.get(type.name);
+    if (vo) {
+      return buildValueObjectZod(vo, diagnostics, valueObjectMap!);
+    }
     diagnostics.push({
       severity: 'warning',
       code: 'ZOD_UNKNOWN_TYPE',
@@ -98,6 +109,25 @@ function irTypeToZod(type: IRType, diagnostics: ProjectionDiagnostic[]): string 
   }
 
   return base;
+}
+
+/**
+ * Build an inline `z.object({...})` expression for a value-object type.
+ * Mirrors how `generatePropertyLine` renders individual fields, including
+ * nullable and optional modifiers.
+ */
+function buildValueObjectZod(
+  vo: IRValueObject,
+  diagnostics: ProjectionDiagnostic[],
+  valueObjectMap: Map<string, IRValueObject>,
+): string {
+  const fields = vo.properties.map(prop => {
+    let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap);
+    if (prop.type.nullable) expr += '.nullable()';
+    if (!prop.modifiers.includes('required')) expr += '.optional()';
+    return `${prop.name}: ${expr}`;
+  });
+  return `z.object({ ${fields.join(', ')} })`;
 }
 
 /** Serialize an IRValue to a TypeScript literal string. */
@@ -138,6 +168,7 @@ function generateEntitySchema(
   entity: IREntity,
   analysisOptions: ZodProjectionOptions,
   diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): EntitySchemaResult {
   const name = pascalCase(entity.name);
   const lines: string[] = [];
@@ -173,7 +204,7 @@ function generateEntitySchema(
   lines.push(`export const ${name}Schema = z.object({`);
 
   for (const prop of entity.properties) {
-    const propLine = generatePropertyLine(prop, numericChains, lengthChains, patternChains, diagnostics);
+    const propLine = generatePropertyLine(prop, numericChains, lengthChains, patternChains, diagnostics, valueObjectMap);
     lines.push(`  ${prop.name}: ${propLine},`);
   }
 
@@ -185,7 +216,7 @@ function generateEntitySchema(
     lines.push(`// Computed: ${entity.name}`);
     lines.push(`export const ${name}ComputedSchema = ${name}Schema.extend({`);
     for (const cp of entity.computedProperties) {
-      const cpLine = generateComputedPropertyLine(cp, diagnostics);
+      const cpLine = generateComputedPropertyLine(cp, diagnostics, valueObjectMap);
       lines.push(`  ${cp.name}: ${cpLine},`);
     }
     lines.push('});');
@@ -213,8 +244,9 @@ function generatePropertyLine(
   lengthChains: Map<string, string>,
   patternChains: Map<string, string>,
   diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): string {
-  let expr = irTypeToZod(prop.type, diagnostics);
+  let expr = irTypeToZod(prop.type, diagnostics, valueObjectMap);
 
   // Apply numeric range chain for numeric types
   const numChain = numericChains.get(prop.name);
@@ -255,8 +287,9 @@ function generatePropertyLine(
 function generateComputedPropertyLine(
   cp: IRComputedProperty,
   diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): string {
-  let expr = irTypeToZod(cp.type, diagnostics);
+  let expr = irTypeToZod(cp.type, diagnostics, valueObjectMap);
 
   if (cp.type.nullable) {
     expr += '.nullable()';
@@ -273,6 +306,7 @@ function generateCommandSchema(
   command: IRCommand,
   analysisOptions: ZodProjectionOptions,
   diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): string[] {
   const lines: string[] = [];
   const opts = normalizeOptions(analysisOptions);
@@ -292,7 +326,7 @@ function generateCommandSchema(
   } else {
     lines.push(`export const ${schemaName} = z.object({`);
     for (const param of command.parameters) {
-      const paramLine = generateParameterLine(param, diagnostics);
+      const paramLine = generateParameterLine(param, diagnostics, valueObjectMap);
       lines.push(`  ${param.name}: ${paramLine},`);
     }
     lines.push('});');
@@ -306,7 +340,7 @@ function generateCommandSchema(
 
   // Return type schema if command has a return type
   if (command.returns && opts.emitTypes) {
-    const returnExpr = irTypeToZod(command.returns, diagnostics);
+    const returnExpr = irTypeToZod(command.returns, diagnostics, valueObjectMap);
     lines.push(`export const ${qualified}ReturnSchema = ${returnExpr};`);
     lines.push(`export type ${qualified}Return = z.infer<typeof ${qualified}ReturnSchema>;`);
   }
@@ -317,8 +351,9 @@ function generateCommandSchema(
 function generateParameterLine(
   param: IRParameter,
   diagnostics: ProjectionDiagnostic[],
+  valueObjectMap?: Map<string, IRValueObject>,
 ): string {
-  let expr = irTypeToZod(param.type, diagnostics);
+  let expr = irTypeToZod(param.type, diagnostics, valueObjectMap);
 
   if (param.type.nullable) {
     expr += '.nullable()';
@@ -407,10 +442,13 @@ export class ZodProjection implements ProjectionTarget {
       };
     }
 
+    const valueObjectMap = new Map<string, IRValueObject>(
+      (ir.values ?? []).map(v => [v.name, v]),
+    );
     const artifacts: ProjectionArtifact[] = [];
 
     for (const entity of entities) {
-      const result = generateEntitySchema(entity, opts, diagnostics);
+      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap);
       const code = this.wrapWithImport(result.lines, opts);
       artifacts.push({
         id: `zod.entity.${entity.name}`,
@@ -444,10 +482,13 @@ export class ZodProjection implements ProjectionTarget {
       };
     }
 
+    const valueObjectMap = new Map<string, IRValueObject>(
+      (ir.values ?? []).map(v => [v.name, v]),
+    );
     const artifacts: ProjectionArtifact[] = [];
 
     for (const command of commands) {
-      const lines = generateCommandSchema(command, opts, diagnostics);
+      const lines = generateCommandSchema(command, opts, diagnostics, valueObjectMap);
       const code = this.wrapWithImport(lines, opts);
       artifacts.push({
         id: `zod.command.${command.name}`,
@@ -465,16 +506,19 @@ export class ZodProjection implements ProjectionTarget {
     opts: ReturnType<typeof normalizeOptions>,
     diagnostics: ProjectionDiagnostic[],
   ): ProjectionResult {
+    const valueObjectMap = new Map<string, IRValueObject>(
+      (ir.values ?? []).map(v => [v.name, v]),
+    );
     const lines: string[] = [];
 
     for (const entity of ir.entities) {
-      const result = generateEntitySchema(entity, opts, diagnostics);
+      const result = generateEntitySchema(entity, opts, diagnostics, valueObjectMap);
       lines.push(...result.lines);
       lines.push('');
     }
 
     for (const command of ir.commands) {
-      const cmdLines = generateCommandSchema(command, opts, diagnostics);
+      const cmdLines = generateCommandSchema(command, opts, diagnostics, valueObjectMap);
       lines.push(...cmdLines);
       lines.push('');
     }

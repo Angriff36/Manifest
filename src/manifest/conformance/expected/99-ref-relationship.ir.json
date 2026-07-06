@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "provenance": {
+    "contentHash": "normalized-content-hash",
+    "irHash": "e6f9d542f42e2c7fd4e4109cd8001815f1bbd643007e71f7ee10b97b3e34f147",
+    "compilerVersion": "normalized-compiler-version",
+    "schemaVersion": "1.0",
+    "compiledAt": "2024-01-01T00:00:00.000Z"
+  },
+  "modules": [],
+  "values": [],
+  "entities": [
+    {
+      "name": "Article",
+      "properties": [
+        {
+          "name": "title",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        },
+        {
+          "name": "relatedId",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "modifiers": []
+        }
+      ],
+      "computedProperties": [
+        {
+          "name": "relatedTitle",
+          "type": {
+            "name": "string",
+            "nullable": false
+          },
+          "expression": {
+            "kind": "member",
+            "object": {
+              "kind": "member",
+              "object": {
+                "kind": "identifier",
+                "name": "self"
+              },
+              "property": "related"
+            },
+            "property": "title"
+          },
+          "dependencies": [
+            "related"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "related",
+          "kind": "ref",
+          "target": "Article"
+        }
+      ],
+      "commands": [],
+      "constraints": [],
+      "policies": []
+    }
+  ],
+  "enums": [],
+  "stores": [
+    {
+      "entity": "Article",
+      "target": "memory",
+      "config": {}
+    }
+  ],
+  "events": [],
+  "commands": [],
+  "policies": [],
+  "reactions": []
+}

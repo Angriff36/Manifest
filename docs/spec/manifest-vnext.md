@@ -115,7 +115,7 @@ Valid values: `cascade`, `restrict`, `setNull`, `setDefault`, `noAction`.
 The Manifest runtime engine is a single-key memory store. Composite FKs are a Prisma projection concern only. At runtime:
 
 - Single-column FK (`fields.length === 1`): `belongsTo` resolution uses `fields[0]` as the FK property name.
-- Composite FK (`fields.length > 1`): resolution is **not attempted** — falls back to the `${relationshipName}Id` convention and returns `null` if not present. This is explicit, not silent.
+- Composite FK (`fields.length > 1`): resolution **fails closed** — the runtime raises a structured `COMPOSITE_FK_UNSUPPORTED` error rather than guessing a row from a single column or the `${relationshipName}Id` convention (either of which could resolve to the wrong row).
 
 Consumers requiring composite FK resolution MUST supply a `storeProvider` backed by a real database.
 
