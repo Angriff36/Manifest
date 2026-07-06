@@ -4,6 +4,16 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.2.1] - 2026-07-06
+
+### Changed
+
+- [docs] refresh Claude session bridge
+- [feat] wiring wave 2: owner-decision semantics for constraints, actions, keys, reads
+- [feat] runtime/projection wiring wave 1: enforce what the IR declares
+- [docs] add IR wiring-audit status matrix (112 features, 2026-07-06)
+- [fix] docs: reconcile wiring claims with actual runtime/projection behavior
+
 ## [3.2.0] - 2026-07-05
 
 ### Added
