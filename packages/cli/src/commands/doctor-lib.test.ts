@@ -6,6 +6,7 @@ import {
   detectEntitySourceParseHeuristics,
   diffEntitySurface,
   inspectConfigHealth,
+  loadDoctorParserClass,
   normalizeMergeReportEntries,
 } from './doctor-lib.js';
 
@@ -34,6 +35,61 @@ describe('doctor-lib', () => {
       const findings = await inspectConfigHealth(dir);
       expect(findings).toHaveLength(0);
       await fs.rm(dir, { recursive: true, force: true });
+    });
+  });
+
+  describe('loadDoctorParserClass', () => {
+    it('falls back to the source parser when the public package parser entry is unavailable', async () => {
+      class FakeParser {
+        parse(source: string) {
+          return { program: { source }, errors: [] };
+        }
+      }
+
+      const imports: string[] = [];
+      const Parser = await loadDoctorParserClass(async (specifier) => {
+        imports.push(specifier);
+        if (specifier === '@angriff36/manifest/parser') {
+          const error = new Error('Cannot find module');
+          (error as NodeJS.ErrnoException).code = 'ERR_MODULE_NOT_FOUND';
+          throw error;
+        }
+        if (specifier.endsWith('/src/manifest/parser.ts')) {
+          return { Parser: FakeParser };
+        }
+        throw new Error(`Unexpected import: ${specifier}`);
+      });
+
+      expect(Parser).toBe(FakeParser);
+      expect(imports).toEqual([
+        '@angriff36/manifest/parser',
+        expect.stringMatching(/\/src\/manifest\/parser\.ts$/),
+      ]);
+    });
+
+    it('can load the real source parser when the public parser entry is unavailable', async () => {
+      const Parser = await loadDoctorParserClass(async (specifier) => {
+        if (specifier === '@angriff36/manifest/parser') {
+          const error = new Error('Cannot find module');
+          (error as NodeJS.ErrnoException).code = 'ERR_MODULE_NOT_FOUND';
+          throw error;
+        }
+        return import(specifier);
+      });
+
+      const parser = new Parser();
+      const result = parser.parse(`
+entity KitchenTask {
+  property status: string
+
+  command claim() {
+    mutate status = "claimed"
+  }
+}
+`);
+
+      expect(result.errors).toEqual([]);
+      expect(result.program.entities[0]?.name).toBe('KitchenTask');
     });
   });
 

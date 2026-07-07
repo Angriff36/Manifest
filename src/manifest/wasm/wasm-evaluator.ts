@@ -5,8 +5,9 @@
  * the compiled WASM module for execution. Maintains identical semantics
  * to the TypeScript runtime engine (src/manifest/runtime-engine.ts).
  *
- * If the WASM module fails to load or encounters an error, the evaluator
- * falls back to the TypeScript implementation transparently.
+ * Internal prototype only. The published package does not expose a supported
+ * WASM surface today, so callers should expect TypeScript fallback unless
+ * they inject their own bytes explicitly in repo/dev scenarios.
  */
 
 import type { IRExpression } from '../ir.js';

@@ -4,7 +4,9 @@
  * Compiles the Manifest DSL expression evaluator and constraint validator
  * to WebAssembly for near-native execution speed in browser and edge environments.
  *
- * Semantics MUST match the TypeScript runtime in src/manifest/runtime-engine.ts
+ * Internal prototype only; the published package currently does not ship
+ * a supported default `.wasm` artifact. Semantics MUST match the TypeScript
+ * runtime in src/manifest/runtime-engine.ts before this surface is re-exposed.
  */
 
 // ============================================================================

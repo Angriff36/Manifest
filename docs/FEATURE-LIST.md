@@ -5678,10 +5678,10 @@ Key features:
 - Exports: `evalExpr()`, `evalConstraint()`, `setNowProvider()`, `setUuidProvider()`, `version()`
 
 **2. TypeScript WASM Loader (`src/manifest/wasm/wasm-loader.ts`)**
-- Loads compiled WASM bytes with environment-agnostic loading (browser/Node.js)
+- Prototype loader for explicitly supplied WASM bytes in repo/dev scenarios
 - Expression/context serialization to JSON for WASM input
 - Result deserialization from WASM JSON output
-- Graceful handling of unsupported environments
+- Graceful fallback to the TypeScript evaluator when no bytes are available
 
 **3. WASM Evaluator Wrapper (`src/manifest/wasm/wasm-evaluator.ts`)**
 - `WasmExpressionEvaluator` class with lifecycle management
@@ -5691,9 +5691,9 @@ Key features:
 - Configurable strict mode (throws on WASM failure) or non-strict (fallback)
 - Host callback wiring for now() and uuid() builtins
 
-**4. Public API (`src/manifest/wasm/index.ts`)**
-- Re-exports all WASM runtime types and functions
-- Available via `@angriff36/manifest/wasm` subpath
+**4. Internal Entry Point (`src/manifest/wasm/index.ts`)**
+- Re-exports the internal WASM prototype types and functions for in-repo development
+- Not part of the published `@angriff36/manifest` package surface
 
 **5. Runtime Engine Integration (`src/manifest/runtime-engine.ts`)**
 - Added `wasmEvaluator` option to `RuntimeOptions`
@@ -5701,43 +5701,41 @@ Key features:
 - Conservative compatibility check: only delegates pure computational expressions to WASM
 - Transparent fallback to TypeScript on any WASM failure
 
-**6. Build Configuration**
+**6. Prototype Build Configuration**
 - `asconfig.json` for AssemblyScript compilation targets
-- `package.json` scripts: `wasm:build`, `wasm:build:debug`
-- Package.json exports: `./wasm` subpath
-- New dev dependencies: `assemblyscript`, `@assemblyscript/loader`
-- Updated files array to include compiled `.wasm` artifacts
+- Dev dependencies: `assemblyscript`, `@assemblyscript/loader`
+- Package surface is quarantined until a supported artifact + loader path exists
 
 **7. Test Suite**
 - 47 unit tests in `wasm-evaluator.test.ts` covering lifecycle, serialization, fallback paths, parity with TypeScript evaluator
 - 9 integration tests in `runtime-wasm-integration.test.ts` verifying RuntimeEngine + WASM integration
+- Package-surface regression tests verify the published package does not advertise unsupported WASM exports or packaging hooks
 
 ### Files Created
 - `assembly/index.ts` — AssemblyScript source (expression evaluator, constraint validator, builtins)
 - `asconfig.json` — AssemblyScript compiler configuration
 - `src/manifest/wasm/wasm-loader.ts` — WASM module loader and serialization helpers
 - `src/manifest/wasm/wasm-evaluator.ts` — High-level WASM evaluator with TypeScript fallback
-- `src/manifest/wasm/index.ts` — Public API exports
+- `src/manifest/wasm/index.ts` — Internal WASM prototype entry point
 - `src/manifest/wasm/wasm-evaluator.test.ts` — 47 unit tests
 - `src/manifest/runtime-wasm-integration.test.ts` — 9 integration tests
 
 ### Files Modified
 - `src/manifest/runtime-engine.ts` — Added `wasmEvaluator` option, WASM fast-path in `evaluateExpression()`, and `isWasmCompatible()` helper
-- `package.json` — Added AssemblyScript dependencies, `wasm:build` scripts, `./wasm` export, and `.wasm` files entry
+- `package.json` — WASM surface later quarantined from the published package pending a real artifact + loader story
 
 ### Notes for Developer
 - **Design Choice**: AssemblyScript was selected over Rust/wasm-bindgen because the existing TypeScript runtime is already a tree-walking interpreter, making AssemblyScript the most natural port. Both languages would target identical WASM semantics, but AssemblyScript has minimal friction.
 - **Conservative Compatibility**: `isWasmCompatible()` only delegates pure expressions to WASM. Anything requiring relationship resolution, entity context, or async effects stays on TypeScript. This ensures identical semantics with no risk of divergence.
 - **Graceful Fallback**: The system works even without AssemblyScript installed. If WASM bytes aren't available, the evaluator transparently falls back to TypeScript via dynamic import of the existing RuntimeEngine.
-- **Build Step**: To produce the actual `.wasm` binary, run `pnpm run wasm:build` after `pnpm install`. The dev environment doesn't need the compiled WASM to use the feature.
-- **Test Coverage**: 56 tests verify the TypeScript fallback path, serialization, lifecycle, and parity with the existing TypeScript runtime. The pre-existing test failures in the project (76 tests) are due to missing optional dependencies (`fast-check`, DynamoDB adapter, etc.) and are unrelated to this feature.
-- **Verification Status**: Verified with Playwright (8 tests covering file existence, module structure, exports, and integration). All checks pass.
+- **Current Product Status**: Source prototypes remain in-repo, but the published package intentionally does not export `@angriff36/manifest/wasm` or advertise a default `.wasm` artifact until the load path and packaging are fully supported.
+- **Test Coverage**: Internal tests verify fallback behavior and runtime integration; package-surface tests keep the unsupported publish path from reappearing accidentally.
 
 ### Verification Status
 - Created Playwright test `verify-wasm.spec.ts` with 8 test cases
 - All 8 tests passed: file existence, module structure, TypeScript syntax, package.json config, integration test presence
 - Temporary test file deleted after verification
-- 56 unit/integration tests pass for the WASM feature
+- 61 focused tests now cover the internal WASM prototype plus package-surface quarantine
 - 92 runtime-engine tests still pass (no regressions)
 
 </details>

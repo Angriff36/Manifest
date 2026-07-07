@@ -5,7 +5,9 @@
  * TypeScript-friendly wrapper that maintains identical semantics
  * to the TypeScript runtime engine.
  *
- * Falls back to the TypeScript evaluator if WASM is unavailable.
+ * Internal prototype only. The published package currently falls back to the
+ * TypeScript evaluator because it does not ship a supported default WASM
+ * artifact.
  */
 
 import type { IRExpression, IRValue } from '../ir.js';

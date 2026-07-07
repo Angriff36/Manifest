@@ -276,14 +276,47 @@ export async function findManifestSourceFiles(cwd: string, srcPattern = '**/*.ma
   return uniqueSorted(files);
 }
 
-async function loadParserClass() {
-  const mod = await import('../../../../dist/manifest/parser.js');
-  return mod.Parser as unknown as new () => {
-    parse(source: string): {
-      program: Record<string, unknown>;
-      errors: Array<{ message: string; severity?: string; position?: { line?: number; column?: number } }>;
-    };
+type DoctorParserClass = new () => {
+  parse(source: string): {
+    program: Record<string, unknown>;
+    errors: Array<{ message: string; severity?: string; position?: { line?: number; column?: number } }>;
   };
+};
+
+type DoctorModuleImporter = (specifier: string) => Promise<unknown>;
+
+const DOCTOR_PARSER_PUBLIC_SPECIFIER = '@angriff36/manifest/parser';
+const DOCTOR_PARSER_SOURCE_SPECIFIER = new URL('../../../../src/manifest/parser.ts', import.meta.url).href;
+
+function isModuleNotFoundError(error: unknown): boolean {
+  const code = asRecord(error)?.code;
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    code === 'ERR_MODULE_NOT_FOUND' ||
+    code === 'MODULE_NOT_FOUND' ||
+    /Cannot find module|Cannot find package|Package subpath .* is not defined/i.test(message)
+  );
+}
+
+function parseDoctorParserModule(module: unknown, specifier: string): DoctorParserClass {
+  const Parser = asRecord(module)?.Parser;
+  if (typeof Parser !== 'function') {
+    throw new TypeError(`Doctor parser module '${specifier}' did not export Parser.`);
+  }
+  return Parser as unknown as DoctorParserClass;
+}
+
+export async function loadDoctorParserClass(importer: DoctorModuleImporter = (specifier) => import(specifier)): Promise<DoctorParserClass> {
+  try {
+    return parseDoctorParserModule(await importer(DOCTOR_PARSER_PUBLIC_SPECIFIER), DOCTOR_PARSER_PUBLIC_SPECIFIER);
+  } catch (error) {
+    if (!isModuleNotFoundError(error)) throw error;
+    try {
+      return parseDoctorParserModule(await importer(DOCTOR_PARSER_SOURCE_SPECIFIER), DOCTOR_PARSER_SOURCE_SPECIFIER);
+    } catch {
+      throw error;
+    }
+  }
 }
 
 function flattenProgramEntities(program: Record<string, unknown>): Array<Record<string, unknown>> {
@@ -393,7 +426,7 @@ export async function inspectSourceEntities(options: {
 } = {}): Promise<SourceInspectionResult> {
   const cwd = options.cwd || process.cwd();
   const files = await findManifestSourceFiles(cwd, options.srcPattern || '**/*.manifest');
-  const Parser = await loadParserClass();
+  const Parser = await loadDoctorParserClass();
   const entities = new Map<string, SourceEntityDefinition[]>();
   let filesWithParseErrors = 0;
 

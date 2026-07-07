@@ -1,14 +1,9 @@
 /**
- * Manifest WASM Runtime - Public API
+ * Manifest WASM Runtime - Internal prototype entrypoint
  *
- * Provides a WebAssembly-compiled expression evaluator and constraint
- * validator for the Manifest DSL runtime engine.
- *
- * Usage:
- *   import { getDefaultWasmEvaluator } from '@angriff36/manifest/wasm';
- *   const evaluator = getDefaultWasmEvaluator();
- *   await evaluator.init();
- *   const result = await evaluator.evaluate(expression, context);
+ * The published package does not currently expose a supported `./wasm`
+ * subpath or ship a default `.wasm` artifact. This module remains internal
+ * source for future bring-up work.
  */
 
 export {

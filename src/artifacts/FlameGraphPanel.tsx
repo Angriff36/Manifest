@@ -17,6 +17,17 @@ interface FlameGraphPanelProps {
   disabled: boolean;
 }
 
+interface ProfilerCommandLike {
+  name: string;
+  entity?: string;
+}
+
+export interface ProfilerCommandOption {
+  commandName: string;
+  entityName?: string;
+  label: string;
+}
+
 interface FlameBarProps {
   phase: PhaseTiming;
   x: number;
@@ -134,10 +145,22 @@ function PhaseDetail({ phase, totalDuration }: { phase: PhaseTiming; totalDurati
   );
 }
 
+export function buildProfilerCommandOptions(ir: {
+  commands?: ProfilerCommandLike[];
+}): ProfilerCommandOption[] {
+  return (ir.commands || []).map((command) => ({
+    commandName: command.name,
+    entityName: command.entity,
+    label: command.entity ? `${command.entity}.${command.name}` : command.name,
+  }));
+}
+
 export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
   const [engine, setEngine] = useState<RuntimeEngine | null>(null);
   const [profiles, setProfiles] = useState<CommandProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<CommandProfile | null>(null);
+  const [commandOptions, setCommandOptions] = useState<ProfilerCommandOption[]>([]);
+  const [selectedCommandLabel, setSelectedCommandLabel] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isProfiling, setIsProfiling] = useState(false);
 
@@ -147,6 +170,8 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
       setEngine(null);
       setProfiles([]);
       setSelectedProfile(null);
+      setCommandOptions([]);
+      setSelectedCommandLabel('');
       return;
     }
 
@@ -156,12 +181,20 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
 
         if (compileResult.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
           setEngine(null);
+          setProfiles([]);
+          setSelectedProfile(null);
+          setCommandOptions([]);
+          setSelectedCommandLabel('');
           setError('Compilation errors detected');
           return;
         }
 
         if (!compileResult.ir) {
           setEngine(null);
+          setProfiles([]);
+          setSelectedProfile(null);
+          setCommandOptions([]);
+          setSelectedCommandLabel('');
           setError('Failed to compile IR');
           return;
         }
@@ -175,10 +208,24 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
         });
 
         setEngine(runtimeEngine);
+        setProfiles([]);
+        setSelectedProfile(null);
+        const nextCommandOptions = buildProfilerCommandOptions(compileResult.ir);
+        setCommandOptions(nextCommandOptions);
+        setSelectedCommandLabel((current) => {
+          if (current && nextCommandOptions.some((option) => option.label === current)) {
+            return current;
+          }
+          return nextCommandOptions[0]?.label || '';
+        });
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
         setEngine(null);
+        setProfiles([]);
+        setSelectedProfile(null);
+        setCommandOptions([]);
+        setSelectedCommandLabel('');
       }
     })();
   }, [source, disabled]);
@@ -190,7 +237,7 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
     setError(null);
 
     try {
-      await engine.runCommand(commandName, {}, { entityName });
+      const result = await engine.runCommand(commandName, {}, { entityName });
 
       const newProfiles = engine.getProfiles();
       setProfiles(newProfiles);
@@ -198,11 +245,23 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
       if (newProfiles.length > 0) {
         setSelectedProfile(newProfiles[newProfiles.length - 1]);
       }
+
+      if (!result.success) {
+        setError(result.error || 'Command execution failed during profiling');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Command execution failed');
     } finally {
       setIsProfiling(false);
     }
+  };
+
+  const selectedCommand =
+    commandOptions.find((option) => option.label === selectedCommandLabel) || null;
+
+  const handleRunSelectedCommand = async () => {
+    if (!selectedCommand) return;
+    await handleRunCommand(selectedCommand.commandName, selectedCommand.entityName);
   };
 
   // Calculate statistics
@@ -226,6 +285,29 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
             <span className="text-sm font-medium text-gray-200">Performance Profiler</span>
           </div>
           <div className="flex items-center gap-2">
+            {commandOptions.length > 0 && (
+              <>
+                <select
+                  value={selectedCommandLabel}
+                  onChange={(event) => setSelectedCommandLabel(event.target.value)}
+                  disabled={isProfiling}
+                  className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                >
+                  {commandOptions.map((option) => (
+                    <option key={option.label} value={option.label}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleRunSelectedCommand}
+                  disabled={isProfiling || !selectedCommand}
+                  className="rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-orange-500 disabled:cursor-not-allowed disabled:bg-gray-700"
+                >
+                  {isProfiling ? 'Profiling...' : 'Profile Command'}
+                </button>
+              </>
+            )}
             {stats && (
               <div className="text-xs text-gray-500">
                 {stats.totalCommands} command{stats.totalCommands !== 1 ? 's' : ''} profiled
@@ -258,14 +340,13 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
               <Zap size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="mb-2">No profiles yet</p>
-              <button
-                onClick={() => handleRunCommand('create', 'User')}
-                disabled={isProfiling}
-                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
-              >
-                {isProfiling ? 'Profiling...' : 'Run Test Command'}
-              </button>
+              {commandOptions.length === 0 ? (
+                <p>No commands available to profile in the current manifest</p>
+              ) : (
+                <p className="mb-2">
+                  Select a command above and run it to collect the first profile
+                </p>
+              )}
             </div>
           </div>
         ) : (

@@ -1,8 +1,35 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Play, FileCode, BookOpen, AlertCircle, CheckCircle, Code2, TreeDeciduous, ChevronDown, ChevronRight, Sparkles, Zap, Cpu, Layers, Server, TestTube, Package, Share2 } from 'lucide-react';
+import {
+  Play,
+  FileCode,
+  BookOpen,
+  AlertCircle,
+  CheckCircle,
+  Code2,
+  TreeDeciduous,
+  ChevronDown,
+  ChevronRight,
+  Sparkles,
+  Zap,
+  Cpu,
+  Layers,
+  Server,
+  TestTube,
+  Package,
+  Share2,
+  Shield,
+  Flame,
+  type LucideIcon,
+} from 'lucide-react';
 import { ManifestCompiler, ManifestProgram, CompilationError } from './manifest/compiler';
 import { examples } from './manifest/examples';
-import { ArtifactsPanel, IRGraphPanel } from './artifacts';
+import {
+  ArtifactsPanel,
+  FlameGraphPanel,
+  IRGraphPanel,
+  PolicyMatrixPanel,
+  TutorialPanel,
+} from './artifacts';
 
 const compiler = new ManifestCompiler();
 
@@ -233,7 +260,67 @@ store Settings in localStorage { key: "app_settings" }`}</pre>
   );
 }
 
-type Tab = 'output' | 'server' | 'tests' | 'ast' | 'graph' | 'docs';
+export type Tab =
+  | 'output'
+  | 'server'
+  | 'tests'
+  | 'ast'
+  | 'graph'
+  | 'docs'
+  | 'tutorial'
+  | 'policies'
+  | 'profiler';
+
+interface TabDefinition {
+  id: Tab;
+  icon: LucideIcon;
+  label: string;
+}
+
+export const APP_TABS: readonly TabDefinition[] = [
+  { id: 'output', icon: Code2, label: 'Client' },
+  { id: 'server', icon: Server, label: 'Server' },
+  { id: 'tests', icon: TestTube, label: 'Tests' },
+  { id: 'ast', icon: TreeDeciduous, label: 'AST' },
+  { id: 'graph', icon: Share2, label: 'Graph' },
+  { id: 'docs', icon: Layers, label: 'Docs' },
+  { id: 'tutorial', icon: BookOpen, label: 'Tutorial' },
+  { id: 'policies', icon: Shield, label: 'Policies' },
+  { id: 'profiler', icon: Flame, label: 'Profiler' },
+];
+
+export interface CenterPanelProps {
+  output: string;
+  serverCode: string;
+  testCode: string;
+  ast: ManifestProgram | null;
+  source: string;
+  hasErrors: boolean;
+  onSourceChange: (source: string) => void;
+}
+
+export function renderCenterPanel(tab: Tab, props: CenterPanelProps) {
+  switch (tab) {
+    case 'output':
+      return <Editor value={props.output} onChange={() => {}} lang="ts" readOnly placeholder="Generated client code..." />;
+    case 'server':
+      return <Editor value={props.serverCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated server routes (add 'server' keyword to expose)..." />;
+    case 'tests':
+      return <Editor value={props.testCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated tests from constraints..." />;
+    case 'ast':
+      return <ASTViewer ast={props.ast} />;
+    case 'graph':
+      return <IRGraphPanel source={props.source} disabled={props.hasErrors} />;
+    case 'docs':
+      return <Docs />;
+    case 'tutorial':
+      return <TutorialPanel source={props.source} onSourceChange={props.onSourceChange} />;
+    case 'policies':
+      return <PolicyMatrixPanel source={props.source} disabled={props.hasErrors} />;
+    case 'profiler':
+      return <FlameGraphPanel source={props.source} disabled={props.hasErrors} />;
+  }
+}
 
 export default function App() {
   const [source, setSource] = useState(examples[0].code);
@@ -322,24 +409,20 @@ export default function App() {
         </div>
         <div className={`${showArtifacts ? 'w-1/3' : 'w-1/2'} flex flex-col border-r border-gray-800 transition-all`}>
           <div className="flex-shrink-0 border-b border-gray-800 bg-gray-900/50 flex">
-            {[
-              { id: 'output' as Tab, icon: Code2, label: 'Client' },
-              { id: 'server' as Tab, icon: Server, label: 'Server' },
-              { id: 'tests' as Tab, icon: TestTube, label: 'Tests' },
-              { id: 'ast' as Tab, icon: TreeDeciduous, label: 'AST' },
-              { id: 'graph' as Tab, icon: Share2, label: 'Graph' },
-              { id: 'docs' as Tab, icon: Layers, label: 'Docs' }
-            ].map(({ id, icon: Icon, label }) => (
+            {APP_TABS.map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${tab === id ? 'text-sky-400 bg-gray-800/50 border-b-2 border-sky-400' : 'text-gray-400 hover:text-gray-300'}`}><Icon size={14} />{label}</button>
             ))}
           </div>
           <div className="flex-1 overflow-hidden bg-gray-900">
-            {tab === 'output' && <Editor value={output} onChange={() => {}} lang="ts" readOnly placeholder="Generated client code..." />}
-            {tab === 'server' && <Editor value={serverCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated server routes (add 'server' keyword to expose)..." />}
-            {tab === 'tests' && <Editor value={testCode} onChange={() => {}} lang="ts" readOnly placeholder="Generated tests from constraints..." />}
-            {tab === 'ast' && <ASTViewer ast={ast} />}
-            {tab === 'graph' && <IRGraphPanel source={source} disabled={errors.length > 0} />}
-            {tab === 'docs' && <Docs />}
+            {renderCenterPanel(tab, {
+              output,
+              serverCode,
+              testCode,
+              ast,
+              source,
+              hasErrors: errors.length > 0,
+              onSourceChange: setSource,
+            })}
           </div>
         </div>
         {showArtifacts && (

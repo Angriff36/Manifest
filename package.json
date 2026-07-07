@@ -264,10 +264,6 @@
       "types": "./dist/manifest/config.d.ts",
       "import": "./dist/manifest/config.js"
     },
-    "./wasm": {
-      "types": "./dist/manifest/wasm/index.d.ts",
-      "import": "./dist/manifest/wasm/index.js"
-    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -291,7 +287,6 @@
     "src/manifest/approval/stores/*.sql",
     "src/manifest/jobs/stores/*.sql",
     "src/manifest/idempotency/stores/*.sql",
-    "src/manifest/wasm/*.wasm",
     "docs/spec/ir/ir-v1.schema.json",
     "docs/spec/semantics.md",
     "docs/spec/registry/*.schema.json",
@@ -336,8 +331,6 @@
     "manifest:build": "tsx ./packages/cli/src/index.ts build",
     "manifest:validate": "tsx ./packages/cli/src/index.ts validate",
     "manifest:publish": "node scripts/release.mjs",
-    "wasm:build": "asc assembly/index.ts --target release --outFile src/manifest/wasm/manifest-runtime.wasm --optimize --runtime stub --exportRuntime",
-    "wasm:build:debug": "asc assembly/index.ts --target debug --outFile src/manifest/wasm/manifest-runtime-debug.wasm",
     "prepublishOnly": "pnpm run build:lib && pnpm --filter @manifest/cli --filter @manifest/mcp-server --filter @manifest/lsp-server run build"
   },
   "dependencies": {
@@ -359,16 +352,12 @@
     "zod": "^3.25.0"
   },
   "peerDependencies": {
-    "@assemblyscript/loader": "^0.27",
     "@libsql/client": ">=0.14",
     "@supabase/supabase-js": "^2",
     "ioredis": "^5",
     "mongodb": "^6"
   },
   "peerDependenciesMeta": {
-    "@assemblyscript/loader": {
-      "optional": true
-    },
     "@libsql/client": {
       "optional": true
     },

@@ -80,49 +80,83 @@ export interface PackageShapeResult {
   tarball: TarballContentResult;
 }
 
+export interface PublicSubpathExpectation {
+  subpath: string;
+  expectedExports: string[];
+}
+
+const IGNORED_EXPORT_KEYS = new Set(['./package.json']);
+
 /**
- * The documented subpath exports that downstream consumers may import.
- * Update in lock-step with package.json `exports` whenever a new public
- * subpath is added.
- *
- * Each entry includes the symbols a healthy build is expected to expose,
- * so the check can also catch "subpath resolves but its module body is
- * empty" failures.
+ * Resolution-only subpaths use an empty array: the load-bearing assertion is
+ * simply that the module imports without throwing.
  */
-const SUBPATHS: Array<{ subpath: string; expectedExports: string[] }> = [
-  { subpath: '@angriff36/manifest', expectedExports: ['RuntimeEngine'] },
-  { subpath: '@angriff36/manifest/ir-compiler', expectedExports: ['compileToIR'] },
-  { subpath: '@angriff36/manifest/compiler', expectedExports: [] },
-  { subpath: '@angriff36/manifest/ir', expectedExports: [] },
-  { subpath: '@angriff36/manifest/projections/nextjs', expectedExports: [] },
-  { subpath: '@angriff36/manifest/projections/routes', expectedExports: [] },
-  { subpath: '@angriff36/manifest/registry/emit', expectedExports: [] },
-  { subpath: '@angriff36/manifest/audit', expectedExports: [] },
-  { subpath: '@angriff36/manifest/audit/memory', expectedExports: ['MemoryAuditSink'] },
-  { subpath: '@angriff36/manifest/audit/postgres', expectedExports: ['PostgresAuditSink'] },
-  { subpath: '@angriff36/manifest/outbox', expectedExports: [] },
-  { subpath: '@angriff36/manifest/outbox/memory', expectedExports: ['MemoryOutboxStore'] },
-  { subpath: '@angriff36/manifest/outbox/postgres', expectedExports: ['PostgresOutboxStore'] },
-  { subpath: '@angriff36/manifest/outbox/redis', expectedExports: ['RedisOutboxStore'] },
-  { subpath: '@angriff36/manifest/outbox/worker', expectedExports: ['runOutboxWorker'] },
-  { subpath: '@angriff36/manifest/jobs/postgres', expectedExports: ['PostgresJobQueue'] },
-  { subpath: '@angriff36/manifest/jobs/worker', expectedExports: ['runJobWorker'] },
-  { subpath: '@angriff36/manifest/schedule-worker', expectedExports: ['startScheduleWorker'] },
-  { subpath: '@angriff36/manifest/idempotency/memory', expectedExports: ['MemoryIdempotencyStore'] },
-  { subpath: '@angriff36/manifest/idempotency/postgres', expectedExports: ['PostgresIdempotencyStore'] },
-  { subpath: '@angriff36/manifest/transactions/postgres', expectedExports: ['PostgresTransactionProvider'] },
-  { subpath: '@angriff36/manifest/webhooks', expectedExports: ['handleWebhookRequest'] },
-  { subpath: '@angriff36/manifest/events', expectedExports: ['MemoryEventBus'] },
-  { subpath: '@angriff36/manifest/events/redis', expectedExports: ['RedisEventBus'] },
-  { subpath: '@angriff36/manifest/federation', expectedExports: ['FederationRegistry'] },
-  { subpath: '@angriff36/manifest/config', expectedExports: ['resolveProjectionOptions'] },
-  // Resolution-only guards: these two projections top-level import shared
-  // helpers, so a missing `.js` on that relative import (invalid in published
-  // ESM) makes the subpath throw on import. Kept as `[]` to assert the module
-  // loads, which is exactly what catches that class of packaging regression.
-  { subpath: '@angriff36/manifest/projections/routes', expectedExports: [] },
-  { subpath: '@angriff36/manifest/projections/analytics', expectedExports: [] },
-];
+const EXPECTED_EXPORTS_BY_SUBPATH: Record<string, string[]> = {
+  '@angriff36/manifest': ['RuntimeEngine'],
+  '@angriff36/manifest/runtime-engine': ['RuntimeEngine'],
+  '@angriff36/manifest/ir-compiler': ['compileToIR'],
+  '@angriff36/manifest/audit/memory': ['MemoryAuditSink'],
+  '@angriff36/manifest/audit/postgres': ['PostgresAuditSink'],
+  '@angriff36/manifest/outbox/memory': ['MemoryOutboxStore'],
+  '@angriff36/manifest/outbox/postgres': ['PostgresOutboxStore'],
+  '@angriff36/manifest/outbox/redis': ['RedisOutboxStore'],
+  '@angriff36/manifest/outbox/worker': ['runOutboxWorker'],
+  '@angriff36/manifest/jobs/postgres': ['PostgresJobQueue'],
+  '@angriff36/manifest/jobs/worker': ['runJobWorker'],
+  '@angriff36/manifest/schedule-worker': ['startScheduleWorker'],
+  '@angriff36/manifest/approval/memory': ['MemoryApprovalStore'],
+  '@angriff36/manifest/approval/postgres': ['PostgresApprovalStore'],
+  '@angriff36/manifest/idempotency/memory': ['MemoryIdempotencyStore'],
+  '@angriff36/manifest/idempotency/postgres': ['PostgresIdempotencyStore'],
+  '@angriff36/manifest/transactions/postgres': ['PostgresTransactionProvider'],
+  '@angriff36/manifest/webhooks': ['handleWebhookRequest'],
+  '@angriff36/manifest/events': ['MemoryEventBus'],
+  '@angriff36/manifest/events/redis': ['RedisEventBus'],
+  '@angriff36/manifest/federation': ['FederationRegistry'],
+  '@angriff36/manifest/agent-sdk': [
+    'AgentRuntime',
+    'toAnthropicTools',
+    'toOpenAITools',
+    'toVercelAITools',
+    'findMatchingCommands',
+    'irTypeToJsonSchema',
+  ],
+  '@angriff36/manifest/stores': ['PostgresStore'],
+  '@angriff36/manifest/projections': ['getProjection'],
+  '@angriff36/manifest/plugin-api': ['definePlugin'],
+  '@angriff36/manifest/plugin-loader': ['loadPlugins'],
+  '@angriff36/manifest/parser': ['Parser'],
+  '@angriff36/manifest/lexer': ['Lexer'],
+  '@angriff36/manifest/config': ['resolveProjectionOptions'],
+};
+
+/**
+ * Derive the public subpaths directly from package.json so this check stays in
+ * sync with the published library surface. The only intentional omission here
+ * is `./package.json` because JSON import semantics differ by host.
+ */
+export async function getPackageShapeSubpaths(packageRoot: string): Promise<PublicSubpathExpectation[]> {
+  const packageJsonPath = path.join(packageRoot, 'package.json');
+  const raw = await fs.readFile(packageJsonPath, 'utf8');
+  const pkg = JSON.parse(raw) as { name?: string; exports?: Record<string, unknown> };
+  if (!pkg.name) {
+    throw new Error(`package.json at ${packageJsonPath} is missing a package name`);
+  }
+  if (!pkg.exports || typeof pkg.exports !== 'object' || Array.isArray(pkg.exports)) {
+    throw new Error(`package.json at ${packageJsonPath} is missing an object-shaped exports field`);
+  }
+
+  return Object.keys(pkg.exports)
+    .filter(key => !IGNORED_EXPORT_KEYS.has(key))
+    .map<PublicSubpathExpectation>(key => {
+      const subpath = key === '.' ? pkg.name! : `${pkg.name!}/${key.slice(2)}`;
+      return {
+        subpath,
+        expectedExports: EXPECTED_EXPORTS_BY_SUBPATH[subpath] ?? [],
+      };
+    })
+    .sort((a, b) => a.subpath.localeCompare(b.subpath));
+}
 
 /** Tarball entries every conforming build MUST include. */
 const REQUIRED_TARBALL_ENTRIES = [
@@ -395,8 +429,9 @@ export interface PackageShapeOptions {
 }
 
 export async function checkPackageShape(opts: PackageShapeOptions): Promise<PackageShapeResult> {
+  const expectedSubpaths = await getPackageShapeSubpaths(opts.packageRoot);
   const subpathImports: SubpathImportResult[] = [];
-  for (const { subpath, expectedExports } of SUBPATHS) {
+  for (const { subpath, expectedExports } of expectedSubpaths) {
     subpathImports.push(await importSubpath(subpath, expectedExports));
   }
 

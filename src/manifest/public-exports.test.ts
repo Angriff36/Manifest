@@ -56,6 +56,9 @@ import * as ScheduleWorkerApi from './schedule-worker';
 import * as EventBusApi from './events/event-bus';
 // Subpath: '@angriff36/manifest/events/redis'
 import * as RedisEventBusApi from './events/redis';
+// Subpath: '@angriff36/manifest/agent-sdk'
+import * as AgentSdkApi from './agent-sdk';
+import type { AgentToolResult, AnthropicTool, OpenAITool, VercelAITools } from './agent-sdk';
 
 describe('Public export surface', () => {
   it('exposes audit adapter contract symbols from the audit subpath', () => {
@@ -155,6 +158,17 @@ describe('Public export surface', () => {
     expect(typeof FederationApi.contextFromBridgeHeaders).toBe('function');
   });
 
+  it('exposes the agent-sdk public surface via agent-sdk', () => {
+    expect(typeof AgentSdkApi.AgentRuntime).toBe('function');
+    expect(typeof AgentSdkApi.toAnthropicTools).toBe('function');
+    expect(typeof AgentSdkApi.toOpenAITools).toBe('function');
+    expect(typeof AgentSdkApi.toVercelAITools).toBe('function');
+    expect(typeof AgentSdkApi.findMatchingCommands).toBe('function');
+    expect(typeof AgentSdkApi.irTypeToJsonSchema).toBe('function');
+    expect(AgentSdkApi.mangleToolName('Order', 'placeOrder', 'snake')).toBe('order_placeOrder');
+    expect(AgentSdkApi.parseToolName('order_placeOrder')).toEqual({ entity: 'order', command: 'placeOrder' });
+  });
+
   it('root re-exports the adapter contract types (compile-time check)', () => {
     // If any of these types disappear from the root, the file fails to
     // typecheck. The assertions are token usages so the import isn't
@@ -176,6 +190,30 @@ describe('Public export surface', () => {
       attempts: 0,
     };
     const _f: OutboxEntryStatus = 'pending';
-    expect([_a, _b, _c, _d, _e, _f]).toHaveLength(6);
+    const _g: AnthropicTool = {
+      name: 'manifest_list_entities',
+      description: 'List entities',
+      input_schema: { type: 'object' },
+    };
+    const _h: OpenAITool = {
+      type: 'function',
+      function: {
+        name: 'manifest_list_entities',
+        description: 'List entities',
+        parameters: { type: 'object' },
+      },
+    };
+    const _i: AgentToolResult = {
+      success: true,
+      code: 'SUCCESS',
+      message: 'ok',
+    };
+    const _j: VercelAITools = {
+      manifest_list_entities: {
+        description: 'List entities',
+        parameters: { type: 'object' },
+      },
+    };
+    expect([_a, _b, _c, _d, _e, _f, _g, _h, _i, _j]).toHaveLength(10);
   });
 });
