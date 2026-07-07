@@ -2369,12 +2369,22 @@ export class RuntimeEngine {
       mergedData.updatedAt = now;
     }
 
-    // Composite key: the runtime's identity is the encoded key tuple. Persist
-    // under that canonical string so the entity is addressable by it via
-    // getInstance/updateInstance/deleteInstance and the command working copy.
-    // Computed after tenant/version/timestamp injection so a tenant/version
-    // discriminator that participates in `key` uses its resolved value.
-    if (entity.key && entity.key.length > 0) {
+    // Composite-key runtime identity. The runtime's canonical identity for a
+    // `key`-declaring entity is the encoded key tuple (see `compositeId`), used
+    // internally for equality, relation matching, caching, and locking. For an
+    // entity that has NO real `id` column (e.g. `key [region, code]`) that tuple
+    // is also its synthetic addressing handle, stored in `id` so it stays
+    // reachable via getInstance/updateInstance/runCommand.
+    //
+    // But when `id` is itself a declared key component (the common
+    // `key [tenantId, id]` shape), `id` is a REAL persisted column: it keeps its
+    // actual value (a bare uuid) and must NOT be overwritten with the composite
+    // "tenantId|id" string. The store persists the real field values and derives
+    // the composite primary key itself from the tenant context; overwriting `id`
+    // corrupts the uuid column and breaks every generic-store create for such an
+    // entity (regression fixed in 3.3.1). `mergedData` already carries the real
+    // bare `id` here (the auto-create path seeds it via `bodyId`).
+    if (entity.key && entity.key.length > 0 && !entity.key.includes('id')) {
       mergedData.id = this.compositeId(entity, mergedData);
     }
 
