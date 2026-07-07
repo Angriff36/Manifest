@@ -16,6 +16,7 @@ import type {
   NextJsProjectionOptions,
 } from '@angriff36/manifest/projections/nextjs';
 import type { IR } from '@angriff36/manifest/ir';
+import { GenerationManifestRecorder } from '../utils/generation-manifest.js';
 
 // Import from the main Manifest package
 async function loadDependencies() {
@@ -76,6 +77,10 @@ class DriftError extends Error {
 // generation helper signature.
 let checkMode = false;
 const driftedFiles: string[] = [];
+// Per-run generation-manifest recorder (reset in generateCommand). Same
+// module-level pattern as checkMode: the write boundary records every file it
+// actually writes, and the run emits one deterministic manifest at the end.
+let generationRecorder = new GenerationManifestRecorder();
 
 // Local type aliases: use the real projection types from the main
 // package. The CLI is a thin wrapper — `projection.generate(ir, request)`
@@ -249,7 +254,9 @@ async function generateWithRegistryProjection(
     // surfaces answer the mismatched probes with "requires entity/command"
     // error diagnostics. Those are expected control flow here, so this call
     // site alone opts out of fail-on-error.
-    await writeProjectionResult(merged, outputDir, { failOnError: false });
+    // Merged across the global + per-entity probes, so per-artifact entity
+    // attribution is unknowable here — recorded as surface-only, never guessed.
+    await writeProjectionResult(merged, outputDir, { failOnError: false, context: { surface } });
   }
 }
 
@@ -364,7 +371,7 @@ async function generateCompanions(
     surface: 'nextjs.companions',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  await writeProjectionResult(result, outputDir, { context: { surface: 'nextjs.companions' } });
 }
 
 /**
@@ -384,7 +391,7 @@ async function generateSchedule(
     surface: 'nextjs.schedule',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  await writeProjectionResult(result, outputDir, { context: { surface: 'nextjs.schedule' } });
 }
 
 /**
@@ -404,7 +411,7 @@ async function generateWebhooks(
     surface: 'nextjs.webhook',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  await writeProjectionResult(result, outputDir, { context: { surface: 'nextjs.webhook' } });
 }
 
 /**
@@ -425,7 +432,7 @@ async function generateRealtime(
     surface: 'nextjs.sharedRuntime',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(shared, outputDir);
+  await writeProjectionResult(shared, outputDir, { context: { surface: 'nextjs.sharedRuntime' } });
 
   for (const entity of ir.entities ?? []) {
     if (!entity.realtime) continue;
@@ -435,7 +442,7 @@ async function generateRealtime(
         entity: entity.name,
         options: projectionOptions as unknown as Record<string, unknown>,
       });
-      await writeProjectionResult(result, outputDir);
+      await writeProjectionResult(result, outputDir, { context: { surface, entity: entity.name } });
     }
   }
 }
@@ -456,7 +463,16 @@ async function generateDispatcher(
     surface: 'nextjs.dispatcher',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  // Runtime entry mirrors the dispatcher execution mode: externalExecutor
+  // calls the configured executor import; inline builds the engine in-route.
+  const executionMode = projectionOptions?.dispatcher?.executionMode ?? 'inline';
+  const runtimeEntry =
+    executionMode === 'externalExecutor'
+      ? (projectionOptions?.dispatcher?.executorImportName ?? 'executeManifestCommand')
+      : 'inline';
+  await writeProjectionResult(result, outputDir, {
+    context: { surface: 'nextjs.dispatcher', dispatcher: { runtimeEntry } },
+  });
 }
 
 /**
@@ -479,7 +495,9 @@ async function generateRoutes(
       entity: entity.name,
       options: projectionOptions as unknown as Record<string, unknown>,
     });
-    await writeProjectionResult(result, outputDir);
+    await writeProjectionResult(result, outputDir, {
+      context: { surface: 'nextjs.route', entity: entity.name },
+    });
   }
 }
 
@@ -505,7 +523,9 @@ async function generateCommands(
         command: command.name,
         options: projectionOptions as unknown as Record<string, unknown>,
       });
-      await writeProjectionResult(result, outputDir);
+      await writeProjectionResult(result, outputDir, {
+        context: { surface: 'nextjs.command', entity: command.entity, command: command.name },
+      });
     }
   }
 }
@@ -526,7 +546,7 @@ async function generateTypes(
     surface: 'ts.types',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  await writeProjectionResult(result, outputDir, { context: { surface: 'ts.types' } });
 }
 
 /**
@@ -545,16 +565,54 @@ async function generateClient(
     surface: 'ts.client',
     options: projectionOptions as unknown as Record<string, unknown>,
   });
-  await writeProjectionResult(result, outputDir);
+  await writeProjectionResult(result, outputDir, { context: { surface: 'ts.client' } });
 }
 
 /**
  * Write projection result to file(s)
  */
+/**
+ * ProjectionRequest context threaded to the write boundary so the generation
+ * manifest records the surface/entity/command each written file came from.
+ * `dispatcher` marks the artifact as the interpreter dispatch surface.
+ */
+interface WriteContext {
+  surface: string;
+  entity?: string;
+  command?: string;
+  dispatcher?: { runtimeEntry: string };
+}
+
+/** Record one written (or would-be-written, in --check) artifact + dispatcher. */
+function recordGeneration(
+  artifact: ProjectionResult['artifacts'][number],
+  outputPath: string,
+  context: WriteContext | undefined
+): void {
+  if (!context || !artifact.pathHint) return;
+  const outputFile = path.relative(process.cwd(), outputPath).split(path.sep).join('/');
+  generationRecorder.recordArtifact({
+    artifactId: artifact.id,
+    surface: context.surface,
+    entity: context.entity ?? null,
+    command: context.command ?? null,
+    pathHint: artifact.pathHint,
+    outputFile,
+  });
+  if (context.dispatcher) {
+    generationRecorder.recordDispatcher({
+      outputFile,
+      mode: 'interpreter',
+      dispatchScope: 'all-ir-commands',
+      runtimeEntry: context.dispatcher.runtimeEntry,
+    });
+  }
+}
+
 async function writeProjectionResult(
   result: ProjectionResult,
   outputDir: string,
-  opts: { failOnError?: boolean } = {}
+  opts: { failOnError?: boolean; context?: WriteContext } = {}
 ): Promise<void> {
   // Show diagnostics first (if any errors, we might still write files)
   if (result.diagnostics && result.diagnostics.length > 0) {
@@ -618,7 +676,10 @@ async function writeProjectionResult(
 
     if (checkMode) {
       // --check: compare generated code to the committed file without writing.
-      // A missing file or any byte difference counts as drift.
+      // A missing file or any byte difference counts as drift. Still record
+      // into the generation manifest so --check can verify the committed
+      // manifest matches what a real run would emit.
+      recordGeneration(artifact, outputPath, opts.context);
       const existing = await fs.readFile(outputPath, 'utf-8').catch(() => null);
       if (existing !== artifact.code) {
         driftedFiles.push(path.relative(process.cwd(), outputPath));
@@ -628,6 +689,10 @@ async function writeProjectionResult(
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, artifact.code, 'utf-8');
+
+    // Record what was ACTUALLY written (resolved path, not merely pathHint)
+    // into the generation manifest.
+    recordGeneration(artifact, outputPath, opts.context);
 
     console.log(chalk.gray(`  → ${path.relative(process.cwd(), outputPath)}`));
   }
@@ -649,6 +714,7 @@ export async function generateCommand(
   // --check drift mode: compare generated code to committed files, no writes.
   checkMode = options.check ?? false;
   driftedFiles.length = 0;
+  generationRecorder = new GenerationManifestRecorder();
 
   try {
     // Get IR files
@@ -687,6 +753,15 @@ export async function generateCommand(
     }
 
     if (checkMode) {
+      // The generation manifest is a generated file too: --check verifies the
+      // committed one matches what this run would emit (byte-stable contract).
+      if (!generationRecorder.isEmpty) {
+        const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
+        const committed = await fs.readFile(manifestPath, 'utf-8').catch(() => null);
+        if (committed !== generationRecorder.serialize()) {
+          driftedFiles.push(path.relative(process.cwd(), manifestPath));
+        }
+      }
       if (driftedFiles.length > 0) {
         console.error(chalk.red(`\n  Drift: ${driftedFiles.length} generated file(s) differ from committed:`));
         for (const f of driftedFiles) {
@@ -698,6 +773,16 @@ export async function generateCommand(
       }
       spinner.succeed('No drift — generated code matches committed files.');
       return;
+    }
+
+    // Emit the generation manifest: what this run ACTUALLY wrote (resolved
+    // outputFile per artifact + dispatcher dispatch surface). Deterministic —
+    // sorted, deduped, no timestamps — so an unchanged rerun is byte-stable.
+    if (!generationRecorder.isEmpty) {
+      const manifestPath = path.resolve(process.cwd(), options.output, 'generation.manifest.json');
+      await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+      await fs.writeFile(manifestPath, generationRecorder.serialize(), 'utf-8');
+      console.log(chalk.gray(`  → ${path.relative(process.cwd(), manifestPath)} (generation manifest)`));
     }
 
     spinner.succeed(`Generated code from ${successCount} IR file(s)`);
