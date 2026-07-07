@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.3.0] - 2026-07-07
+
+### Changed
+
+- feat(cli): emit generation manifest from the projection write layer
+- [feat] wire Kitchen tutorial/policy/profiler tabs and quarantine WASM publish surface
+
 ## [3.2.1] - 2026-07-06
 
 ### Changed
