@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.1] - 2026-07-09
+
+### Fixed
+
+- Wiring inspect: `extractCommandArgLiteralsInManifestModules` uses AST call-argument inspection so FormData field names (e.g. `text(formData, "title")`) are not mistaken for stale capabilities like `Event.title`
+- Wiring remediate: `add-required-input` auto-applies only with a unique proven in-scope value source; weak/ambiguous plans are rejected and failed verification discards the patch
+
 ## [3.4.0] - 2026-07-09
 
 ### Added
