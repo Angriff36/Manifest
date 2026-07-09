@@ -34,6 +34,7 @@ export { ProductionFlowParser } from './production-flow-parser.js';
 export { RouteHelperIndex, bracketRoutePathToRegex, dynamicRouteProbePath } from './route-helper-index.js';
 export {
   extractAllManifestInvocations,
+  extractApiManifestPosts,
   extractGeneratedClientCalls,
   clientFunctionName,
 } from './invocation-extractor.js';

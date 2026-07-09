@@ -25,6 +25,7 @@ import {
   planInvalidLiteral,
   planEmptyDate,
 } from './planner-payload.js';
+import { tryPlanExpandPartialToFullBody } from './planner-expand-partial.js';
 import {
   classify,
   basePlan,
@@ -49,12 +50,39 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
   const byId = new Map(options.contract.capabilities.map(c => [c.capabilityId, c]));
   const plans: RepairPlan[] = [];
 
+  const expandPlanned = new Set<string>();
   for (const mismatch of options.report.mismatches) {
     if (options.capabilityId && mismatch.capabilityId !== options.capabilityId) continue;
     const cap = byId.get(mismatch.capabilityId);
     if (!cap && mismatch.kind !== 'stale_capability') continue;
 
     const evidence = evidenceFor(options.report, mismatch.capabilityId);
+
+    if (mismatch.kind === 'missing_required_input' && cap) {
+      const expandKey = `expand-partial:${cap.capabilityId}:${normalizePath(mismatch.source.file)}`;
+      if (expandPlanned.has(expandKey)) continue;
+
+      const content =
+        options.fileContents.get(mismatch.source.file) ??
+        options.fileContents.get(normalizePath(mismatch.source.file));
+      if (content) {
+        const expand = tryPlanExpandPartialToFullBody(
+          mismatch,
+          cap,
+          evidence,
+          content,
+          mismatch.source.file,
+          options.fileContents,
+        );
+        if (expand) {
+          expandPlanned.add(expandKey);
+          if (options.findingId && expand.findingId !== options.findingId) continue;
+          plans.push(expand);
+          continue;
+        }
+      }
+    }
+
     const plan = planFromMismatch(mismatch, cap, evidence, options.fileContents, adapter);
     if (!plan) continue;
     if (options.findingId && plan.findingId !== options.findingId) continue;
@@ -113,6 +141,7 @@ function planFromMismatch(
     case 'wrong_input_shape':
       return planWrongShape(mismatch, cap!, evidence, content, file);
     case 'missing_required_input':
+      // Expand-partial is attempted once per capability+file in planWiringRepairs.
       return planMissingRequired(mismatch, cap!, evidence, content, file, adapter);
     case 'invalid_finite_literal':
       return planInvalidLiteral(mismatch, cap!, evidence, content, file);

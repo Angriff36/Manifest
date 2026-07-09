@@ -17,6 +17,11 @@ import {
   removeProperty,
   addProperty,
 } from './patch-payload.js';
+import {
+  ensureExportSymbols,
+  applyEnsureNamedImports,
+  replaceCapabilityPayloadWithFullBody,
+} from './patch-full-body.js';
 
 export interface PatchApplyResult {
   ok: boolean;
@@ -131,6 +136,12 @@ function applyOperation(
       return rewireLifecycle(content, fileName, op);
     case 'wire-control-to-binding':
       return wireControl(content, fileName, op);
+    case 'ensure-export-symbols':
+      return ensureExportSymbols(content, fileName, op);
+    case 'ensure-named-imports':
+      return applyEnsureNamedImports(content, fileName, op);
+    case 'replace-capability-payload-with-full-body':
+      return replaceCapabilityPayloadWithFullBody(content, fileName, op);
     default:
       return null;
   }

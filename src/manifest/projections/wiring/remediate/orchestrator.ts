@@ -234,26 +234,28 @@ export function selectNextAutoFixable(plans: RepairPlan[]): RepairPlan | undefin
 function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
   const kindRank = (kind: string): number => {
     switch (kind) {
-      case 'replace-payload-expression':
+      case 'expand-partial-to-full-body':
         return 0;
-      case 'remove-invalid-literal':
+      case 'replace-payload-expression':
         return 1;
-      case 'replace-empty-date-sentinel':
+      case 'remove-invalid-literal':
         return 2;
-      case 'move-trusted-input-server-side':
+      case 'replace-empty-date-sentinel':
         return 3;
-      case 'replace-fake-lifecycle-binding':
+      case 'move-trusted-input-server-side':
         return 4;
-      case 'migrate-to-safe-binding':
+      case 'replace-fake-lifecycle-binding':
         return 5;
-      case 'add-invalidation':
+      case 'migrate-to-safe-binding':
         return 6;
-      case 'wire-existing-control':
+      case 'add-invalidation':
         return 7;
-      case 'add-required-input':
+      case 'wire-existing-control':
         return 8;
-      default:
+      case 'add-required-input':
         return 9;
+      default:
+        return 10;
     }
   };
   const decisionRank = (d: string): number =>

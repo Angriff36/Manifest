@@ -20,7 +20,8 @@ export type RepairKind =
   | 'move-trusted-input-server-side'
   | 'wire-existing-control'
   | 'replace-fake-lifecycle-binding'
-  | 'add-invalidation';
+  | 'add-invalidation'
+  | 'expand-partial-to-full-body';
 
 /** Whether Manifest may apply the repair without human product judgment. */
 export type RepairDecisionClass =
@@ -105,6 +106,30 @@ export type RepairOperation =
       controlSymbol: string;
       bindingCallee: string;
       ensureImport?: { module: string; names: string[] };
+    }
+  | {
+      type: 'ensure-export-symbols';
+      symbolNames: string[];
+    }
+  | {
+      type: 'ensure-named-imports';
+      module: string;
+      names: string[];
+    }
+  | {
+      /** Replace a partial capability payload with full-body builder + overrides. */
+      type: 'replace-capability-payload-with-full-body';
+      capabilityId: string;
+      entity: string;
+      command: string;
+      idExpression: string;
+      loaderName: string;
+      builderName: string;
+      /** Full replacement object expression (includes id + spread + overrides). */
+      toExpression: string;
+      /** Insert `const current = await loader(tenantId, id)` before the call. */
+      insertLoader: boolean;
+      siteKind: 'generated-client' | 'api-post';
     };
 
 export interface RepairPlan {

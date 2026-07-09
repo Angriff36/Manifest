@@ -27,8 +27,41 @@ export function extractAllManifestInvocations(content: string): ManifestInvocati
     ...extractRunManifestCommandCalls(content),
     ...extractExecuteCommandCalls(content),
     ...extractRuntimeRunCommandCalls(content),
+    ...extractApiManifestPosts(content),
     ...extractCommandArgLiteralsInManifestModules(content),
   ];
+}
+
+/**
+ * Detect posts to `/api/manifest/{Entity}/commands/{command}` with a literal body.
+ * e.g. apiPostJsonServer("/api/manifest/Dish/commands/update", { id, presentationImageUrl })
+ */
+export function extractApiManifestPosts(content: string): ManifestInvocation[] {
+  const out: ManifestInvocation[] = [];
+  const re =
+    /(?:apiPostJsonServer|apiPostJson|fetch)\s*\(\s*["'`]\/api\/manifest\/([A-Za-z_][\w]*)\/commands\/([A-Za-z_][\w]*)["'`]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content)) !== null) {
+    const entity = m[1]!;
+    const command = m[2]!;
+    const after = content.slice(m.index + m[0].length, m.index + m[0].length + 4000);
+    const objOpen = after.indexOf('{');
+    if (objOpen < 0) continue;
+    // Skip options-only second arg that isn't a payload (rare); require object soon after comma.
+    const between = after.slice(0, objOpen);
+    if (!between.includes(',')) continue;
+    const payload = extractBalancedBraces(after, objOpen);
+    if (!payload) continue;
+    out.push({
+      entity,
+      command,
+      intent: `${entity}.${command}`,
+      bodyFields: extractObjectFieldNames(payload),
+      index: m.index,
+      payloadSource: payload,
+    });
+  }
+  return out;
 }
 
 function extractRunManifestCommandCalls(content: string): ManifestInvocation[] {

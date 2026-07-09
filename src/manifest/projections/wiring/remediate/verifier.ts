@@ -38,14 +38,17 @@ export function verifyRepair(
   const findingResolved =
     remaining.length === 0 &&
     (kindsRequired.size === 0 ||
-      !report.mismatches.some(
-        m =>
-          m.capabilityId === plan.capabilityId &&
-          kindsRequired.has(m.kind) &&
-          (plan.mismatch?.parameter
-            ? m.parameter === plan.mismatch.parameter
-            : true),
-      ));
+      !report.mismatches.some(m => {
+        if (m.capabilityId !== plan.capabilityId) return false;
+        if (!kindsRequired.has(m.kind)) return false;
+        if (plan.repairKind === 'expand-partial-to-full-body') {
+          return mismatchInPlanFiles(m, plan);
+        }
+        if (plan.mismatch?.parameter) {
+          return m.parameter === plan.mismatch.parameter;
+        }
+        return true;
+      }));
 
   const baselineKeys = new Set(
     (baselineMismatches ?? []).map(mismatchKey),
@@ -87,11 +90,27 @@ function mismatchMatchesPlan(m: ContractMismatch, plan: RepairPlan): boolean {
   if (m.capabilityId !== plan.capabilityId && m.capabilityId !== plan.mismatch?.capabilityId) {
     return false;
   }
+  // Expand-partial resolves every missing_required_input at the edited call site(s).
+  if (plan.repairKind === 'expand-partial-to-full-body') {
+    if (m.kind !== 'missing_required_input') return false;
+    return mismatchInPlanFiles(m, plan);
+  }
   if (plan.mismatch) {
     if (m.kind !== plan.mismatch.kind) return false;
     if (plan.mismatch.parameter && m.parameter !== plan.mismatch.parameter) return false;
   }
   return true;
+}
+
+function mismatchInPlanFiles(m: ContractMismatch, plan: RepairPlan): boolean {
+  const files = new Set(
+    [...plan.sourceFiles, ...plan.edits.map(e => e.file)].map(normalizePath),
+  );
+  return files.has(normalizePath(m.source.file));
+}
+
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/');
 }
 
 export async function verifyRepairAsync(

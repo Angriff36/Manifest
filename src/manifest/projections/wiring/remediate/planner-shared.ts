@@ -87,7 +87,9 @@ export function priorityFor(kind: RepairKind, cap: WiringCommandDescriptor): num
   const isPrimary =
     cmd === 'create' || cmd === 'update' || cmd === 'delete' || cmd.startsWith('create');
   const base =
-    kind === 'replace-payload-expression' || kind === 'add-required-input'
+    kind === 'expand-partial-to-full-body'
+      ? 5
+      : kind === 'replace-payload-expression' || kind === 'add-required-input'
       ? 10
       : kind === 'move-trusted-input-server-side' || kind === 'migrate-to-safe-binding'
         ? 20

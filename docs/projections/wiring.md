@@ -184,6 +184,7 @@ manifest wiring-remediate --contract … --root apps/app \
 | ---- | ---- |
 | `replace-payload-expression` | Wrong shape (e.g. `.join(",")` where `string[]` required) |
 | `add-required-input` | Required client field missing **and** a unique proven in-scope source exists (see below) |
+| `expand-partial-to-full-body` | Partial literal against a full-update contract **and** a unique proven same-capability full-body builder (+ loader) exists |
 | `remove-invalid-literal` | Finite/enum/range literal with deterministic allowed replacement |
 | `replace-empty-date-sentinel` | Required date sent as `""` with proven local date source |
 | `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it |
@@ -194,12 +195,12 @@ manifest wiring-remediate --contract … --root apps/app \
 
 ### Decision classes
 
-| Class | Auto-apply? |
-| ----- | ----------- |
-| `auto-fixable` | yes |
-| `repairable-with-existing-pattern` | yes (reuse dominant local pattern) |
-| `ambiguous-product-decision` | **no** — placement/workflow intent unclear |
-| `unsafe-to-apply` | **no** — destructive/security/low proof |
+| Class                              | Auto-apply?                                |
+| ---------------------------------- | ------------------------------------------ |
+| `auto-fixable`                     | yes                                        |
+| `repairable-with-existing-pattern` | yes (reuse dominant local pattern)         |
+| `ambiguous-product-decision`       | **no** — placement/workflow intent unclear |
+| `unsafe-to-apply`                  | **no** — destructive/security/low proof    |
 
 Missing required values are **never invented**. No new screens are created when no suitable surface exists.
 

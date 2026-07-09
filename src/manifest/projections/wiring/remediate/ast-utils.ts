@@ -234,14 +234,31 @@ export function ensureNamedImports(
   }
 
   const importLine = `import { ${names.join(', ')} } from ${JSON.stringify(modulePath)};\n`;
-  // Insert after existing imports
+  // Insert after "use server" / "use client" and existing imports
   let insertPos = 0;
+  const directive = /^["']use (?:server|client)["']\s*;?\s*\n/;
+  const dirMatch = directive.exec(content);
+  if (dirMatch) insertPos = dirMatch[0].length;
+
   for (const stmt of sf.statements) {
-    if (ts.isImportDeclaration(stmt)) insertPos = stmt.end;
-    else break;
+    if (ts.isImportDeclaration(stmt)) {
+      insertPos = Math.max(insertPos, stmt.end);
+    } else if (ts.isExpressionStatement(stmt)) {
+      // "use server" as expression statement
+      const text = stmt.getText(sf);
+      if (/^["']use (?:server|client)["']/.test(text)) {
+        insertPos = Math.max(insertPos, stmt.end);
+      }
+    } else {
+      break;
+    }
   }
-  // Skip trailing newline after last import
+  // Skip trailing newline after last import / directive
   if (content[insertPos] === '\n') insertPos++;
+  // If we landed before "use server" somehow, force after directive
+  if (dirMatch && insertPos < dirMatch[0].length) {
+    insertPos = dirMatch[0].length;
+  }
   return content.slice(0, insertPos) + importLine + content.slice(insertPos);
 }
 
