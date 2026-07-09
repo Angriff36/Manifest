@@ -5,6 +5,8 @@
  * `src/reconcile/featureCompleteness/manifestInvocationExtractor.ts`.
  */
 
+import ts from 'typescript';
+
 export interface ManifestInvocation {
   entity: string;
   command: string;
@@ -99,8 +101,11 @@ function extractRuntimeRunCommandCalls(content: string): ManifestInvocation[] {
 
 /**
  * When a module uses runManifestCommand with a variable `command` (shorthand),
- * recover command names from string-literal arguments to local helpers, e.g.
- * `runLifecycleCommand(menuId, "markPublished", …)` alongside `entity: "Menu"`.
+ * recover command names from string-literal arguments to local *Command helpers,
+ * e.g. `runLifecycleCommand(menuId, "markPublished", …)` alongside `entity: "Menu"`.
+ *
+ * Uses TypeScript AST call-argument inspection — never a broad paren/string regex —
+ * so FormData keys like `text(formData, "title")` are not mistaken for commands.
  */
 function extractCommandArgLiteralsInManifestModules(
   content: string,
@@ -111,38 +116,69 @@ function extractCommandArgLiteralsInManifestModules(
   ].map(m => m[1]!);
   if (entities.length === 0) return [];
 
+  const sf = ts.createSourceFile(
+    'module.ts',
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+
   const out: ManifestInvocation[] = [];
   const seen = new Set<string>();
-  // 2nd+ string argument in a call: (x, "markPublished", …)
-  const argRe = /\([^)]*?,\s*["']([a-z][\w]*)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = argRe.exec(content)) !== null) {
-    const command = m[1]!;
-    // Skip common non-command literals
-    if (
-      command === 'use' ||
-      command === 'server' ||
-      command === 'draft' ||
-      command === 'published' ||
-      command === 'archived'
-    ) {
-      continue;
+
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const calleeName = callCalleeName(node.expression);
+      // Intended helpers: runLifecycleCommand / *Command — not text()/csv()/etc.
+      if (calleeName && /Command$/.test(calleeName) && calleeName !== 'runManifestCommand') {
+        for (let i = 1; i < node.arguments.length; i++) {
+          const arg = node.arguments[i]!;
+          if (!ts.isStringLiteral(arg) && !ts.isNoSubstitutionTemplateLiteral(arg)) {
+            continue;
+          }
+          const command = arg.text;
+          if (!isPlausibleCommandLiteral(command)) continue;
+          for (const entity of entities) {
+            const intent = `${entity}.${command}`;
+            if (seen.has(intent)) continue;
+            seen.add(intent);
+            out.push({
+              entity,
+              command,
+              intent,
+              bodyFields: [],
+              index: arg.getStart(sf),
+              payloadSource: '',
+            });
+          }
+        }
+      }
     }
-    for (const entity of entities) {
-      const intent = `${entity}.${command}`;
-      if (seen.has(intent)) continue;
-      seen.add(intent);
-      out.push({
-        entity,
-        command,
-        intent,
-        bodyFields: [],
-        index: m.index,
-        payloadSource: '',
-      });
-    }
-  }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
   return out;
+}
+
+function callCalleeName(expr: ts.Expression): string | undefined {
+  if (ts.isIdentifier(expr)) return expr.text;
+  if (ts.isPropertyAccessExpression(expr) && ts.isIdentifier(expr.name)) {
+    return expr.name.text;
+  }
+  return undefined;
+}
+
+function isPlausibleCommandLiteral(command: string): boolean {
+  // Commands are camelCase identifiers starting with a lowercase letter.
+  if (!/^[a-z][\w]*$/.test(command)) return false;
+  return !(
+    command === 'use' ||
+    command === 'server' ||
+    command === 'draft' ||
+    command === 'published' ||
+    command === 'archived'
+  );
 }
 
 /**
