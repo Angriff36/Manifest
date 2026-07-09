@@ -77,6 +77,7 @@ New store adapters (DynamoDB, Redis, Turso), transactional outbox, runtime middl
 - **Custom Store Adapter Registration via Plugin API** (`custom-store-adapter`)
 - **Manifest Plugin API for Third-Party Extensions** (`plugin-api`)
 - **Seed Data Generator from IR** (`seed-data-generator`)
+- **IR Sample Seed Packs** (`ir-sample-seed-pack`) — authorable CSV packs from IR (`seedKey`), cheap-model fill, `SampleDataRow`-tracked two-phase apply/clear
 - **Runtime Performance Profiler** (`performance-profiler`)
 
 ---

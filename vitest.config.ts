@@ -84,6 +84,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './src/manifest/ir.ts'),
       },
       {
+        find: '@angriff36/manifest/seed-pack',
+        replacement: path.resolve(__dirname, './src/manifest/seed-pack/index.ts'),
+      },
+      {
         find: '@angriff36/manifest/ir-diff',
         replacement: path.resolve(__dirname, './src/manifest/ir-diff.ts'),
       },
