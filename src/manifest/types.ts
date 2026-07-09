@@ -190,6 +190,12 @@ export interface ParameterNode extends ASTNode {
   dataType: TypeNode;
   required: boolean;
   defaultValue?: ExpressionNode;
+  /**
+   * When set, the parameter is server-owned: the client MUST NOT supply it.
+   * Value is a dotted context path (e.g. `context.actorId`) resolved from
+   * RuntimeContext by the runtime / generated server binding.
+   */
+  trustedSource?: string;
 }
 
 export interface PolicyNode extends ASTNode {

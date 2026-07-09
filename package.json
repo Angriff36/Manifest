@@ -116,6 +116,10 @@
       "types": "./dist/manifest/projections/materialized-views/generator.d.ts",
       "import": "./dist/manifest/projections/materialized-views/generator.js"
     },
+    "./projections/wiring": {
+      "types": "./dist/manifest/projections/wiring/index.d.ts",
+      "import": "./dist/manifest/projections/wiring/index.js"
+    },
     "./ir": {
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"

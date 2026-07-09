@@ -39,7 +39,18 @@ export { KyselyProjection } from './kysely/generator.js';
 export { DynamoDBProjection } from './dynamodb/generator.js';
 export { PydanticProjection } from './pydantic/generator.js';
 export { DartProjection } from './dart/generator.js';
+export { WiringProjection } from './wiring/generator.js';
 export { registerBuiltinProjections, listBuiltinProjections } from './builtins.js';
+export { buildWiringContract } from './wiring/contract-builder.js';
+export { generateWiringBindings } from './wiring/bindings-generator.js';
+export { validateWiringCoverage, parseConsumersRegistry } from './wiring/coverage.js';
+export type {
+  WiringContract,
+  WiringCommandDescriptor,
+  WiringConsumersRegistry,
+  WiringCoverageReport,
+  WiringProjectionOptions,
+} from './wiring/types.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
 export type { ReactQueryProjectionOptions } from './react-query/generator.js';

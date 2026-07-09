@@ -35,6 +35,7 @@ import { auditBypassesCommand } from './commands/audit-bypasses.js';
 import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { coverageCommand } from './commands/coverage.js';
+import { wiringCoverageCommand } from './commands/wiring-coverage.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   configValidateCommand,
@@ -927,6 +928,24 @@ program
         process.exitCode = 1;
       }
     }
+  });
+
+/**
+ * manifest wiring-coverage
+ *
+ * Compare a generated product-wiring contract against an application consumer
+ * registry. Reports unwired capabilities and stale consumer references.
+ * Does not inspect visual UI source — the app supplies an explicit registry.
+ */
+program
+  .command('wiring-coverage')
+  .description('Validate Manifest capability coverage against an application consumer registry')
+  .requiredOption('--contract <path>', 'Path to manifest-wiring-contract.json')
+  .requiredOption('--consumers <path>', 'Path to application wiring-consumers.json')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--strict', 'Exit non-zero when unwired or stale consumers exist', false)
+  .action(async (options = {}) => {
+    await wiringCoverageCommand(options);
   });
 
 /**

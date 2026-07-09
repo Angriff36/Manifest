@@ -1,0 +1,83 @@
+---
+title: "Product wiring projection"
+sidebarTitle: "Product wiring"
+description: "Machine-readable command wiring contracts and safe bindings so apps wire UI to Manifest without guessing — not a UI generator."
+---
+
+The **wiring** projection emits a deterministic product-wiring contract and TypeScript binding helpers from compiled IR. Use it so applications and agents connect real UI to Manifest commands without inventing types, lifecycle states, or client-side identity fields.
+
+This is **not** a UI generator. It does not create pages, forms, buttons, layouts, or copy. Your app still owns presentation.
+
+## Generate
+
+```bash
+manifest generate -p wiring --surface all
+```
+
+Default artifacts:
+
+- `src/generated/manifest-wiring-contract.json`
+- `src/generated/manifest-wiring-bindings.ts`
+
+## What the contract answers
+
+For every entity command:
+
+- Exact parameter types (including `string[]` vs `string`)
+- Required vs optional
+- Enum / finite values when statically known
+- Numeric and non-empty constraints when statically known
+- Which fields are **server-owned** (`from context.*`) vs client-owned
+- Dispatcher route identity
+- Proven lifecycle transitions (from `transition` + literal `mutate`)
+- List/detail invalidation hints after success
+- Structured error states to handle
+
+Unprovable metadata is omitted — never guessed.
+
+## Trusted server-owned inputs
+
+```manifest
+command markCompleted(completedBy: string from context.actorId) {
+  mutate completedBy = completedBy
+}
+```
+
+- Client input types omit `completedBy`
+- Runtime strips spoofed client values and injects `context.actorId`
+- Missing trusted context fails with `MISSING_TRUSTED_CONTEXT`
+
+Ownership is declared explicitly. Naming heuristics are not used.
+
+## Coverage gate
+
+Declare intentional consumers:
+
+```json
+{
+  "$schema": "manifest-wiring-consumers/v1",
+  "consumers": [
+    { "capabilityId": "Task.create", "disposition": "consumed" },
+    { "capabilityId": "Task.archive", "disposition": "backend-only" }
+  ]
+}
+```
+
+```bash
+manifest wiring-coverage \
+  --contract src/generated/manifest-wiring-contract.json \
+  --consumers manifest/wiring-consumers.json \
+  --strict
+```
+
+`backend-only` and `deferred` are not defects. `unwired` and `stale-consumer` are.
+
+## Boundary
+
+| Manifest | Application |
+| --- | --- |
+| Command truth, types, ownership, constraints | Layout, visuals, labels |
+| Safe bindings + invalidation metadata | Button vs menu vs gesture |
+| Coverage truth | Explicit consumer registry |
+
+Full reference: [docs/projections/wiring.md](https://github.com/Angriff36/Manifest/blob/main/docs/projections/wiring.md) in the repository.

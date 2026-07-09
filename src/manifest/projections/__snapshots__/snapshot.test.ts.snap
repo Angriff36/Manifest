@@ -10392,6 +10392,229 @@ resource "aws_sns_topic" "topic_task_assigned" {
 }
 `;
 
+exports[`projection snapshots > wiring > generated artifacts match snapshot 1`] = `
+{
+  "wiring-bindings": "/**
+ * Generated Manifest product-wiring bindings.
+ * DO NOT EDIT — regenerate from IR via the wiring projection.
+ *
+ * This module does NOT generate UI. It provides typed client inputs,
+ * trusted-context injection helpers, and invalidation metadata.
+ */
+
+export const WIRING_CONTRACT_HASH = "snapshot-fixture-hash";
+
+// --- Task.assignTask ---
+export interface TaskAssignTaskClientInput {
+  userId: string;
+}
+
+export const TaskAssignTaskCapability = {
+  capabilityId: "Task.assignTask",
+  entity: "Task",
+  command: "assignTask",
+  route: "/api/manifest/Task/commands/assignTask",
+  instanceCommand: true,
+  clientParameterNames: ["userId"],
+  serverParameterNames: [],
+  emits: ["TaskAssigned"],
+} as const;
+
+/**
+ * Build command input for Task.assignTask.
+ * Client fields only; server-owned fields are injected separately.
+ */
+export function bindTaskAssignTaskInput(client: TaskAssignTaskClientInput): Record<string, unknown> {
+  return { ...client };
+}
+
+/** Invalidation targets after a successful Task.assignTask. */
+export const TaskAssignTaskInvalidation = [
+  {
+    "kind": "entityList",
+    "entity": "Task",
+    "queryKeyHint": "queryKeys.task.lists()",
+    "label": "entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "Task",
+    "queryKeyHint": "queryKeys.task.detail(id)",
+    "label": "entity detail"
+  }
+] as const;
+
+// --- Task.updateStatus ---
+export interface TaskUpdateStatusClientInput {
+  newStatus: string;
+}
+
+export const TaskUpdateStatusCapability = {
+  capabilityId: "Task.updateStatus",
+  entity: "Task",
+  command: "updateStatus",
+  route: "/api/manifest/Task/commands/updateStatus",
+  instanceCommand: true,
+  clientParameterNames: ["newStatus"],
+  serverParameterNames: [],
+  emits: ["TaskStatusUpdated"],
+} as const;
+
+/**
+ * Build command input for Task.updateStatus.
+ * Client fields only; server-owned fields are injected separately.
+ */
+export function bindTaskUpdateStatusInput(client: TaskUpdateStatusClientInput): Record<string, unknown> {
+  return { ...client };
+}
+
+/** Invalidation targets after a successful Task.updateStatus. */
+export const TaskUpdateStatusInvalidation = [
+  {
+    "kind": "entityList",
+    "entity": "Task",
+    "queryKeyHint": "queryKeys.task.lists()",
+    "label": "entity list"
+  },
+  {
+    "kind": "entityDetail",
+    "entity": "Task",
+    "queryKeyHint": "queryKeys.task.detail(id)",
+    "label": "entity detail"
+  }
+] as const;
+
+/** All capability ids in this contract (sorted). */
+export const ALL_CAPABILITY_IDS = [
+  "Task.assignTask",
+  "Task.updateStatus"
+] as const;
+",
+  "wiring-contract": "{
+  "$schema": "manifest-wiring-contract/v1",
+  "meta": {
+    "compilerVersion": "snapshot-test",
+    "schemaVersion": "1.0",
+    "contentHash": "snapshot-fixture-hash",
+    "projection": "wiring"
+  },
+  "capabilities": [
+    {
+      "entity": "Task",
+      "command": "assignTask",
+      "capabilityId": "Task.assignTask",
+      "route": "/api/manifest/Task/commands/assignTask",
+      "instanceCommand": true,
+      "parameters": [
+        {
+          "name": "userId",
+          "tsType": "string",
+          "irTypeName": "string",
+          "required": true,
+          "nullable": false,
+          "ownership": "client",
+          "constraints": {},
+          "hasRuntimeGuards": true
+        }
+      ],
+      "clientParameterNames": [
+        "userId"
+      ],
+      "serverParameterNames": [],
+      "returnTsType": "unknown",
+      "emits": [
+        "TaskAssigned"
+      ],
+      "affectedEntity": "Task",
+      "lifecycleTransitions": [],
+      "invalidation": [
+        {
+          "kind": "entityList",
+          "entity": "Task",
+          "queryKeyHint": "queryKeys.task.lists()",
+          "label": "entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "Task",
+          "queryKeyHint": "queryKeys.task.detail(id)",
+          "label": "entity detail"
+        }
+      ],
+      "resultStates": {
+        "success": true,
+        "errors": [
+          "policy_denial",
+          "guard_failure",
+          "constraint_block",
+          "concurrency_conflict",
+          "missing_required_parameter",
+          "missing_trusted_context",
+          "unknown"
+        ]
+      }
+    },
+    {
+      "entity": "Task",
+      "command": "updateStatus",
+      "capabilityId": "Task.updateStatus",
+      "route": "/api/manifest/Task/commands/updateStatus",
+      "instanceCommand": true,
+      "parameters": [
+        {
+          "name": "newStatus",
+          "tsType": "string",
+          "irTypeName": "string",
+          "required": true,
+          "nullable": false,
+          "ownership": "client",
+          "constraints": {},
+          "hasRuntimeGuards": true
+        }
+      ],
+      "clientParameterNames": [
+        "newStatus"
+      ],
+      "serverParameterNames": [],
+      "returnTsType": "unknown",
+      "emits": [
+        "TaskStatusUpdated"
+      ],
+      "affectedEntity": "Task",
+      "lifecycleTransitions": [],
+      "invalidation": [
+        {
+          "kind": "entityList",
+          "entity": "Task",
+          "queryKeyHint": "queryKeys.task.lists()",
+          "label": "entity list"
+        },
+        {
+          "kind": "entityDetail",
+          "entity": "Task",
+          "queryKeyHint": "queryKeys.task.detail(id)",
+          "label": "entity detail"
+        }
+      ],
+      "resultStates": {
+        "success": true,
+        "errors": [
+          "policy_denial",
+          "guard_failure",
+          "constraint_block",
+          "concurrency_conflict",
+          "missing_required_parameter",
+          "missing_trusted_context",
+          "unknown"
+        ]
+      }
+    }
+  ]
+}
+",
+}
+`;
+
 exports[`projection snapshots > zod > generated artifacts match snapshot 1`] = `
 {
   "zod.command.assignTask": "// Auto-generated by Manifest Zod projection

@@ -331,7 +331,13 @@ In this example:
 - Different entities MAY define the same normal command names, such as `create`, `update`, or `delete`; canonical duplicate checks are scoped to the same entity or resolved entity alias.
 - If an entity references a command name that does not exist in the root command list, compilation MUST fail.
 - Commands take parameters, optional guards, actions, emits, and optional return type.
+- A parameter MAY declare a trusted source with `from context.<path>` (same grammar as the `tenant` declaration). When present, the compiler records `IRParameter.trustedSource` (e.g. `context.actorId`). Trusted parameters are **server-owned**:
+  - Generated client input types and browser-facing bindings MUST omit them.
+  - Before `runCommand`, the host/generated server binding MUST strip any client-supplied value for that parameter name and inject the value resolved from `RuntimeContext` at the declared path.
+  - The runtime itself, when it sees `trustedSource` on a parameter, MUST also strip a client-supplied value and inject from the active `RuntimeContext` (fail closed with `MISSING_TRUSTED_CONTEXT` when the resolved value is `undefined`/`null` and the parameter is `required` with no `defaultValue`). This is defense-in-depth; projections MUST still strip/inject at the transport boundary.
+  - Naming heuristics (e.g. "ends with `UserId`") MUST NOT be used to infer trusted ownership. Only an explicit `from context.*` declaration (or an equivalent IR `trustedSource`) marks a parameter as server-owned.
 - Before building the evaluation context, the runtime MUST process the declared `parameters` against the command input:
+  - Trusted-source injection/strip (above) runs first.
   - A parameter absent from the input that declares a `defaultValue` MUST have that default applied to the input.
   - A parameter absent from the input that declares no `defaultValue` and is `required` MUST fail closed with a `parameterFailure` on the CommandResult (code `MISSING_REQUIRED_PARAMETER`) before rate-limit, policy, constraint, or guard evaluation.
   - A parameter present in the input (including `null`) is used as-is; an explicit `undefined` is treated as absent.

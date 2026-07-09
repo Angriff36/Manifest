@@ -993,6 +993,10 @@
         },
         "defaultValue": {
           "$ref": "#/definitions/IRValue"
+        },
+        "trustedSource": {
+          "type": "string",
+          "description": "Dotted context path (e.g. context.actorId). When set, the parameter is server-owned: strip client values and inject from RuntimeContext before execution."
         }
       }
     },

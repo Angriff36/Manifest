@@ -423,6 +423,11 @@ export interface ParameterFailure {
   parameter: string;
   /** Declared parameter type name, when available. */
   expectedType?: string;
+  /**
+   * Machine-readable failure code. Defaults to MISSING_REQUIRED_PARAMETER
+   * when absent. Trusted-source injection failures use MISSING_TRUSTED_CONTEXT.
+   */
+  code?: 'MISSING_REQUIRED_PARAMETER' | 'MISSING_TRUSTED_CONTEXT';
 }
 
 export interface PolicyDenial {
@@ -3426,11 +3431,13 @@ export class RuntimeEngine {
 
   /**
    * Command parameter processing (docs/spec/semantics.md, "Commands").
-   * Applies a declared parameter `defaultValue` to any argument the caller
-   * omitted, then rejects a call that omits a `required` parameter with no
-   * default. An explicit `undefined` is treated as absent; `null` counts as
-   * supplied. Returns the augmented input on success, or the first missing
-   * required parameter as a structured failure (fail-closed before any gate).
+   * 1) Trusted-source params: strip any client-supplied value, inject from
+   *    RuntimeContext at `trustedSource` (fail closed with MISSING_TRUSTED_CONTEXT
+   *    when required and unresolved).
+   * 2) Apply declared `defaultValue` for omitted args.
+   * 3) Reject omitted required params with no default (MISSING_REQUIRED_PARAMETER).
+   * An explicit `undefined` is treated as absent; `null` counts as supplied
+   * for non-trusted params. Returns the augmented input on success.
    */
   private processCommandParameters(
     command: IRCommand,
@@ -3439,18 +3446,64 @@ export class RuntimeEngine {
     const params = command.parameters;
     if (!params || params.length === 0) return { ok: true, input };
     let next: Record<string, unknown> | undefined;
+
     for (const p of params) {
-      if (input[p.name] !== undefined) continue;
+      if (!p.trustedSource) continue;
+      next = next ?? { ...input };
+      // Always strip spoofed client values for trusted params.
+      delete next[p.name];
+      const injected = this.resolveTrustedSource(p.trustedSource);
+      if (injected !== undefined && injected !== null) {
+        next[p.name] = injected;
+        continue;
+      }
       if (p.defaultValue !== undefined) {
-        next = next ?? { ...input };
         next[p.name] = this.irValueToJs(p.defaultValue);
+        continue;
+      }
+      if (p.required) {
+        return {
+          ok: false,
+          failure: {
+            parameter: p.name,
+            expectedType: p.type?.name,
+            code: 'MISSING_TRUSTED_CONTEXT',
+          },
+        };
+      }
+    }
+
+    const working = next ?? input;
+    let withDefaults: Record<string, unknown> | undefined;
+    for (const p of params) {
+      if (p.trustedSource) continue; // already handled
+      if (working[p.name] !== undefined) continue;
+      if (p.defaultValue !== undefined) {
+        withDefaults = withDefaults ?? { ...working };
+        withDefaults[p.name] = this.irValueToJs(p.defaultValue);
         continue;
       }
       if (p.required) {
         return { ok: false, failure: { parameter: p.name, expectedType: p.type?.name } };
       }
     }
-    return { ok: true, input: next ?? input };
+    return { ok: true, input: withDefaults ?? working };
+  }
+
+  /**
+   * Resolve a trustedSource path like `context.actorId` against the active
+   * RuntimeContext. Only `context.*` paths are supported (language grammar).
+   */
+  private resolveTrustedSource(trustedSource: string): unknown {
+    if (!trustedSource.startsWith('context.')) return undefined;
+    const path = trustedSource.slice('context.'.length);
+    if (!path) return undefined;
+    let cur: unknown = this.context;
+    for (const segment of path.split('.')) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = (cur as Record<string, unknown>)[segment];
+    }
+    return cur;
   }
 
   /**
@@ -3481,9 +3534,10 @@ export class RuntimeEngine {
     // fails fast (before enqueue) on a missing required parameter.
     const paramResult = this.processCommandParameters(command, input);
     if (!paramResult.ok) {
+      const code = paramResult.failure.code ?? 'MISSING_REQUIRED_PARAMETER';
       return {
         success: false,
-        error: `MISSING_REQUIRED_PARAMETER: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
+        error: `${code}: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
         parameterFailure: paramResult.failure,
         emittedEvents: [],
       };
@@ -3699,14 +3753,15 @@ export class RuntimeEngine {
       };
     }
 
-    // Command parameter processing (spec: Commands): apply declared parameter
-    // defaults to the input, then fail closed on a missing required parameter
-    // before any gate (rate-limit/policy/constraint/guard) runs.
+    // Command parameter processing (spec: Commands): trusted-source inject,
+    // apply defaults, then fail closed on a missing required parameter before
+    // any gate (rate-limit/policy/constraint/guard) runs.
     const paramResult = this.processCommandParameters(command, input);
     if (!paramResult.ok) {
+      const code = paramResult.failure.code ?? 'MISSING_REQUIRED_PARAMETER';
       return {
         success: false,
-        error: `MISSING_REQUIRED_PARAMETER: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
+        error: `${code}: command '${commandName}' requires parameter '${paramResult.failure.parameter}'`,
         parameterFailure: paramResult.failure,
         ...(options.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
         ...(options.causationId !== undefined ? { causationId: options.causationId } : {}),

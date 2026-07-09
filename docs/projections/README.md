@@ -18,5 +18,6 @@ A **projection** consumes compiled Manifest IR and emits a platform- or tooling-
 | [Hono](./hono.md) | `hono` | Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy). |
 | [Mermaid](./mermaid.md) | `mermaid` | Mermaid ER, state machine, and sequence diagrams from the IR. |
 | [LLM Context](./llm-context.md) | `llm-context` | Structured `manifest-context.json` for AI agent context injection. |
+| [Product wiring](./wiring.md) | `wiring` | Machine-readable command wiring contract + safe bindings (not a UI generator). Coverage via `manifest wiring-coverage`. |
 
 > Projections are tooling, not runtime semantics. They generate views of the IR and must not alter execution order, policy/guard behavior, or the IR itself.

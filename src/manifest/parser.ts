@@ -824,7 +824,9 @@ export class Parser {
     const name = this.consumeIdentifier().value;
     this.consume('PUNCTUATION', '(');
     const parameters: ParameterNode[] = [];
+    this.skipNL();
     while (!this.check('PUNCTUATION', ')') && !this.isEnd()) {
+      this.skipNL();
       const required = !this.check('KEYWORD', 'optional');
       if (!required) this.advance();
       const pname = this.consumeIdentifier().value;
@@ -832,8 +834,36 @@ export class Parser {
       const dataType = this.parseType();
       let defaultValue: ExpressionNode | undefined;
       if (this.check('OPERATOR', '=')) { this.advance(); defaultValue = this.parseExpr(); }
-      parameters.push({ type: 'Parameter', name: pname, dataType, required, defaultValue });
-      if (this.check('PUNCTUATION', ',')) this.advance();
+      // Trusted server-owned source: `from context.actorId` (same grammar as tenant).
+      let trustedSource: string | undefined;
+      if (this.check('KEYWORD', 'from')) {
+        this.advance();
+        let contextPath = '';
+        contextPath += this.advance().value;
+        while (this.check('OPERATOR', '.')) {
+          contextPath += this.advance().value;
+          contextPath += this.consumeIdentifierOrKeyword().value;
+        }
+        if (!contextPath.startsWith('context.')) {
+          throw new Error(
+            `Trusted parameter source must be a context.* path, got '${contextPath}'`,
+          );
+        }
+        trustedSource = contextPath;
+      }
+      parameters.push({
+        type: 'Parameter',
+        name: pname,
+        dataType,
+        required,
+        defaultValue,
+        ...(trustedSource ? { trustedSource } : {}),
+      });
+      this.skipNL();
+      if (this.check('PUNCTUATION', ',')) {
+        this.advance();
+        this.skipNL();
+      }
     }
     this.consume('PUNCTUATION', ')');
 

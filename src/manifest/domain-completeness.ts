@@ -168,7 +168,14 @@ function isAutoProvidedCreateParam(
   paramName: string,
   entity: IREntity,
   tenant: IRTenant | undefined,
+  createCmd?: IRCommand | null,
 ): boolean {
+  // Explicit `from context.*` params are intentionally server-owned. They are
+  // excluded from client forms by the wiring layer, so they are NOT a
+  // create-form completeness violation (unlike unnamed context-injected names).
+  if (createCmd?.parameters.some(p => p.name === paramName && !!p.trustedSource)) {
+    return false;
+  }
   if (tenant?.property && paramName === tenant.property) return true;
   if (CONTEXT_INJECTED_CREATE_PARAMS.has(paramName)) return true;
   if (entity.timestamps && (paramName === 'createdAt' || paramName === 'updatedAt')) return true;
@@ -222,7 +229,10 @@ function checkCreateCommandParams(
 
   for (const param of createCmd.parameters) {
     if (!param.required) continue;
-    if (isAutoProvidedCreateParam(param.name, entity, tenant)) {
+    // Explicit trusted-source ownership is the product-wiring escape hatch:
+    // the param is server-injected, not a user-facing create field.
+    if (param.trustedSource) continue;
+    if (isAutoProvidedCreateParam(param.name, entity, tenant, createCmd)) {
       emit(
         'error',
         `Command '${qualified}.create' requires '${param.name}' but the runtime or compiler auto-provides that field — remove it from create parameters so callers are not forced to supply a value they cannot access.`,

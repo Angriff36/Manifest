@@ -1342,6 +1342,7 @@ export class IRCompiler {
       type: this.transformType(p.dataType),
       required: p.required,
       defaultValue: p.defaultValue ? this.transformExprToValue(p.defaultValue) : undefined,
+      ...(p.trustedSource ? { trustedSource: p.trustedSource } : {}),
     };
   }
 

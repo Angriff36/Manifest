@@ -37,6 +37,7 @@ import { KyselyProjection } from './kysely/generator.js';
 import { DynamoDBProjection } from './dynamodb/generator.js';
 import { PydanticProjection } from './pydantic/generator.js';
 import { DartProjection } from './dart/generator.js';
+import { WiringProjection } from './wiring/generator.js';
 
 /**
  * Register all built-in projections.
@@ -127,6 +128,9 @@ export function registerBuiltinProjections(): void {
   // Dart/Flutter model projection (classes, enums, API client)
   registerProjection(new DartProjection());
 
+  // Product wiring contract + safe command bindings (not a UI generator)
+  registerProjection(new WiringProjection());
+
   // NOTE: When adding a new projection, add it to this list.
   // The registry will call this function automatically, so
   // consumers don't need to remember.
@@ -168,5 +172,6 @@ export function listBuiltinProjections(): ProjectionTarget[] {
     new DynamoDBProjection(),
     new PydanticProjection(),
     new DartProjection(),
+    new WiringProjection(),
   ];
 }

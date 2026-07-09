@@ -437,6 +437,13 @@ export interface IRParameter {
   type: IRType;
   required: boolean;
   defaultValue?: IRValue;
+  /**
+   * Trusted (server-owned) input source. When present, the parameter MUST be
+   * injected from authoritative runtime context (never from the browser body).
+   * Value is a dotted path rooted at `context` (e.g. `context.actorId`).
+   * Absent when the parameter is client-owned.
+   */
+  trustedSource?: string;
 }
 
 export interface IREmitPayload {

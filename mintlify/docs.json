@@ -73,6 +73,7 @@
               "projections/hono",
               "projections/mermaid",
               "projections/llm-context",
+              "projections/wiring",
               "projections/additional-projections"
             ]
           },
