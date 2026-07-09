@@ -63,16 +63,18 @@ function analyzePayload(
     }
   }
 
-  // Missing required client inputs (only when an object literal payload is present)
-  if (looksLikeObjectLiteral(payload)) {
+  // Missing required client inputs — only when a statically constructed object
+  // literal is present. Helper calls, identifiers, ternaries, and other
+  // unresolved expressions are not proof that fields are missing.
+  if (looksLikeObjectLiteral(payload) && !isUnresolvedPayloadShape(payload)) {
     for (const param of cap.parameters) {
       if (param.ownership !== 'client') continue;
       if (!param.required) continue;
       if (fields.has(param.name) || objectLiteralHasKey(payload, param.name)) {
         continue;
       }
-      // Spread / variable payloads are ambiguous
-      if (/\.\.\./.test(payload) || isIdentifierOnlyPayload(payload)) {
+      // Spread inside a literal remains ambiguous (fields may arrive via ...x)
+      if (/\.\.\./.test(payload)) {
         continue;
       }
       mismatches.push({
@@ -173,8 +175,16 @@ function looksLikeObjectLiteral(payload: string): boolean {
   return t.startsWith('{') && t.endsWith('}');
 }
 
-function isIdentifierOnlyPayload(payload: string): boolean {
-  return /^[A-Za-z_][\w]*$/.test(payload.trim());
+/**
+ * True when the payload expression is not a statically inspectable object
+ * literal (helper call, bare identifier, ternary, etc.). Does not invent a
+ * new coverage status — callers simply skip unproven missing-input defects.
+ */
+export function isUnresolvedPayloadShape(payload: string): boolean {
+  const t = payload.trim();
+  if (!t) return true;
+  if (t.startsWith('{') && t.endsWith('}')) return false;
+  return true;
 }
 
 function parseLiteral(expr: string): string | number | boolean | undefined {

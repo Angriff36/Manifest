@@ -547,6 +547,246 @@ entity RecipeVersion {
     ).toBe('consumed');
   });
 
+  it('15c. helper-body payload emits no false missing-required-input', async () => {
+    const contract = await contractFrom(DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/actions.ts': `
+        "use server";
+        import { runManifestCommand } from "@/lib/manifest-command";
+        function buildCreateBody() {
+          return { title: "t", summary: "s", tags: [], priority: 1, dueDate: "2026-01-01" };
+        }
+        export async function create() {
+          return runManifestCommand({
+            entity: "Task",
+            command: "create",
+            body: buildCreateBody(),
+          });
+        }
+      `,
+      'apps/app/app/ui/page.tsx': `
+        import { create } from "./actions";
+        export function Page() { return <form action={create} />; }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    expect(
+      report.mismatches.filter(
+        m =>
+          m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
+      ),
+    ).toHaveLength(0);
+    expect(
+      report.findings.find(x => x.capabilityId === 'Task.create')?.status,
+    ).toBe('consumed');
+  });
+
+  it('15d. identifier-body payload emits no false missing-required-input', async () => {
+    const contract = await contractFrom(DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/actions.ts': `
+        "use server";
+        import { runManifestCommand } from "@/lib/manifest-command";
+        export async function create(payload: Record<string, unknown>) {
+          return runManifestCommand({
+            entity: "Task",
+            command: "create",
+            body: payload,
+          });
+        }
+      `,
+      'apps/app/app/ui/page.tsx': `
+        import { create } from "./actions";
+        export function Page() { return <form action={create} />; }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    expect(
+      report.mismatches.filter(
+        m =>
+          m.capabilityId === 'Task.create' && m.kind === 'missing_required_input',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('15e. inline incomplete literal still emits missing-required-input', async () => {
+    const contract = await contractFrom(DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/actions.ts': `
+        "use server";
+        import { runManifestCommand } from "@/lib/manifest-command";
+        export async function create() {
+          return runManifestCommand({
+            entity: "Task",
+            command: "create",
+            body: { title: "x", tags: [], priority: 1, dueDate: "2026-01-01" },
+          });
+        }
+      `,
+      'apps/app/app/ui/page.tsx': `
+        import { create } from "./actions";
+        export function Page() { return <form action={create} />; }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    expect(
+      report.mismatches.some(
+        m =>
+          m.kind === 'missing_required_input' &&
+          m.capabilityId === 'Task.create' &&
+          m.parameter === 'summary',
+      ),
+    ).toBe(true);
+  });
+
+  it('15f. Event.update buildUpdateBody helper emits no false missing fields', async () => {
+    const eventDomain = `
+entity Event {
+  property required id: string
+  property clientId: string = ""
+  property eventNumber: string = ""
+  property title: string = ""
+  property eventType: string = ""
+  property eventDate: datetime = 0
+  property guestCount: number = 0
+  property venueName: string = ""
+  property venueAddress: string = ""
+  property notes: string = ""
+  property tags: array<string> = []
+  property status: string = "draft"
+  property budget: number = 0
+  property ticketPrice: number = 0
+  property ticketTier: string = ""
+  property eventFormat: string = ""
+  property accessibilityOptions: array<string> = []
+  property featuredMediaUrl: string = ""
+
+  command update(
+    clientId: string,
+    eventNumber: string,
+    title: string,
+    eventType: string,
+    eventDate: datetime,
+    guestCount: number,
+    venueName: string,
+    venueAddress: string,
+    notes: string,
+    tags: array<string>,
+    status: string,
+    budget: number,
+    ticketPrice: number,
+    ticketTier: string,
+    eventFormat: string,
+    accessibilityOptions: array<string>,
+    featuredMediaUrl: string
+  ) {
+    mutate title = title
+  }
+
+  store Event in memory
+}
+`;
+    const contract = await contractFrom(eventDomain);
+    const files = fileMapFromRecord({
+      'apps/app/app/(authenticated)/(events)/events/actions.ts': `
+        "use server";
+        import { runManifestCommand } from "@/lib/manifest-command";
+        const buildUpdateBody = (existing, data, status, eventId) => ({
+          clientId: existing.clientId ?? "",
+          eventNumber: existing.eventNumber ?? "",
+          title: data?.title ?? existing.title ?? "",
+          eventType: data?.eventType ?? existing.eventType ?? "",
+          eventDate: 0,
+          guestCount: 1,
+          venueName: "",
+          venueAddress: "",
+          notes: "",
+          tags: [],
+          status,
+          budget: 0,
+          ticketPrice: 0,
+          ticketTier: "",
+          eventFormat: "",
+          accessibilityOptions: [],
+          featuredMediaUrl: "",
+          id: eventId,
+        });
+        export async function saveEventDraft(input) {
+          const existing = { clientId: "c", eventNumber: "n", title: "t" };
+          const data = { title: "x" };
+          return runManifestCommand({
+            body: buildUpdateBody(existing, data, "draft", input.eventId),
+            command: "update",
+            entity: "Event",
+            user: { id: "u", tenantId: "t", role: "admin" },
+          });
+        }
+        export async function updateEventInline() {
+          return runManifestCommand({
+            entity: "Event",
+            command: "update",
+            body: {
+              id: "1",
+              clientId: "",
+              eventNumber: "",
+              title: "t",
+              eventType: "",
+              eventDate: 0,
+              guestCount: 0,
+              venueName: "",
+              venueAddress: "",
+              notes: "",
+              tags: [],
+              status: "draft",
+              budget: 0,
+              ticketPrice: 0,
+              ticketTier: "",
+              eventFormat: "",
+              accessibilityOptions: [],
+              featuredMediaUrl: "",
+            },
+          });
+        }
+      `,
+      'apps/app/app/(authenticated)/(events)/events/page.tsx': `
+        import { saveEventDraft, updateEventInline } from "./actions";
+        export function Page() {
+          return (
+            <>
+              <form action={saveEventDraft} />
+              <form action={updateEventInline} />
+            </>
+          );
+        }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    const missing = report.mismatches.filter(
+      m =>
+        m.capabilityId === 'Event.update' && m.kind === 'missing_required_input',
+    );
+    expect(missing).toHaveLength(0);
+    expect(
+      report.findings.find(x => x.capabilityId === 'Event.update')?.status,
+    ).toBe('consumed');
+  });
+
   it('16. stale command reference is reported', async () => {
     const contract = await contractFrom(DOMAIN);
     const files = fileMapFromRecord({

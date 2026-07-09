@@ -6,7 +6,10 @@
  */
 
 import ts from 'typescript';
-import { extractObjectFieldNames } from './object-literal-keys.js';
+import {
+  extractObjectFieldNames,
+  scanObjectLiteralKeys,
+} from './object-literal-keys.js';
 
 export interface ManifestInvocation {
   entity: string;
@@ -39,19 +42,42 @@ function extractRunManifestCommandCalls(content: string): ManifestInvocation[] {
     const entity = readStringProp(block, 'entity');
     const command = readStringProp(block, 'command');
     if (!entity || !command) continue;
-    const bodyOpen = block.search(/\bbody\s*:\s*\{/);
-    const bodyBlock =
-      bodyOpen >= 0 ? extractBalancedBraces(block, block.indexOf('{', bodyOpen)) : '';
+    const { payloadSource, bodyFields } = extractRunManifestBody(block);
     out.push({
       entity,
       command,
       intent: `${entity}.${command}`,
-      bodyFields: extractObjectFieldNames(bodyBlock || block),
+      bodyFields,
       index: m.index,
-      payloadSource: bodyBlock || block,
+      payloadSource,
     });
   }
   return out;
+}
+
+/**
+ * Isolate the `body` property value from a runManifestCommand options object.
+ * Literal `{ … }` → fields extracted. Helper / identifier / other expression →
+ * expression text with empty fields (never fall back to outer option keys).
+ */
+export function extractRunManifestBody(optionsBlock: string): {
+  payloadSource: string;
+  bodyFields: string[];
+} {
+  const bodyKey = scanObjectLiteralKeys(optionsBlock).find(k => k.name === 'body');
+  if (!bodyKey) {
+    return { payloadSource: '', bodyFields: [] };
+  }
+  const payloadSource = optionsBlock
+    .slice(bodyKey.valueStart, bodyKey.valueEnd)
+    .trim();
+  if (payloadSource.startsWith('{') && payloadSource.endsWith('}')) {
+    return {
+      payloadSource,
+      bodyFields: extractObjectFieldNames(payloadSource),
+    };
+  }
+  return { payloadSource, bodyFields: [] };
 }
 
 function extractExecuteCommandCalls(content: string): ManifestInvocation[] {

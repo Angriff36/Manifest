@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractAllManifestInvocations,
   extractGeneratedClientCalls,
+  extractRunManifestBody,
 } from './invocation-extractor.js';
 import {
   extractObjectFieldNames,
@@ -16,6 +17,79 @@ import {
 } from './object-literal-keys.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+describe('extractRunManifestBody — literal vs non-literal body', () => {
+  it('1. inline literal body still extracts fields', () => {
+    const { payloadSource, bodyFields } = extractRunManifestBody(`{
+      entity: "Event",
+      command: "update",
+      body: {
+        title: value,
+        status: "draft",
+      },
+    }`);
+    expect(payloadSource.replace(/\s+/g, ' ').trim()).toBe(
+      '{ title: value, status: "draft", }',
+    );
+    expect(bodyFields.sort()).toEqual(['status', 'title']);
+  });
+
+  it('2. shorthand fields still work inside literal body', () => {
+    const { bodyFields } = extractRunManifestBody(`{
+      entity: "Event",
+      command: "update",
+      body: { title, status },
+    }`);
+    expect(bodyFields.sort()).toEqual(['status', 'title']);
+  });
+
+  it('3. helper-call body extracts the helper expression', () => {
+    const { payloadSource, bodyFields } = extractRunManifestBody(`{
+      body: buildUpdateBody(existing, data, "draft", eventId),
+      command: "update",
+      entity: "Event",
+      user: { id: user.id, tenantId, role: user.role },
+    }`);
+    expect(payloadSource).toBe(
+      'buildUpdateBody(existing, data, "draft", eventId)',
+    );
+    expect(bodyFields).toEqual([]);
+  });
+
+  it('4. helper-call body does not use outer option keys', () => {
+    const { bodyFields } = extractRunManifestBody(`{
+      body: buildUpdateBody(a, b),
+      command: "update",
+      entity: "Event",
+      user: { id: "u" },
+    }`);
+    expect(bodyFields).not.toContain('command');
+    expect(bodyFields).not.toContain('entity');
+    expect(bodyFields).not.toContain('user');
+    expect(bodyFields).not.toContain('body');
+  });
+
+  it('5. bare identifier body extracts the identifier', () => {
+    const { payloadSource, bodyFields } = extractRunManifestBody(`{
+      entity: "Event",
+      command: "update",
+      body: payload,
+    }`);
+    expect(payloadSource).toBe('payload');
+    expect(bodyFields).toEqual([]);
+  });
+
+  it('6. nested helper arguments do not truncate the body expression', () => {
+    const { payloadSource } = extractRunManifestBody(`{
+      body: buildUpdateBody(existing, data, "draft", input.eventId),
+      command: "update",
+      entity: "Event",
+    }`);
+    expect(payloadSource).toBe(
+      'buildUpdateBody(existing, data, "draft", input.eventId)',
+    );
+  });
+});
 
 describe('extractObjectFieldNames — ES property shorthand', () => {
   it('1. detects colon property', () => {

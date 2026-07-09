@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.3] - 2026-07-09
+
+### Fixed
+
+- Wiring inspect: `runManifestCommand` non-literal `body:` expressions (helpers, identifiers, ternaries) are isolated as unresolved payload shapes instead of falling back to outer option keys — stops false `missing_required_input` for Capsule `Event.update` via `buildUpdateBody(...)`
+
 ## [3.4.2] - 2026-07-09
 
 ### Fixed
