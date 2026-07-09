@@ -8,6 +8,10 @@
 import type { WiringCommandDescriptor, WiringContract } from '../types.js';
 import type { ManifestInvocation } from './invocation-extractor.js';
 import { lineAtIndex } from './invocation-extractor.js';
+import {
+  objectLiteralHasKey,
+  readObjectLiteralFieldExpression,
+} from './object-literal-keys.js';
 import type { ContractMismatch } from './types.js';
 
 export function analyzeContractMismatches(
@@ -47,7 +51,7 @@ function analyzePayload(
 
   // Trusted-field spoofing: client sends a server-owned parameter
   for (const serverParam of cap.serverParameterNames) {
-    if (fields.has(serverParam) || objectHasKey(payload, serverParam)) {
+    if (fields.has(serverParam) || objectLiteralHasKey(payload, serverParam)) {
       mismatches.push({
         kind: 'trusted_field_spoofing',
         capabilityId: cap.capabilityId,
@@ -64,7 +68,9 @@ function analyzePayload(
     for (const param of cap.parameters) {
       if (param.ownership !== 'client') continue;
       if (!param.required) continue;
-      if (fields.has(param.name) || objectHasKey(payload, param.name)) continue;
+      if (fields.has(param.name) || objectLiteralHasKey(payload, param.name)) {
+        continue;
+      }
       // Spread / variable payloads are ambiguous
       if (/\.\.\./.test(payload) || isIdentifierOnlyPayload(payload)) {
         continue;
@@ -82,7 +88,7 @@ function analyzePayload(
 
   for (const param of cap.parameters) {
     if (param.ownership !== 'client') continue;
-    const valueExpr = readFieldExpression(payload, param.name);
+    const valueExpr = readObjectLiteralFieldExpression(payload, param.name);
     if (valueExpr === undefined) continue;
 
     // string[] vs string: .join( suggests string where array required
@@ -171,54 +177,6 @@ function isIdentifierOnlyPayload(payload: string): boolean {
   return /^[A-Za-z_][\w]*$/.test(payload.trim());
 }
 
-function objectHasKey(objectLiteral: string, key: string): boolean {
-  return new RegExp(`\\b${escape(key)}\\s*:`).test(objectLiteral);
-}
-
-function readFieldExpression(objectLiteral: string, key: string): string | undefined {
-  const re = new RegExp(`\\b${escape(key)}\\s*:\\s*`);
-  const m = re.exec(objectLiteral);
-  if (!m) return undefined;
-  const start = m.index + m[0].length;
-  let i = start;
-  let depthParen = 0;
-  let depthBrace = 0;
-  let depthBracket = 0;
-  let inStr: string | null = null;
-  while (i < objectLiteral.length) {
-    const ch = objectLiteral[i]!;
-    if (inStr) {
-      if (ch === inStr && objectLiteral[i - 1] !== '\\') inStr = null;
-      i++;
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === '`') {
-      inStr = ch;
-      i++;
-      continue;
-    }
-    if (ch === '(') depthParen++;
-    if (ch === ')') depthParen--;
-    if (ch === '{') depthBrace++;
-    if (ch === '}') {
-      if (depthBrace === 0 && depthParen === 0 && depthBracket === 0) break;
-      depthBrace--;
-    }
-    if (ch === '[') depthBracket++;
-    if (ch === ']') depthBracket--;
-    if (
-      (ch === ',' || ch === '}') &&
-      depthParen === 0 &&
-      depthBrace === 0 &&
-      depthBracket === 0
-    ) {
-      break;
-    }
-    i++;
-  }
-  return objectLiteral.slice(start, i).trim();
-}
-
 function parseLiteral(expr: string): string | number | boolean | undefined {
   const t = expr.trim();
   if (t === 'true') return true;
@@ -241,6 +199,3 @@ function dedupeMismatches(items: ContractMismatch[]): ContractMismatch[] {
   return out;
 }
 
-function escape(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}

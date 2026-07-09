@@ -6,6 +6,7 @@
  */
 
 import ts from 'typescript';
+import { extractObjectFieldNames } from './object-literal-keys.js';
 
 export interface ManifestInvocation {
   entity: string;
@@ -273,17 +274,13 @@ export function extractBalancedParens(content: string, openIndex: number): strin
   return '';
 }
 
-export function extractObjectFieldNames(objectLiteral: string): string[] {
-  const fields: string[] = [];
-  const re = /\b([A-Za-z_][\w]*)\s*:/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(objectLiteral)) !== null) {
-    const name = m[1]!;
-    if (name === 'data' || name === 'where' || name === 'select') continue;
-    fields.push(name);
-  }
-  return [...new Set(fields)];
-}
+export {
+  extractObjectFieldNames,
+  objectLiteralHasKey,
+  readObjectLiteralFieldExpression,
+  scanObjectLiteralKeys,
+} from './object-literal-keys.js';
+export type { ObjectLiteralKey } from './object-literal-keys.js';
 
 export function lineAtIndex(content: string, index: number): number {
   let line = 1;

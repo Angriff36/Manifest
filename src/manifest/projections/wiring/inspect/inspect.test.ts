@@ -490,6 +490,63 @@ describe('wiring inspect — contract mismatches', () => {
     ).toBe('consumed');
   });
 
+  it('15b. ES property shorthand is not reported as missing required input', async () => {
+    const packagingDomain = `
+entity RecipeVersion {
+  property required id: string
+  property dropOffNotes: string = ""
+  property bringHotNotes: string = ""
+  property cookOnSiteNotes: string = ""
+
+  command setPackaging(dropOff: string, bringHot: string, cookOnSite: string) {
+    mutate dropOffNotes = dropOff
+    mutate bringHotNotes = bringHot
+    mutate cookOnSiteNotes = cookOnSite
+  }
+
+  store RecipeVersion in memory
+}
+`;
+    const contract = await contractFrom(packagingDomain);
+    const files = fileMapFromRecord({
+      'apps/app/app/(authenticated)/(operations)/kitchen/recipes/[recipeId]/components/recipe-packaging-editor.tsx': `
+        import { recipeVersionSetPackaging } from "@/app/lib/manifest-client.generated";
+        export async function save(recipeVersionId: string, dropOff: string, bringHot: string, cookOnSite: string) {
+          await recipeVersionSetPackaging({
+            id: recipeVersionId,
+            dropOff,
+            bringHot,
+            cookOnSite,
+          });
+        }
+      `,
+      'apps/app/app/lib/manifest-client.generated.ts': `
+        export async function recipeVersionSetPackaging(input: Record<string, unknown>) {}
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    const packagingMismatches = report.mismatches.filter(
+      m => m.capabilityId === 'RecipeVersion.setPackaging',
+    );
+    expect(
+      packagingMismatches.filter(
+        m =>
+          m.kind === 'missing_required_input' &&
+          (m.parameter === 'dropOff' ||
+            m.parameter === 'bringHot' ||
+            m.parameter === 'cookOnSite'),
+      ),
+    ).toHaveLength(0);
+    expect(
+      report.findings.find(x => x.capabilityId === 'RecipeVersion.setPackaging')
+        ?.status,
+    ).toBe('consumed');
+  });
+
   it('16. stale command reference is reported', async () => {
     const contract = await contractFrom(DOMAIN);
     const files = fileMapFromRecord({

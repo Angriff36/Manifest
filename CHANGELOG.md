@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.2] - 2026-07-09
+
+### Fixed
+
+- Wiring inspect: object-literal field extraction recognizes ES property shorthand (`{ dropOff, bringHot }`) so valid generated-client payloads are not reported as `missing_required_input` (e.g. Capsule `RecipeVersion.setPackaging`)
+
 ## [3.4.1] - 2026-07-09
 
 ### Fixed

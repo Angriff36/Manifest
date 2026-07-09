@@ -114,7 +114,7 @@ Import-only actions, dead/unreferenced actions, generated definitions, tests, an
 
 Reported when evidence is strong:
 
-- missing required client input
+- missing required client input (object literals include ES property shorthand `{ dropOff, bringHot }`; identifiers inside values are not keys)
 - wrong input shape (e.g. `.join(",")` where `string[]` required)
 - invalid finite literal (enum / numeric range)
 - required date sent as `""`
