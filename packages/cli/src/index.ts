@@ -356,7 +356,7 @@ seedCmd
   .argument('<source>', 'Source .manifest or .ir.json')
   .requiredOption('-o, --output <dir>', 'Output pack directory')
   .option('--pack-id <id>', 'Pack id', 'demo')
-  .option('--version <ver>', 'Pack version', '1.0.0')
+  .option('--pack-version <ver>', 'Pack version (avoid --version; reserved by CLI)', '1.0.0')
   .option('--profile <profile>', 'dev | staging | demo', 'demo')
   .option('--count <n>', 'Rows per entity', (v) => parseInt(v, 10), 2)
   .option('--entity <name...>', 'Only include named entities')
@@ -365,7 +365,7 @@ seedCmd
       source,
       output: options.output,
       packId: options.packId,
-      version: options.version,
+      version: options.packVersion,
       profile: options.profile,
       count: options.count,
       entity: options.entity,
