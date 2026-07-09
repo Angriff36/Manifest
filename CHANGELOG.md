@@ -4,6 +4,19 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.0] - 2026-07-09
+
+### Added
+
+- Product wiring projection (`wiring.contract` / `wiring.bindings`) — machine-readable command contracts and safe binding helpers
+- `manifest wiring-inspect` — automatic application consumer inspection against the wiring contract
+- `manifest wiring-remediate` — deterministic one-defect / apply repair of proven consumer mismatches
+- Trusted `from context.*` command parameters (server-owned inputs stripped from client contracts)
+
+### Changed
+
+- Wiring-inspect performance for Capsule-Pro-scale repo-wide scans
+
 ## [3.3.1] - 2026-07-07
 
 ### Changed
