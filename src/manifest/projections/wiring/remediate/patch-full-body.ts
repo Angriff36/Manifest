@@ -21,12 +21,18 @@ export function ensureExportSymbols(
   fileName: string,
   op: Extract<RepairOperation, { type: 'ensure-export-symbols' }>,
 ): string | null {
+  const isServerActionsModule = /^["']use server["']/m.test(content);
   let next = content;
   for (const name of op.symbolNames) {
     if (new RegExp(`\\bexport\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${escape(name)}\\b`).test(next)) {
       continue;
     }
-    // const name = … / async function name / function name
+    // Next.js: every export from a "use server" file must be an async Server Action.
+    // Never promote a sync helper to export in those modules.
+    if (isServerActionsModule && isSyncDeclaration(next, name)) {
+      void fileName;
+      return null;
+    }
     const constRe = new RegExp(`(^|\\n)(const\\s+${escape(name)}\\b)`);
     if (constRe.test(next)) {
       next = next.replace(constRe, `$1export $2`);
@@ -39,10 +45,22 @@ export function ensureExportSymbols(
       next = next.replace(fnRe, `$1export $2`);
       continue;
     }
-    // Already referenced but not found as declaration — fail soft (idempotent miss)
     void fileName;
   }
   return next;
+}
+
+/** True when `name` is declared as a non-async function/const in this file. */
+function isSyncDeclaration(content: string, name: string): boolean {
+  if (new RegExp(`\\basync\\s+function\\s+${escape(name)}\\b`).test(content)) {
+    return false;
+  }
+  if (new RegExp(`\\bconst\\s+${escape(name)}\\s*=\\s*async\\b`).test(content)) {
+    return false;
+  }
+  return (
+    new RegExp(`\\b(?:function|const|let|var)\\s+${escape(name)}\\b`).test(content)
+  );
 }
 
 export function applyEnsureNamedImports(

@@ -58,16 +58,15 @@ entity Dish {
 }
 `;
 
-const BUILDER_FILE = `apps/app/kitchen/actions.ts`;
+const BUILDER_FILE = `apps/app/kitchen/dish-update-fields.ts`;
+const ACTIONS_FILE = `apps/app/kitchen/actions.ts`;
 const SERVER_FILE = `apps/app/kitchen/actions-manifest-v2.ts`;
 const CLIENT_FILE = `apps/app/kitchen/components/update-photo-control.tsx`;
 
-function dishBuilderSource(exported = false): string {
+/** Helpers live outside "use server" — Next.js forbids sync Server Action exports. */
+function dishBuilderSource(exported = true): string {
   const exp = exported ? 'export ' : '';
   return `
-"use server";
-import { runManifestCommand } from "./manifest-runtime";
-
 type DishUpdateFields = {
   name: string;
   description: string | null;
@@ -108,6 +107,14 @@ ${exp}const dishUpdateBody = (
   dietaryTags: overrides.dietaryTags ?? current.dietary_tags ?? [],
   allergens: overrides.allergens ?? current.allergens ?? [],
 });
+`;
+}
+
+function actionsProvenUsageSource(): string {
+  return `
+"use server";
+import { runManifestCommand } from "./manifest-runtime";
+import { dishUpdateBody, loadDishUpdateFields } from "./dish-update-fields";
 
 export const updateDish = async (dishId: string) => {
   const current = await loadDishUpdateFields("t1", dishId);
@@ -164,7 +171,8 @@ export function UpdatePhotoControl({ dishId }: { dishId: string }) {
 
 function fixtureFiles(extra: Record<string, string> = {}): Map<string, string> {
   return fileMapFromRecord({
-    [BUILDER_FILE]: dishBuilderSource(false),
+    [BUILDER_FILE]: dishBuilderSource(true),
+    [ACTIONS_FILE]: actionsProvenUsageSource(),
     [SERVER_FILE]: serverPartialSource(),
     [CLIENT_FILE]: clientPartialSource(),
     ...extra,
@@ -201,7 +209,7 @@ describe('expand-partial-to-full-body remediation', () => {
     const files = fixtureFiles();
     const pattern = findUniqueFullBodyPattern(cap, files);
     expect(pattern?.builderName).toBe('dishUpdateBody');
-    expect(pattern?.builderFile).toContain('actions.ts');
+    expect(pattern?.builderFile).toContain('dish-update-fields.ts');
   });
 
   it('3–5. repair preserves override; unrelated fields from current; no invented values', async () => {
@@ -241,14 +249,58 @@ describe('expand-partial-to-full-body remediation', () => {
     expect(server).toContain('presentationImageUrl: imageUrl');
     expect(server).toContain('loadDishUpdateFields');
     expect(server.trimStart().startsWith('"use server"')).toBe(true);
+    expect(server).toContain('from "./dish-update-fields"');
     const builder = [...patch.nextContents.entries()].find(([k]) =>
-      k.endsWith('kitchen/actions.ts'),
+      k.includes('dish-update-fields.ts'),
     )![1];
     expect(builder).toMatch(/export\s+const\s+dishUpdateBody/);
     expect(builder).toMatch(/export\s+const\s+loadDishUpdateFields/);
     // No invented dish field literals
     expect(server).not.toMatch(/name:\s*["'][^"']+["']/);
     expect(server).not.toMatch(/category:\s*["'][^"']+["']/);
+  });
+
+  it('refuses exporting sync helpers from a "use server" module', async () => {
+    const contract = await contractFrom(DISH_DOMAIN);
+    // Builder lives inside a Server Actions file and is not exported — unsafe.
+    const files = fileMapFromRecord({
+      [ACTIONS_FILE]: `
+"use server";
+import { runManifestCommand } from "./manifest-runtime";
+const loadDishUpdateFields = async (tenantId: string, dishId: string) => null as any;
+const dishUpdateBody = (current: any) => ({
+  name: current.name,
+  description: current.description,
+  category: current.category,
+  serviceStyle: current.serviceStyle,
+  defaultContainerId: current.defaultContainerId,
+  presentationImageUrl: current.presentationImageUrl,
+  portionSizeDescription: current.portionSizeDescription,
+  dietaryTags: current.dietaryTags,
+  allergens: current.allergens,
+});
+export const updateDish = async (dishId: string) => {
+  const current = await loadDishUpdateFields("t1", dishId);
+  await runManifestCommand({
+    entity: "Dish",
+    command: "update",
+    body: dishUpdateBody(current, { name: "x" }),
+    user: { id: "u1" },
+  });
+};
+`,
+      [SERVER_FILE]: serverPartialSource(),
+    });
+    const plan = tryPlanExpandPartialToFullBody(
+      syntheticMismatch(SERVER_FILE),
+      contract.capabilities.find(c => c.capabilityId === 'Dish.update')!,
+      [],
+      files.get(SERVER_FILE)!,
+      SERVER_FILE,
+      files,
+    );
+    expect(plan?.automaticApplicationAllowed).toBe(false);
+    expect(plan?.rationale).toMatch(/Server Actions|use server/i);
   });
 
   it('6. rejects wrong-entity full-body helpers', async () => {

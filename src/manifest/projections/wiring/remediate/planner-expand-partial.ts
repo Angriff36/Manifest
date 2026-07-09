@@ -149,14 +149,37 @@ function planServerExpand(
 
   const edits: RepairEditSpec[] = [];
   if (normalizePath(pattern.builderFile) !== normalizePath(file)) {
-    edits.push({
-      file: pattern.builderFile,
-      description: `Export ${pattern.builderName} and ${loaderName}`,
-      operation: {
-        type: 'ensure-export-symbols',
-        symbolNames: [pattern.builderName, loaderName],
-      },
-    });
+    const builderIsServerActions = isServerActionsModule(builderFileContent);
+    const builderAlreadyExported = isExportedSymbol(
+      builderFileContent,
+      pattern.builderName,
+    );
+    const loaderAlreadyExported = isExportedSymbol(builderFileContent, loaderName);
+
+    if (builderIsServerActions && (!builderAlreadyExported || !loaderAlreadyExported)) {
+      // Next.js forbids exporting sync helpers from "use server" files.
+      // Do not auto-export; require a non-server-action module that already exports them.
+      return classify(
+        {
+          ...basePlan(mismatch, cap, evidence, 'expand-partial-to-full-body', findingId),
+          findingId,
+        },
+        'unsafe-to-apply',
+        `Cannot export sync helper '${pattern.builderName}' from Server Actions module ${normalizePath(pattern.builderFile)} — move helpers to a non-"use server" module first`,
+        [file, pattern.builderFile],
+      );
+    }
+
+    if (!builderAlreadyExported || !loaderAlreadyExported) {
+      edits.push({
+        file: pattern.builderFile,
+        description: `Export ${pattern.builderName} and ${loaderName}`,
+        operation: {
+          type: 'ensure-export-symbols',
+          symbolNames: [pattern.builderName, loaderName],
+        },
+      });
+    }
     edits.push({
       file,
       description: `Import full-body helpers`,
@@ -331,6 +354,16 @@ function findServerPartialPost(
 
 function isClientModule(content: string): boolean {
   return /^["']use client["']/m.test(content);
+}
+
+function isServerActionsModule(content: string): boolean {
+  return /^["']use server["']/m.test(content);
+}
+
+function isExportedSymbol(content: string, name: string): boolean {
+  return new RegExp(
+    `\\bexport\\s+(?:async\\s+)?(?:function|const|let|var)\\s+${escape(name)}\\b`,
+  ).test(content);
 }
 
 export function inferLoaderName(builderName: string): string {
