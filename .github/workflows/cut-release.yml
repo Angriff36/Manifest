@@ -112,18 +112,27 @@ jobs:
       # no GitHub Release, npm unchanged. Re-runs are idempotent (a 409 "already
       # published" is treated as success so the tag/release step still completes).
       - name: Publish to npm (trusted publishing)
-        env:
-          NODE_AUTH_TOKEN: ''
         run: |
           set +e
           # OIDC trusted publishing — no npm token, no OTP, no expiry. The
           # trusted publisher is registered on npm for Angriff36/Manifest +
-          # cut-release.yml. Strip any static _authToken (setup-node writes one
-          # referencing NODE_AUTH_TOKEN) so npm uses the OIDC exchange. Requires
-          # the NPM_TOKEN secret to be deleted so nothing is injected.
+          # cut-release.yml. Requires NPM_TOKEN secret absent (nothing injected).
+          #
+          # Critical: do NOT set NODE_AUTH_TOKEN (even to empty). An empty value
+          # still counts as "auth configured" and npm skips the OIDC exchange
+          # (ENEEDAUTH / IDENTITY_TOKEN_READ_ERROR). setup-node's registry-url
+          # writes //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} — strip it.
           # Trusted publishing needs npm >= 11.5.1. Node 24 provides that.
+          unset NODE_AUTH_TOKEN
+          unset NPM_TOKEN
           npm --version
-          sed -i '/_authToken/d' "$(npm config get userconfig)" 2>/dev/null || true
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          if [ -f "$npmrc" ]; then
+            sed -i '/_authToken/d' "$npmrc"
+            sed -i '/^always-auth/d' "$npmrc"
+            echo "npmrc after strip:"
+            cat "$npmrc" || true
+          fi
           out="$(npm publish --provenance --access public 2>&1)"
           code=$?
           echo "$out"
