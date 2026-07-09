@@ -36,6 +36,7 @@ import { auditGovernanceCommand } from './commands/audit-governance.js';
 import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { coverageCommand } from './commands/coverage.js';
 import { wiringCoverageCommand } from './commands/wiring-coverage.js';
+import { wiringInspectCommand } from './commands/wiring-inspect.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   configValidateCommand,
@@ -946,6 +947,49 @@ program
   .option('--strict', 'Exit non-zero when unwired or stale consumers exist', false)
   .action(async (options = {}) => {
     await wiringCoverageCommand(options);
+  });
+
+/**
+ * manifest wiring-inspect
+ *
+ * Inspect application source against a wiring contract. Automatic consumer
+ * proof is primary; explicit registries are overrides/fallbacks.
+ */
+program
+  .command('wiring-inspect')
+  .description('Inspect application source for Manifest capability consumers and contract mismatches')
+  .requiredOption('--contract <path>', 'Path to manifest-wiring-contract.json')
+  .option('--root <path>', 'Application source root (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option('--config <path>', 'Optional wiring-inspect config JSON')
+  .option('--overrides <path>', 'Optional explicit consumers registry (overrides only)')
+  .option('--include <pattern>', 'Include path substring (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option('--exclude <pattern>', 'Exclude path substring (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .option('--strict-coverage', 'Treat unwired capabilities as defects', false)
+  .option('--fail-on <list>', 'Comma-separated defect classes: stale-consumer,contract-mismatch,unwired')
+  .option('--strict', 'Exit non-zero when the inspect gate fails', false)
+  .action(async (options = {}) => {
+    await wiringInspectCommand({
+      contract: options.contract,
+      root: options.root,
+      config: options.config,
+      overrides: options.overrides,
+      include: options.include?.length ? options.include : undefined,
+      exclude: options.exclude?.length ? options.exclude : undefined,
+      format: options.format,
+      strict: options.strict,
+      strictCoverage: options.strictCoverage,
+      failOn: options.failOn,
+    });
   });
 
 /**

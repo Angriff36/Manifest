@@ -4,20 +4,20 @@ A **projection** consumes compiled Manifest IR and emits a platform- or tooling-
 
 ## Available projections
 
-| Projection | Name | Description |
-| --- | --- | --- |
-| [Next.js](./nextjs.md) | `nextjs` | Next.js App Router API routes with configurable auth and database support. |
-| [Prisma](./prisma.md) | `prisma` | Prisma schema generation. Compile-time only, app-agnostic. |
-| [Drizzle](./drizzle.md) | `drizzle` | Drizzle ORM schema generation. TypeScript-first, compatible with Drizzle Kit migrations. |
-| [OpenAPI](./openapi.md) | `openapi` | OpenAPI 3.1.0 spec generation from entities, commands, and routes. |
-| [GraphQL](./graphql.md) | `graphql` | GraphQL SDL and resolver stub generation from entities, commands, policies, and events. |
-| [Zod](./zod.md) | `zod` | Zod validation schemas for entities and command parameters. |
-| [React Query](./react-query.md) | `react-query` | TanStack Query hooks with typed queries, mutations, and cache invalidation. |
-| [JSON Schema](./json-schema.md) | `jsonschema` | JSON Schema documents (draft-07/2019-09/2020-12) from entity definitions. |
-| [Express](./express.md) | `express` | Express/Fastify route handlers and middleware from entities and commands. |
-| [Hono](./hono.md) | `hono` | Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy). |
-| [Mermaid](./mermaid.md) | `mermaid` | Mermaid ER, state machine, and sequence diagrams from the IR. |
-| [LLM Context](./llm-context.md) | `llm-context` | Structured `manifest-context.json` for AI agent context injection. |
-| [Product wiring](./wiring.md) | `wiring` | Machine-readable command wiring contract + safe bindings (not a UI generator). Coverage via `manifest wiring-coverage`. |
+| Projection                      | Name          | Description                                                                                                             |
+| ------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [Next.js](./nextjs.md)          | `nextjs`      | Next.js App Router API routes with configurable auth and database support.                                              |
+| [Prisma](./prisma.md)           | `prisma`      | Prisma schema generation. Compile-time only, app-agnostic.                                                              |
+| [Drizzle](./drizzle.md)         | `drizzle`     | Drizzle ORM schema generation. TypeScript-first, compatible with Drizzle Kit migrations.                                |
+| [OpenAPI](./openapi.md)         | `openapi`     | OpenAPI 3.1.0 spec generation from entities, commands, and routes.                                                      |
+| [GraphQL](./graphql.md)         | `graphql`     | GraphQL SDL and resolver stub generation from entities, commands, policies, and events.                                 |
+| [Zod](./zod.md)                 | `zod`         | Zod validation schemas for entities and command parameters.                                                             |
+| [React Query](./react-query.md) | `react-query` | TanStack Query hooks with typed queries, mutations, and cache invalidation.                                             |
+| [JSON Schema](./json-schema.md) | `jsonschema`  | JSON Schema documents (draft-07/2019-09/2020-12) from entity definitions.                                               |
+| [Express](./express.md)         | `express`     | Express/Fastify route handlers and middleware from entities and commands.                                               |
+| [Hono](./hono.md)               | `hono`        | Hono route handlers optimized for edge runtimes (Cloudflare Workers, Vercel Edge, Deno Deploy).                         |
+| [Mermaid](./mermaid.md)         | `mermaid`     | Mermaid ER, state machine, and sequence diagrams from the IR.                                                           |
+| [LLM Context](./llm-context.md) | `llm-context` | Structured `manifest-context.json` for AI agent context injection.                                                      |
+| [Product wiring](./wiring.md)   | `wiring`      | Machine-readable command wiring contract + safe bindings (not a UI generator). Automatic consumer inspect via `manifest wiring-inspect`; registry overrides via `wiring-coverage`. |
 
 > Projections are tooling, not runtime semantics. They generate views of the IR and must not alter execution order, policy/guard behavior, or the IR itself.

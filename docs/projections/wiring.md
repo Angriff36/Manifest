@@ -9,15 +9,15 @@ This is **not** a UI generator. It does not emit pages, dashboards, layouts, sty
 
 ## What Manifest owns vs what the app owns
 
-| Manifest owns | Application owns |
-| --- | --- |
-| Command truth, types, required/optional | Page layout and visual design |
-| Input ownership (client vs server) | Whether an action is a button, menu, swipe, dialog, … |
-| Statically known constraints | Wording and labels |
-| Lifecycle transition metadata (when proven) | Information hierarchy |
-| Safe binding generation + command invocation path | Workflow composition not declared in Manifest |
-| Invalidation metadata | |
-| Coverage truth (capabilities vs declared consumers) | Explicit consumer registry |
+| Manifest owns                                       | Application owns                                      |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| Command truth, types, required/optional             | Page layout and visual design                         |
+| Input ownership (client vs server)                  | Whether an action is a button, menu, swipe, dialog, … |
+| Statically known constraints                        | Wording and labels                                    |
+| Lifecycle transition metadata (when proven)         | Information hierarchy                                 |
+| Safe binding generation + command invocation path   | Workflow composition not declared in Manifest         |
+| Invalidation metadata                               |                                                       |
+| Coverage truth (automatic inspect + overrides)      | Explicit overrides for backend-only / deferred        |
 
 ## Generate
 
@@ -70,22 +70,87 @@ Effects:
 
 Do **not** rely on naming heuristics (`*UserId`). Only an explicit `from context.*` (or IR `trustedSource`) marks a parameter as server-owned.
 
-## Coverage validation
+## Automatic application consumer inspection
 
-Applications declare intentional consumers in a registry:
+**Manifest does not design the interface.**  
+**Manifest proves whether application code correctly consumes declared capabilities.**
+
+Primary coverage truth comes from inspecting application source against the wiring contract. The explicit consumer registry is an **override/fallback**, not the primary source of truth — use it for backend-only, deferred, and accepted ambiguous cases that static analysis cannot prove.
+
+```bash
+manifest wiring-inspect \
+  --contract src/generated/manifest-wiring-contract.json \
+  --root apps/app \
+  --root apps/api \
+  --overrides manifest/wiring-overrides.json \
+  --strict
+```
+
+### Supported trace forms (Next.js App Router)
+
+| Trace | Counts as consumed when |
+| ----- | ----------------------- |
+| Direct generated client | UI calls `entityCommand(...)` |
+| Direct `executeCommand` | UI calls `executeCommand("Entity", "cmd", …)` |
+| Server action | UI uses/calls action → `runManifestCommand` |
+| API route | UI `apiFetch`/`fetch` → route → service → `runtime.runCommand` |
+| Server action + API | UI → action → `apiFetch` → route → runtime |
+| Imported helper | UI calls helper → Manifest client or API chain |
+
+Import-only actions, dead/unreferenced actions, generated definitions, tests, and docs are **not** consumers by default.
+
+### Coverage classifications
+
+| Status | Meaning | Default defect? |
+| ------ | ------- | --------------- |
+| `consumed` | Reachable application consumer proven | only if contract mismatch |
+| `unwired` | No consumer, no override | only with `--strict-coverage` |
+| `backend-only` | Explicit override | no |
+| `deferred` | Explicit override | no |
+| `stale-consumer` | App references nonexistent capability | **yes** |
+| `ambiguous` | Potential evidence, chain unproven | no |
+
+### Contract mismatch diagnostics (static only)
+
+Reported when evidence is strong:
+
+- missing required client input
+- wrong input shape (e.g. `.join(",")` where `string[]` required)
+- invalid finite literal (enum / numeric range)
+- required date sent as `""`
+- client-supplied trusted (`from context.*`) field
+- stale capability reference
+
+Uncertain cases stay `ambiguous` — never invented defects.
+
+### CI gate
+
+`--fail-on stale-consumer,contract-mismatch,unwired` (comma-separated).  
+Defaults: fail on `stale-consumer` and `contract-mismatch`. Ambiguous never fails by default. Backend-only is never an automatic failure.
+
+### Explicit overrides (optional)
 
 ```json
 {
   "$schema": "manifest-wiring-consumers/v1",
   "consumers": [
-    { "capabilityId": "Task.create", "disposition": "consumed" },
     { "capabilityId": "Task.archive", "disposition": "backend-only" },
     { "capabilityId": "Task.internalReconcile", "disposition": "deferred" }
   ]
 }
 ```
 
-Gate:
+### Framework support / limitations
+
+**Supported (v1):** TypeScript/TSX, Next.js App Router, server actions, generated Manifest clients, `executeCommand`, `runManifestCommand`, API routes, imported helpers, dynamic `[id]` routes.
+
+**Not supported yet:** other frontend frameworks, proving arbitrary runtime behavior, inferring UI intent from CSS/button copy alone.
+
+Library entry: `@angriff36/manifest/projections/wiring` → `inspectWiringConsumers`.
+
+## Registry-only coverage (legacy / override gate)
+
+`manifest wiring-coverage` still compares contract ↔ explicit registry when you want a declaration-only gate without source inspection:
 
 ```bash
 manifest wiring-coverage \
@@ -93,16 +158,6 @@ manifest wiring-coverage \
   --consumers manifest/wiring-consumers.json \
   --strict
 ```
-
-| Status | Defect? |
-| --- | --- |
-| `exposed` (consumed) | no |
-| `backend-only` | no |
-| `deferred` | no |
-| `unwired` | yes |
-| `stale-consumer` | yes |
-
-Backend-only commands are never automatic defects.
 
 ## End-to-end example
 
@@ -165,6 +220,7 @@ The app chooses whether create is a form, sheet, or voice flow. Manifest only gu
 ## Deliberate non-goals
 
 - No generated pages, buttons, or form widgets
-- No inference of UI from source code
+- No redesign of application UX from inspection results
 - No encoding of runtime-only guards as fake form rules
-- No Capsule-Pro-specific field names or heuristics
+- No Capsule-Pro-specific field names or hardcoded entity paths
+- No claiming duplicate product models without strong read/write evidence

@@ -44,6 +44,11 @@ export { registerBuiltinProjections, listBuiltinProjections } from './builtins.j
 export { buildWiringContract } from './wiring/contract-builder.js';
 export { generateWiringBindings } from './wiring/bindings-generator.js';
 export { validateWiringCoverage, parseConsumersRegistry } from './wiring/coverage.js';
+export {
+  inspectWiringConsumers,
+  inspectWiringConsumersSync,
+  formatInspectReportText,
+} from './wiring/inspect/index.js';
 export type {
   WiringContract,
   WiringCommandDescriptor,
@@ -51,6 +56,12 @@ export type {
   WiringCoverageReport,
   WiringProjectionOptions,
 } from './wiring/types.js';
+export type {
+  WiringInspectConfig,
+  WiringInspectReport,
+  ConsumerEvidence,
+  ContractMismatch,
+} from './wiring/inspect/index.js';
 
 export type { OpenApiProjectionOptions, OpenApiSecurityScheme } from './openapi/types.js';
 export type { ReactQueryProjectionOptions } from './react-query/generator.js';

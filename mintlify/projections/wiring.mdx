@@ -49,28 +49,23 @@ command markCompleted(completedBy: string from context.actorId) {
 
 Ownership is declared explicitly. Naming heuristics are not used.
 
-## Coverage gate
+## Automatic consumer inspection
 
-Declare intentional consumers:
-
-```json
-{
-  "$schema": "manifest-wiring-consumers/v1",
-  "consumers": [
-    { "capabilityId": "Task.create", "disposition": "consumed" },
-    { "capabilityId": "Task.archive", "disposition": "backend-only" }
-  ]
-}
-```
+Manifest does **not** design the interface. It proves whether application code correctly consumes declared capabilities.
 
 ```bash
-manifest wiring-coverage \
+manifest wiring-inspect \
   --contract src/generated/manifest-wiring-contract.json \
-  --consumers manifest/wiring-consumers.json \
+  --root apps/app \
+  --root apps/api \
   --strict
 ```
 
-`backend-only` and `deferred` are not defects. `unwired` and `stale-consumer` are.
+Primary coverage comes from source inspection (generated client calls, `executeCommand`, server actions → `runManifestCommand`, API route chains, imported helpers). Explicit registries are overrides for `backend-only` / `deferred` / accepted ambiguous cases.
+
+Default CI fails on stale consumers and proven contract mismatches. Unwired capabilities fail only with `--strict-coverage`. Ambiguous findings never fail by default.
+
+See the full reference in the repo: `docs/projections/wiring.md`.
 
 ## Boundary
 

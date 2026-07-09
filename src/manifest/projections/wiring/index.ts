@@ -22,3 +22,20 @@ export {
   WIRING_CONTRACT_SCHEMA,
   WIRING_CONSUMERS_SCHEMA,
 } from './types.js';
+
+export {
+  inspectWiringConsumers,
+  inspectWiringConsumersSync,
+  formatInspectReportText,
+  fileMapFromRecord,
+  loadApplicationSources,
+  WIRING_INSPECT_REPORT_SCHEMA,
+} from './inspect/index.js';
+export type {
+  InspectWiringOptions,
+  WiringInspectConfig,
+  WiringInspectReport,
+  ConsumerEvidence,
+  ContractMismatch,
+  InspectCoverageFinding,
+} from './inspect/index.js';
