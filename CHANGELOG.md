@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.7] - 2026-07-09
+
+### Changed
+
+- feat(seed-pack): IR sample seed packs with template/fill/validate/apply
+
 ## [Unreleased]
 
 ### Added
