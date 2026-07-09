@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.5] - 2026-07-09
+
+### Added
+
+- Wiring remediate: `expand-partial-to-full-body` — when a call sends a partial literal to a full-update command and a unique proven same-capability full-body builder (+ loader) already exists, expand via that pattern (override fields preserved; no invented values)
+- Wiring inspect: extract `/api/manifest/{Entity}/commands/{command}` posts (`apiPostJsonServer` / `fetch`) so server partial payloads are visible to mismatch analysis
+
 ## [3.4.4] - 2026-07-09
 
 ### Fixed
