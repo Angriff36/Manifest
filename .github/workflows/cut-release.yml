@@ -48,7 +48,9 @@ jobs:
       - name: Setup Node.js (npm registry)
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          # Node 24 ships npm 11.x (Trusted Publishing OIDC). Node 22's npm 10.x
+          # cannot self-upgrade cleanly on GHA (MODULE_NOT_FOUND: sigstore).
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
@@ -119,12 +121,10 @@ jobs:
           # cut-release.yml. Strip any static _authToken (setup-node writes one
           # referencing NODE_AUTH_TOKEN) so npm uses the OIDC exchange. Requires
           # the NPM_TOKEN secret to be deleted so nothing is injected.
-          # Trusted publishing needs npm >= 11.5.1; Node 22 ships npm 10.x.
-          # Do NOT `npm install -g npm@latest` — on GHA Node 22 that self-upgrade
-          # leaves a broken global npm (MODULE_NOT_FOUND: sigstore / promise-retry).
-          # Invoke a fresh npm 11+ via npx instead.
+          # Trusted publishing needs npm >= 11.5.1. Node 24 provides that.
+          npm --version
           sed -i '/_authToken/d' "$(npm config get userconfig)" 2>/dev/null || true
-          out="$(npx -p npm@latest -y npm publish --provenance --access public 2>&1)"
+          out="$(npm publish --provenance --access public 2>&1)"
           code=$?
           echo "$out"
           if [ "$code" -ne 0 ]; then
