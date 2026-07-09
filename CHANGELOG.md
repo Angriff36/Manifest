@@ -4,6 +4,13 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- IR sample seed packs (`@angriff36/manifest/seed-pack`): template → fill → validate → two-phase apply/clear with `SampleDataRow` tracking, pack-local `seedKey`s, blank-only fill, soft IR drift, and idempotent apply on `packId+version+tenantId`
+- CLI: `manifest seed template|fill|validate`
+
 ## [3.4.6] - 2026-07-09
 
 ### Fixed

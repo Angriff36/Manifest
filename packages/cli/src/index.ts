@@ -14,6 +14,11 @@ import { generateCommand, generateAllFromConfig } from './commands/generate.js';
 import { buildCommand, buildAllFromConfig } from './commands/build.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { seedCommand } from './commands/seed.js';
+import {
+  seedTemplateCommand,
+  seedFillCommand,
+  seedValidateCommand,
+} from './commands/seed-pack-cli.js';
 import { profileCommand } from './commands/profile.js';
 import { packCommand, unpackCommand } from './commands/pack-unpack.js';
 import { watchCommand } from './commands/watch.js';
@@ -316,14 +321,14 @@ program
   });
 
 /**
- * manifest seed [source]
+ * manifest seed
  *
- * Generate realistic, deterministic seed data from IR entity definitions.
- * Emits JSON, SQL, or Supabase-shaped output.
+ * Legacy: generate synthetic JSON/SQL/Supabase files from IR.
+ * Pack workflow: template → fill → validate (apply/clear via seed-pack library).
  */
-program
+const seedCmd = program
   .command('seed')
-  .description('Generate realistic seed data from IR entity definitions')
+  .description('Generate seed data (legacy files) or IR sample seed packs')
   .argument('[source]', 'Source .manifest file or compiled .ir.json')
   .option('-o, --output <path>', 'Output file or directory')
   .option('--profile <profile>', 'Record-count profile: dev | staging | demo', 'dev')
@@ -342,6 +347,60 @@ program
       entity: options.entity,
       seed: options.seed,
       json: options.json,
+    });
+  });
+
+seedCmd
+  .command('template')
+  .description('Write a blank IR sample seed pack (seedKeys + {{fill}} placeholders)')
+  .argument('<source>', 'Source .manifest or .ir.json')
+  .requiredOption('-o, --output <dir>', 'Output pack directory')
+  .option('--pack-id <id>', 'Pack id', 'demo')
+  .option('--version <ver>', 'Pack version', '1.0.0')
+  .option('--profile <profile>', 'dev | staging | demo', 'demo')
+  .option('--count <n>', 'Rows per entity', (v) => parseInt(v, 10), 2)
+  .option('--entity <name...>', 'Only include named entities')
+  .action(async (source, options) => {
+    await seedTemplateCommand({
+      source,
+      output: options.output,
+      packId: options.packId,
+      version: options.version,
+      profile: options.profile,
+      count: options.count,
+      entity: options.entity,
+    });
+  });
+
+seedCmd
+  .command('fill')
+  .description('Fill blank/{{fill}} cells in a seed pack (default: heuristic; ollama optional)')
+  .argument('<packDir>', 'Seed pack directory')
+  .option('--source <path>', 'IR/.manifest for validation context')
+  .option('--provider <name>', 'heuristic | ollama', 'heuristic')
+  .option('--model <id>', 'Ollama model id')
+  .option('--overwrite', 'Regenerate non-blank cells', false)
+  .action(async (packDir, options) => {
+    await seedFillCommand({
+      packDir,
+      source: options.source,
+      provider: options.provider,
+      model: options.model,
+      overwrite: options.overwrite,
+    });
+  });
+
+seedCmd
+  .command('validate')
+  .description('Validate a seed pack against IR (soft drift)')
+  .argument('<packDir>', 'Seed pack directory')
+  .option('--source <path>', 'IR/.manifest')
+  .option('--require-filled', 'Fail on blank required properties', false)
+  .action(async (packDir, options) => {
+    await seedValidateCommand({
+      packDir,
+      source: options.source,
+      requireFilled: options.requireFilled,
     });
   });
 

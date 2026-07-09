@@ -124,6 +124,10 @@
       "types": "./dist/manifest/ir.d.ts",
       "import": "./dist/manifest/ir.js"
     },
+    "./seed-pack": {
+      "types": "./dist/manifest/seed-pack/index.d.ts",
+      "import": "./dist/manifest/seed-pack/index.js"
+    },
     "./profiling": {
       "types": "./dist/manifest/profiling.d.ts",
       "import": "./dist/manifest/profiling.js"
