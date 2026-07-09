@@ -16,6 +16,7 @@ import type { WiringContract } from '../types.js';
 import { bracketRoutePathToRegex, dynamicRouteProbePath } from './route-helper-index.js';
 import { ProductionFlowParser } from './production-flow-parser.js';
 import { RouteHelperIndex } from './route-helper-index.js';
+import { resolveImportPath } from './import-path-resolver.js';
 
 async function contractFrom(source: string): Promise<WiringContract> {
   const { ir, diagnostics } = await compileToIR(source);
@@ -637,5 +638,30 @@ describe('wiring inspect — contract mismatches', () => {
     expect(report.findings.find(x => x.capabilityId === 'Task.archive')?.status).toBe(
       'unwired',
     );
+  });
+
+  it('23. FilePathIndex resolves @/ and relative imports without linear scan', () => {
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/page.tsx': `import { x } from "@/app/lib/helpers";`,
+      'apps/app/app/lib/helpers.ts': `export const x = 1;`,
+      'apps/app/app/ui/nested/child.tsx': `import { y } from "../sibling";`,
+      'apps/app/app/ui/sibling.ts': `export const y = 2;`,
+    });
+    expect(
+      resolveImportPath(
+        'apps/app/app/ui/page.tsx',
+        '@/app/lib/helpers',
+        files,
+        false,
+      ),
+    ).toBe('apps/app/app/lib/helpers.ts');
+    expect(
+      resolveImportPath(
+        'apps/app/app/ui/nested/child.tsx',
+        '../sibling',
+        files,
+        false,
+      ),
+    ).toBe('apps/app/app/ui/sibling.ts');
   });
 });

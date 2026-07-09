@@ -3,10 +3,99 @@
  *
  * Adapted from codebase-explorer
  * `src/reconcile/featureCompleteness/importPathResolver.ts`.
+ *
+ * FilePathIndex keeps lookups O(1) — linear scans over 10k+ files made
+ * full Capsule-Pro inspection unusable as a repo-wide gate.
  */
 
 export function normalizeRepoPath(path: string): string {
   return path.replace(/\\/g, '/');
+}
+
+/** Precomputed path lookup tables for a scan universe. */
+export class FilePathIndex {
+  private readonly exact = new Map<string, string>();
+  /** Trailing path fragments → canonical file key (shortest wins). */
+  private readonly byTail = new Map<string, string>();
+
+  constructor(
+    fileContents: Map<string, string>,
+    private readonly caseInsensitive: boolean,
+  ) {
+    for (const key of fileContents.keys()) {
+      const norm = normalizeRepoPath(key);
+      this.setExact(norm, key);
+
+      const noExt = norm.replace(/\.(tsx?|jsx?)$/, '');
+      this.indexTails(noExt, key);
+      this.setExact(`${noExt}.ts`, key);
+      this.setExact(`${noExt}.tsx`, key);
+      this.setExact(`${noExt}/index.ts`, key);
+      this.setExact(`${noExt}/index.tsx`, key);
+    }
+  }
+
+  private setExact(pathKey: string, file: string): void {
+    const k = this.caseInsensitive ? pathKey.toLowerCase() : pathKey;
+    if (!this.exact.has(k)) this.exact.set(k, file);
+  }
+
+  private indexTails(noExtPath: string, file: string): void {
+    const parts = noExtPath.split('/').filter(Boolean);
+    for (let i = 0; i < parts.length; i++) {
+      const tail = parts.slice(i).join('/');
+      this.setTail(tail, file);
+      this.setTail(`${tail}.ts`, file);
+      this.setTail(`${tail}.tsx`, file);
+      this.setTail(`${tail}/index.ts`, file);
+      this.setTail(`${tail}/index.tsx`, file);
+    }
+  }
+
+  private setTail(tail: string, file: string): void {
+    const k = this.caseInsensitive ? tail.toLowerCase() : tail;
+    const existing = this.byTail.get(k);
+    // Prefer shorter absolute path (closer to package root / alias target)
+    if (!existing || file.length < existing.length) {
+      this.byTail.set(k, file);
+    }
+  }
+
+  findExact(candidate: string): string | undefined {
+    const norm = normalizeRepoPath(candidate);
+    const k = this.caseInsensitive ? norm.toLowerCase() : norm;
+    return this.exact.get(k);
+  }
+
+  findWithSuffix(suffix: string): string | undefined {
+    const norm = normalizeRepoPath(suffix);
+    const candidates = [
+      norm,
+      `${norm}.ts`,
+      `${norm}.tsx`,
+      `${norm}/index.ts`,
+      `${norm}/index.tsx`,
+    ];
+    for (const c of candidates) {
+      const hit = this.findExact(c) ?? this.byTail.get(this.caseInsensitive ? c.toLowerCase() : c);
+      if (hit) return hit;
+    }
+    return undefined;
+  }
+}
+
+const indexCache = new WeakMap<Map<string, string>, FilePathIndex>();
+
+function getIndex(
+  fileContents: Map<string, string>,
+  caseInsensitive: boolean,
+): FilePathIndex {
+  let idx = indexCache.get(fileContents);
+  if (!idx) {
+    idx = new FilePathIndex(fileContents, caseInsensitive);
+    indexCache.set(fileContents, idx);
+  }
+  return idx;
 }
 
 export function resolveImportPath(
@@ -15,17 +104,10 @@ export function resolveImportPath(
   fileContents: Map<string, string>,
   caseInsensitive: boolean,
 ): string | undefined {
-  const keys = [...fileContents.keys()];
-  const find = (candidate: string): string | undefined => {
-    const norm = normalizeRepoPath(candidate);
-    return keys.find(k => {
-      const key = normalizeRepoPath(k);
-      return caseInsensitive ? key.toLowerCase() === norm.toLowerCase() : key === norm;
-    });
-  };
+  const index = getIndex(fileContents, caseInsensitive);
 
   if (specifier.startsWith('@/')) {
-    return findWithSuffix(keys, specifier.slice(2), caseInsensitive);
+    return index.findWithSuffix(specifier.slice(2));
   }
 
   if (specifier.startsWith('.')) {
@@ -41,38 +123,13 @@ export function resolveImportPath(
     }
     const joined = base.join('/');
     return (
-      find(`${joined}.ts`)
-      ?? find(`${joined}.tsx`)
-      ?? find(`${joined}/index.ts`)
-      ?? find(`${joined}/index.tsx`)
+      index.findExact(`${joined}.ts`) ??
+      index.findExact(`${joined}.tsx`) ??
+      index.findExact(`${joined}/index.ts`) ??
+      index.findExact(`${joined}/index.tsx`)
     );
   }
 
-  return undefined;
-}
-
-function findWithSuffix(
-  keys: string[],
-  suffix: string,
-  caseInsensitive: boolean,
-): string | undefined {
-  const normSuffix = normalizeRepoPath(suffix);
-  const candidates = [
-    `${normSuffix}.ts`,
-    `${normSuffix}.tsx`,
-    `${normSuffix}/index.ts`,
-    `${normSuffix}/index.tsx`,
-  ];
-  for (const candidate of candidates) {
-    const hit = keys.find(k => {
-      const key = normalizeRepoPath(k);
-      if (caseInsensitive) {
-        return key.toLowerCase().endsWith(candidate.toLowerCase());
-      }
-      return key.endsWith(candidate);
-    });
-    if (hit) return hit;
-  }
   return undefined;
 }
 

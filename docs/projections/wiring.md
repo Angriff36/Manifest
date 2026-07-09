@@ -9,15 +9,15 @@ This is **not** a UI generator. It does not emit pages, dashboards, layouts, sty
 
 ## What Manifest owns vs what the app owns
 
-| Manifest owns                                       | Application owns                                      |
-| --------------------------------------------------- | ----------------------------------------------------- |
-| Command truth, types, required/optional             | Page layout and visual design                         |
-| Input ownership (client vs server)                  | Whether an action is a button, menu, swipe, dialog, … |
-| Statically known constraints                        | Wording and labels                                    |
-| Lifecycle transition metadata (when proven)         | Information hierarchy                                 |
-| Safe binding generation + command invocation path   | Workflow composition not declared in Manifest         |
-| Invalidation metadata                               |                                                       |
-| Coverage truth (automatic inspect + overrides)      | Explicit overrides for backend-only / deferred        |
+| Manifest owns                                     | Application owns                                      |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| Command truth, types, required/optional           | Page layout and visual design                         |
+| Input ownership (client vs server)                | Whether an action is a button, menu, swipe, dialog, … |
+| Statically known constraints                      | Wording and labels                                    |
+| Lifecycle transition metadata (when proven)       | Information hierarchy                                 |
+| Safe binding generation + command invocation path | Workflow composition not declared in Manifest         |
+| Invalidation metadata                             |                                                       |
+| Coverage truth (automatic inspect + overrides)    | Explicit overrides for backend-only / deferred        |
 
 ## Generate
 
@@ -88,27 +88,27 @@ manifest wiring-inspect \
 
 ### Supported trace forms (Next.js App Router)
 
-| Trace | Counts as consumed when |
-| ----- | ----------------------- |
-| Direct generated client | UI calls `entityCommand(...)` |
-| Direct `executeCommand` | UI calls `executeCommand("Entity", "cmd", …)` |
-| Server action | UI uses/calls action → `runManifestCommand` |
-| API route | UI `apiFetch`/`fetch` → route → service → `runtime.runCommand` |
-| Server action + API | UI → action → `apiFetch` → route → runtime |
-| Imported helper | UI calls helper → Manifest client or API chain |
+| Trace                   | Counts as consumed when                                        |
+| ----------------------- | -------------------------------------------------------------- |
+| Direct generated client | UI calls `entityCommand(...)`                                  |
+| Direct `executeCommand` | UI calls `executeCommand("Entity", "cmd", …)`                  |
+| Server action           | UI uses/calls action → `runManifestCommand`                    |
+| API route               | UI `apiFetch`/`fetch` → route → service → `runtime.runCommand` |
+| Server action + API     | UI → action → `apiFetch` → route → runtime                     |
+| Imported helper         | UI calls helper → Manifest client or API chain                 |
 
 Import-only actions, dead/unreferenced actions, generated definitions, tests, and docs are **not** consumers by default.
 
 ### Coverage classifications
 
-| Status | Meaning | Default defect? |
-| ------ | ------- | --------------- |
-| `consumed` | Reachable application consumer proven | only if contract mismatch |
-| `unwired` | No consumer, no override | only with `--strict-coverage` |
-| `backend-only` | Explicit override | no |
-| `deferred` | Explicit override | no |
-| `stale-consumer` | App references nonexistent capability | **yes** |
-| `ambiguous` | Potential evidence, chain unproven | no |
+| Status           | Meaning                               | Default defect?               |
+| ---------------- | ------------------------------------- | ----------------------------- |
+| `consumed`       | Reachable application consumer proven | only if contract mismatch     |
+| `unwired`        | No consumer, no override              | only with `--strict-coverage` |
+| `backend-only`   | Explicit override                     | no                            |
+| `deferred`       | Explicit override                     | no                            |
+| `stale-consumer` | App references nonexistent capability | **yes**                       |
+| `ambiguous`      | Potential evidence, chain unproven    | no                            |
 
 ### Contract mismatch diagnostics (static only)
 
@@ -144,7 +144,9 @@ Defaults: fail on `stale-consumer` and `contract-mismatch`. Ambiguous never fail
 
 **Supported (v1):** TypeScript/TSX, Next.js App Router, server actions, generated Manifest clients, `executeCommand`, `runManifestCommand`, API routes, imported helpers, dynamic `[id]` routes.
 
-**Not supported yet:** other frontend frameworks, proving arbitrary runtime behavior, inferring UI intent from CSS/button copy alone.
+**Performance:** Full Capsule-Pro-scale scans (`apps/app` + `apps/api`, ~10k source files, ~1k capabilities) are designed to complete in well under a minute on a developer machine. The inspector uses indexed import resolution, parallel source loading, stubbed generated bulk files, and memoized module-intent extraction. Include/exclude filters remain available for focused debugging, but are **not required** for a repo-wide gate.
+
+**Not supported yet:** other frontend frameworks, proving arbitrary runtime behavior, inferring UI intent from CSS/button copy alone. Large `unwired` counts are expected until applications supply backend-only/deferred overrides — that is coverage truth, not a performance failure.
 
 Library entry: `@angriff36/manifest/projections/wiring` → `inspectWiringConsumers`.
 

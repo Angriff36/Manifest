@@ -38,6 +38,7 @@ export interface TraceResult {
 export class ConsumerTracer {
   private readonly parser: ProductionFlowParser;
   private readonly routeHelpers: RouteHelperIndex;
+  private readonly moduleIntentCache = new Map<string, ManifestInvocation[]>();
 
   constructor(
     private readonly fileContents: Map<string, string>,
@@ -244,6 +245,12 @@ export class ConsumerTracer {
   }
 
   private manifestIntentsForModule(entryFile: string): ManifestInvocation[] {
+    const cacheKey = this.caseInsensitive
+      ? normalizeRepoPath(entryFile).toLowerCase()
+      : normalizeRepoPath(entryFile);
+    const cached = this.moduleIntentCache.get(cacheKey);
+    if (cached) return cached;
+
     const files = resolveLocalImportClosure(
       entryFile,
       this.fileContents,
@@ -258,7 +265,9 @@ export class ConsumerTracer {
         intents.set(inv.intent, inv);
       }
     }
-    return [...intents.values()];
+    const result = [...intents.values()];
+    this.moduleIntentCache.set(cacheKey, result);
+    return result;
   }
 }
 
