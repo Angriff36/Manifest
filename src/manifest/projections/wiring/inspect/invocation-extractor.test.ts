@@ -91,6 +91,115 @@ describe('extractRunManifestBody — literal vs non-literal body', () => {
   });
 });
 
+describe('extractObjectFieldNames — JavaScript comments', () => {
+  it('1. // fakeKey: does not create a field', () => {
+    expect(
+      extractObjectFieldNames(`{
+        title: value,
+        // fakeKey: not real
+        eventDate: date,
+      }`),
+    ).toEqual(['title', 'eventDate']);
+  });
+
+  it('2. /* fakeKey: */ does not create a field', () => {
+    expect(
+      extractObjectFieldNames(`{
+        title: value,
+        /* fakeKey: nope, another: nope */
+        eventDate: date,
+      }`),
+    ).toEqual(['title', 'eventDate']);
+  });
+
+  it('3. comments containing commas do not terminate values', () => {
+    expect(
+      extractObjectFieldNames(`{
+        title: /* a, b, c */ value,
+        status: "ok",
+      }`),
+    ).toEqual(['title', 'status']);
+    expect(
+      readObjectLiteralFieldExpression(
+        `{ title: /* a, b, c */ value, status: "ok" }`,
+        'title',
+      ),
+    ).toBe('value');
+  });
+
+  it('4. comments containing braces do not affect nesting', () => {
+    expect(
+      extractObjectFieldNames(`{
+        title: value,
+        // { nested: fake }
+        status: "ok",
+      }`),
+    ).toEqual(['title', 'status']);
+  });
+
+  it('5. real property after a line comment is still detected', () => {
+    expect(
+      objectLiteralHasKey(
+        `{
+          eventType: ed.eventType ?? "",
+          // Epoch ms: the Manifest datetime contract
+          eventDate: ed.eventDate.getTime(),
+        }`,
+        'eventDate',
+      ),
+    ).toBe(true);
+  });
+
+  it('6. real property after a block comment is still detected', () => {
+    expect(
+      objectLiteralHasKey(
+        `{ title: "x", /* skip */ eventDate: 1 }`,
+        'eventDate',
+      ),
+    ).toBe(true);
+  });
+
+  it('7. shorthand properties still work around comments', () => {
+    expect(
+      extractObjectFieldNames(`{
+        // note
+        title,
+        /* more */
+        status,
+      }`),
+    ).toEqual(['title', 'status']);
+  });
+
+  it('8. mixed explicit + shorthand still work with comments', () => {
+    expect(
+      extractObjectFieldNames(`{
+        id: recipeVersionId,
+        // Epoch ms: ignore
+        dropOff,
+        bringHot,
+      }`),
+    ).toEqual(['id', 'dropOff', 'bringHot']);
+  });
+
+  it('9–10. historical Event.update comment detects eventDate, not ms', () => {
+    const payload = `{
+      id: data.eventId,
+      clientId: data.clientId ?? "",
+      eventNumber: data.eventNumber ?? existing?.eventNumber ?? "",
+      title: ed.title ?? "",
+      eventType: ed.eventType ?? "",
+      // Epoch ms: the Manifest datetime contract (ISO strings rejected by pre-coercion runtimes)
+      eventDate: ed.eventDate.getTime(),
+      guestCount: ed.guestCount ?? 0,
+    }`;
+    const fields = extractObjectFieldNames(payload);
+    expect(fields).toContain('eventDate');
+    expect(fields).not.toContain('ms');
+    expect(fields).toContain('eventType');
+    expect(fields).toContain('guestCount');
+  });
+});
+
 describe('extractObjectFieldNames — ES property shorthand', () => {
   it('1. detects colon property', () => {
     expect(extractObjectFieldNames('{ title: value }')).toEqual(['title']);

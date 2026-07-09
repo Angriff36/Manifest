@@ -787,6 +787,71 @@ entity Event {
     ).toBe('consumed');
   });
 
+  it('15g. Event.update Epoch ms comment does not hide eventDate', async () => {
+    const eventDomain = `
+entity Event {
+  property required id: string
+  property title: string = ""
+  property eventType: string = ""
+  property eventDate: datetime = 0
+  property guestCount: number = 0
+
+  command update(
+    title: string,
+    eventType: string,
+    eventDate: datetime,
+    guestCount: number
+  ) {
+    mutate title = title
+  }
+
+  store Event in memory
+}
+`;
+    const contract = await contractFrom(eventDomain);
+    const files = fileMapFromRecord({
+      'apps/app/app/(authenticated)/(events)/events/actions.ts': `
+        "use server";
+        import { runManifestCommand } from "@/lib/manifest-command";
+        export async function updateEvent() {
+          const ed = { title: "t", eventType: "x", eventDate: new Date(), guestCount: 1 };
+          return runManifestCommand({
+            entity: "Event",
+            command: "update",
+            body: {
+              id: "1",
+              title: ed.title ?? "",
+              eventType: ed.eventType ?? "",
+              // Epoch ms: the Manifest datetime contract (ISO strings rejected by pre-coercion runtimes)
+              eventDate: ed.eventDate.getTime(),
+              guestCount: ed.guestCount ?? 0,
+            },
+          });
+        }
+      `,
+      'apps/app/app/(authenticated)/(events)/events/page.tsx': `
+        import { updateEvent } from "./actions";
+        export function Page() { return <form action={updateEvent} />; }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    expect(
+      report.mismatches.filter(
+        m =>
+          m.capabilityId === 'Event.update' &&
+          m.kind === 'missing_required_input' &&
+          m.parameter === 'eventDate',
+      ),
+    ).toHaveLength(0);
+    expect(
+      report.findings.find(x => x.capabilityId === 'Event.update')?.status,
+    ).toBe('consumed');
+  });
+
   it('16. stale command reference is reported', async () => {
     const contract = await contractFrom(DOMAIN);
     const files = fileMapFromRecord({

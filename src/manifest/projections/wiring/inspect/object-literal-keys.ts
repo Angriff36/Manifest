@@ -2,6 +2,7 @@
  * Top-level object-literal key scanning for wiring inspect.
  * Recognizes both `name: value` and ES property shorthand `name`.
  * Does not treat identifiers nested inside property values as keys.
+ * Ignores line (`//`) and block comments so comment text cannot fabricate keys.
  */
 
 export interface ObjectLiteralKey {
@@ -36,6 +37,14 @@ export function scanObjectLiteralKeys(objectLiteral: string): ObjectLiteralKey[]
       i++;
       continue;
     }
+
+    // Comments never contribute keys, nesting, or value terminators.
+    const afterComment = skipComment(objectLiteral, i);
+    if (afterComment !== i) {
+      i = afterComment;
+      continue;
+    }
+
     if (ch === '"' || ch === "'" || ch === '`') {
       inStr = ch;
       i++;
@@ -94,10 +103,10 @@ export function scanObjectLiteralKeys(objectLiteral: string): ObjectLiteralKey[]
       i++;
       while (i < objectLiteral.length && /[\w]/.test(objectLiteral[i]!)) i++;
       const name = objectLiteral.slice(nameStart, i);
-      const afterName = skipWs(objectLiteral, i);
+      const afterName = skipWsAndComments(objectLiteral, i);
 
       if (objectLiteral[afterName] === ':') {
-        const valueStart = skipWs(objectLiteral, afterName + 1);
+        const valueStart = skipWsAndComments(objectLiteral, afterName + 1);
         const valueEnd = skipTopLevelValue(objectLiteral, valueStart);
         keys.push({ name, shorthand: false, valueStart, valueEnd });
         i = valueEnd;
@@ -129,10 +138,12 @@ export function scanObjectLiteralKeys(objectLiteral: string): ObjectLiteralKey[]
 }
 
 function scanColonOnlyKeys(objectLiteral: string): ObjectLiteralKey[] {
+  // Strip comments first so `// ms:` cannot fabricate colon-form keys.
+  const cleaned = stripCommentsForColonScan(objectLiteral);
   const keys: ObjectLiteralKey[] = [];
   const re = /\b([A-Za-z_][\w]*)\s*:/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(objectLiteral)) !== null) {
+  while ((m = re.exec(cleaned)) !== null) {
     const name = m[1]!;
     const valueStart = m.index + m[0].length;
     keys.push({
@@ -145,9 +156,76 @@ function scanColonOnlyKeys(objectLiteral: string): ObjectLiteralKey[] {
   return keys;
 }
 
-function skipWs(s: string, i: number): number {
-  while (i < s.length && /\s/.test(s[i]!)) i++;
+/**
+ * Advance past a `//` or block comment starting at `i`.
+ * Returns `i` unchanged when no comment starts there.
+ */
+export function skipComment(s: string, i: number): number {
+  if (s[i] !== '/') return i;
+  const next = s[i + 1];
+  if (next === '/') {
+    i += 2;
+    while (i < s.length && s[i] !== '\n' && s[i] !== '\r') i++;
+    return i;
+  }
+  if (next === '*') {
+    i += 2;
+    while (i < s.length) {
+      if (s[i] === '*' && s[i + 1] === '/') return i + 2;
+      i++;
+    }
+    return i;
+  }
   return i;
+}
+
+function skipWsAndComments(s: string, i: number): number {
+  while (i < s.length) {
+    if (/\s/.test(s[i]!)) {
+      i++;
+      continue;
+    }
+    const after = skipComment(s, i);
+    if (after !== i) {
+      i = after;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+
+/** Replace comment spans with spaces (preserve indices for colon-only path). */
+function stripCommentsForColonScan(s: string): string {
+  const out: string[] = [];
+  let i = 0;
+  let inStr: string | null = null;
+  while (i < s.length) {
+    const ch = s[i]!;
+    if (inStr) {
+      out.push(ch);
+      if (ch === inStr && s[i - 1] !== '\\') inStr = null;
+      i++;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      inStr = ch;
+      out.push(ch);
+      i++;
+      continue;
+    }
+    const after = skipComment(s, i);
+    if (after !== i) {
+      while (i < after) {
+        out.push(s[i] === '\n' || s[i] === '\r' ? s[i]! : ' ');
+        i++;
+      }
+      continue;
+    }
+    out.push(ch);
+    i++;
+  }
+  return out.join('');
 }
 
 /** Advance from value start to the next top-level `,` or `}` (exclusive). */
@@ -162,6 +240,11 @@ function skipTopLevelValue(s: string, start: number): number {
     if (inStr) {
       if (ch === inStr && s[i - 1] !== '\\') inStr = null;
       i++;
+      continue;
+    }
+    const afterComment = skipComment(s, i);
+    if (afterComment !== i) {
+      i = afterComment;
       continue;
     }
     if (ch === '"' || ch === "'" || ch === '`') {

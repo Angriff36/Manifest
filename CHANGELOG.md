@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.4] - 2026-07-09
+
+### Fixed
+
+- Wiring inspect: object-literal key scanning skips `//` and block comments so text like `// Epoch ms:` cannot fabricate keys or swallow the following property (e.g. Capsule `Event.update` `eventDate`)
+
 ## [3.4.3] - 2026-07-09
 
 ### Fixed
