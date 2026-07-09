@@ -86,11 +86,12 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
     };
   }
 
-  const selectable = plans.filter(p => p.automaticApplicationAllowed);
-  const toApply =
-    options.mode === 'one-defect'
-      ? selectable.slice(0, 1)
-      : selectable;
+  // Prefer auto-fixable, then other automaticApplicationAllowed plans.
+  // Within that, prefer repair kinds that reverse a proven wrong expression
+  // over add-required-input (which often cites a symbol not in the payload file).
+  const selectable = sortRepairCandidates(
+    plans.filter(p => p.automaticApplicationAllowed),
+  );
 
   if (options.mode === 'dry-run') {
     return {
@@ -98,14 +99,14 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
       mode: 'dry-run',
       ok: true,
       plans,
-      applied: toApply.map(p => ({
+      applied: selectable.map(p => ({
         findingId: p.findingId,
         applied: false,
         skippedReason: 'dry-run',
         filesChanged: p.edits.map(e => e.file),
         editsApplied: 0,
       })),
-      changedFiles: [...new Set(toApply.flatMap(p => p.edits.map(e => e.file)))],
+      changedFiles: [...new Set(selectable.flatMap(p => p.edits.map(e => e.file)))],
       unresolved: plans
         .filter(p => !p.automaticApplicationAllowed)
         .map(p => ({
@@ -122,7 +123,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
   const applied: AppliedRepairResult[] = [];
   const changedFiles = new Set<string>();
 
-  for (const plan of toApply) {
+  for (const plan of selectable) {
     const patch = applyRepairPlan(plan, current);
     if (!patch.ok) {
       applied.push({
@@ -132,17 +133,34 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
         filesChanged: [],
         editsApplied: 0,
       });
+      // Skip unapplicable plans (one-defect keeps searching).
       continue;
     }
-    current = patch.nextContents;
-    for (const f of patch.filesChanged) changedFiles.add(f);
 
     const verification = verifyRepair(
       plan,
       options.contract,
-      current,
+      patch.nextContents,
       inspectConfig,
     );
+
+    if (verification.ok === false) {
+      // Patch applied in AST but reinspect still sees the defect — do not keep it.
+      applied.push({
+        findingId: plan.findingId,
+        applied: false,
+        skippedReason:
+          verification.message ??
+          'verification failed — finding still present after patch',
+        filesChanged: [],
+        editsApplied: 0,
+        verification,
+      });
+      continue;
+    }
+
+    current = patch.nextContents;
+    for (const f of patch.filesChanged) changedFiles.add(f);
 
     applied.push({
       findingId: plan.findingId,
@@ -163,7 +181,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
       }
     }
 
-    // one-defect: stop after first
+    // one-defect: stop after first verified successful apply
     if (options.mode === 'one-defect') break;
   }
 
@@ -206,8 +224,51 @@ export async function remediateWiring(options: RemediateOptions): Promise<Remedi
 }
 
 export function selectNextAutoFixable(plans: RepairPlan[]): RepairPlan | undefined {
-  return plans.find(p => p.automaticApplicationAllowed && p.decision === 'auto-fixable')
-    ?? plans.find(p => p.automaticApplicationAllowed);
+  return sortRepairCandidates(
+    plans.filter(p => p.automaticApplicationAllowed),
+  )[0];
+}
+
+/** Deterministic priority for one-defect candidate selection. */
+function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
+  const kindRank = (kind: string): number => {
+    switch (kind) {
+      case 'replace-payload-expression':
+        return 0;
+      case 'remove-invalid-literal':
+        return 1;
+      case 'replace-empty-date-sentinel':
+        return 2;
+      case 'move-trusted-input-server-side':
+        return 3;
+      case 'replace-fake-lifecycle-binding':
+        return 4;
+      case 'migrate-to-safe-binding':
+        return 5;
+      case 'add-invalidation':
+        return 6;
+      case 'wire-existing-control':
+        return 7;
+      case 'add-required-input':
+        return 8;
+      default:
+        return 9;
+    }
+  };
+  const decisionRank = (d: string): number =>
+    d === 'auto-fixable' ? 0 : d === 'repairable-with-existing-pattern' ? 1 : 2;
+  const confidenceRank = (c: string): number =>
+    c === 'high' ? 0 : c === 'medium' ? 1 : 2;
+
+  return [...plans].sort((a, b) => {
+    const byDecision = decisionRank(a.decision) - decisionRank(b.decision);
+    if (byDecision !== 0) return byDecision;
+    const byKind = kindRank(a.repairKind) - kindRank(b.repairKind);
+    if (byKind !== 0) return byKind;
+    const byConf = confidenceRank(a.confidence) - confidenceRank(b.confidence);
+    if (byConf !== 0) return byConf;
+    return a.findingId.localeCompare(b.findingId);
+  });
 }
 
 export function formatRemediateReportText(report: RemediateReport): string {
