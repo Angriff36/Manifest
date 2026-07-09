@@ -12,6 +12,11 @@ import {
   findProperty,
   callMatchesCapability,
 } from './ast-utils.js';
+import {
+  findPayloadObjectInCall,
+  removeProperty,
+  addProperty,
+} from './patch-payload.js';
 
 export interface PatchApplyResult {
   ok: boolean;
@@ -196,136 +201,6 @@ function replacePropertyValue(
     return content.replace(joinRe, `$1${op.toExpression}`);
   }
   return content;
-}
-
-function findPayloadObjectInCall(
-  node: import('typescript').CallExpression,
-): import('typescript').ObjectLiteralExpression | undefined {
-  for (const arg of node.arguments) {
-    if (!ts.isObjectLiteralExpression(arg)) continue;
-    const body = findProperty(arg, 'body');
-    if (body?.initializer && ts.isObjectLiteralExpression(body.initializer)) {
-      return body.initializer;
-    }
-    return arg;
-  }
-  return undefined;
-}
-
-function removeProperty(
-  content: string,
-  fileName: string,
-  op: Extract<RepairOperation, { type: 'remove-object-property' }>,
-): string | null {
-  // Surgical: remove `param: …` including optional leading comma
-  const re = new RegExp(
-    `(,\\s*)?${escape(op.parameter)}\\s*:\\s*(?:[^,{\\[\\n]+|\\{[^}]*\\}|\\[[^\\]]*\\])\\s*,?`,
-  );
-  if (!re.test(content)) {
-    // Already absent — idempotent
-    if (!new RegExp(`\\b${escape(op.parameter)}\\s*:`).test(content)) return content;
-  } else {
-    let next = content.replace(re, () => '');
-    next = next.replace(/,\s*,/g, ',').replace(/,\s*}/g, ' }').replace(/{\s*,/g, '{ ');
-    if (next !== content) return next;
-  }
-
-  // AST span splice without reprint
-  const sf = parseSource(fileName, content);
-  let splice: { start: number; end: number } | undefined;
-  const visit = (node: import('typescript').Node) => {
-    if (splice) return;
-    if (
-      ts.isCallExpression(node) &&
-      callMatchesCapability(node, content, op.capabilityId)
-    ) {
-      const obj = findPayloadObjectInCall(node);
-      if (!obj) return;
-      const prop = findProperty(obj, op.parameter);
-      if (!prop) return;
-      const props = obj.properties;
-      const idx = props.indexOf(prop);
-      let start = prop.getFullStart();
-      let end = prop.getEnd();
-      // Include trailing comma if present
-      if (idx >= 0 && idx < props.length - 1) {
-        // keep start at fullStart (includes leading comma/whitespace of this prop)
-      } else if (idx > 0) {
-        // include preceding comma via fullStart
-      }
-      splice = { start, end };
-      return;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sf);
-  if (splice) {
-    let next = content.slice(0, splice.start) + content.slice(splice.end);
-    next = next.replace(/,\s*,/g, ',').replace(/,\s*}/g, ' }').replace(/{\s*,/g, '{ ');
-    return next;
-  }
-  return content;
-}
-
-function addProperty(
-  content: string,
-  _fileName: string,
-  op: Extract<RepairOperation, { type: 'add-object-property' }>,
-): string | null {
-  // Locate capability call payload and insert before its closing brace.
-  const [entity, command] = op.capabilityId.split('.');
-  const patterns: RegExp[] = [];
-  if (entity && command) {
-    patterns.push(
-      new RegExp(
-        `executeCommand\\s*(?:<[^>]*>)?\\s*\\(\\s*["']${escape(entity)}["']\\s*,\\s*["']${escape(command)}["']\\s*,\\s*\\{`,
-      ),
-      new RegExp(
-        `runManifestCommand\\s*\\(\\s*\\{[\\s\\S]*?entity\\s*:\\s*["']${escape(entity)}["'][\\s\\S]*?command\\s*:\\s*["']${escape(command)}["'][\\s\\S]*?body\\s*:\\s*\\{`,
-      ),
-    );
-  }
-
-  for (const re of patterns) {
-    const m = re.exec(content);
-    if (!m) continue;
-    const openBrace = m.index + m[0].length - 1;
-    const close = findMatchingBrace(content, openBrace);
-    if (close < 0) continue;
-    const body = content.slice(openBrace + 1, close);
-    // Idempotent only when the property is already in THIS payload object
-    if (new RegExp(`\\b${escape(op.parameter)}\\s*:`).test(body)) return content;
-    const trimmedBody = body.replace(/\s+$/, '');
-    const needsComma = trimmedBody.trim().length > 0 && !trimmedBody.trimEnd().endsWith(',');
-    const indentMatch = /\n(\s*)\S/.exec(body);
-    const indent = indentMatch?.[1] ?? '  ';
-    const addition = `${needsComma ? ',' : ''}\n${indent}${op.parameter}: ${op.expression}`;
-    return content.slice(0, openBrace + 1) + trimmedBody + addition + '\n' + content.slice(close);
-  }
-
-  return content;
-}
-
-function findMatchingBrace(content: string, openIdx: number): number {
-  let depth = 0;
-  let inStr: string | null = null;
-  for (let i = openIdx; i < content.length; i++) {
-    const ch = content[i]!;
-    if (inStr) {
-      if (ch === inStr && content[i - 1] !== '\\') inStr = null;
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === '`') {
-      inStr = ch;
-      continue;
-    }
-    if (ch === '{') depth++;
-    if (ch === '}') {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
 }
 
 function replaceCall(

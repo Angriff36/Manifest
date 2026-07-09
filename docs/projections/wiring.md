@@ -183,7 +183,7 @@ manifest wiring-remediate --contract … --root apps/app \
 | Kind | When |
 | ---- | ---- |
 | `replace-payload-expression` | Wrong shape (e.g. `.join(",")` where `string[]` required) |
-| `add-required-input` | Required client field missing but proven local source exists |
+| `add-required-input` | Required client field missing **and** a unique proven in-scope source exists (see below) |
 | `remove-invalid-literal` | Finite/enum/range literal with deterministic allowed replacement |
 | `replace-empty-date-sentinel` | Required date sent as `""` with proven local date source |
 | `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it |
@@ -203,9 +203,25 @@ manifest wiring-remediate --contract … --root apps/app \
 
 Missing required values are **never invented**. No new screens are created when no suitable surface exists.
 
+### `add-required-input` source proof
+
+Auto-apply only when Manifest proves the exact real source of the missing value. Supported deterministic sources (ranked):
+
+1. Exact same-name typed function parameter
+2. Exact same-name local variable
+3. Exact same-name object / form property (`form.x`, `values.x`, …)
+4. Strongly proven alias through local data flow
+5. Trusted context declared in Manifest (`from context.*`) — never from the browser
+
+Rejected as `ambiguous-product-decision` or `unsafe-to-apply`: missing source, equal-confidence multiples, wrong-type same-name bindings, type-annotation-only text, unrelated nearby names, a second unresolved required client field, or client sources for trusted parameters.
+
 ### Proof requirements
 
-A repair applies only when Manifest can prove: capability + contract, consumer location, mismatch, and a deterministic code change. After apply, inspection must show the finding resolved. Repeated apply is idempotent.
+A repair applies only when Manifest can prove: capability + contract, consumer location, mismatch, and a deterministic code change. After apply, inspection must show the finding resolved and no new contract mismatch introduced for that capability. Failed verification **does not** keep the patch (in-memory / disk write only after verify). Repeated apply is idempotent.
+
+### Capsule-Pro workflow
+
+See Capsule-Pro canonical unit `manifest.generation.wiring-generation` for the normal generate → inspect → one-defect remediate → verify → stop loop and artifact paths.
 
 ### Pattern adapters
 

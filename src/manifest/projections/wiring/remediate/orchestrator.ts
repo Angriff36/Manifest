@@ -142,6 +142,7 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
       options.contract,
       patch.nextContents,
       inspectConfig,
+      report.mismatches,
     );
 
     if (verification.ok === false) {

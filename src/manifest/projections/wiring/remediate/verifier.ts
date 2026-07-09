@@ -15,6 +15,8 @@ export function verifyRepair(
   contract: WiringContract,
   fileContents: Map<string, string>,
   inspectConfig?: Partial<WiringInspectConfig>,
+  /** Mismatches observed before the patch — used to detect newly introduced defects. */
+  baselineMismatches?: ContractMismatch[],
 ): RepairVerificationResult {
   const report = inspectWiringConsumersSync({
     contract,
@@ -45,8 +47,22 @@ export function verifyRepair(
             : true),
       ));
 
+  const baselineKeys = new Set(
+    (baselineMismatches ?? []).map(mismatchKey),
+  );
+  const newDefects = report.mismatches.filter(m => {
+    if (m.capabilityId !== plan.capabilityId || !m.defect) return false;
+    if (mismatchMatchesPlan(m, plan)) return false;
+    // Pre-existing defects for other parameters/kinds are not "new".
+    if (baselineMismatches && baselineKeys.has(mismatchKey(m))) return false;
+    if (!baselineMismatches) return false;
+    return true;
+  });
+
   const ok =
-    findingResolved && (!requireConsumed || capabilityConsumed === true);
+    findingResolved &&
+    newDefects.length === 0 &&
+    (!requireConsumed || capabilityConsumed === true);
 
   return {
     ok,
@@ -56,8 +72,15 @@ export function verifyRepair(
     message: ok
       ? `Repair verified: ${plan.findingId} resolved`
       : `Repair incomplete: ${plan.findingId} — remaining ${remaining.length} mismatch(es)` +
+        (newDefects.length
+          ? `; introduced ${newDefects.length} new defect(s)`
+          : '') +
         (requireConsumed && !capabilityConsumed ? '; capability not consumed' : ''),
   };
+}
+
+function mismatchKey(m: ContractMismatch): string {
+  return `${m.kind}:${m.capabilityId}:${m.parameter ?? ''}:${m.source.file}`;
 }
 
 function mismatchMatchesPlan(m: ContractMismatch, plan: RepairPlan): boolean {

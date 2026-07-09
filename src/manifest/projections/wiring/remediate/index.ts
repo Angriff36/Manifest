@@ -40,3 +40,12 @@ export {
 export type { RemediateOptions, RemediateMode } from './orchestrator.js';
 
 export { PatternAdapter } from './pattern-adapter.js';
+export {
+  resolveRequiredInputSource,
+  missingRequiredClientParams,
+} from './required-input-source.js';
+export type {
+  ProvenValueSource,
+  SourceProofResult,
+  ProvenSourceKind,
+} from './required-input-source.js';

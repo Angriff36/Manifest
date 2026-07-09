@@ -15,13 +15,24 @@ import type {
   RepairPlan,
   RepairPlanBundle,
   RepairDecisionClass,
-  RepairKind,
   RepairEditSpec,
-  RepairPrecondition,
 } from './types.js';
 import { WIRING_REPAIR_PLAN_SCHEMA } from './types.js';
 import { PatternAdapter } from './pattern-adapter.js';
-import { fingerprintSnippet, readObjectPropertyExpression } from './ast-utils.js';
+import { readObjectPropertyExpression } from './ast-utils.js';
+import {
+  planMissingRequired,
+  planInvalidLiteral,
+  planEmptyDate,
+} from './planner-payload.js';
+import {
+  classify,
+  basePlan,
+  findingIdOf,
+  priorityFor,
+  precondition,
+  escapeRe,
+} from './planner-shared.js';
 
 export interface PlanRepairsOptions {
   contract: WiringContract;
@@ -50,7 +61,6 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
     plans.push(plan);
   }
 
-  // Unwired with proven existing control surface
   for (const finding of options.report.findings) {
     if (finding.status !== 'unwired' && finding.status !== 'ambiguous') continue;
     if (options.capabilityId && finding.capabilityId !== options.capabilityId) continue;
@@ -61,7 +71,7 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
       plans.push(ambiguousUnwiredPlan(cap, finding.message));
       continue;
     }
-    const plan = planWireExistingControl(cap, surface, adapter);
+    const plan = planWireExistingControl(cap, surface);
     if (options.findingId && plan.findingId !== options.findingId) continue;
     plans.push(plan);
   }
@@ -130,7 +140,6 @@ function planWrongShape(
   let fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
   const findingId = findingIdOf(mismatch);
 
-  // Fallback: locate `param: <expr>.join(...)` when AST capability match is weak
   if (!fromExpr || !/\.join\s*\(/.test(fromExpr)) {
     const joinMatch = new RegExp(
       `\\b${escapeRe(param)}\\s*:\\s*([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
@@ -147,7 +156,6 @@ function planWrongShape(
     );
   }
 
-  // parseList(x).join(",") → parseList(x)  OR  Array.from(x).join(",") → Array.from(x)
   const toExpr = fromExpr.replace(/\.join\s*\([^)]*\)\s*$/, '').trim();
   if (!toExpr || toExpr === fromExpr) {
     return classify(
@@ -192,210 +200,6 @@ function planWrongShape(
   );
 }
 
-function planMissingRequired(
-  mismatch: ContractMismatch,
-  cap: WiringCommandDescriptor,
-  evidence: ConsumerEvidence[],
-  content: string,
-  file: string,
-  adapter: PatternAdapter,
-): RepairPlan {
-  const param = mismatch.parameter!;
-  const findingId = findingIdOf(mismatch);
-  const proven = adapter.findLocalValueSource(content, param, file);
-
-  if (!proven) {
-    return classify(
-      basePlan(mismatch, cap, evidence, 'add-required-input', findingId),
-      'ambiguous-product-decision',
-      `Required input '${param}' has no proven local source — will not invent a value`,
-      [],
-    );
-  }
-
-  const edits: RepairEditSpec[] = [
-    {
-      file,
-      description: `Add required ${param} from proven local source ${proven.expression}`,
-      operation: {
-        type: 'add-object-property',
-        parameter: param,
-        expression: proven.expression,
-        capabilityId: cap.capabilityId,
-        provenSource: proven.expression,
-      },
-    },
-  ];
-
-  return classify(
-    {
-      ...basePlan(mismatch, cap, evidence, 'add-required-input', findingId),
-      preconditions: [precondition(file, content, content.slice(0, 200))],
-      postconditions: [
-        {
-          id: 'required-present',
-          description: `Required ${param} present in payload`,
-          resolvedMismatchKinds: ['missing_required_input'],
-        },
-      ],
-      edits,
-      priority: priorityFor('add-required-input', cap),
-    },
-    'auto-fixable',
-    `Required '${param}' is missing but proven local source ${proven.expression} exists`,
-    edits.map(e => e.file),
-  );
-}
-
-function planInvalidLiteral(
-  mismatch: ContractMismatch,
-  cap: WiringCommandDescriptor,
-  evidence: ConsumerEvidence[],
-  content: string,
-  file: string,
-): RepairPlan {
-  const param = mismatch.parameter!;
-  const findingId = findingIdOf(mismatch);
-  const p = cap.parameters.find(x => x.name === param);
-  const fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
-  if (!fromExpr || !p) {
-    return classify(
-      basePlan(mismatch, cap, evidence, 'remove-invalid-literal', findingId),
-      'low-confidence' as RepairDecisionClass,
-      'Could not locate invalid literal expression',
-      [],
-    );
-  }
-
-  // Only auto-fix when surrounding code already uses an allowed value elsewhere
-  // OR when the param is optional and removing is safe — otherwise ambiguous.
-  const allowed = p.constraints.enumValues;
-  const min = p.constraints.min;
-  const max = p.constraints.max;
-
-  let toExpr: string | undefined;
-  if (allowed && allowed.length === 1) {
-    toExpr = JSON.stringify(allowed[0]);
-  } else if (
-    typeof min === 'number' &&
-    typeof max === 'number' &&
-    min === max
-  ) {
-    toExpr = String(min);
-  } else {
-    // Look for nearby allowed literal in same file (deterministic remap hint)
-    const nearby = findNearbyAllowedLiteral(content, param, allowed, min, max);
-    if (nearby) toExpr = nearby;
-  }
-
-  if (!toExpr) {
-    return classify(
-      basePlan(mismatch, cap, evidence, 'remove-invalid-literal', findingId),
-      'ambiguous-product-decision',
-      `Invalid ${param} literal ${fromExpr} has no single deterministic allowed replacement`,
-      [],
-    );
-  }
-
-  const edits: RepairEditSpec[] = [
-    {
-      file,
-      description: `Replace invalid ${param} ${fromExpr} with allowed ${toExpr}`,
-      operation: {
-        type: 'replace-object-property-value',
-        parameter: param,
-        fromExpression: fromExpr,
-        toExpression: toExpr,
-        capabilityId: cap.capabilityId,
-      },
-    },
-  ];
-
-  return classify(
-    {
-      ...basePlan(mismatch, cap, evidence, 'remove-invalid-literal', findingId),
-      preconditions: [precondition(file, content, fromExpr)],
-      postconditions: [
-        {
-          id: 'literal-valid',
-          description: `${param} uses an allowed value`,
-          resolvedMismatchKinds: ['invalid_finite_literal'],
-        },
-      ],
-      edits,
-      priority: priorityFor('remove-invalid-literal', cap),
-    },
-    'auto-fixable',
-    `Invalid finite literal for ${param}; deterministic replacement ${toExpr} proven`,
-    edits.map(e => e.file),
-  );
-}
-
-function planEmptyDate(
-  mismatch: ContractMismatch,
-  cap: WiringCommandDescriptor,
-  evidence: ConsumerEvidence[],
-  content: string,
-  file: string,
-  adapter: PatternAdapter,
-): RepairPlan {
-  const param = mismatch.parameter!;
-  const findingId = findingIdOf(mismatch);
-  const fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
-  const proven = adapter.findLocalValueSource(content, param, file, { preferDate: true });
-
-  if (!fromExpr || fromExpr.replace(/['"]/g, '') !== '') {
-    return classify(
-      basePlan(mismatch, cap, evidence, 'replace-empty-date-sentinel', findingId),
-      'ambiguous-product-decision',
-      'Empty date sentinel not located as a literal ""',
-      [],
-    );
-  }
-
-  if (!proven) {
-    return classify(
-      basePlan(mismatch, cap, evidence, 'replace-empty-date-sentinel', findingId),
-      'ambiguous-product-decision',
-      `Required date '${param}' is "" and no proven local date source exists`,
-      [],
-    );
-  }
-
-  const edits: RepairEditSpec[] = [
-    {
-      file,
-      description: `Replace empty ${param} with proven ${proven.expression}`,
-      operation: {
-        type: 'replace-object-property-value',
-        parameter: param,
-        fromExpression: fromExpr,
-        toExpression: proven.expression,
-        capabilityId: cap.capabilityId,
-      },
-    },
-  ];
-
-  return classify(
-    {
-      ...basePlan(mismatch, cap, evidence, 'replace-empty-date-sentinel', findingId),
-      preconditions: [precondition(file, content, fromExpr)],
-      postconditions: [
-        {
-          id: 'date-nonempty',
-          description: `${param} is not empty string`,
-          resolvedMismatchKinds: ['invalid_date_sentinel'],
-        },
-      ],
-      edits,
-      priority: priorityFor('replace-empty-date-sentinel', cap),
-    },
-    'auto-fixable',
-    `Empty date sentinel for ${param}; proven local source ${proven.expression}`,
-    edits.map(e => e.file),
-  );
-}
-
 function planTrustedSpoof(
   mismatch: ContractMismatch,
   cap: WiringCommandDescriptor,
@@ -420,7 +224,6 @@ function planTrustedSpoof(
     },
   ];
 
-  // Prefer migrating to safe binding when generated bindings pattern exists
   const safe = adapter.findSafeBindingMigration(cap);
   if (safe && pattern?.kind === 'execute_command') {
     edits.push({
@@ -591,8 +394,12 @@ function planStale(
 
 function planWireExistingControl(
   cap: WiringCommandDescriptor,
-  surface: { file: string; controlSymbol: string; bindingCallee: string; ensureImport?: { module: string; names: string[] } },
-  _adapter: PatternAdapter,
+  surface: {
+    file: string;
+    controlSymbol: string;
+    bindingCallee: string;
+    ensureImport?: { module: string; names: string[] };
+  },
 ): RepairPlan {
   const findingId = `unwired:${cap.capabilityId}:${surface.file}`;
   const edits: RepairEditSpec[] = [
@@ -684,125 +491,6 @@ function lowConfidenceSkip(
   };
 }
 
-function basePlan(
-  mismatch: ContractMismatch,
-  cap: WiringCommandDescriptor,
-  evidence: ConsumerEvidence[],
-  kind: RepairKind,
-  findingId: string,
-): Omit<
-  RepairPlan,
-  | 'decision'
-  | 'confidence'
-  | 'automaticApplicationAllowed'
-  | 'rationale'
-  | 'sourceFiles'
-  | 'edits'
-  | 'priority'
-> & { edits: RepairEditSpec[]; priority: number; sourceFiles: string[] } {
-  return {
-    findingId,
-    entity: cap.entity,
-    command: cap.command,
-    capabilityId: cap.capabilityId,
-    repairKind: kind,
-    mismatch,
-    evidence,
-    sourceFiles: [mismatch.source.file],
-    consumerTrace: [mismatch.source, ...evidence.map(e => e.source)],
-    preconditions: [],
-    postconditions: [],
-    edits: [],
-    verificationMethod: 'reinspect',
-    priority: 50,
-  };
-}
-
-function classify(
-  plan: Omit<
-    RepairPlan,
-    'decision' | 'confidence' | 'automaticApplicationAllowed' | 'rationale' | 'sourceFiles'
-  > & { sourceFiles?: string[]; rationale?: string },
-  decision: RepairDecisionClass | 'low-confidence',
-  rationale: string,
-  sourceFiles: string[],
-): RepairPlan {
-  const normalized: RepairDecisionClass =
-    decision === 'low-confidence' ? 'unsafe-to-apply' : decision;
-  const allowed =
-    normalized === 'auto-fixable' || normalized === 'repairable-with-existing-pattern';
-  return {
-    ...plan,
-    decision: normalized,
-    confidence: allowed ? 'high' : normalized === 'unsafe-to-apply' ? 'low' : 'medium',
-    automaticApplicationAllowed: allowed,
-    rationale,
-    sourceFiles: sourceFiles.length ? sourceFiles : plan.sourceFiles ?? [],
-  };
-}
-
-function precondition(file: string, content: string, snippet: string): RepairPrecondition {
-  return {
-    id: `fp:${file}:${fingerprintSnippet(snippet)}`,
-    description: `Source still contains expected snippet in ${file}`,
-    sourceFingerprint: fingerprintSnippet(snippet || content.slice(0, 120)),
-  };
-}
-
-function findingIdOf(mismatch: ContractMismatch): string {
-  return `${mismatch.kind}:${mismatch.capabilityId}:${mismatch.parameter ?? ''}:${mismatch.source.file}`;
-}
-
-function priorityFor(kind: RepairKind, cap: WiringCommandDescriptor): number {
-  // Prefer broken primary create/update/delete, then theatre, trusted, stale, lifecycle, invalidation, unwired
-  const cmd = cap.command.toLowerCase();
-  const isPrimary =
-    cmd === 'create' || cmd === 'update' || cmd === 'delete' || cmd.startsWith('create');
-  const base =
-    kind === 'replace-payload-expression' || kind === 'add-required-input'
-      ? 10
-      : kind === 'move-trusted-input-server-side' || kind === 'migrate-to-safe-binding'
-        ? 20
-      : kind === 'replace-empty-date-sentinel' || kind === 'remove-invalid-literal'
-        ? 15
-      : kind === 'replace-fake-lifecycle-binding'
-        ? 30
-      : kind === 'add-invalidation'
-        ? 40
-      : kind === 'wire-existing-control'
-        ? 50
-        : 60;
-  return isPrimary ? base : base + 5;
-}
-
-function findNearbyAllowedLiteral(
-  content: string,
-  param: string,
-  enumValues: string[] | undefined,
-  min: number | undefined,
-  max: number | undefined,
-): string | undefined {
-  if (enumValues) {
-    for (const v of enumValues) {
-      const re = new RegExp(`\\b${escapeRe(param)}\\s*[:=]\\s*["']${escapeRe(v)}["']`);
-      if (re.test(content)) return JSON.stringify(v);
-    }
-  }
-  if (typeof min === 'number' && typeof max === 'number') {
-    for (let n = min; n <= max; n++) {
-      const re = new RegExp(`\\b${escapeRe(param)}\\s*[:=]\\s*${n}\\b`);
-      if (re.test(content)) return String(n);
-    }
-    // Default clamp to min when only one invalid literal and range is small
-    if (max - min <= 4) return String(min);
-  }
-  return undefined;
-}
-
 function normalizePath(p: string): string {
   return p.replace(/\\/g, '/');
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

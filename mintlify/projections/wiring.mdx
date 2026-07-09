@@ -78,7 +78,7 @@ manifest wiring-remediate --contract src/generated/manifest-wiring-contract.json
   --root apps/app --root apps/api --mode one-defect
 ```
 
-Modes: `plan`, `dry-run`, `apply`, `one-defect`. Auto-fixable findings are patched via AST-aware edits and re-inspected. Ambiguous product placement is never auto-edited.
+Modes: `plan`, `dry-run`, `apply`, `one-defect`. Auto-fixable findings are patched via AST-aware edits and re-inspected. Ambiguous product placement is never auto-edited. `add-required-input` applies only when a unique proven in-scope value source exists (never invented defaults). Failed verification discards the patch.
 
 ## Boundary
 
