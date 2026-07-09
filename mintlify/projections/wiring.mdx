@@ -69,12 +69,23 @@ Repo-wide scans are supported: Capsule-Pro-scale roots complete in a few seconds
 
 See the full reference in the repo: `docs/projections/wiring.md`.
 
+## Automatic remediation
+
+Manifest does **not** design the UI. When the correct integration is derivable from Manifest truth and an existing product surface, Manifest plans and applies a deterministic repair:
+
+```bash
+manifest wiring-remediate --contract src/generated/manifest-wiring-contract.json \
+  --root apps/app --root apps/api --mode one-defect
+```
+
+Modes: `plan`, `dry-run`, `apply`, `one-defect`. Auto-fixable findings are patched via AST-aware edits and re-inspected. Ambiguous product placement is never auto-edited.
+
 ## Boundary
 
 | Manifest | Application |
 | --- | --- |
 | Command truth, types, ownership, constraints | Layout, visuals, labels |
 | Safe bindings + invalidation metadata | Button vs menu vs gesture |
-| Coverage truth | Explicit consumer registry |
+| Coverage truth + deterministic wiring repair | Explicit consumer registry / product placement |
 
 Full reference: [docs/projections/wiring.md](https://github.com/Angriff36/Manifest/blob/main/docs/projections/wiring.md) in the repository.

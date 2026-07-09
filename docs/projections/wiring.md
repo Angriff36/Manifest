@@ -150,6 +150,69 @@ Defaults: fail on `stale-consumer` and `contract-mismatch`. Ambiguous never fail
 
 Library entry: `@angriff36/manifest/projections/wiring` → `inspectWiringConsumers`.
 
+## Automatic remediation
+
+**Manifest does not design the UI.**  
+**Manifest automatically wires and repairs application code when the correct integration is derivable from Manifest truth and the existing product surface.**
+
+Pipeline:
+
+```text
+Manifest truth → wiring contract → inspect application
+  → remediation plan → AST patch → reinspect / verify
+```
+
+```bash
+# Plan only (no writes)
+manifest wiring-remediate --contract src/generated/manifest-wiring-contract.json \
+  --root apps/app --root apps/api --mode plan
+
+# Dry-run: show what would change
+manifest wiring-remediate --contract … --root apps/app --mode dry-run
+
+# One-defect mode: highest-confidence auto-fixable finding only
+manifest wiring-remediate --contract … --root apps/app --mode one-defect
+
+# Apply all auto-applicable plans for one capability
+manifest wiring-remediate --contract … --root apps/app \
+  --mode apply --capability Ingredient.create --auto-fixable-only
+```
+
+### Repair kinds
+
+| Kind | When |
+| ---- | ---- |
+| `replace-payload-expression` | Wrong shape (e.g. `.join(",")` where `string[]` required) |
+| `add-required-input` | Required client field missing but proven local source exists |
+| `remove-invalid-literal` | Finite/enum/range literal with deterministic allowed replacement |
+| `replace-empty-date-sentinel` | Required date sent as `""` with proven local date source |
+| `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it |
+| `migrate-to-safe-binding` | Prefer generated bind helper / safe path |
+| `replace-fake-lifecycle-binding` | Control remapped to proven canonical lifecycle command |
+| `wire-existing-control` | Placeholder/local-only control matches a capability |
+| `add-invalidation` | Mutation succeeds but local data pattern lacks invalidation |
+
+### Decision classes
+
+| Class | Auto-apply? |
+| ----- | ----------- |
+| `auto-fixable` | yes |
+| `repairable-with-existing-pattern` | yes (reuse dominant local pattern) |
+| `ambiguous-product-decision` | **no** — placement/workflow intent unclear |
+| `unsafe-to-apply` | **no** — destructive/security/low proof |
+
+Missing required values are **never invented**. No new screens are created when no suitable surface exists.
+
+### Proof requirements
+
+A repair applies only when Manifest can prove: capability + contract, consumer location, mismatch, and a deterministic code change. After apply, inspection must show the finding resolved. Repeated apply is idempotent.
+
+### Pattern adapters
+
+Technical choices follow the application’s existing pattern (generated client, `executeCommand`, `runManifestCommand`, server actions, API/composite routes, React Query invalidation, Next.js App Router). Manifest reuses nearby patterns; it does not introduce a second state-management system.
+
+Library entry: `@angriff36/manifest/projections/wiring` → `remediateWiring` / `planWiringRepairs`.
+
 ## Registry-only coverage (legacy / override gate)
 
 `manifest wiring-coverage` still compares contract ↔ explicit registry when you want a declaration-only gate without source inspection:

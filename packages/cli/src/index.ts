@@ -37,6 +37,7 @@ import { enforceSurfaceCommand } from './commands/enforce-surface.js';
 import { coverageCommand } from './commands/coverage.js';
 import { wiringCoverageCommand } from './commands/wiring-coverage.js';
 import { wiringInspectCommand } from './commands/wiring-inspect.js';
+import { wiringRemediateCommand } from './commands/wiring-remediate.js';
 import { integrationCheckCommand } from './commands/integration-check.js';
 import {
   configValidateCommand,
@@ -989,6 +990,59 @@ program
       strict: options.strict,
       strictCoverage: options.strictCoverage,
       failOn: options.failOn,
+    });
+  });
+
+/**
+ * manifest wiring-remediate
+ *
+ * Automatic application wiring repair: inspect → plan → apply → verify.
+ * Does not design UI. One-defect mode patches a single proven finding.
+ */
+program
+  .command('wiring-remediate')
+  .description(
+    'Plan or apply deterministic Manifest wiring repairs against application source',
+  )
+  .requiredOption('--contract <path>', 'Path to manifest-wiring-contract.json')
+  .option('--root <path>', 'Application source root (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option('--config <path>', 'Optional wiring-inspect config JSON')
+  .option('--overrides <path>', 'Optional explicit consumers registry (overrides only)')
+  .option('--include <pattern>', 'Include path substring (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option('--exclude <pattern>', 'Exclude path substring (repeatable)', (val: string, prev: string[]) => {
+    prev.push(val);
+    return prev;
+  }, [] as string[])
+  .option(
+    '--mode <mode>',
+    'plan | dry-run | apply | one-defect (default: plan)',
+    'plan',
+  )
+  .option('--capability <id>', 'Limit to Entity.command capability id')
+  .option('--finding <id>', 'Limit to a specific finding id')
+  .option('--auto-fixable-only', 'Apply only auto-fixable decisions', false)
+  .option('--no-write', 'Do not write files even in apply modes')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .action(async (options = {}) => {
+    await wiringRemediateCommand({
+      contract: options.contract,
+      root: options.root,
+      config: options.config,
+      overrides: options.overrides,
+      include: options.include?.length ? options.include : undefined,
+      exclude: options.exclude?.length ? options.exclude : undefined,
+      mode: options.mode,
+      capability: options.capability,
+      finding: options.finding,
+      autoFixableOnly: options.autoFixableOnly,
+      write: options.write,
+      format: options.format,
     });
   });
 

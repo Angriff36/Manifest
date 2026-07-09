@@ -38,7 +38,10 @@ export interface TraceResult {
 export class ConsumerTracer {
   private readonly parser: ProductionFlowParser;
   private readonly routeHelpers: RouteHelperIndex;
-  private readonly moduleIntentCache = new Map<string, ManifestInvocation[]>();
+  private readonly moduleIntentCache = new Map<
+    string,
+    Array<ManifestInvocation & { file: string }>
+  >();
 
   constructor(
     private readonly fileContents: Map<string, string>,
@@ -153,11 +156,11 @@ export class ConsumerTracer {
     if (!content) return;
     for (const link of this.parser.resolveHandlersFromUi(content, this.routeHelpers)) {
       for (const inv of this.manifestIntentsForModule(link.handlerPath)) {
-        recordInv(inv, link.handlerPath, true);
+        recordInv(inv, inv.file, true);
         const ev = makeEvidence(inv, uiFile, content, 'api_route', [
           { label: normalizeRepoPath(uiFile), file: uiFile },
           { label: link.apiPath },
-          { label: normalizeRepoPath(link.handlerPath), file: link.handlerPath },
+          { label: normalizeRepoPath(inv.file), file: inv.file },
           { label: inv.intent },
         ]);
         if (capabilityIds.has(inv.intent)) pushProven(ev);
@@ -217,10 +220,11 @@ export class ConsumerTracer {
       const via: ConsumerTraceVia = isServerAction ? 'server_action' : 'imported_helper';
 
       for (const inv of this.manifestIntentsForModule(resolved)) {
-        recordInv(inv, resolved, true);
+        recordInv(inv, inv.file, true);
         const ev = makeEvidence(inv, uiFile, content, via, [
           { label: normalizeRepoPath(uiFile), file: uiFile },
           { label: usedSymbols[0]!, file: resolved },
+          { label: normalizeRepoPath(inv.file), file: inv.file },
           { label: inv.intent },
         ], usedSymbols[0]);
         if (capabilityIds.has(inv.intent)) pushProven(ev);
@@ -229,12 +233,12 @@ export class ConsumerTracer {
 
       for (const link of this.parser.resolveHandlersFromUi(moduleContent, this.routeHelpers)) {
         for (const inv of this.manifestIntentsForModule(link.handlerPath)) {
-          recordInv(inv, link.handlerPath, true);
+          recordInv(inv, inv.file, true);
           const ev = makeEvidence(inv, uiFile, content, via, [
             { label: normalizeRepoPath(uiFile), file: uiFile },
             { label: usedSymbols[0]!, file: resolved },
             { label: link.apiPath },
-            { label: normalizeRepoPath(link.handlerPath), file: link.handlerPath },
+            { label: normalizeRepoPath(inv.file), file: inv.file },
             { label: inv.intent },
           ], usedSymbols[0]);
           if (capabilityIds.has(inv.intent)) pushProven(ev);
@@ -244,7 +248,9 @@ export class ConsumerTracer {
     }
   }
 
-  private manifestIntentsForModule(entryFile: string): ManifestInvocation[] {
+  private manifestIntentsForModule(
+    entryFile: string,
+  ): Array<ManifestInvocation & { file: string }> {
     const cacheKey = this.caseInsensitive
       ? normalizeRepoPath(entryFile).toLowerCase()
       : normalizeRepoPath(entryFile);
@@ -256,16 +262,22 @@ export class ConsumerTracer {
       this.fileContents,
       this.caseInsensitive,
     );
-    const intents = new Map<string, ManifestInvocation>();
+    // Keep every invocation with its real defining file. Collapsing to one
+    // intent→inv and stamping the barrel import path loses payload locations
+    // (e.g. Dish.create .join lives in importer.ts, not actions.ts).
+    const result: Array<ManifestInvocation & { file: string }> = [];
+    const seen = new Set<string>();
     for (const file of files) {
       if (this.surface.isGeneratedDefinition(file)) continue;
       const content = this.fileContents.get(file);
       if (!content) continue;
       for (const inv of extractAllManifestInvocations(content)) {
-        intents.set(inv.intent, inv);
+        const key = `${file}|${inv.intent}|${inv.index}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({ ...inv, file });
       }
     }
-    const result = [...intents.values()];
     this.moduleIntentCache.set(cacheKey, result);
     return result;
   }

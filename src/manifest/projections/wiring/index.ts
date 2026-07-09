@@ -39,3 +39,27 @@ export type {
   ContractMismatch,
   InspectCoverageFinding,
 } from './inspect/index.js';
+
+export {
+  planWiringRepairs,
+  applyRepairPlan,
+  applyRepairPlans,
+  verifyRepair,
+  remediateWiring,
+  remediateWiringSync,
+  selectNextAutoFixable,
+  formatRemediateReportText,
+  WIRING_REPAIR_PLAN_SCHEMA,
+  WIRING_REMEDIATE_REPORT_SCHEMA,
+  PatternAdapter,
+} from './remediate/index.js';
+export type {
+  RepairKind,
+  RepairDecisionClass,
+  RepairPlan,
+  RepairPlanBundle,
+  RemediateReport,
+  RemediateOptions,
+  RemediateMode,
+  AppliedRepairResult,
+} from './remediate/index.js';
