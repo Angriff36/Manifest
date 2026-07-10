@@ -87,16 +87,20 @@ export function priorityFor(kind: RepairKind, cap: WiringCommandDescriptor): num
   const isPrimary =
     cmd === 'create' || cmd === 'update' || cmd === 'delete' || cmd.startsWith('create');
   const base =
-    kind === 'expand-partial-to-full-body'
+    kind === 'move-trusted-input-server-side'
       ? 5
-      : kind === 'replace-payload-expression' || kind === 'add-required-input'
-      ? 10
-      : kind === 'move-trusted-input-server-side' || kind === 'migrate-to-safe-binding'
-        ? 20
-      : kind === 'replace-empty-date-sentinel' || kind === 'remove-invalid-literal'
+      : kind === 'replace-payload-expression' || kind === 'remove-invalid-literal'
+        ? 10
+      : kind === 'replace-empty-date-sentinel'
+        ? 12
+      : kind === 'add-required-input'
         ? 15
+      : kind === 'migrate-to-safe-binding'
+        ? 20
       : kind === 'replace-fake-lifecycle-binding'
-        ? 30
+        ? 25
+      : kind === 'expand-partial-to-full-body'
+        ? 35
       : kind === 'add-invalidation'
         ? 40
       : kind === 'wire-existing-control'

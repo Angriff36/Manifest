@@ -292,9 +292,12 @@ export function selectNextAutoFixable(plans: RepairPlan[]): RepairPlan | undefin
 
 /** Deterministic priority for one-defect candidate selection. */
 function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
+  // Proven existing-consumer mismatches before speculative UI wiring.
+  // Order: trusted → shape → finite literal → date → missing required →
+  // safe-binding → stale/lifecycle → expand-partial → invalidation → wire-existing.
   const kindRank = (kind: string): number => {
     switch (kind) {
-      case 'expand-partial-to-full-body':
+      case 'move-trusted-input-server-side':
         return 0;
       case 'replace-payload-expression':
         return 1;
@@ -302,17 +305,17 @@ function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
         return 2;
       case 'replace-empty-date-sentinel':
         return 3;
-      case 'move-trusted-input-server-side':
-        return 4;
-      case 'replace-fake-lifecycle-binding':
-        return 5;
-      case 'migrate-to-safe-binding':
-        return 6;
-      case 'add-invalidation':
-        return 7;
-      case 'wire-existing-control':
-        return 8;
       case 'add-required-input':
+        return 4;
+      case 'migrate-to-safe-binding':
+        return 5;
+      case 'replace-fake-lifecycle-binding':
+        return 6;
+      case 'expand-partial-to-full-body':
+        return 7;
+      case 'add-invalidation':
+        return 8;
+      case 'wire-existing-control':
         return 9;
       default:
         return 10;

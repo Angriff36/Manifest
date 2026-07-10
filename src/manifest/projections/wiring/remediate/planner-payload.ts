@@ -204,7 +204,15 @@ export function planEmptyDate(
   const param = mismatch.parameter!;
   const findingId = findingIdOf(mismatch);
   const fromExpr = readObjectPropertyExpression(content, param, cap.capabilityId);
-  const proven = adapter.findLocalValueSource(content, param, file, { preferDate: true });
+  const paramDesc = cap.parameters.find(p => p.name === param);
+  const preferIsoString =
+    paramDesc?.constraints.dateLike === true ||
+    paramDesc?.irTypeName === 'datetime' ||
+    paramDesc?.irTypeName === 'date';
+  const proven = adapter.findLocalValueSource(content, param, file, {
+    preferDate: true,
+    preferIsoString,
+  });
 
   if (!fromExpr || fromExpr.replace(/['"]/g, '') !== '') {
     return classify(

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.13] - 2026-07-10
+
+### Added
+
+- Wiring remediate: deterministic `replace-empty-date-sentinel` from proven local Date sources with stem affinity (e.g. `dueByTime` ← `dueByDate.toISOString()`); one-defect prefers proven consumer mismatches over speculative `wire-existing-control`
+
 ## [3.4.12] - 2026-07-10
 
 ### Fixed

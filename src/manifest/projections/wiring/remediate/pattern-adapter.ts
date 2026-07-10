@@ -10,6 +10,7 @@ import {
   proveControlSemanticMatch,
   type ControlSemanticSurface,
 } from './control-semantic-match.js';
+import { findProvenDateSource } from './date-source.js';
 import { proveWireExistingControlPreflight } from './wire-control-preflight.js';
 
 export interface LocalValueSource {
@@ -82,7 +83,7 @@ export class PatternAdapter {
     content: string,
     param: string,
     _file: string,
-    opts?: { preferDate?: boolean },
+    opts?: { preferDate?: boolean; preferIsoString?: boolean },
   ): LocalValueSource | undefined {
     // form.param / values.param / data.param / state.param / input.param
     const memberPatterns = [
@@ -130,11 +131,11 @@ export class PatternAdapter {
     }
 
     if (opts?.preferDate) {
-      const dateId = /\b(dueDate|date|scheduledFor|startsAt|endsAt)\b/.exec(content);
-      if (dateId && dateId[1] !== param) {
-        if (new RegExp(`\\b(?:const|let|var)\\s+${escape(dateId[1]!)}\\s*=`).test(content)) {
-          return { expression: dateId[1]!, kind: 'identifier' };
-        }
+      const proven = findProvenDateSource(content, param, {
+        preferIsoString: opts.preferIsoString === true,
+      });
+      if (proven) {
+        return { expression: proven.expression, kind: 'identifier' };
       }
     }
 
