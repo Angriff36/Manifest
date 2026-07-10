@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.21] - 2026-07-10
+
+### Added
+
+- Wiring remediate: `add-required-input` proves same-call `runManifestCommand` runtime `user: { id: <expr> }` as the source for a missing client `userId` (e.g. `Proposal.remove` body ← `user.id`), without inventing actor context or borrowing from other functions
+
+### Fixed
+
+- Wiring remediate: `callMatchesCapability` no longer matches arbitrary nearby calls from a text window (e.g. `requireCurrentUser()` sitting above a `runManifestCommand`), which blocked same-call runtime-user repairs
+
 ## [3.4.20] - 2026-07-10
 
 ### Fixed

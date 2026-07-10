@@ -75,7 +75,7 @@ export function readObjectPropertyExpression(
 
 export function callMatchesCapability(
   node: ts.CallExpression,
-  content: string,
+  _content: string,
   capabilityId: string,
 ): boolean {
   const [entity, command] = capabilityId.split('.');
@@ -106,10 +106,15 @@ export function callMatchesCapability(
   // generated client: entityCommand / taskCreate style
   const camel = `${entity[0]!.toLowerCase()}${entity.slice(1)}${command[0]!.toUpperCase()}${command.slice(1)}`;
   if (text === camel || text.endsWith(`.${camel}`)) return true;
-  // Also match capabilityId in surrounding text window
-  const start = node.getStart();
-  const window = content.slice(Math.max(0, start - 40), start + 120);
-  return window.includes(`"${entity}"`) && window.includes(`"${command}"`);
+  // Other wrappers that pass { entity, command, … } on the call itself —
+  // never match from nearby text (that falsely hits requireCurrentUser() etc.).
+  const arg0 = node.arguments[0];
+  if (arg0 && ts.isObjectLiteralExpression(arg0)) {
+    const e = readStringProp(arg0, 'entity');
+    const c = readStringProp(arg0, 'command');
+    if (e === entity && c === command) return true;
+  }
+  return false;
 }
 
 function findPayloadObject(node: ts.CallExpression): ts.ObjectLiteralExpression | undefined {

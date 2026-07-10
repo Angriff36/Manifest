@@ -12,6 +12,7 @@ import {
   collectObjectFormProperties,
 } from './required-input-form-source.js';
 import { collectSiblingParamBindings } from './required-input-sibling-source.js';
+import { collectSameCallRuntimeUserId } from './required-input-runtime-user-source.js';
 
 /** Innermost → outermost callables that close over the capability call. */
 export function enclosingCallableChain(node: ts.Node): ts.Node[] {
@@ -49,6 +50,9 @@ export function collectCandidates(
     collectSameNameLocals(scope, sf, callPos, name, out);
     collectUseStateBinding(scope, sf, callPos, name, out);
   }
+
+  // Same runManifestCommand call already passes user: { id: <expr> }
+  collectSameCallRuntimeUserId(call, sf, name, out);
 
   // Sibling calls in the outermost callable already pass param: expr
   if (capabilityId) {
