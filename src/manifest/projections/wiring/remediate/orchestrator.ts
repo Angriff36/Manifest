@@ -123,13 +123,9 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
   const applied: AppliedRepairResult[] = [];
   const changedFiles = new Set<string>();
   let attemptedPatches = 0;
+  // Every non-executable wire-existing-control plan was rejected before patching.
   let preflightRejected = plans.filter(
-    p =>
-      p.repairKind === 'wire-existing-control' &&
-      !p.automaticApplicationAllowed &&
-      /binding|import|export|construct|identity|input|intent|entity|handler|preflight/i.test(
-        p.rationale,
-      ),
+    p => p.repairKind === 'wire-existing-control' && !p.automaticApplicationAllowed,
   ).length;
 
   for (const plan of selectable) {

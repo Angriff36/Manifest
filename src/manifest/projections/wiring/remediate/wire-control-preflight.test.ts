@@ -209,9 +209,10 @@ describe('wire-existing-control preflight (reject before patch)', () => {
     });
     const text = (await import('./orchestrator.js')).formatRemediateReportText(result);
     expect(text).toMatch(/Attempted patches:\s*0/);
+    expect(text).toMatch(/Preflight rejected:\s*[1-9]/);
     expect(text).not.toMatch(/Repair incomplete/);
     expect(text).not.toMatch(/Binding eventConfirm not present/);
-    expect(result.preflightRejected ?? 0).toBeGreaterThanOrEqual(0);
+    expect(result.preflightRejected ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   it('9–10. one-defect continues past preflight reject to a contract repair', async () => {
