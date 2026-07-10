@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.10] - 2026-07-10
+
 ### Fixed
 
 - Wiring remediate: `wire-existing-control` requires exact control-local action-intent (not same-entity/page); instance calls must pass identity (reject empty `{}`); refuse to replace create-dialog / unrelated handlers; patch targets the proven control only
