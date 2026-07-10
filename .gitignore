@@ -54,11 +54,20 @@ test-results/
 .bolt/
 .claude/worktrees/
 .codex-main-push/
+.cursor/
 .opencode/
+.tmp-pack/
 claude-code-plans/
 codex-plans/
 tasks/
 tasks/lessons.md
+IMPLEMENTATION_PLAN.md
+PROMPT_build.md
+PROMPT_plan.md
+irexplained.md
+loop.sh
+manifestanalysis.txt
+sonar-project.properties
 
 # Session / report files that may carry secrets
 session-ses_*.md
@@ -68,7 +77,6 @@ pathlens-report-*.json
 *.zip
 angriff36-manifest-*.tgz
 junk/
-scripts/
 
 # Nested git worktrees (registered inside the repo). The superproject's
 # `git add -A` does NOT auto-exclude these, so they must be ignored here.
@@ -80,6 +88,7 @@ scripts/
 /debug-*.mjs
 /debug-*.mts
 /debug-*.ts
+/debug-*.html
 /verify-aggregates.mts
 /constraint-test-verify.spec.ts
 
