@@ -3,8 +3,16 @@
  * Only emits metadata that is statically provable — never invents semantics.
  */
 
-import type { IR, IRCommand, IREntity, IREnum, IRExpression, IRParameter, IRType } from '../../ir.js';
 import { analyzeConstraints } from '../../constraint-analysis.js';
+import type {
+  IR,
+  IRCommand,
+  IREntity,
+  IREnum,
+  IRExpression,
+  IRParameter,
+  IRType,
+} from '../../ir.js';
 import { resolveRouteContract } from '../shared/route-contract.js';
 import type {
   TrustedSourceKind,
@@ -20,16 +28,12 @@ import { WIRING_CONTRACT_SCHEMA } from './types.js';
 
 function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: boolean): string {
   if (type.name === 'array' || type.name === 'list') {
-    const inner = type.generic
-      ? irTypeToTs(type.generic, enums, dateAsString)
-      : 'unknown';
+    const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
     const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
     return type.nullable ? `${elem} | null` : elem;
   }
   if (type.name === 'map') {
-    const inner = type.generic
-      ? irTypeToTs(type.generic, enums, dateAsString)
-      : 'unknown';
+    const inner = type.generic ? irTypeToTs(type.generic, enums, dateAsString) : 'unknown';
     const base = `Record<string, ${inner}>`;
     return type.nullable ? `${base} | null` : base;
   }
@@ -38,7 +42,7 @@ function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: bool
   }
   const enumDef = enums.get(type.name);
   if (enumDef) {
-    const union = enumDef.values.map(v => JSON.stringify(v.name)).join(' | ');
+    const union = enumDef.values.map((v) => JSON.stringify(v.name)).join(' | ');
     return type.nullable ? `${union} | null` : union;
   }
   const map: Record<string, string> = {
@@ -70,12 +74,24 @@ function irTypeToTs(type: IRType, enums: Map<string, IREnum>, dateAsString: bool
 }
 
 function classifyTrustedSource(path: string): TrustedSourceKind {
-  if (path === 'context.actorId' || path === 'context.user.id') return 'actor';
-  if (path === 'context.tenantId') return 'tenant';
-  if (path === 'context.orgId') return 'org';
-  if (path === 'context.requestId') return 'request';
-  if (path.endsWith('.id') && path.startsWith('context.')) return 'routeEntityId';
-  if (path.startsWith('context.')) return 'context';
+  if (path === 'context.actorId' || path === 'context.user.id') {
+    return 'actor';
+  }
+  if (path === 'context.tenantId') {
+    return 'tenant';
+  }
+  if (path === 'context.orgId') {
+    return 'org';
+  }
+  if (path === 'context.requestId') {
+    return 'request';
+  }
+  if (path.endsWith('.id') && path.startsWith('context.')) {
+    return 'routeEntityId';
+  }
+  if (path.startsWith('context.')) {
+    return 'context';
+  }
   return 'unknown';
 }
 
@@ -91,11 +107,13 @@ function constraintsForParam(
   const out: WiringInputConstraints = {};
   const enumDef = enums.get(param.type.name);
   if (enumDef) {
-    out.enumValues = enumDef.values.map(v => v.name);
+    out.enumValues = enumDef.values.map((v) => v.name);
   }
   if (param.type.name === 'date' || param.type.name === 'datetime') {
     out.dateLike = true;
-    if (param.required) out.rejectEmptyString = true;
+    if (param.required) {
+      out.rejectEmptyString = true;
+    }
   }
 
   const analysis = analyzeConstraints(command.constraints ?? []);
@@ -103,22 +121,36 @@ function constraintsForParam(
 
   for (const range of analysis.numericRanges) {
     const key = stripSelfPrefix(range.propertyPath);
-    if (!names.has(range.propertyPath) && !names.has(key) && key !== param.name) continue;
-    if (range.min !== undefined) out.min = range.min;
-    if (range.max !== undefined) out.max = range.max;
+    if (!(names.has(range.propertyPath) || names.has(key)) && key !== param.name) {
+      continue;
+    }
+    if (range.min !== undefined) {
+      out.min = range.min;
+    }
+    if (range.max !== undefined) {
+      out.max = range.max;
+    }
   }
   for (const len of analysis.lengthConstraints) {
     const key = stripSelfPrefix(len.propertyPath);
-    if (!names.has(len.propertyPath) && !names.has(key) && key !== param.name) continue;
+    if (!(names.has(len.propertyPath) || names.has(key)) && key !== param.name) {
+      continue;
+    }
     if (len.minLength !== undefined) {
       out.minLength = len.minLength;
-      if (len.minLength >= 1) out.nonEmpty = true;
+      if (len.minLength >= 1) {
+        out.nonEmpty = true;
+      }
     }
-    if (len.maxLength !== undefined) out.maxLength = len.maxLength;
+    if (len.maxLength !== undefined) {
+      out.maxLength = len.maxLength;
+    }
   }
   for (const pat of analysis.patternConstraints) {
     const key = stripSelfPrefix(pat.propertyPath);
-    if (!names.has(pat.propertyPath) && !names.has(key) && key !== param.name) continue;
+    if (!(names.has(pat.propertyPath) || names.has(key)) && key !== param.name) {
+      continue;
+    }
     out.pattern = pat.pattern;
   }
 
@@ -145,14 +177,22 @@ function collectBareParamBounds(
       if (name === 'between' && expr.args.length >= 3) {
         const lo = literalNumber(expr.args[1]);
         const hi = literalNumber(expr.args[2]);
-        if (lo !== undefined) out.min = lo;
-        if (hi !== undefined) out.max = hi;
+        if (lo !== undefined) {
+          out.min = lo;
+        }
+        if (hi !== undefined) {
+          out.max = hi;
+        }
       } else if (name === 'min' && expr.args.length >= 2) {
         const lo = literalNumber(expr.args[1]);
-        if (lo !== undefined) out.min = lo;
+        if (lo !== undefined) {
+          out.min = lo;
+        }
       } else if (name === 'max' && expr.args.length >= 2) {
         const hi = literalNumber(expr.args[1]);
-        if (hi !== undefined) out.max = hi;
+        if (hi !== undefined) {
+          out.max = hi;
+        }
       }
     }
     if (
@@ -168,10 +208,18 @@ function collectBareParamBounds(
     if (left.kind === 'identifier' && left.name === paramName && right.kind === 'literal') {
       const n = literalNumber(right);
       if (n !== undefined) {
-        if (operator === '>=') out.min = n;
-        if (operator === '>') out.min = n + 1;
-        if (operator === '<=') out.max = n;
-        if (operator === '<') out.max = n - 1;
+        if (operator === '>=') {
+          out.min = n;
+        }
+        if (operator === '>') {
+          out.min = n + 1;
+        }
+        if (operator === '<=') {
+          out.max = n;
+        }
+        if (operator === '<') {
+          out.max = n - 1;
+        }
       }
     }
     if (
@@ -185,14 +233,20 @@ function collectBareParamBounds(
       if (n !== undefined) {
         if (operator === '>=') {
           out.minLength = n;
-          if (n >= 1) out.nonEmpty = true;
+          if (n >= 1) {
+            out.nonEmpty = true;
+          }
         }
         if (operator === '>') {
           out.minLength = n + 1;
           out.nonEmpty = true;
         }
-        if (operator === '<=') out.maxLength = n;
-        if (operator === '<') out.maxLength = n - 1;
+        if (operator === '<=') {
+          out.maxLength = n;
+        }
+        if (operator === '<') {
+          out.maxLength = n - 1;
+        }
       }
     }
     collectBareParamBounds(left, paramName, out);
@@ -201,23 +255,33 @@ function collectBareParamBounds(
 }
 
 function literalNumber(expr: IRExpression): number | undefined {
-  if (expr.kind === 'literal' && expr.value?.kind === 'number') return expr.value.value;
-  return undefined;
+  if (expr.kind === 'literal' && expr.value?.kind === 'number') {
+    return expr.value.value;
+  }
+  return;
 }
 
 function extractLifecycleTransitions(
   command: IRCommand,
   entity: IREntity | undefined,
 ): WiringLifecycleTransition[] {
-  if (!entity?.transitions?.length) return [];
+  if (!entity?.transitions?.length) {
+    return [];
+  }
   const out: WiringLifecycleTransition[] = [];
   for (const action of command.actions) {
-    if (action.kind !== 'mutate' || !action.target) continue;
+    if (action.kind !== 'mutate' || !action.target) {
+      continue;
+    }
     const prop = action.target;
-    const rules = entity.transitions.filter(t => t.property === prop);
-    if (rules.length === 0) continue;
+    const rules = entity.transitions.filter((t) => t.property === prop);
+    if (rules.length === 0) {
+      continue;
+    }
     const toVal = literalString(action.expression);
-    if (toVal === undefined) continue;
+    if (toVal === undefined) {
+      continue;
+    }
     for (const rule of rules) {
       if (rule.to.includes(toVal)) {
         out.push({ property: prop, from: rule.from, to: toVal, proven: true });
@@ -228,21 +292,22 @@ function extractLifecycleTransitions(
 }
 
 function literalString(expr: IRExpression): string | undefined {
-  if (expr.kind === 'literal' && expr.value?.kind === 'string') return expr.value.value;
-  return undefined;
+  if (expr.kind === 'literal' && expr.value?.kind === 'string') {
+    return expr.value.value;
+  }
+  return;
 }
 
 function isInstanceCommand(command: IRCommand): boolean {
-  if (command.name === 'create') return false;
+  if (command.name === 'create') {
+    return false;
+  }
   // Heuristic from IR only: create is static; others that mutate self are instance.
   // Prefer proven signal: presence of mutate/emit on entity-bound command that is not create.
   return command.entity != null && command.name !== 'create';
 }
 
-function buildInvalidation(
-  entityName: string,
-  camelEntity: string,
-): WiringInvalidationTarget[] {
+function buildInvalidation(entityName: string, camelEntity: string): WiringInvalidationTarget[] {
   return [
     {
       kind: 'entityList',
@@ -278,7 +343,9 @@ function buildParameter(
     name: param.name,
     tsType: irTypeToTs(param.type, enums, dateAsString),
     irTypeName: param.type.name,
-    required: param.required,
+    // A param the engine defaults is never a client obligation: parameter
+    // processing applies defaultValue before the required check fails closed.
+    required: param.required && param.defaultValue === undefined,
     nullable: param.type.nullable,
     ...(arrayElementType ? { arrayElementType } : {}),
     ownership,
@@ -302,8 +369,8 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
     routeCasing: options?.routeCasing,
   });
   const dateAsString = (options?.dateSerialization ?? 'iso-string') === 'iso-string';
-  const enums = new Map(ir.enums.map(e => [e.name, e]));
-  const entities = new Map(ir.entities.map(e => [e.name, e]));
+  const enums = new Map(ir.enums.map((e) => [e.name, e]));
+  const entities = new Map(ir.entities.map((e) => [e.name, e]));
 
   const capabilities: WiringCommandDescriptor[] = [];
   const commands = [...ir.commands].sort((a, b) => {
@@ -315,11 +382,9 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
   for (const command of commands) {
     const entityName = command.entity ?? '_program';
     const entity = command.entity ? entities.get(command.entity) : undefined;
-    const params = command.parameters.map(p =>
-      buildParameter(p, command, enums, dateAsString),
-    );
-    const clientParameterNames = params.filter(p => p.ownership === 'client').map(p => p.name);
-    const serverParameterNames = params.filter(p => p.ownership === 'server').map(p => p.name);
+    const params = command.parameters.map((p) => buildParameter(p, command, enums, dateAsString));
+    const clientParameterNames = params.filter((p) => p.ownership === 'client').map((p) => p.name);
+    const serverParameterNames = params.filter((p) => p.ownership === 'server').map((p) => p.name);
     const camel = toLowerCamel(entityName === '_program' ? command.name : entityName);
 
     capabilities.push({
@@ -333,9 +398,7 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
       parameters: params,
       clientParameterNames,
       serverParameterNames,
-      returnTsType: command.returns
-        ? irTypeToTs(command.returns, enums, dateAsString)
-        : 'unknown',
+      returnTsType: command.returns ? irTypeToTs(command.returns, enums, dateAsString) : 'unknown',
       emits: [...(command.emits ?? [])],
       affectedEntity: entityName,
       lifecycleTransitions: extractLifecycleTransitions(command, entity),
@@ -368,11 +431,7 @@ export function buildWiringContract(ir: IR, options?: WiringProjectionOptions): 
 }
 
 /** Exported for bindings generator — same TS mapping. */
-export function parameterTsType(
-  param: IRParameter,
-  ir: IR,
-  dateAsString = true,
-): string {
-  const enums = new Map(ir.enums.map(e => [e.name, e]));
+export function parameterTsType(param: IRParameter, ir: IR, dateAsString = true): string {
+  const enums = new Map(ir.enums.map((e) => [e.name, e]));
   return irTypeToTs(param.type, enums, dateAsString);
 }

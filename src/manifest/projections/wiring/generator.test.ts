@@ -2,28 +2,26 @@
  * Product wiring projection — focused tests for the required contract cases.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compileToIR } from '../../ir-compiler.js';
 import { getProjection } from '../registry.js';
-import { WiringProjection } from './generator.js';
-import { buildWiringContract } from './contract-builder.js';
 import { generateWiringBindings } from './bindings-generator.js';
-import { validateWiringCoverage, parseConsumersRegistry } from './coverage.js';
-import type { WiringContract, WiringConsumersRegistry } from './types.js';
+import { buildWiringContract } from './contract-builder.js';
+import { parseConsumersRegistry, validateWiringCoverage } from './coverage.js';
+import { WiringProjection } from './generator.js';
+import type { WiringConsumersRegistry, WiringContract } from './types.js';
 import { WIRING_CONSUMERS_SCHEMA } from './types.js';
 
 async function compile(source: string) {
   const { ir, diagnostics } = await compileToIR(source);
-  const errors = diagnostics.filter(d => d.severity === 'error');
-  expect(errors, errors.map(e => e.message).join('\n')).toHaveLength(0);
+  const errors = diagnostics.filter((d) => d.severity === 'error');
+  expect(errors, errors.map((e) => e.message).join('\n')).toHaveLength(0);
   expect(ir).not.toBeNull();
   return ir!;
 }
 
 function findCap(contract: WiringContract, entity: string, command: string) {
-  const cap = contract.capabilities.find(
-    c => c.entity === entity && c.command === command,
-  );
+  const cap = contract.capabilities.find((c) => c.entity === entity && c.command === command);
   expect(cap, `missing ${entity}.${command}`).toBeDefined();
   return cap!;
 }
@@ -49,7 +47,8 @@ entity Task {
     tags: array<string>,
     priority: number,
     dueDate: date,
-    completedBy: string from context.actorId
+    completedBy: string from context.actorId,
+    channel: string = "web"
   ) {
     constraint titleNonEmpty: length(title) >= 1 "title required"
     constraint priorityRange: between(priority, 1, 5) "priority 1-5"
@@ -86,12 +85,12 @@ describe('WiringProjection', () => {
   it('emits contract + bindings on wiring.all', async () => {
     const ir = await compile(FIXTURE);
     const result = projection.generate(ir, { surface: 'wiring.all' });
-    expect(result.artifacts.map(a => a.id).sort()).toEqual([
+    expect(result.artifacts.map((a) => a.id).sort()).toEqual([
       'wiring-bindings',
       'wiring-contract',
     ]);
     const contract = JSON.parse(
-      result.artifacts.find(a => a.id === 'wiring-contract')!.code,
+      result.artifacts.find((a) => a.id === 'wiring-contract')!.code,
     ) as WiringContract;
     expect(contract.$schema).toBe('manifest-wiring-contract/v1');
     expect(contract.capabilities.length).toBeGreaterThan(0);
@@ -102,7 +101,7 @@ describe('WiringProjection', () => {
       const ir = await compile(FIXTURE);
       const contract = buildWiringContract(ir);
       const create = findCap(contract, 'Task', 'create');
-      const tags = create.parameters.find(p => p.name === 'tags')!;
+      const tags = create.parameters.find((p) => p.name === 'tags')!;
       expect(tags.tsType).toBe('string[]');
       expect(tags.arrayElementType).toBe('string');
       expect(tags.ownership).toBe('client');
@@ -113,7 +112,7 @@ describe('WiringProjection', () => {
     it('2. required parameter remains required', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const title = create.parameters.find(p => p.name === 'title')!;
+      const title = create.parameters.find((p) => p.name === 'title')!;
       expect(title.required).toBe(true);
       expect(create.clientParameterNames).toContain('title');
     });
@@ -121,10 +120,19 @@ describe('WiringProjection', () => {
     it('3. optional parameter remains optional', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const notes = create.parameters.find(p => p.name === 'notes')!;
+      const notes = create.parameters.find((p) => p.name === 'notes')!;
       expect(notes.required).toBe(false);
       const bindings = generateWiringBindings(buildWiringContract(ir));
       expect(bindings).toMatch(/notes\?:\s*string/);
+    });
+
+    it('3b. defaulted parameter is not a client obligation', async () => {
+      // The engine applies defaultValue before the required check fails closed,
+      // so a defaulted param must not be reported as required client input.
+      const ir = await compile(FIXTURE);
+      const create = findCap(buildWiringContract(ir), 'Task', 'create');
+      const channel = create.parameters.find((p) => p.name === 'channel')!;
+      expect(channel.required).toBe(false);
     });
 
     it('4. finite enum values are preserved', async () => {
@@ -141,7 +149,7 @@ entity Item {
 `;
       const ir = await compile(source);
       const cap = findCap(buildWiringContract(ir), 'Item', 'setStatus');
-      const status = cap.parameters.find(p => p.name === 'status')!;
+      const status = cap.parameters.find((p) => p.name === 'status')!;
       expect(status.constraints.enumValues).toEqual(['draft', 'published', 'archived']);
       expect(status.tsType).toContain('"draft"');
       expect(status.tsType).toContain('"published"');
@@ -150,7 +158,7 @@ entity Item {
     it('5. statically derivable numeric bounds are exposed', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const priority = create.parameters.find(p => p.name === 'priority')!;
+      const priority = create.parameters.find((p) => p.name === 'priority')!;
       expect(priority.constraints.min).toBe(1);
       expect(priority.constraints.max).toBe(5);
     });
@@ -158,7 +166,7 @@ entity Item {
     it('6. non-empty constraint is exposed when statically derivable', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const title = create.parameters.find(p => p.name === 'title')!;
+      const title = create.parameters.find((p) => p.name === 'title')!;
       expect(title.constraints.nonEmpty).toBe(true);
       expect(title.constraints.minLength).toBe(1);
     });
@@ -166,7 +174,7 @@ entity Item {
     it('7. required date input cannot become empty string', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const due = create.parameters.find(p => p.name === 'dueDate')!;
+      const due = create.parameters.find((p) => p.name === 'dueDate')!;
       expect(due.constraints.dateLike).toBe(true);
       expect(due.constraints.rejectEmptyString).toBe(true);
       expect(due.required).toBe(true);
@@ -179,16 +187,14 @@ entity Item {
     it('8. server-owned actor field is absent from client input', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      const completedBy = create.parameters.find(p => p.name === 'completedBy')!;
+      const completedBy = create.parameters.find((p) => p.name === 'completedBy')!;
       expect(completedBy.ownership).toBe('server');
       expect(completedBy.trustedSource).toBe('context.actorId');
       expect(completedBy.trustedSourceKind).toBe('actor');
       expect(create.clientParameterNames).not.toContain('completedBy');
       expect(create.serverParameterNames).toContain('completedBy');
       const bindings = generateWiringBindings(buildWiringContract(ir));
-      const clientBlock = bindings.match(
-        /export interface TaskCreateClientInput \{([^}]*)\}/,
-      )?.[1];
+      const clientBlock = bindings.match(/export interface TaskCreateClientInput \{([^}]*)\}/)?.[1];
       expect(clientBlock).toBeDefined();
       expect(clientBlock).not.toMatch(/completedBy/);
       expect(bindings).toMatch(/TaskCreateTrustedContext/);
@@ -197,8 +203,8 @@ entity Item {
 
     it('compiles trustedSource onto IRParameter', async () => {
       const ir = await compile(FIXTURE);
-      const create = ir.commands.find(c => c.name === 'create' && c.entity === 'Task')!;
-      const p = create.parameters.find(x => x.name === 'completedBy')!;
+      const create = ir.commands.find((c) => c.name === 'create' && c.entity === 'Task')!;
+      const p = create.parameters.find((x) => x.name === 'completedBy')!;
       expect(p.trustedSource).toBe('context.actorId');
     });
   });
@@ -225,13 +231,10 @@ entity Item {
     it('12. mutation invalidates entity list/detail metadata', async () => {
       const ir = await compile(FIXTURE);
       const create = findCap(buildWiringContract(ir), 'Task', 'create');
-      expect(create.invalidation.map(i => i.kind).sort()).toEqual([
-        'entityDetail',
-        'entityList',
-      ]);
-      expect(create.invalidation.every(i => i.entity === 'Task')).toBe(true);
-      expect(create.invalidation.some(i => i.queryKeyHint.includes('lists'))).toBe(true);
-      expect(create.invalidation.some(i => i.queryKeyHint.includes('detail'))).toBe(true);
+      expect(create.invalidation.map((i) => i.kind).sort()).toEqual(['entityDetail', 'entityList']);
+      expect(create.invalidation.every((i) => i.entity === 'Task')).toBe(true);
+      expect(create.invalidation.some((i) => i.queryKeyHint.includes('lists'))).toBe(true);
+      expect(create.invalidation.some((i) => i.queryKeyHint.includes('detail'))).toBe(true);
     });
   });
 
@@ -249,8 +252,8 @@ entity Item {
       };
       const report = validateWiringCoverage(contract, registry);
       expect(report.ok).toBe(false);
-      const unwired = report.findings.filter(f => f.status === 'unwired');
-      expect(unwired.some(f => f.capabilityId === 'Task.archive' && f.defect)).toBe(true);
+      const unwired = report.findings.filter((f) => f.status === 'unwired');
+      expect(unwired.some((f) => f.capabilityId === 'Task.archive' && f.defect)).toBe(true);
     });
 
     it('14. explicitly backend-only capability is not a defect', async () => {
@@ -258,15 +261,14 @@ entity Item {
       const contract = buildWiringContract(ir);
       const registry: WiringConsumersRegistry = {
         $schema: WIRING_CONSUMERS_SCHEMA,
-        consumers: contract.capabilities.map(c => ({
+        consumers: contract.capabilities.map((c) => ({
           capabilityId: c.capabilityId,
-          disposition:
-            c.command === 'archive' ? ('backend-only' as const) : ('consumed' as const),
+          disposition: c.command === 'archive' ? ('backend-only' as const) : ('consumed' as const),
         })),
       };
       const report = validateWiringCoverage(contract, registry);
       expect(report.ok).toBe(true);
-      const archive = report.findings.find(f => f.capabilityId === 'Task.archive')!;
+      const archive = report.findings.find((f) => f.capabilityId === 'Task.archive')!;
       expect(archive.status).toBe('backend-only');
       expect(archive.defect).toBe(false);
     });
@@ -277,7 +279,7 @@ entity Item {
       const registry = parseConsumersRegistry({
         $schema: WIRING_CONSUMERS_SCHEMA,
         consumers: [
-          ...contract.capabilities.map(c => ({
+          ...contract.capabilities.map((c) => ({
             capabilityId: c.capabilityId,
             disposition: 'consumed',
           })),
@@ -288,7 +290,7 @@ entity Item {
       expect(report.ok).toBe(false);
       expect(
         report.findings.some(
-          f => f.status === 'stale-consumer' && f.capabilityId === 'Task.doesNotExist',
+          (f) => f.status === 'stale-consumer' && f.capabilityId === 'Task.doesNotExist',
         ),
       ).toBe(true);
     });
