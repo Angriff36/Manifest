@@ -106,6 +106,12 @@ export type RepairOperation =
       controlSymbol: string;
       bindingCallee: string;
       ensureImport?: { module: string; names: string[] };
+      /** Proven identity expression for instance commands (required when set). */
+      identityExpression?: string;
+      /** Exact handler snippet to replace — never the first set* in the file. */
+      handlerSnippet?: string;
+      /** Optional control source fingerprint for targeted replacement. */
+      controlSource?: string;
     }
   | {
       type: 'ensure-export-symbols';

@@ -1,22 +1,22 @@
 /**
- * Semantic proof for wire-existing-control.
+ * Semantic proof for wire-existing-control — exact action intent required.
  *
- * Auto-wiring an unwired capability onto an existing control is allowed only
- * when Manifest can prove the control represents that command — not merely
- * that a button (or the command word) exists nearby.
+ * Same entity / page / file-wide keywords are never enough. The specific
+ * control must already represent the command action.
  */
 
 import type { WiringCommandDescriptor } from '../types.js';
 import {
-  bindingAttachedToDismissLabel,
+  bindingHasInstanceIdentity,
   classifyUnrelatedHandler,
   clientFn,
-  controlLabelMatchesCommand,
   entitySurfaceProven,
-  findEntityIdentity,
-  findExplicitCapabilityControl,
-  findMeaningMatchedControl,
+  findActionIntentControls,
+  findIdentityAtControlSite,
   inputsBuildable,
+  labelMatchesCommand,
+  wiredControlLabel,
+  type ControlCandidate,
 } from './control-semantic-helpers.js';
 
 export interface ControlSemanticSurface {
@@ -24,14 +24,12 @@ export interface ControlSemanticSurface {
   controlSymbol: string;
   bindingCallee: string;
   ensureImport?: { module: string; names: string[] };
-  /** Proven identity expression when the command is instance-scoped. */
   identityExpression?: string;
-  /** Why this control was accepted (for verification / rationale). */
   matchReasons: string[];
-  /** Exact handler snippet that will be replaced (must not be unrelated). */
   handlerSnippet: string;
-  /** Visible label / text associated with the control when proven. */
   labelText?: string;
+  /** Exact control source fingerprint for targeted patching. */
+  controlSource?: string;
 }
 
 export interface ControlSemanticVerdict {
@@ -40,10 +38,6 @@ export interface ControlSemanticVerdict {
   surface?: ControlSemanticSurface;
 }
 
-/**
- * Prove whether an existing control in `content` may receive `cap`.
- * Returns ambiguous (ok:false) unless every required semantic gate passes.
- */
 export function proveControlSemanticMatch(
   cap: WiringCommandDescriptor,
   file: string,
@@ -64,76 +58,91 @@ export function proveControlSemanticMatch(
     };
   }
 
-  const identity = findEntityIdentity(cap, content);
+  const candidates = findActionIntentControls(cap, content);
+  if (candidates.length === 0) {
+    return {
+      ok: false,
+      reason: `No control with exact action intent for ${cap.capabilityId}`,
+    };
+  }
+
+  // Prefer explicit capability markers, then label, then handler name.
+  const ranked = [...candidates].sort((a, b) => rank(a) - rank(b));
+  for (const candidate of ranked) {
+    const verdict = evaluateCandidate(cap, file, content, candidate);
+    if (verdict.ok) return verdict;
+  }
+
+  return {
+    ok: false,
+    reason:
+      ranked[0]?.matchKind === 'explicit-capability'
+        ? `Explicit marker found but semantic gates failed for ${cap.capabilityId}`
+        : `No control passed action-intent gates for ${cap.capabilityId}`,
+  };
+}
+
+function evaluateCandidate(
+  cap: WiringCommandDescriptor,
+  file: string,
+  content: string,
+  candidate: ControlCandidate,
+): ControlSemanticVerdict {
+  const unrelated = classifyUnrelatedHandler(candidate.handlerSnippet, candidate.labelText);
+  if (unrelated) return { ok: false, reason: unrelated };
+
+  // Label must not contradict the command even for explicit markers.
+  if (
+    candidate.labelText &&
+    candidate.matchKind !== 'explicit-capability' &&
+    !labelMatchesCommand(cap, candidate.labelText) &&
+    candidate.matchKind === 'label'
+  ) {
+    return { ok: false, reason: `Label "${candidate.labelText}" does not match ${cap.command}` };
+  }
+  if (candidate.labelText && classifyUnrelatedHandler('noop', candidate.labelText)) {
+    return {
+      ok: false,
+      reason: classifyUnrelatedHandler('noop', candidate.labelText)!,
+    };
+  }
+
+  const identity = findIdentityAtControlSite(
+    cap,
+    content,
+    candidate.index,
+    candidate.controlSource,
+  );
   if (cap.instanceCommand && !identity) {
     return {
       ok: false,
-      reason: `Instance command ${cap.capabilityId} requires entity identity in scope`,
+      reason: `Instance command ${cap.capabilityId} requires entity identity at the control site`,
     };
   }
 
-  const explicit = findExplicitCapabilityControl(cap, content);
-  if (explicit) {
-    const unrelated = classifyUnrelatedHandler(explicit.handlerSnippet, explicit.labelText);
-    if (unrelated) return { ok: false, reason: unrelated };
-    if (!inputsBuildable(cap, content, identity)) {
-      return {
-        ok: false,
-        reason: `Cannot build ${cap.capabilityId} inputs without inventing values`,
-      };
-    }
-    return {
-      ok: true,
-      reason: `Explicit data-manifest-capability + entity surface for ${cap.capabilityId}`,
-      surface: {
-        file,
-        controlSymbol: cap.command,
-        bindingCallee: clientFn(cap.entity, cap.command),
-        ensureImport: {
-          module: '@/app/lib/manifest-client.generated',
-          names: [clientFn(cap.entity, cap.command)],
-        },
-        identityExpression: identity,
-        matchReasons: [
-          'explicit-data-manifest-capability',
-          'entity-surface',
-          ...(identity ? (['entity-identity'] as const) : []),
-          'inputs-buildable',
-        ],
-        handlerSnippet: explicit.handlerSnippet,
-        labelText: explicit.labelText,
-      },
-    };
-  }
-
-  const labeled = findMeaningMatchedControl(cap, content);
-  if (!labeled) {
-    return {
-      ok: false,
-      reason: `No control whose label/handler strongly matches ${cap.capabilityId}`,
-    };
-  }
-
-  const unrelated = classifyUnrelatedHandler(labeled.handlerSnippet, labeled.labelText);
-  if (unrelated) return { ok: false, reason: unrelated };
-
-  if (!inputsBuildable(cap, content, identity)) {
+  if (!inputsBuildable(cap, candidate.controlSource, identity)) {
     return {
       ok: false,
       reason: `Cannot build ${cap.capabilityId} inputs without inventing values`,
     };
   }
 
-  if (!labeled.strongMeaning) {
-    return {
-      ok: false,
-      reason: `Control near ${cap.command} lacks strong meaning evidence (label/state/call-chain)`,
-    };
-  }
+  const reasons = [
+    candidate.matchKind === 'explicit-capability'
+      ? 'explicit-data-manifest-capability'
+      : candidate.matchKind === 'handler-name'
+        ? 'handler-name-matches-command'
+        : 'label-matches-command',
+    'entity-surface',
+    'action-intent',
+    'handler-not-unrelated',
+    ...(identity ? (['entity-identity-at-control'] as const) : []),
+    'inputs-buildable',
+  ];
 
   return {
     ok: true,
-    reason: `Proven same-entity control matches ${cap.capabilityId}`,
+    reason: `Exact action-intent control for ${cap.capabilityId}`,
     surface: {
       file,
       controlSymbol: cap.command,
@@ -143,44 +152,28 @@ export function proveControlSemanticMatch(
         names: [clientFn(cap.entity, cap.command)],
       },
       identityExpression: identity,
-      matchReasons: [
-        'entity-surface',
-        'meaning-matched-control',
-        ...(identity ? (['entity-identity'] as const) : []),
-        'inputs-buildable',
-        'handler-not-unrelated',
-      ],
-      handlerSnippet: labeled.handlerSnippet,
-      labelText: labeled.labelText,
+      matchReasons: reasons,
+      handlerSnippet: candidate.handlerSnippet,
+      labelText: candidate.labelText,
+      controlSource: candidate.controlSource,
     },
   };
 }
 
 /**
- * Re-check semantic preconditions after a wire-existing-control patch.
- * Consumer existence alone is not sufficient.
+ * Post-repair verification: consumer existence is never enough.
  */
 export function verifyWiredControlSemantics(
   cap: WiringCommandDescriptor,
   file: string,
   content: string,
   expectedBindingCallee: string,
+  identityExpression?: string,
 ): ControlSemanticVerdict {
   if (!content.includes(`${expectedBindingCallee}(`)) {
     return {
       ok: false,
       reason: `Binding ${expectedBindingCallee} not present after wire-existing-control`,
-    };
-  }
-
-  const hasExplicit = content.includes(`data-manifest-capability="${cap.capabilityId}"`);
-  const labelOk = controlLabelMatchesCommand(cap, content);
-  const identity = findEntityIdentity(cap, content);
-
-  if (cap.instanceCommand && !identity) {
-    return {
-      ok: false,
-      reason: `Post-repair semantic match failed: missing entity identity for ${cap.capabilityId}`,
     };
   }
 
@@ -191,26 +184,50 @@ export function verifyWiredControlSemantics(
     };
   }
 
-  if (!hasExplicit && !labelOk) {
+  if (cap.instanceCommand) {
+    if (!bindingHasInstanceIdentity(content, expectedBindingCallee, identityExpression)) {
+      return {
+        ok: false,
+        reason:
+          `Post-repair semantic match failed: instance command ${cap.capabilityId} ` +
+          `must pass entity identity (empty {} rejected)`,
+      };
+    }
+  }
+
+  const label = wiredControlLabel(content, expectedBindingCallee);
+  const hasExplicit = content.includes(`data-manifest-capability="${cap.capabilityId}"`);
+  if (!hasExplicit) {
+    if (!label || !labelMatchesCommand(cap, label)) {
+      return {
+        ok: false,
+        reason:
+          `Post-repair semantic match failed: ${expectedBindingCallee} is not on a ` +
+          `control whose label matches ${cap.capabilityId}` +
+          (label ? ` (found "${label}")` : ''),
+      };
+    }
+  } else if (label && classifyUnrelatedHandler('noop', label)) {
     return {
       ok: false,
-      reason:
-        `Post-repair semantic match failed: ${expectedBindingCallee} is not on a ` +
-        `meaning-matched control for ${cap.capabilityId}`,
+      reason: `Post-repair semantic match failed: ${classifyUnrelatedHandler('noop', label)}`,
     };
   }
 
-  if (bindingAttachedToDismissLabel(content, expectedBindingCallee)) {
+  // Destroyed create-dialog / dismiss behavior must not be the wired site.
+  if (label && classifyUnrelatedHandler('noop', label)) {
     return {
       ok: false,
-      reason:
-        `Post-repair semantic match failed: ${expectedBindingCallee} attached to ` +
-        `unrelated dismiss/error control`,
+      reason: `Post-repair semantic match failed: unrelated prior behavior label "${label}"`,
     };
   }
 
   return {
     ok: true,
-    reason: `Semantic match for ${cap.capabilityId} still holds after wiring`,
+    reason: `Action-intent semantic match for ${cap.capabilityId} still holds after wiring`,
   };
+}
+
+function rank(c: ControlCandidate): number {
+  return c.matchKind === 'explicit-capability' ? 0 : c.matchKind === 'label' ? 1 : 2;
 }

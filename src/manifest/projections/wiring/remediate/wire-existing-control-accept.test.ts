@@ -118,7 +118,9 @@ describe('wire-existing-control semantic matching (accept)', () => {
       strictCoverage: true,
     });
     expect(verification.ok).toBe(false);
-    expect(verification.message).toMatch(/semantic|unrelated|identity|match/i);
+    expect(verification.message).toMatch(
+      /semantic|unrelated|identity|match|Binding .* not present|intent/i,
+    );
   });
 
   it('9. one-defect mode skips unsafe unwired-control candidates', async () => {

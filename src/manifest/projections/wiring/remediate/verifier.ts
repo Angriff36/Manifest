@@ -122,6 +122,7 @@ function verifyWireExistingControlSemantics(
     file,
     content,
     wireEdit.operation.bindingCallee,
+    wireEdit.operation.identityExpression,
   );
   return { ok: verdict.ok, reason: verdict.reason };
 }

@@ -30,6 +30,7 @@ export interface ControlSurface {
   matchReasons?: string[];
   handlerSnippet?: string;
   labelText?: string;
+  controlSource?: string;
 }
 
 export interface InvocationPattern {

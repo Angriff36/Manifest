@@ -316,28 +316,89 @@ function wireControl(
   }
   if (next.includes(`${op.bindingCallee}(`)) return next; // already wired
 
-  // Replace noop / local-only handlers on matching control
-  const noopRe =
-    /(onClick|onPress)\s*=\s*\{\s*(?:\(\s*\)\s*=>\s*)?(?:noop|undefined|set\w+\([^)]*\))\s*\}/;
-  if (noopRe.test(next)) {
-    next = next.replace(
-      noopRe,
-      `$1={() => { void ${op.bindingCallee}({}); }}`,
+  const payload = op.identityExpression
+    ? `{ id: ${op.identityExpression} }`
+    : '{}';
+  const replacement = `() => { void ${op.bindingCallee}(${payload}); }`;
+
+  // Prefer replacing the exact handler snippet from semantic proof.
+  if (op.handlerSnippet) {
+    const snippet = op.handlerSnippet.trim();
+    // onClick={snippet} or onClick={() => snippet} forms
+    const exactHandler = new RegExp(
+      `((?:onClick|onPress)\\s*=\\s*\\{\\s*)(?:\\(\\s*\\)\\s*=>\\s*)?${escape(snippet)}(\\s*\\})`,
     );
-    return next;
+    if (exactHandler.test(next)) {
+      return next.replace(exactHandler, `$1${replacement}$2`);
+    }
+    // Named handler reference: onClick={handleX}
+    const named = new RegExp(
+      `((?:onClick|onPress)\\s*=\\s*\\{\\s*)${escape(snippet)}(\\s*\\})`,
+    );
+    if (named.test(next)) {
+      return next.replace(named, `$1${replacement}$2`);
+    }
+    // Arrow with setState body matching snippet text
+    if (snippet.includes('set') || snippet.includes('noop')) {
+      const arrowBody = new RegExp(
+        `((?:onClick|onPress)\\s*=\\s*\\{\\s*)\\(\\s*\\)\\s*=>\\s*${escape(snippet)}(\\s*\\})`,
+      );
+      if (arrowBody.test(next)) {
+        return next.replace(arrowBody, `$1${replacement}$2`);
+      }
+    }
   }
 
-  // data-manifest-capability placeholder button
-  const dataRe = new RegExp(
-    `(data-manifest-capability="[^"]+"[^>]*)(>\\s*)`,
-  );
-  if (dataRe.test(next) && !next.includes(`onClick={() => { void ${op.bindingCallee}`)) {
-    next = next.replace(
-      /(<button\b)([^>]*)(data-manifest-capability="[^"]+")([^>]*)(>)/,
-      `$1$2$3$4 onClick={() => { void ${op.bindingCallee}({}); }}$5`,
-    );
+  // Targeted: only within controlSource fingerprint when provided
+  if (op.controlSource && next.includes(op.controlSource)) {
+    let control = op.controlSource;
+    const noopInControl =
+      /(onClick|onPress)\s*=\s*\{\s*(?:\(\s*\)\s*=>\s*)?(?:noop|undefined|set\w+\([^)]*\))\s*\}/;
+    if (noopInControl.test(control)) {
+      control = control.replace(
+        noopInControl,
+        `$1={${replacement}}`,
+      );
+      return next.replace(op.controlSource, control);
+    }
+    const namedInControl = /(onClick|onPress)\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/;
+    if (namedInControl.test(control)) {
+      control = control.replace(namedInControl, `$1={${replacement}}`);
+      return next.replace(op.controlSource, control);
+    }
   }
-  return next;
+
+  // Explicit capability placeholder — only on the matching attribute
+  const capAttr = op.controlSymbol
+    ? `data-manifest-capability`
+    : null;
+  if (capAttr && /data-manifest-capability="[^"]+"/.test(next)) {
+    const withHandler =
+      /(<button\b)([^>]*)(data-manifest-capability="[^"]+")([^>]*)(>)/i;
+    if (
+      withHandler.test(next) &&
+      !next.includes(`onClick={() => { void ${op.bindingCallee}`)
+    ) {
+      // Only add onClick when missing; never replace an unrelated set* elsewhere.
+      const buttonHasOnClick = /data-manifest-capability="[^"]+"[^>]*onClick=/i.test(next) ||
+        /onClick=[^>]*data-manifest-capability=/i.test(next);
+      if (!buttonHasOnClick) {
+        return next.replace(
+          withHandler,
+          `$1$2$3$4 onClick={${replacement}}$5`,
+        );
+      }
+      // Replace onClick only on the capability-marked control
+      return next.replace(
+        /(data-manifest-capability="[^"]+"[^>]*?)(onClick|onPress)\s*=\s*\{[^}]+\}/i,
+        `$1$2={${replacement}}`,
+      );
+    }
+  }
+
+  // Refuse to blindly replace the first set* in the file — that was the
+  // CollectionCase.escalateToLegal → "New case" defect.
+  return null;
 }
 
 function replacePropertyText(

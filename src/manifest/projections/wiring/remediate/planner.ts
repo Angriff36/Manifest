@@ -435,6 +435,7 @@ function planWireExistingControl(
     matchReasons?: string[];
     handlerSnippet?: string;
     labelText?: string;
+    controlSource?: string;
   },
 ): RepairPlan {
   const findingId = `unwired:${cap.capabilityId}:${surface.file}`;
@@ -447,10 +448,13 @@ function planWireExistingControl(
         controlSymbol: surface.controlSymbol,
         bindingCallee: surface.bindingCallee,
         ensureImport: surface.ensureImport,
+        identityExpression: surface.identityExpression,
+        handlerSnippet: surface.handlerSnippet,
+        controlSource: surface.controlSource,
       },
     },
   ];
-  const reasons = surface.matchReasons?.join(', ') ?? 'semantic match';
+  const reasons = surface.matchReasons?.join(', ') ?? 'action-intent match';
   return {
     findingId,
     entity: cap.entity,
@@ -461,7 +465,7 @@ function planWireExistingControl(
     confidence: 'high',
     automaticApplicationAllowed: true,
     rationale:
-      `Proven control for ${cap.capabilityId} (${reasons}` +
+      `Exact action-intent control for ${cap.capabilityId} (${reasons}` +
       (surface.identityExpression ? `; identity=${surface.identityExpression}` : '') +
       `); attach generated binding`,
     evidence: [],
@@ -472,8 +476,8 @@ function planWireExistingControl(
       : [],
     postconditions: [
       {
-        id: 'consumed-with-semantic-match',
-        description: `${cap.capabilityId} consumed on a semantically matched control`,
+        id: 'consumed-with-action-intent',
+        description: `${cap.capabilityId} consumed on an action-intent matched control`,
         resolvedMismatchKinds: [],
         requireConsumed: true,
       },

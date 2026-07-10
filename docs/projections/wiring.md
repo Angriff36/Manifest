@@ -206,16 +206,29 @@ Missing required values are **never invented**. No new screens are created when 
 
 ### `wire-existing-control` semantic proof
 
-Auto-apply only when Manifest strongly proves the existing control is the same business action. Required:
+Auto-apply only when Manifest strongly proves the **exact control** already
+represents the **exact command action** — not merely the same entity or page.
+
+Required:
 
 1. Product surface is for the same entity (path and/or in-file entity identity)
-2. Instance commands have entity identity in scope (`taskId`, `milestoneId`, `id`, …)
-3. Control label, state, or explicit `data-manifest-capability` strongly matches the command meaning
-4. Command inputs are buildable without invented values
-5. Replacing the handler will not destroy unrelated local UI behavior (error-dismiss, modal close, filters, …)
-6. A nearby button or bare command word in prose is **not** enough
+2. **Action-intent on that control**: label, handler name, or explicit
+   `data-manifest-capability` matches the command (e.g. “Escalate to legal”
+   for `escalateToLegal`). File-wide keywords / `// local-only` elsewhere do
+   **not** qualify an unrelated button
+3. Instance commands have entity identity **at the control site** (not merely
+   somewhere else in the file)
+4. Command inputs are buildable without invented values; instance calls must
+   pass identity (empty `{}` is rejected)
+5. Replacing the handler will not destroy unrelated local UI behavior
+   (`setCreateDialogOpen`, error-dismiss, filters, navigation, …)
+6. A nearby button, same-page entity name, or create/“New …” control is
+   **not** enough
 
-Otherwise classify as `ambiguous-product-decision` and do not edit. Post-repair verification re-checks these semantic preconditions — consumer existence alone is insufficient.
+Otherwise classify as `ambiguous-product-decision` and do not edit. Post-repair
+verification re-checks action-intent, identity-in-call, and label/behavior
+preservation — consumer existence alone is insufficient.
+
 
 ### `add-required-input` source proof
 
