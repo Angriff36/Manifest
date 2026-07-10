@@ -31,6 +31,9 @@ export default tseslint.config(
       // ESLint flat config does not read .gitignore, so this must be listed
       // explicitly or it lints throwaway files that aren't part of the repo.
       '.tmp/**',
+      // Vitest coverage output (lcov-report ships pre-built JS with its own
+      // eslint-disable banners that trip reportUnusedDisableDirectives).
+      'coverage/**',
     ],
   },
   // Default rule set for everything else.
