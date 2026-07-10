@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.23] - 2026-07-10
+
+### Fixed
+
+- Zod projection (`zod.command`): trusted server-owned params (`from context.*`) are no longer emitted as required. The runtime strips any client-sent value and injects the context value, so a client-facing pre-flight schema requiring them 400s requests that correctly omit them.
+- Wiring contract: params with a `defaultValue` are no longer marked `required` client inputs. The engine applies the default before the required check fails closed, so wiring-inspect was flagging false `missing_required_input` defects against correct callers.
+- Next.js `ts.types`: map `bytes`/`uuid`/`text`/`time`/`email`/`url`/`uri`/`duration`/`json`/`bool` IR types. Unmapped names fell through as raw identifiers (e.g. `bytes`), producing generated TypeScript that does not compile.
+
 ## [3.4.22] - 2026-07-10
 
 ### Fixed
