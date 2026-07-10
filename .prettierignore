@@ -1,0 +1,17 @@
+# Build outputs / generated
+dist/
+dist-app/
+packages/*/dist/
+graphify-out/
+pnpm-lock.yaml
+
+# Conformance fixtures and expected outputs are byte-stable executable
+# semantics — never machine-reformat them.
+src/manifest/conformance/fixtures/
+src/manifest/conformance/expected/
+docs/spec/ir/*.schema.json
+
+# Scratch
+junk/
+.tmp/
+.tmp-pack/
