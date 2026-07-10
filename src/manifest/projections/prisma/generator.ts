@@ -314,7 +314,8 @@ function emitPropertyLine(
     ? undefined
     : options.typeMappings?.[entity.name];
   const hasOverride =
-    typeOverrides !== undefined && Object.hasOwn(typeOverrides, prop.name);
+    typeOverrides !== undefined &&
+    Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
   const scalar = isValueObject
     ? "Json"
     : isEnum && !hasOverride
