@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.12] - 2026-07-10
+
+### Fixed
+
+- Wiring remediate: count every non-executable `wire-existing-control` plan as a preflight rejection in one-defect summaries
+
 ## [3.4.11] - 2026-07-10
 
 ### Fixed
