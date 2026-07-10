@@ -124,7 +124,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite (~3,826 tests / 218 files as of 2026-07-09 — run `pnpm test` for current counts)
+### Test Suite (~3,929 tests / 228 files as of 2026-07-10 — run `pnpm test` for current counts)
 1. **Conformance Tests**: Fixture-based testing with expected outputs
 2. **Unit Tests**: lexer, parser, IR compiler, runtime engine, adapters
 3. **Projection Tests**: snapshot + smoke tests across projection targets
@@ -313,27 +313,21 @@ Last: [first session]
 
 ## Last Session Bridge
 [pre-compact bridge — saved before context compaction]
-Files (31):
-  C:/Users/Ryan/AppData/Local/Temp/claude/C--Projects-Manifest/44b2d1d4-7984-4636-b5be-4433c541aad5/scratchpad/feature-status-matrix.md (create)
-  irexplained.md (edit)
-  mintlify/adapters/custom-stores.mdx (edit)
-  mintlify/projections/convex.mdx (edit)
-  mintlify/language/entities.mdx (edit)
-  mintlify/introduction.mdx (edit)
-  mintlify/language/commands.mdx (edit)
-  mintlify/faq.mdx (edit)
-  mintlify/language/stores.mdx (edit)
-  mintlify/integration/embedded-runtime.mdx (edit)
-  mintlify/language/approvals.mdx (edit)
-  mintlify/integration/overview.mdx (edit)
-  mintlify/language/guards-policies.mdx (edit)
-  mintlify/extensibility/runtime-middleware.mdx (edit)
-  mintlify/language/types.mdx (edit)
-  mintlify/whats-new.mdx (edit)
-  docs/features/entity-inheritance.md (edit)
-  mintlify/language/roles.mdx (edit)
-  docs/guides/primitives-reference.md (edit)
-  docs/features/approval-workflows.md (edit)
-  ... +11 more
+Files (7):
+  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
+  C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
+  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
+  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
+  C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
+  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (edit)
+  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (edit)
+Manual bridge:
+[proactive bridge @ 86% context — saved before compacting]
+Files (5):
+  C:/Users/Ryan/.claude/skills/manifest/SKILL.md (create)
+  C:/Projects/capsule-pro/manifest/NATIVE-REWRITE-PLAN.md (edit)
+  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/project-manifest-skill-consolidated.md (create)
+  C:/Users/Ryan/.claude/projects/C--Projects-Manifest/memory/MEMORY.md (edit)
+  C:/Projects/capsule-pro/HANDOFF-FABLE.md (edit)
 
 # === END COGNILAYER ===
