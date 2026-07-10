@@ -108,6 +108,8 @@ export type RepairOperation =
       ensureImport?: { module: string; names: string[] };
       /** Proven identity expression for instance commands (required when set). */
       identityExpression?: string;
+      /** Complete call payload object literal. */
+      payloadExpression?: string;
       /** Exact handler snippet to replace — never the first set* in the file. */
       handlerSnippet?: string;
       /** Optional control source fingerprint for targeted replacement. */
@@ -197,6 +199,10 @@ export interface RemediateReport {
   plans: RepairPlan[];
   applied: AppliedRepairResult[];
   changedFiles: string[];
+  /** Plans that reached applyRepairPlan (source edit attempted). */
+  attemptedPatches?: number;
+  /** Candidates rejected by preflight before any source edit. */
+  preflightRejected?: number;
   unresolved: Array<{
     findingId?: string;
     decision: RepairDecisionClass;

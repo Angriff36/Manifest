@@ -10,6 +10,7 @@ import {
   proveControlSemanticMatch,
   type ControlSemanticSurface,
 } from './control-semantic-match.js';
+import { proveWireExistingControlPreflight } from './wire-control-preflight.js';
 
 export interface LocalValueSource {
   expression: string;
@@ -27,6 +28,7 @@ export interface ControlSurface {
   bindingCallee: string;
   ensureImport?: { module: string; names: string[] };
   identityExpression?: string;
+  payloadExpression?: string;
   matchReasons?: string[];
   handlerSnippet?: string;
   labelText?: string;
@@ -177,15 +179,36 @@ export class PatternAdapter {
    * Does not invent UI. Nearby buttons / bare command words are not enough.
    */
   findExistingControlSurface(cap: WiringCommandDescriptor): ControlSurface | null {
+    return this.findExecutableControlSurface(cap).surface;
+  }
+
+  /**
+   * Returns an executable control surface only when semantic match AND preflight
+   * (binding + constructible call) both succeed. Otherwise returns the rejection
+   * reason for ambiguous classification.
+   */
+  findExecutableControlSurface(cap: WiringCommandDescriptor): {
+    surface: ControlSurface | null;
+    rejectReason?: string;
+  } {
+    let rejectReason: string | undefined;
     let best: ControlSemanticSurface | null = null;
     for (const [file, content] of this.files) {
       const verdict = proveControlSemanticMatch(cap, file, content);
-      if (!verdict.ok || !verdict.surface) continue;
+      if (!verdict.ok || !verdict.surface) {
+        if (!rejectReason && verdict.reason) rejectReason = verdict.reason;
+        continue;
+      }
+      const pre = proveWireExistingControlPreflight(cap, verdict.surface, this.files);
+      if (!pre.ok) {
+        rejectReason = pre.reason;
+        continue;
+      }
       if (!best || verdict.surface.matchReasons.length > best.matchReasons.length) {
         best = verdict.surface;
       }
     }
-    return best;
+    return { surface: best, rejectReason };
   }
 
   findCanonicalLifecycleCommand(

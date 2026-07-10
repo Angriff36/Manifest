@@ -6,10 +6,32 @@
  */
 
 import type { WiringCommandDescriptor } from '../types.js';
+import { findJsxButtons } from './control-jsx-scan.js';
 
 /** Handlers that already perform a different meaningful product action. */
 export const UNRELATED_HANDLER_RE =
-  /\b(?:set(?:Error|Errors|Message|Messages|Toast|Alert|Open|IsOpen|Visible|Show|Showing|Modal|Dialog|Drawer|Menu|Popover|Tooltip|Loading|Busy|Pending|Selected|Selection|Filter|Filters|Query|Search|Tab|Step|Page|Index|Cursor|Hover|Focus|Expanded|Collapsed|Copied|Clipboard|Create\w*|Edit\w*|Add\w*|New\w*)\w*|set\w*(?:Dialog|Modal|Drawer|Open|Visible|Filter|Selected|Create|Edit)\w*)\s*\(|\b(?:router\.push|router\.replace|redirect|refresh|revalidate|console\.\w+)\s*\(/i;
+  /\b(?:set(?:Error|Errors|Message|Messages|Toast|Alert|Open|IsOpen|Visible|Show|Showing|Modal|Dialog|Drawer|Menu|Popover|Tooltip|Loading|Busy|Pending|Selected|Selection|Filter|Filters|Query|Search|Tab|Step|Page|Index|Cursor|Hover|Focus|Expanded|Collapsed|Copied|Clipboard|Create\w*|Edit\w*|Add\w*|New\w*)\w*|set\w*(?:Dialog|Modal|Drawer|Open|Visible|Filter|Selected|Create|Edit)\w*)\s*\(|\b(?:router\.push|router\.replace|redirect|refresh|revalidate|console\.\w+|window\.confirm|(?<![\w.])confirm)\s*\(/i;
+
+/** Single-token verbs that require entity evidence in the control label. */
+export const GENERIC_COMMAND_TOKENS = new Set([
+  'confirm',
+  'complete',
+  'start',
+  'stop',
+  'cancel',
+  'update',
+  'delete',
+  'remove',
+  'approve',
+  'reject',
+  'archive',
+  'publish',
+  'create',
+  'save',
+  'submit',
+  'finish',
+  'done',
+]);
 
 export const DISMISS_LABEL_RE =
   /\b(dismiss|close|cancel|clear|ok|okay|got it|hide|x)\b/i;
@@ -41,18 +63,40 @@ export interface ControlCandidate {
   matchKind: 'explicit-capability' | 'label' | 'handler-name';
 }
 
-export function entitySurfaceProven(entity: string, file: string, content: string): boolean {
-  const norm = file.replace(/\\/g, '/').toLowerCase();
+export function entityTokens(entity: string): string[] {
   const slug = entity
     .replace(/([a-z])([A-Z])/g, '$1-$2')
     .replace(/_/g, '-')
     .toLowerCase();
   const camel = entity[0]!.toLowerCase() + entity.slice(1);
-  if (norm.includes(slug) || norm.includes(entity.toLowerCase()) || norm.includes(camel.toLowerCase())) {
-    return true;
-  }
-  if (new RegExp(`\\b${escape(entity)}\\b`).test(content)) return true;
-  if (new RegExp(`\\b${escape(camel)}\\b`).test(content)) return true;
+  const segments = entity.match(/[A-Z][a-z0-9]*/g) ?? [];
+  const last = segments[segments.length - 1]?.toLowerCase();
+  return [...new Set([entity.toLowerCase(), camel.toLowerCase(), slug, last].filter(Boolean))] as string[];
+}
+
+/** File/path may hint entity, but is never enough alone for action intent. */
+export function entitySurfaceProven(entity: string, file: string, content: string): boolean {
+  const norm = file.replace(/\\/g, '/').toLowerCase();
+  const tokens = entityTokens(entity);
+  if (tokens.some(t => t.length >= 3 && norm.includes(t))) return true;
+  return tokens.some(t => t.length >= 3 && new RegExp(`\\b${escape(t)}\\b`, 'i').test(content));
+}
+
+/** Control-local entity proof — file-wide "Event Type" text is insufficient. */
+export function entityEvidenceAtControl(
+  entity: string,
+  controlSource: string,
+  labelText?: string,
+): boolean {
+  const local = `${controlSource}\n${labelText ?? ''}`;
+  return entityTokens(entity).some(t => t.length >= 3 && hasEntityToken(local, t));
+}
+
+function hasEntityToken(text: string, token: string): boolean {
+  if (new RegExp(`\\b${escape(token)}\\b`, 'i').test(text)) return true;
+  // Compound identifiers: CollectionCaseDetail, caseId, eventId
+  if (new RegExp(`\\b${escape(token)}Id\\b`, 'i').test(text)) return true;
+  if (new RegExp(`\\b${escape(token)}[A-Z][A-Za-z0-9_]*\\b`).test(text)) return true;
   return false;
 }
 
@@ -69,7 +113,44 @@ export function findIdentityAtControlSite(
   const start = Math.max(0, controlIndex - 600);
   const end = Math.min(content.length, controlIndex + controlSource.length + 200);
   const window = content.slice(start, end);
-  return findEntityIdentityIn(cap, window) ?? findEntityIdentityIn(cap, controlSource);
+  const found =
+    findEntityIdentityIn(cap, controlSource) ?? findEntityIdentityIn(cap, window);
+  if (!found) return undefined;
+  if (isWrongEntityIdentity(cap, found, `${controlSource}\n${window}`)) return undefined;
+  return found;
+}
+
+/** Reject bare/foreign ids that clearly belong to another entity (e.g. rule.id). */
+export function isWrongEntityIdentity(
+  cap: WiringCommandDescriptor,
+  identity: string,
+  local: string,
+): boolean {
+  const tokens = entityTokens(cap.entity);
+  if (identity !== 'id' && !identity.toLowerCase().endsWith('id')) return false;
+  if (identity !== 'id') {
+    const stem = identity.replace(/Id$/i, '').toLowerCase();
+    if (tokens.some(t => t === stem || t.includes(stem) || stem.includes(t))) return false;
+    // Explicit foreign *Id (scoringRuleId, ruleId, …)
+    return !tokens.some(t => identity.toLowerCase().includes(t));
+  }
+  // Bare `id` — allow only with entity-typed receiver (event.id / self.id / case.id)
+  const receiverRe = /\b([A-Za-z_][\w]*)\.id\b/g;
+  let m: RegExpExecArray | null;
+  let sawForeign = false;
+  let sawEntity = false;
+  while ((m = receiverRe.exec(local)) !== null) {
+    const recv = m[1]!.toLowerCase();
+    if (recv === 'self' || recv === 'params' || tokens.some(t => recv === t || t.endsWith(recv))) {
+      sawEntity = true;
+    } else {
+      sawForeign = true;
+    }
+  }
+  if (sawForeign && !sawEntity) return true;
+  // `{ id: rule.id }` without entity-typed id nearby
+  if (/\bid\s*:\s*[A-Za-z_][\w]*\.id\b/.test(local) && !sawEntity) return true;
+  return false;
 }
 
 export function findEntityIdentityIn(
@@ -125,17 +206,10 @@ export function findActionIntentControls(
 ): ControlCandidate[] {
   const out: ControlCandidate[] = [];
   const attr = `data-manifest-capability="${cap.capabilityId}"`;
-  const buttonRe = /<(?:button|Button)\b([^>]*)>([\s\S]*?)<\/(?:button|Button)>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = buttonRe.exec(content)) !== null) {
-    const full = match[0]!;
-    const attrs = match[1] ?? '';
-    const rawBody = match[2] ?? '';
-    const body = rawBody.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const aria = /aria-label\s*=\s*["']([^"']+)["']/i.exec(attrs)?.[1] ?? '';
-    const labelText = body || aria;
+  for (const match of findJsxButtons(content)) {
+    const { full, attrs, body, index } = match;
+    const labelText = body || (/aria-label\s*=\s*["']([^"']+)["']/i.exec(attrs)?.[1] ?? '');
     const handlerSnippet = extractHandler(attrs, full);
-    const index = match.index;
 
     if (full.includes(attr) || attrs.includes(attr)) {
       out.push({
@@ -175,18 +249,26 @@ export function findActionIntentControls(
 
 export function labelMatchesCommand(cap: WiringCommandDescriptor, label: string): boolean {
   if (!label.trim()) return false;
+  // Labels must be UI text — not leaked handler source from a broken parse.
+  if (/[{}=;]|^\s*async\b|^\s*function\b|\bawait\b|\breturn\b/.test(label)) return false;
   const labelLower = label.toLowerCase();
   if (cap.command.toLowerCase() !== 'create' && CREATE_LABEL_RE.test(labelLower)) {
     return false;
   }
   if (DISMISS_LABEL_RE.test(labelLower)) return false;
   const aliases = meaningAliases(cap.command);
-  // Prefer multi-word / longer aliases; require a real intent phrase, not a
-  // single generic token that appears in unrelated copy.
-  return aliases.some(a => {
-    if (a.length < 4) return false;
-    return labelLower.includes(a);
-  });
+  const matched = aliases.filter(a => a.length >= 4 && labelLower.includes(a));
+  if (matched.length === 0) return false;
+
+  const onlyGeneric = matched.every(
+    a => !a.includes(' ') && GENERIC_COMMAND_TOKENS.has(a.replace(/\s+/g, '')),
+  );
+  if (onlyGeneric) {
+    return entityTokens(cap.entity).some(
+      t => t.length >= 3 && new RegExp(`\\b${escape(t)}\\b`, 'i').test(labelLower),
+    );
+  }
+  return true;
 }
 
 export function handlerNameMatchesCommand(
@@ -221,6 +303,9 @@ export function classifyUnrelatedHandler(handler: string, label?: string): strin
   if (label && CREATE_LABEL_RE.test(label)) {
     return `Control label "${label}" opens/creates a record; not an instance action surface`;
   }
+  if (/\b(?:window\.)?confirm\s*\(/.test(handler)) {
+    return `Handler uses browser confirm(); not a Manifest command surface`;
+  }
   if (UNRELATED_HANDLER_RE.test(handler)) {
     return `Handler already performs a different product action and must not be replaced`;
   }
@@ -240,12 +325,16 @@ export function inputsBuildable(
 ): boolean {
   const clientRequired = cap.parameters.filter(p => p.ownership === 'client' && p.required);
   if (clientRequired.length === 0) return true;
+  const camel = cap.entity[0]!.toLowerCase() + cap.entity.slice(1);
+  const segments = cap.entity.match(/[A-Z][a-z0-9]*/g) ?? [];
+  const last = segments[segments.length - 1];
+  const shortId = last ? `${last[0]!.toLowerCase()}${last.slice(1)}Id` : undefined;
   for (const p of clientRequired) {
-    if (p.name === 'id' && identity) continue;
-    const present =
-      new RegExp(`\\b${escape(p.name)}\\b`).test(content) ||
-      (identity !== undefined && p.name.toLowerCase().endsWith('id'));
-    if (!present) return false;
+    const identityCovers =
+      identity !== undefined &&
+      (p.name === 'id' || p.name === `${camel}Id` || (shortId !== undefined && p.name === shortId));
+    if (identityCovers) continue;
+    if (!new RegExp(`\\b${escape(p.name)}\\b`).test(content)) return false;
   }
   return true;
 }

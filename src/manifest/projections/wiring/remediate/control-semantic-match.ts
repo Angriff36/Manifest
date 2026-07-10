@@ -10,9 +10,11 @@ import {
   bindingHasInstanceIdentity,
   classifyUnrelatedHandler,
   clientFn,
+  entityEvidenceAtControl,
   entitySurfaceProven,
   findActionIntentControls,
   findIdentityAtControlSite,
+  handlerNameMatchesCommand,
   inputsBuildable,
   labelMatchesCommand,
   wiredControlLabel,
@@ -25,6 +27,8 @@ export interface ControlSemanticSurface {
   bindingCallee: string;
   ensureImport?: { module: string; names: string[] };
   identityExpression?: string;
+  /** Complete object literal for the binding call. */
+  payloadExpression?: string;
   matchReasons: string[];
   handlerSnippet: string;
   labelText?: string;
@@ -91,6 +95,20 @@ function evaluateCandidate(
   const unrelated = classifyUnrelatedHandler(candidate.handlerSnippet, candidate.labelText);
   if (unrelated) return { ok: false, reason: unrelated };
 
+  const scopeStart = Math.max(0, candidate.index - 600);
+  const scopeEnd = Math.min(
+    content.length,
+    candidate.index + candidate.controlSource.length + 200,
+  );
+  const scope = content.slice(scopeStart, scopeEnd);
+
+  if (!entityEvidenceAtControl(cap.entity, scope, candidate.labelText)) {
+    return {
+      ok: false,
+      reason: `No control-local entity evidence for ${cap.entity} on the selected control`,
+    };
+  }
+
   // Label must not contradict the command even for explicit markers.
   if (
     candidate.labelText &&
@@ -120,10 +138,17 @@ function evaluateCandidate(
     };
   }
 
-  if (!inputsBuildable(cap, candidate.controlSource, identity)) {
+  if (!inputsBuildable(cap, scope, identity)) {
     return {
       ok: false,
       reason: `Cannot build ${cap.capabilityId} inputs without inventing values`,
+    };
+  }
+
+  if (!isReplaceablePriorHandler(candidate.handlerSnippet, cap)) {
+    return {
+      ok: false,
+      reason: `Existing handler behavior is not proven replaceable for ${cap.capabilityId}`,
     };
   }
 
@@ -140,6 +165,8 @@ function evaluateCandidate(
     'inputs-buildable',
   ];
 
+  const payloadExpression = buildPayloadExpression(cap, identity, scope);
+
   return {
     ok: true,
     reason: `Exact action-intent control for ${cap.capabilityId}`,
@@ -152,12 +179,39 @@ function evaluateCandidate(
         names: [clientFn(cap.entity, cap.command)],
       },
       identityExpression: identity,
+      payloadExpression,
       matchReasons: reasons,
       handlerSnippet: candidate.handlerSnippet,
       labelText: candidate.labelText,
       controlSource: candidate.controlSource,
     },
   };
+}
+
+function buildPayloadExpression(
+  cap: WiringCommandDescriptor,
+  identity: string | undefined,
+  controlSource: string,
+): string {
+  const parts: string[] = [];
+  if (identity) parts.push(`id: ${identity}`);
+  const camel = cap.entity[0]!.toLowerCase() + cap.entity.slice(1);
+  const segments = cap.entity.match(/[A-Z][a-z0-9]*/g) ?? [];
+  const last = segments[segments.length - 1];
+  const shortId = last ? `${last[0]!.toLowerCase()}${last.slice(1)}Id` : undefined;
+  for (const p of cap.parameters.filter(x => x.ownership === 'client' && x.required)) {
+    if (p.name === 'id') continue;
+    if (
+      identity &&
+      (p.name === `${camel}Id` || (shortId !== undefined && p.name === shortId))
+    ) {
+      continue;
+    }
+    if (new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(controlSource)) {
+      parts.push(`${p.name}: ${p.name}`);
+    }
+  }
+  return `{ ${parts.join(', ')} }`;
 }
 
 /**
@@ -231,3 +285,24 @@ export function verifyWiredControlSemantics(
 function rank(c: ControlCandidate): number {
   return c.matchKind === 'explicit-capability' ? 0 : c.matchKind === 'label' ? 1 : 2;
 }
+
+/** Prior handler may be replaced only when absent, noop, or local-only for this action. */
+function isReplaceablePriorHandler(handler: string, cap: WiringCommandDescriptor): boolean {
+  const h = handler.trim();
+  if (!h || h === 'noop' || h === 'undefined') return true;
+  if (classifyUnrelatedHandler(h)) return false;
+  if (handlerNameMatchesCommand(cap, h)) return true;
+  // Local-only setState for the same action (e.g. setCompleted(true) on Complete)
+  if (/^set[A-Z]\w*\(\s*(?:true|false|null)?\s*\)$/.test(h)) return true;
+  if (/^\(\s*\)\s*=>\s*set[A-Z]\w*\(\s*(?:true|false|null)?\s*\)$/.test(h)) return true;
+  // Multi-line product handlers (softDelete, fetch, toast, …) are not replaceable
+  if (/\bawait\b|\bfetch\b|\btoast\b|\.softDelete\b|\.delete\b|\.create\b/.test(h)) {
+    return false;
+  }
+  // Named identifier reference — only if name matches command
+  if (/^[A-Za-z_$][\w$]*$/.test(h)) {
+    return handlerNameMatchesCommand(cap, h);
+  }
+  return false;
+}
+

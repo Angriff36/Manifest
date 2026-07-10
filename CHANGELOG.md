@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Wiring remediate: `wire-existing-control` requires full preflight before any patch (binding export/import, constructible call, control-local entity/action intent, identity, inputs); refuse browser `confirm()` / generic Confirm; one-defect reports preflight rejects separately from repair attempts
+
 ## [3.4.10] - 2026-07-10
 
 ### Fixed

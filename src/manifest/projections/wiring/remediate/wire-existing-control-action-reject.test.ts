@@ -257,10 +257,26 @@ describe('wire-existing-control action-intent (reject)', () => {
       priority: 50,
     };
     const patch = applyRepairPlan(forged, files);
-    expect(patch.ok).toBe(true);
-    const content = [...patch.nextContents.values()][0]!;
-    expect(content).toMatch(/collectionCaseEscalateToLegal\(\s*\{\s*\}\s*\)/);
-    const verification = verifyRepair(forged, contract, patch.nextContents, {
+    // Empty {} must be refused at patch/preflight — never applied then verified.
+    expect(patch.ok).toBe(false);
+    expect(patch.skippedReason).toMatch(/construct|preflight|no source edit|payload/i);
+    const poisoned = new Map(files);
+    poisoned.set(
+      'apps/app/app/collection-cases/[id]/page.tsx',
+      `
+        export function Detail({ caseId }: { caseId: string }) {
+          return (
+            <button
+              data-manifest-capability="CollectionCase.escalateToLegal"
+              onClick={() => { void collectionCaseEscalateToLegal({}); }}
+            >
+              Escalate to legal
+            </button>
+          );
+        }
+      `,
+    );
+    const verification = verifyRepair(forged, contract, poisoned, {
       roots: ['.'],
       strictCoverage: true,
     });

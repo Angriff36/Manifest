@@ -94,12 +94,17 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
     if (options.capabilityId && finding.capabilityId !== options.capabilityId) continue;
     const cap = byId.get(finding.capabilityId);
     if (!cap) continue;
-    const surface = adapter.findExistingControlSurface(cap);
-    if (!surface) {
-      plans.push(ambiguousUnwiredPlan(cap, finding.message));
+    const surfaceResult = adapter.findExecutableControlSurface(cap);
+    if (!surfaceResult.surface) {
+      plans.push(
+        ambiguousUnwiredPlan(
+          cap,
+          surfaceResult.rejectReason ?? finding.message,
+        ),
+      );
       continue;
     }
-    const plan = planWireExistingControl(cap, surface);
+    const plan = planWireExistingControl(cap, surfaceResult.surface);
     if (options.findingId && plan.findingId !== options.findingId) continue;
     plans.push(plan);
   }
@@ -432,6 +437,7 @@ function planWireExistingControl(
     bindingCallee: string;
     ensureImport?: { module: string; names: string[] };
     identityExpression?: string;
+    payloadExpression?: string;
     matchReasons?: string[];
     handlerSnippet?: string;
     labelText?: string;
@@ -449,6 +455,7 @@ function planWireExistingControl(
         bindingCallee: surface.bindingCallee,
         ensureImport: surface.ensureImport,
         identityExpression: surface.identityExpression,
+        payloadExpression: surface.payloadExpression,
         handlerSnippet: surface.handlerSnippet,
         controlSource: surface.controlSource,
       },

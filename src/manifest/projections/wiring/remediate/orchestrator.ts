@@ -122,10 +122,59 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
   let current = new Map(options.fileContents);
   const applied: AppliedRepairResult[] = [];
   const changedFiles = new Set<string>();
+  let attemptedPatches = 0;
+  let preflightRejected = plans.filter(
+    p =>
+      p.repairKind === 'wire-existing-control' &&
+      !p.automaticApplicationAllowed &&
+      /binding|import|export|construct|identity|input|intent|entity|handler|preflight/i.test(
+        p.rationale,
+      ),
+  ).length;
 
   for (const plan of selectable) {
+    // Belt-and-suspenders: never patch a wire-existing plan that cannot construct.
+    if (plan.repairKind === 'wire-existing-control') {
+      const wireOp = plan.edits.find(e => e.operation.type === 'wire-control-to-binding')
+        ?.operation;
+      if (
+        wireOp &&
+        wireOp.type === 'wire-control-to-binding' &&
+        !wireOp.payloadExpression &&
+        !wireOp.identityExpression
+      ) {
+        preflightRejected++;
+        applied.push({
+          findingId: plan.findingId,
+          applied: false,
+          skippedReason: `preflight-rejected: incomplete call construction for ${plan.capabilityId}`,
+          filesChanged: [],
+          editsApplied: 0,
+        });
+        continue;
+      }
+    }
+
+    attemptedPatches++;
     const patch = applyRepairPlan(plan, current);
     if (!patch.ok) {
+      const preflightish =
+        plan.repairKind === 'wire-existing-control' &&
+        /preflight|construct|no source edit|Binding|import|export/i.test(
+          patch.skippedReason ?? '',
+        );
+      if (preflightish) {
+        attemptedPatches--;
+        preflightRejected++;
+        applied.push({
+          findingId: plan.findingId,
+          applied: false,
+          skippedReason: `preflight-rejected: ${patch.skippedReason}`,
+          filesChanged: [],
+          editsApplied: 0,
+        });
+        continue;
+      }
       applied.push({
         findingId: plan.findingId,
         applied: false,
@@ -134,6 +183,19 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
         editsApplied: 0,
       });
       // Skip unapplicable plans (one-defect keeps searching).
+      continue;
+    }
+
+    if (patch.editsApplied === 0 && plan.repairKind === 'wire-existing-control') {
+      attemptedPatches--;
+      preflightRejected++;
+      applied.push({
+        findingId: plan.findingId,
+        applied: false,
+        skippedReason: `preflight-rejected: wire-existing-control produced no source edit`,
+        filesChanged: [],
+        editsApplied: 0,
+      });
       continue;
     }
 
@@ -197,6 +259,8 @@ export function remediateWiringSync(options: RemediateOptions): RemediateReport 
     plans,
     applied,
     changedFiles: [...changedFiles],
+    attemptedPatches,
+    preflightRejected,
     unresolved: plans
       .filter(p => !p.automaticApplicationAllowed)
       .map(p => ({
@@ -277,13 +341,19 @@ function sortRepairCandidates(plans: RepairPlan[]): RepairPlan[] {
 export function formatRemediateReportText(report: RemediateReport): string {
   const lines: string[] = [];
   lines.push(`Wiring remediate (${report.mode}) — ${report.ok ? 'OK' : 'INCOMPLETE'}`);
-  lines.push(
-    `Plans: ${report.plans.length} (applied ${report.applied.filter(a => a.applied).length})`,
-  );
+  const appliedCount = report.applied.filter(a => a.applied).length;
+  lines.push(`Plans: ${report.plans.length} (applied ${appliedCount})`);
+  lines.push(`Applied: ${appliedCount}`);
+  lines.push(`Attempted patches: ${report.attemptedPatches ?? appliedCount}`);
+  lines.push(`Preflight rejected: ${report.preflightRejected ?? 0}`);
   if (report.changedFiles.length) {
     lines.push(`Changed files: ${report.changedFiles.join(', ')}`);
   }
   for (const a of report.applied) {
+    if (a.skippedReason?.startsWith('preflight-rejected:')) {
+      lines.push(`· preflight-rejected ${a.findingId} — ${a.skippedReason}`);
+      continue;
+    }
     const mark = a.applied ? '✓' : '·';
     lines.push(
       `${mark} ${a.findingId}` +

@@ -98,7 +98,16 @@ export function applyRepairPlan(
     }
     const after = applyOperation(before, edit.file, edit.operation);
     if (after === null) {
-      // Idempotent no-op is OK (already applied)
+      if (edit.operation.type === 'wire-control-to-binding') {
+        return {
+          ok: false,
+          filesChanged: [...changed],
+          editsApplied,
+          skippedReason: `Preflight/patch construct failed for wire-control-to-binding (${edit.operation.bindingCallee})`,
+          nextContents: new Map(fileContents),
+        };
+      }
+      // Idempotent no-op is OK for other edit kinds (already applied)
       continue;
     }
     if (after !== before) {
@@ -106,6 +115,20 @@ export function applyRepairPlan(
       changed.add(normalize(edit.file));
       editsApplied++;
     }
+  }
+
+  if (
+    plan.repairKind === 'wire-existing-control' &&
+    editsApplied === 0 &&
+    plan.edits.some(e => e.operation.type === 'wire-control-to-binding')
+  ) {
+    return {
+      ok: false,
+      filesChanged: [],
+      editsApplied: 0,
+      skippedReason: 'wire-existing-control produced no source edit (not a no-op success)',
+      nextContents: new Map(fileContents),
+    };
   }
 
   return {
@@ -316,9 +339,13 @@ function wireControl(
   }
   if (next.includes(`${op.bindingCallee}(`)) return next; // already wired
 
-  const payload = op.identityExpression
-    ? `{ id: ${op.identityExpression} }`
-    : '{}';
+  const payload =
+    op.payloadExpression ??
+    (op.identityExpression ? `{ id: ${op.identityExpression} }` : null);
+  if (!payload) {
+    // Instance/required inputs unknown — refuse rather than emit empty {}.
+    return null;
+  }
   const replacement = `() => { void ${op.bindingCallee}(${payload}); }`;
 
   // Prefer replacing the exact handler snippet from semantic proof.

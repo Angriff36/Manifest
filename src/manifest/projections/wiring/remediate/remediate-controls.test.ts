@@ -22,8 +22,11 @@ describe('wiring remediate (controls & safety)', () => {
       'apps/app/app/ui/archive-button.tsx': `
         export function ArchiveButton({ taskId }: { taskId: string }) {
           // local-only
-          return <button data-manifest-capability="Task.archive" onClick={noop}>Archive</button>;
+          return <button data-manifest-capability="Task.archive" onClick={noop}>Archive task</button>;
         }
+      `,
+      'apps/app/app/lib/manifest-client.generated.ts': `
+        export async function taskArchive(input: object = {}) { return undefined; }
       `,
     });
     const report = inspectWiringConsumersSync({

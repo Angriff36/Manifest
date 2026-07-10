@@ -209,25 +209,32 @@ Missing required values are **never invented**. No new screens are created when 
 Auto-apply only when Manifest strongly proves the **exact control** already
 represents the **exact command action** — not merely the same entity or page.
 
-Required:
+Required **before any source edit** (planning preflight — patch is never used
+for discovery):
 
-1. Product surface is for the same entity (path and/or in-file entity identity)
+1. Control-local entity evidence (not file-wide “Event Type” copy alone)
 2. **Action-intent on that control**: label, handler name, or explicit
-   `data-manifest-capability` matches the command (e.g. “Escalate to legal”
-   for `escalateToLegal`). File-wide keywords / `// local-only` elsewhere do
-   **not** qualify an unrelated button
-3. Instance commands have entity identity **at the control site** (not merely
-   somewhere else in the file)
-4. Command inputs are buildable without invented values; instance calls must
-   pass identity (empty `{}` is rejected)
-5. Replacing the handler will not destroy unrelated local UI behavior
-   (`setCreateDialogOpen`, error-dismiss, filters, navigation, …)
-6. A nearby button, same-page entity name, or create/“New …” control is
-   **not** enough
+   `data-manifest-capability` matches the command (e.g. “Confirm event” for
+   `Event.confirm`). Generic “Confirm” / browser `confirm()` / file-wide
+   keywords do **not** qualify
+3. Instance commands have entity identity **at the control site** (wrong-entity
+   ids such as `rule.id` are rejected; empty `{}` is never emitted)
+4. Required client inputs are proven buildable; the complete call payload is
+   known up front
+5. Generated binding exists and the planned import module resolves/exports it
+6. Replacing the handler will not destroy unrelated product behavior
+7. The targeted patch is constructible against the proven control fingerprint
 
-Otherwise classify as `ambiguous-product-decision` and do not edit. Post-repair
-verification re-checks action-intent, identity-in-call, and label/behavior
-preservation — consumer existence alone is insufficient.
+Otherwise classify as `ambiguous-product-decision` / `unsafe-to-apply` and do
+not edit. One-defect reports `Preflight rejected` separately from attempted
+patches — predictable preflight failures are not “Repair incomplete.”
+
+Post-repair verification re-checks action-intent, identity-in-call, and
+label/behavior preservation — consumer existence alone is insufficient.
+
+Inspect gate (default): fails on proven `stale-consumer` and
+`contract-mismatch` defects. Ambiguous findings and raw unwired coverage do
+**not** fail unless `--strict-coverage` / `failOn` includes them.
 
 
 ### `add-required-input` source proof

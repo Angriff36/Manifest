@@ -33,6 +33,9 @@ describe('wire-existing-control action-intent (accept)', () => {
           );
         }
       `,
+      'apps/app/app/lib/manifest-client.generated.ts': `
+        export async function collectionCaseEscalateToLegal(input: object = {}) { return undefined; }
+      `,
     });
     const plan = planWiringRepairs({
       contract,
@@ -74,6 +77,9 @@ describe('wire-existing-control action-intent (accept)', () => {
             </button>
           );
         }
+      `,
+      'apps/app/app/lib/manifest-client.generated.ts': `
+        export async function collectionCaseEscalateToLegal(input: object = {}) { return undefined; }
       `,
     });
     const plan = planWiringRepairs({

@@ -35,6 +35,9 @@ describe('wire-existing-control semantic matching (accept)', () => {
           );
         }
       `,
+      'apps/app/app/lib/manifest-client.generated.ts': `
+        export async function actionMilestoneComplete(input: object = {}) { return undefined; }
+      `,
     });
     const report = inspectWiringConsumersSync({
       contract,
@@ -112,8 +115,16 @@ describe('wire-existing-control semantic matching (accept)', () => {
       priority: 50,
     };
     const patch = applyRepairPlan(forged, files);
-    expect(patch.ok).toBe(true);
-    const verification = verifyRepair(forged, contract, patch.nextContents, {
+    // Unsafe forged wire without payload/identity must not apply as a silent no-op.
+    expect(patch.ok).toBe(false);
+    expect(patch.skippedReason).toMatch(/construct|preflight|no source edit|payload/i);
+    // If a bad consumer were already present, verification still rejects it.
+    const poisoned = new Map(files);
+    poisoned.set(
+      'apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx',
+      `${files.get('apps/app/app/(mobile-kitchen)/kitchen/mobile/page.tsx')}\nvoid actionMilestoneComplete({});\n`,
+    );
+    const verification = verifyRepair(forged, contract, poisoned, {
       roots: ['.'],
       strictCoverage: true,
     });
