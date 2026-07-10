@@ -2,16 +2,23 @@
  * Sibling-call parameter binding proof for add-required-input.
  *
  * When the same enclosing component/callable already passes
- * `param: <expr>` into another call, that expression is a proven source —
- * never invent actor/context values.
+ * `param: <expr>` into another call that shares the target call's identity
+ * argument (e.g. both use `id: task.id`), that expression is a proven source —
+ * never invent actor/context values, never borrow from a different dialog target.
  */
 
 import ts from 'typescript';
 import type { ProvenValueSource } from './required-input-source.js';
 
+const IDENTITY_KEYS = new Set(['id', 'entityId']);
+
 /**
  * Collect `param: expr` bindings from sibling CallExpressions inside the
  * outermost enclosing callable (e.g. React component), excluding the target call.
+ *
+ * Sibling must share the same identity property expression as the target
+ * (e.g. `id: task.id` on both claim and complete). Different targets
+ * (`costTarget.id` vs `deactivateTarget.id`) do not qualify.
  *
  * - Exactly one unique expression → one candidate (rank 2)
  * - Multiple distinct expressions → all candidates at rank 2 (resolver → ambiguous)
@@ -27,11 +34,14 @@ export function collectSiblingParamBindings(
   const outermost = scopes[scopes.length - 1];
   if (!outermost) return;
 
+  const targetIdentity = extractIdentityExpression(call, sf);
+  if (!targetIdentity) return;
+
   const exprs = new Set<string>();
   const visit = (node: ts.Node) => {
     if (node === call) return;
     if (ts.isCallExpression(node)) {
-      collectParamFromCallArgs(node, sf, call, paramName, exprs);
+      collectParamFromCallArgs(node, sf, call, paramName, targetIdentity, exprs);
     }
     ts.forEachChild(node, visit);
   };
@@ -58,13 +68,48 @@ function collectParamFromCallArgs(
   sf: ts.SourceFile,
   targetCall: ts.CallExpression,
   paramName: string,
+  targetIdentity: string,
   exprs: Set<string>,
 ): void {
   if (node === targetCall) return;
   for (const arg of node.arguments) {
     if (!ts.isObjectLiteralExpression(arg)) continue;
+    const siblingIdentity = identityFromObjectLiteral(arg, sf);
+    if (!siblingIdentity || siblingIdentity !== targetIdentity) continue;
     collectFromObjectLiteral(arg, sf, paramName, exprs);
   }
+}
+
+function extractIdentityExpression(
+  call: ts.CallExpression,
+  sf: ts.SourceFile,
+): string | undefined {
+  for (const arg of call.arguments) {
+    if (!ts.isObjectLiteralExpression(arg)) continue;
+    const id = identityFromObjectLiteral(arg, sf);
+    if (id) return id;
+  }
+  return undefined;
+}
+
+function identityFromObjectLiteral(
+  obj: ts.ObjectLiteralExpression,
+  sf: ts.SourceFile,
+): string | undefined {
+  for (const prop of obj.properties) {
+    if (ts.isShorthandPropertyAssignment(prop) && IDENTITY_KEYS.has(prop.name.text)) {
+      return prop.name.text;
+    }
+    if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) continue;
+    if (prop.name.text === 'body' && ts.isObjectLiteralExpression(prop.initializer)) {
+      const nested = identityFromObjectLiteral(prop.initializer, sf);
+      if (nested) return nested;
+      continue;
+    }
+    if (!IDENTITY_KEYS.has(prop.name.text) || !prop.initializer) continue;
+    return prop.initializer.getText(sf).trim();
+  }
+  return undefined;
 }
 
 function collectFromObjectLiteral(

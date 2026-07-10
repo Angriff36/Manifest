@@ -48,6 +48,12 @@ export function verifyRepair(
         if (plan.repairKind === 'expand-partial-to-full-body') {
           return mismatchInPlanFiles(m, plan);
         }
+        if (
+          plan.repairKind === 'add-required-input' ||
+          plan.repairKind === 'replace-empty-date-sentinel'
+        ) {
+          if (!mismatchInPlanFiles(m, plan)) return false;
+        }
         if (plan.mismatch?.parameter) {
           return m.parameter === plan.mismatch.parameter;
         }
@@ -143,6 +149,14 @@ function mismatchMatchesPlan(m: ContractMismatch, plan: RepairPlan): boolean {
   if (plan.mismatch) {
     if (m.kind !== plan.mismatch.kind) return false;
     if (plan.mismatch.parameter && m.parameter !== plan.mismatch.parameter) return false;
+  }
+  // Single-site repairs (add-required-input, date sentinel, …) must not fail
+  // verification because the same capability+param is still missing elsewhere.
+  if (
+    plan.repairKind === 'add-required-input' ||
+    plan.repairKind === 'replace-empty-date-sentinel'
+  ) {
+    return mismatchInPlanFiles(m, plan);
   }
   return true;
 }

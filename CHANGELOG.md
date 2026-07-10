@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.18] - 2026-07-10
+
+### Fixed
+
+- Wiring remediate: sibling-call param bindings require a shared identity expression (`id` / `entityId`) with the target call, so unrelated dialog state (e.g. `costReason` on a different target) cannot fill another command
+- Wiring remediate: `add-required-input` / date-sentinel verification scopes remaining mismatches to the plan's source file(s), so one-site repairs succeed when the same capability is still missing elsewhere
+
 ## [3.4.17] - 2026-07-10
 
 ### Added

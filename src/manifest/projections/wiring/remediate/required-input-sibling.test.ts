@@ -420,4 +420,92 @@ describe('add-required-input sibling-proven parameter binding', () => {
     expect(result.applied.some(a => a.applied)).toBe(true);
     expect([...resultToMap(files, result).values()][0]).toMatch(/summary\s*:\s*summary/);
   });
+
+  it('S11. sibling with different identity target is rejected', async () => {
+    const contract = await contractFrom(TASK_ACTION_DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/catalog.tsx': `
+        import { taskComplete, taskClaim } from "@/lib/client";
+        export function Catalog({
+          deactivateTarget,
+          costTarget,
+          costReason,
+        }: {
+          deactivateTarget: { id: string };
+          costTarget: { id: string };
+          costReason: string;
+        }) {
+          const updatePrice = async () => {
+            await taskClaim({ id: costTarget.id, userId: costReason });
+          };
+          const deactivate = async () => {
+            await taskComplete({ id: deactivateTarget.id });
+          };
+          return null;
+        }
+      `,
+    });
+    const report = inspectWiringConsumersSync({
+      contract,
+      fileContents: files,
+      config: { roots: ['.'] },
+    });
+    const bundle = planWiringRepairs({ contract, report, fileContents: files });
+    const plan = bundle.plans.find(
+      p =>
+        p.mismatch?.kind === 'missing_required_input' &&
+        p.capabilityId === 'Task.complete' &&
+        p.mismatch.parameter === 'userId',
+    );
+    expect(plan?.automaticApplicationAllowed).toBe(false);
+  });
+
+  it('S12. multi-file same capability verifies only the patched file', async () => {
+    const contract = await contractFrom(TASK_ACTION_DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/task-card.tsx': `
+        import { taskComplete, taskClaim } from "@/lib/client";
+        export function TaskCard({
+          task,
+          currentUserId,
+        }: {
+          task: { id: string };
+          currentUserId: string;
+        }) {
+          const claim = async () => {
+            await taskClaim({ id: task.id, userId: currentUserId });
+          };
+          const complete = async () => {
+            await taskComplete({ id: task.id });
+          };
+          return null;
+        }
+      `,
+      'apps/app/app/ui/mobile-task.tsx': `
+        import { taskComplete } from "@/lib/client";
+        export function MobileTask({ taskId }: { taskId: string }) {
+          const complete = async () => {
+            await taskComplete({ id: taskId });
+          };
+          return null;
+        }
+      `,
+    });
+    const result = remediateWiringSync({
+      contract,
+      fileContents: files,
+      mode: 'one-defect',
+      capabilityId: 'Task.complete',
+      autoFixableOnly: true,
+    });
+    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect(result.changedFiles.some(f => f.includes('task-card'))).toBe(true);
+    const after = resultToMap(files, result);
+    expect([...after.entries()].find(([k]) => k.includes('task-card'))?.[1]).toMatch(
+      /userId\s*:\s*currentUserId/,
+    );
+    expect([...after.entries()].find(([k]) => k.includes('mobile-task'))?.[1]).toMatch(
+      /taskComplete\(\{\s*id:\s*taskId\s*\}\)/,
+    );
+  });
 });
