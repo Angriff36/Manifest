@@ -22,29 +22,46 @@
  *   - Unknown `type.name` produces a hard error diagnostic. No fallback.
  */
 
-import type { IR, IREntity, IREnum, IRProperty, IRRelationship, IRStore, IRValue } from '../../ir';
+import type {
+  IR,
+  IREntity,
+  IREnum,
+  IRProperty,
+  IRRelationship,
+  IRStore,
+  IRValue,
+} from "../../ir";
 import type {
   ProjectionArtifact,
   ProjectionDiagnostic,
   ProjectionRequest,
   ProjectionResult,
   ProjectionTarget,
-} from '../interface';
-
-import { normalizeOptions, type PrismaProjectionOptions, type IndexEntry, type ForeignKeyConfig, type PrismaProvider } from './options.js';
+} from "../interface";
 import {
-  resolvePrismaScalar,
-  isDecimalScalar,
+  pluralize,
+  resolveColumnName,
+  resolveTableName,
+} from "../shared/naming.js";
+import {
+  type ForeignKeyConfig,
+  type IndexEntry,
+  normalizeOptions,
+  type PrismaProjectionOptions,
+  type PrismaProvider,
+} from "./options.js";
+import {
   DEFAULT_DECIMAL_PRECISION,
   DEFAULT_DECIMAL_SCALE,
-} from './type-mapping.js';
-import { resolveColumnName, resolveTableName, pluralize } from '../shared/naming.js';
+  isDecimalScalar,
+  resolvePrismaScalar,
+} from "./type-mapping.js";
 
 // ============================================================================
 // Surface identifiers
 // ============================================================================
 
-const SURFACE_SCHEMA = 'prisma.schema' as const;
+const SURFACE_SCHEMA = "prisma.schema" as const;
 
 const SURFACES = [SURFACE_SCHEMA] as const;
 
@@ -58,13 +75,13 @@ const SURFACES = [SURFACE_SCHEMA] as const;
  * introduced in Phase 2; `'postgres'` / `'supabase'` are the legacy
  * backend-specific names that the runtime engine still knows about.
  */
-const PERSISTENT_TARGETS: ReadonlySet<IRStore['target']> = new Set([
-  'durable',
-  'postgres',
-  'supabase',
+const PERSISTENT_TARGETS: ReadonlySet<IRStore["target"]> = new Set([
+  "durable",
+  "postgres",
+  "supabase",
 ]);
 
-function isPersistent(target: IRStore['target']): boolean {
+function isPersistent(target: IRStore["target"]): boolean {
   return PERSISTENT_TARGETS.has(target);
 }
 
@@ -76,11 +93,8 @@ function isPersistent(target: IRStore['target']): boolean {
  * Providers that support multiple database schemas in Prisma. Enabling
  * `multiSchema` with any other provider is a hard error.
  */
-const MULTISCHEMA_PROVIDERS: ReadonlySet<PrismaProvider> = new Set<PrismaProvider>([
-  'postgresql',
-  'cockroachdb',
-  'sqlserver',
-]);
+const MULTISCHEMA_PROVIDERS: ReadonlySet<PrismaProvider> =
+  new Set<PrismaProvider>(["postgresql", "cockroachdb", "sqlserver"]);
 
 /**
  * Resolve the database schema a model belongs to, or `undefined` when the
@@ -89,10 +103,20 @@ const MULTISCHEMA_PROVIDERS: ReadonlySet<PrismaProvider> = new Set<PrismaProvide
  *   2. the entity's IR `module` (the real layout we are preserving)
  *   3. `defaultSchema` (default `"public"`)
  */
-function resolveSchemaName(entity: IREntity, options: PrismaProjectionOptions): string | undefined {
+function resolveSchemaName(
+  entity: IREntity,
+  options: PrismaProjectionOptions
+): string | undefined {
   const ms = options.multiSchema;
-  if (!ms?.enabled) return undefined;
-  return ms.entitySchema?.[entity.name] ?? entity.module ?? ms.defaultSchema ?? 'public';
+  if (!ms?.enabled) {
+    return;
+  }
+  return (
+    ms.entitySchema?.[entity.name] ??
+    entity.module ??
+    ms.defaultSchema ??
+    "public"
+  );
 }
 
 /**
@@ -100,10 +124,20 @@ function resolveSchemaName(entity: IREntity, options: PrismaProjectionOptions): 
  * `resolveSchemaName` for entities: explicit `entitySchema[name]` override,
  * then the enum's IR `module`, then `defaultSchema`.
  */
-function resolveEnumSchemaName(enumDef: IREnum, options: PrismaProjectionOptions): string | undefined {
+function resolveEnumSchemaName(
+  enumDef: IREnum,
+  options: PrismaProjectionOptions
+): string | undefined {
   const ms = options.multiSchema;
-  if (!ms?.enabled) return undefined;
-  return ms.entitySchema?.[enumDef.name] ?? enumDef.module ?? ms.defaultSchema ?? 'public';
+  if (!ms?.enabled) {
+    return;
+  }
+  return (
+    ms.entitySchema?.[enumDef.name] ??
+    enumDef.module ??
+    ms.defaultSchema ??
+    "public"
+  );
 }
 
 /**
@@ -121,11 +155,11 @@ function emitEnum(enumDef: IREnum, options: PrismaProjectionOptions): string {
   }
   const schemaName = resolveEnumSchemaName(enumDef, options);
   if (schemaName) {
-    lines.push('');
+    lines.push("");
     lines.push(`  @@schema("${schemaName}")`);
   }
-  lines.push('}');
-  return lines.join('\n');
+  lines.push("}");
+  return lines.join("\n");
 }
 
 /**
@@ -133,19 +167,29 @@ function emitEnum(enumDef: IREnum, options: PrismaProjectionOptions): string {
  * preserved), then any schema referenced by a model OR enum but not explicitly
  * listed, appended in sorted order. Guarantees every referenced schema is declared.
  */
-function buildSchemasList(entities: IREntity[], enums: IREnum[], options: PrismaProjectionOptions): string[] {
+function buildSchemasList(
+  entities: IREntity[],
+  enums: IREnum[],
+  options: PrismaProjectionOptions
+): string[] {
   const ordered: string[] = [...(options.multiSchema?.schemas ?? [])];
   const used = new Set<string>();
   for (const entity of entities) {
     const schema = resolveSchemaName(entity, options);
-    if (schema) used.add(schema);
+    if (schema) {
+      used.add(schema);
+    }
   }
   for (const enumDef of enums) {
     const schema = resolveEnumSchemaName(enumDef, options);
-    if (schema) used.add(schema);
+    if (schema) {
+      used.add(schema);
+    }
   }
   for (const schema of [...used].sort()) {
-    if (!ordered.includes(schema)) ordered.push(schema);
+    if (!ordered.includes(schema)) {
+      ordered.push(schema);
+    }
   }
   return ordered;
 }
@@ -156,25 +200,27 @@ function buildSchemasList(entities: IREntity[], enums: IREnum[], options: Prisma
 
 function literalToPrismaDefault(value: IRValue): string | undefined {
   switch (value.kind) {
-    case 'string':
-      return `"${value.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-    case 'number':
+    case "string":
+      return `"${value.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    case "number":
       return String(value.value);
-    case 'boolean':
-      return value.value ? 'true' : 'false';
-    case 'null':
+    case "boolean":
+      return value.value ? "true" : "false";
+    case "null":
       // Prisma's `@default(null)` is not a thing; nullable columns omit @default.
-      return undefined;
-    case 'array': {
+      return;
+    case "array": {
       const elements = value.elements.map(literalToPrismaDefault);
-      if (elements.some(element => element === undefined)) return undefined;
-      return `[${elements.join(', ')}]`;
+      if (elements.some((element) => element === undefined)) {
+        return;
+      }
+      return `[${elements.join(", ")}]`;
     }
-    case 'object':
+    case "object":
       // Object defaults are not portable to Prisma scalar columns; consumers can
       // supply their own via fieldAttributes. Json columns are handled separately
       // (see irValueToJsonString) — this path is for non-Json scalars, so skip.
-      return undefined;
+      return;
   }
 }
 
@@ -187,14 +233,21 @@ function literalToPrismaDefault(value: IRValue): string | undefined {
 function irValueToJsonString(value: IRValue): string | undefined {
   const toJs = (v: IRValue): unknown => {
     switch (v.kind) {
-      case 'string': return v.value;
-      case 'number': return v.value;
-      case 'boolean': return v.value;
-      case 'null': return null;
-      case 'array': return v.elements.map(toJs);
-      case 'object': {
+      case "string":
+        return v.value;
+      case "number":
+        return v.value;
+      case "boolean":
+        return v.value;
+      case "null":
+        return null;
+      case "array":
+        return v.elements.map(toJs);
+      case "object": {
         const obj: Record<string, unknown> = {};
-        for (const [k, el] of Object.entries(v.properties)) obj[k] = toJs(el);
+        for (const [k, el] of Object.entries(v.properties)) {
+          obj[k] = toJs(el);
+        }
         return obj;
       }
     }
@@ -202,15 +255,15 @@ function irValueToJsonString(value: IRValue): string | undefined {
   try {
     return JSON.stringify(toJs(value));
   } catch {
-    return undefined;
+    return;
   }
 }
 
 function buildIndexLine(entry: IndexEntry): string {
   if (Array.isArray(entry)) {
-    return `  @@index([${entry.join(', ')}])`;
+    return `  @@index([${entry.join(", ")}])`;
   }
-  const fields = `[${entry.fields.join(', ')}]`;
+  const fields = `[${entry.fields.join(", ")}]`;
   return entry.name
     ? `  @@index(${fields}, name: "${entry.name}")`
     : `  @@index(${fields})`;
@@ -229,8 +282,8 @@ function toPrismaAction(action: string): string {
 // ============================================================================
 
 interface PropertyEmission {
-  line: string | null;
   diagnostics: ProjectionDiagnostic[];
+  line: string | null;
 }
 
 /**
@@ -241,38 +294,42 @@ function emitPropertyLine(
   entity: IREntity,
   prop: IRProperty,
   ir: IR,
-  options: PrismaProjectionOptions,
+  options: PrismaProjectionOptions
 ): PropertyEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
 
   // Array type handling: array<T> or T[] produces Prisma ScalarType[]
   // (e.g. array<string> → String[], array<int> → Int[]).
-  const isArray = prop.type.name === 'array' && prop.type.generic;
+  const isArray = prop.type.name === "array" && prop.type.generic;
   const effectiveTypeName = isArray ? prop.type.generic!.name : prop.type.name;
 
-  const isValueObject = ir.values?.some(v => v.name === effectiveTypeName);
+  const isValueObject = ir.values?.some((v) => v.name === effectiveTypeName);
   // Enum-typed property: the IR type name matches a declared enum. The Prisma
   // field type IS the enum name (emitted as a `enum` block by emitEnum), unless
   // a typeMappings override is explicitly supplied.
-  const isEnum = (ir.enums?.some(e => e.name === effectiveTypeName) ?? false) && !isValueObject;
-  const typeOverrides = isValueObject ? undefined : options.typeMappings?.[entity.name];
-  const hasOverride = typeOverrides !== undefined
-    && Object.prototype.hasOwnProperty.call(typeOverrides, prop.name);
+  const isEnum =
+    (ir.enums?.some((e) => e.name === effectiveTypeName) ?? false) &&
+    !isValueObject;
+  const typeOverrides = isValueObject
+    ? undefined
+    : options.typeMappings?.[entity.name];
+  const hasOverride =
+    typeOverrides !== undefined && Object.hasOwn(typeOverrides, prop.name);
   const scalar = isValueObject
-    ? 'Json'
-    : (isEnum && !hasOverride)
+    ? "Json"
+    : isEnum && !hasOverride
       ? effectiveTypeName
       : resolvePrismaScalar(effectiveTypeName, typeOverrides, prop.name);
 
   if (!scalar) {
-    if (effectiveTypeName === 'number' && !hasOverride) {
+    if (effectiveTypeName === "number" && !hasOverride) {
       diagnostics.push({
-        severity: 'error',
-        code: 'PRISMA_AMBIGUOUS_NUMBER',
+        severity: "error",
+        code: "PRISMA_AMBIGUOUS_NUMBER",
         entity: entity.name,
         message:
           `Property '${entity.name}.${prop.name}' is typed 'number', which is ambiguous (Manifest does not ` +
-          `distinguish integers from real numbers from money). Pick a precise type in the .manifest source: ` +
+          "distinguish integers from real numbers from money). Pick a precise type in the .manifest source: " +
           `'int' or 'bigint' for counts and ids, 'float' for measurements where rounding is acceptable, ` +
           `'money' or 'decimal' for currency and other exact-decimal values. ` +
           `Or supply a 'typeMappings.${entity.name}.${prop.name}' override.`,
@@ -281,13 +338,13 @@ function emitPropertyLine(
     }
 
     diagnostics.push({
-      severity: 'error',
-      code: 'PRISMA_UNKNOWN_TYPE',
+      severity: "error",
+      code: "PRISMA_UNKNOWN_TYPE",
       entity: entity.name,
       message:
         `Property '${entity.name}.${prop.name}' has IR type '${effectiveTypeName}' which is not in the default type mapping ` +
         `and no override was supplied in 'typeMappings.${entity.name}.${prop.name}'. ` +
-        `Add an entry to typeMappings, or change the property type in the .manifest source.`,
+        "Add an entry to typeMappings, or change the property type in the .manifest source.",
     });
     return { line: null, diagnostics };
   }
@@ -295,33 +352,38 @@ function emitPropertyLine(
   // @id is auto-added for a property named 'id' UNLESS the entity uses a composite key
   // (in that case @@id([...]) is emitted at model level; the id column is not special).
   const hasCompositeKey = entity.key && entity.key.length > 0;
-  const isId = prop.name === 'id' && !hasCompositeKey;
+  const isId = prop.name === "id" && !hasCompositeKey;
   // A scalar column is nullable IFF the IR type is nullable — i.e. the .manifest
   // source wrote an explicit `?` on the property type. `required`/id no longer
   // drive the suffix: a non-nullable type emits NOT NULL even without `required`,
   // and the edge case `required` + `?` type emits `?` (the declared type wins).
   // Prisma list fields (String[]) are implicitly optional — never append ?.
-  const nullableSuffix = isArray ? '' : (prop.type.nullable ? '?' : '');
+  const nullableSuffix = isArray ? "" : prop.type.nullable ? "?" : "";
   // Prisma list suffix: scalar becomes scalar[].
-  const listSuffix = isArray ? '[]' : '';
+  const listSuffix = isArray ? "[]" : "";
 
   // Attribute list, ordered: @id, @unique, @default, @map, @db.Decimal, @db.ObjectId,
   // dbAttributes (@db.*), fieldAttributes (@unique, @default(now()), @updatedAt, etc.)
   const attrs: string[] = [];
-  if (isId) attrs.push('@id');
-  if (prop.modifiers.includes('unique') && !isId) attrs.push('@unique');
+  if (isId) {
+    attrs.push("@id");
+  }
+  if (prop.modifiers.includes("unique") && !isId) {
+    attrs.push("@unique");
+  }
 
-  const isMongo = options.provider === 'mongodb';
+  const isMongo = options.provider === "mongodb";
   const colMapOverride = options.columnMappings?.[entity.name]?.[prop.name];
   if (isId && isMongo && !colMapOverride && !prop.defaultValue) {
-    attrs.push('@default(auto())');
+    attrs.push("@default(auto())");
   }
 
   // Scan fieldAttributes early to detect @default overrides.
   // We need to know BEFORE emitting the IR default whether the consumer
   // supplied their own @default. Actual push is deferred after dbAttributes.
   const fieldAttrs = options.fieldAttributes?.[entity.name]?.[prop.name];
-  const fieldAttrHasDefault = fieldAttrs?.some(fa => /^@default\b/.test(fa)) ?? false;
+  const fieldAttrHasDefault =
+    fieldAttrs?.some((fa) => /^@default\b/.test(fa)) ?? false;
 
   // NOTE: IR-level @default is NOT emitted here. It's emitted after dbAttributes
   // so that the attribute ordering matches the existing test expectations
@@ -335,7 +397,9 @@ function emitPropertyLine(
     // Auto-casing convention: emit @map only when the physical name differs
     // from the IR property name. The Prisma field identifier stays prop.name.
     const phys = resolveColumnName(prop.name, options.naming);
-    if (phys !== prop.name) attrs.push(`@map("${phys}")`);
+    if (phys !== prop.name) {
+      attrs.push(`@map("${phys}")`);
+    }
   }
 
   // Native-type precedence: an explicit `precision` entry wins, then an
@@ -350,65 +414,83 @@ function emitPropertyLine(
   //   3. Default @db.Decimal(12,2)       — applied below for decimal scalars
   const optPrec = options.precision?.[entity.name]?.[prop.name];
   const typeParams = prop.type.params;
-  const prec = optPrec ?? (
-    typeParams && (typeParams.precision !== undefined || typeParams.scale !== undefined)
+  const prec =
+    optPrec ??
+    (typeParams &&
+    (typeParams.precision !== undefined || typeParams.scale !== undefined)
       ? {
           precision: typeParams.precision ?? DEFAULT_DECIMAL_PRECISION,
           scale: typeParams.scale ?? DEFAULT_DECIMAL_SCALE,
         }
-      : undefined
-  );
+      : undefined);
   const dbAttr = options.dbAttributes?.[entity.name]?.[prop.name];
   // A Manifest `uuid` maps to the `String` scalar, but on PostgreSQL/CockroachDB
   // the physical column is a native `uuid` — so derive `@db.Uuid` automatically
   // instead of making every consumer repeat it per field in `dbAttributes`.
   // Postgres family only: MySQL/SQLite/SQL Server/Mongo have no `@db.Uuid`, and
   // when `provider` is unset the dialect is unknown so we stay conservative.
-  const isPgFamily = options.provider === 'postgresql' || options.provider === 'cockroachdb';
+  const isPgFamily =
+    options.provider === "postgresql" || options.provider === "cockroachdb";
   if (prec) {
     attrs.push(`@db.Decimal(${prec.precision}, ${prec.scale})`);
   } else if (dbAttr) {
     attrs.push(`@db.${dbAttr}`);
   } else if (isDecimalScalar(scalar)) {
-    attrs.push(`@db.Decimal(${DEFAULT_DECIMAL_PRECISION}, ${DEFAULT_DECIMAL_SCALE})`);
-  } else if (effectiveTypeName === 'uuid' && isPgFamily) {
-    attrs.push('@db.Uuid');
+    attrs.push(
+      `@db.Decimal(${DEFAULT_DECIMAL_PRECISION}, ${DEFAULT_DECIMAL_SCALE})`
+    );
+  } else if (effectiveTypeName === "uuid" && isPgFamily) {
+    attrs.push("@db.Uuid");
   }
 
-  if (isId && isMongo && scalar === 'String') {
+  if (isId && isMongo && scalar === "String") {
     const idTypeOverride = options.typeMappings?.[entity.name]?.id;
-    if (!idTypeOverride || idTypeOverride === 'String') {
-      attrs.push('@db.ObjectId');
+    if (!idTypeOverride || idTypeOverride === "String") {
+      attrs.push("@db.ObjectId");
     }
   }
 
   // `= now()` / `= today()` default: emit a store-level `@default(now())` so the
   // column is populated even when a row is inserted without the field.
   if (prop.autoNow && !fieldAttrHasDefault) {
-    attrs.push('@default(now())');
+    attrs.push("@default(now())");
   }
 
   // IR-level default: only emit if fieldAttributes didn't supply a @default override.
-  if (prop.defaultValue && !fieldAttrHasDefault) {
-    if (isEnum && prop.defaultValue.kind === 'string') {
+  // Exception: a `uuid` property with an empty-string default (`uuid? = ""`, the
+  // Manifest "unset FK" sentinel). `''` is not a valid uuid literal, so on native
+  // uuid columns (Postgres family) `@default("")` produces `SET DEFAULT ''` DDL
+  // that the database rejects (22P02: invalid input syntax for type uuid). The
+  // sentinel's seeding semantics live in the runtime (which maps "" → NULL for
+  // uuid columns); the store-level default is meaningless and undeployable.
+  const isEmptyUuidSentinel =
+    effectiveTypeName === "uuid" &&
+    prop.defaultValue?.kind === "string" &&
+    prop.defaultValue.value === "";
+  if (prop.defaultValue && !fieldAttrHasDefault && !isEmptyUuidSentinel) {
+    if (isEnum && prop.defaultValue.kind === "string") {
       // An enum default is a member identifier, emitted bare (`@default(draft)`),
       // never quoted like a string literal (`@default("draft")` would be invalid).
       attrs.push(`@default(${prop.defaultValue.value})`);
     } else if (
-      scalar === 'Json' && !isArray &&
-      (prop.defaultValue.kind === 'object' || prop.defaultValue.kind === 'array')
+      scalar === "Json" &&
+      !isArray &&
+      (prop.defaultValue.kind === "object" ||
+        prop.defaultValue.kind === "array")
     ) {
       // Json column object/array defaults must be double-quoted JSON strings
       // (`@default("{}")`, `@default("[]")`), not the bare bracket form Prisma
       // reserves for scalar lists. Serialize then escape for the Prisma string.
       const json = irValueToJsonString(prop.defaultValue);
       if (json !== undefined) {
-        const escaped = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const escaped = json.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
         attrs.push(`@default("${escaped}")`);
       }
     } else {
       const def = literalToPrismaDefault(prop.defaultValue);
-      if (def !== undefined) attrs.push(`@default(${def})`);
+      if (def !== undefined) {
+        attrs.push(`@default(${def})`);
+      }
     }
   }
 
@@ -418,27 +500,29 @@ function emitPropertyLine(
   if (fieldAttrs && fieldAttrs.length > 0) {
     for (const fa of fieldAttrs) {
       const faKind = fa.match(/^@\w+/)?.[0];
-      if (faKind === '@default') {
+      if (faKind === "@default") {
         // Replace any existing @default (from IR) in-place to preserve attribute order.
-        const idx = attrs.findIndex(a => a.startsWith('@default'));
-        if (idx !== -1) {
-          attrs[idx] = fa;
-        } else {
+        const idx = attrs.findIndex((a) => a.startsWith("@default"));
+        if (idx === -1) {
           attrs.push(fa);
+        } else {
+          attrs[idx] = fa;
         }
       } else if (faKind) {
         // Non-default: skip if this kind already exists in attrs.
-        if (!attrs.some(a => a.startsWith(faKind))) attrs.push(fa);
+        if (!attrs.some((a) => a.startsWith(faKind))) {
+          attrs.push(fa);
+        }
       } else {
         attrs.push(fa);
       }
     }
   }
 
-  const attrPart = attrs.length ? ' ' + attrs.join(' ') : '';
-  const encryptedComment = prop.modifiers.includes('encrypted')
-    ? ' // @encrypted — envelope-encrypted at runtime'
-    : '';
+  const attrPart = attrs.length ? " " + attrs.join(" ") : "";
+  const encryptedComment = prop.modifiers.includes("encrypted")
+    ? " // @encrypted — envelope-encrypted at runtime"
+    : "";
   return {
     line: `  ${prop.name} ${scalar}${listSuffix}${nullableSuffix}${attrPart}${encryptedComment}`,
     diagnostics,
@@ -458,14 +542,20 @@ function targetPropPrismaType(
   targetEntityName: string,
   targetPropName: string,
   ir: IR,
-  options: PrismaProjectionOptions,
+  options: PrismaProjectionOptions
 ): string {
   const target = ir.entities.find((e) => e.name === targetEntityName);
-  if (!target) return 'String';
+  if (!target) {
+    return "String";
+  }
   const prop = target.properties.find((p) => p.name === targetPropName);
-  if (!prop) return 'String';
+  if (!prop) {
+    return "String";
+  }
   const overrides = options.typeMappings?.[targetEntityName];
-  return resolvePrismaScalar(prop.type.name, overrides, targetPropName) ?? 'String';
+  return (
+    resolvePrismaScalar(prop.type.name, overrides, targetPropName) ?? "String"
+  );
 }
 
 /**
@@ -480,13 +570,19 @@ function targetPropPrismaType(
 function findOppositeRelations(
   fromEntityName: string,
   rel: IRRelationship,
-  ir: IR,
+  ir: IR
 ): IRRelationship[] {
   const target = ir.entities.find((e) => e.name === rel.target);
-  if (!target) return [];
+  if (!target) {
+    return [];
+  }
   return target.relationships.filter((r) => {
-    if (r.target !== fromEntityName) return false;
-    if (target.name === fromEntityName && r.name === rel.name) return false;
+    if (r.target !== fromEntityName) {
+      return false;
+    }
+    if (target.name === fromEntityName && r.name === rel.name) {
+      return false;
+    }
     return true;
   });
 }
@@ -497,7 +593,10 @@ function findOppositeRelations(
  * (`belongsTo`/`ref`) so both sides compute the identical string and Prisma can
  * pair them. The FK field name is unique per entity, so the name is unique.
  */
-function ambiguousRelationName(fkOwnerEntity: string, fkRelName: string): string {
+function ambiguousRelationName(
+  fkOwnerEntity: string,
+  fkRelName: string
+): string {
   return `${fkOwnerEntity}_${fkRelName}`;
 }
 
@@ -520,17 +619,25 @@ function ambiguousRelationName(fkOwnerEntity: string, fkRelName: string): string
 function resolveBacksideRelationName(
   entity: IREntity,
   rel: IRRelationship,
-  ir: IR,
+  ir: IR
 ): string | undefined {
   const target = ir.entities.find((e) => e.name === rel.target);
-  if (!target) return undefined;
+  if (!target) {
+    return;
+  }
   const fkRels = target.relationships.filter(
-    (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name,
+    (r) =>
+      (r.kind === "belongsTo" || r.kind === "ref") && r.target === entity.name
   );
-  if (fkRels.length === 0) return undefined;
-  if (fkRels.length === 1) return ambiguousRelationName(target.name, fkRels[0].name);
+  if (fkRels.length === 0) {
+    return;
+  }
+  if (fkRels.length === 1) {
+    return ambiguousRelationName(target.name, fkRels[0].name);
+  }
   const backRels = entity.relationships.filter(
-    (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === target.name,
+    (r) =>
+      (r.kind === "hasMany" || r.kind === "hasOne") && r.target === target.name
   );
   const idx = backRels.findIndex((r) => r.name === rel.name);
   const paired = fkRels[idx];
@@ -538,8 +645,8 @@ function resolveBacksideRelationName(
 }
 
 interface RelationEmission {
-  lines: string[];
   diagnostics: ProjectionDiagnostic[];
+  lines: string[];
 }
 
 /**
@@ -564,7 +671,7 @@ function emitRelationship(
   rel: IRRelationship,
   ir: IR,
   options: PrismaProjectionOptions,
-  context: RelationContext,
+  context: RelationContext
 ): RelationEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
@@ -572,8 +679,8 @@ function emitRelationship(
   // (0) Dangling target guard.
   if (!context.emittedEntities.has(rel.target)) {
     diagnostics.push({
-      severity: 'warning',
-      code: 'PRISMA_RELATION_TARGET_NOT_EMITTED',
+      severity: "warning",
+      code: "PRISMA_RELATION_TARGET_NOT_EMITTED",
       entity: entity.name,
       message:
         `Relationship '${entity.name}.${rel.name}' (${rel.kind} → ${rel.target}) targets an entity that is not emitted as a Prisma model. ` +
@@ -581,7 +688,7 @@ function emitRelationship(
         `The relation field has been skipped to avoid a dangling reference; declare ${rel.target} as a durable entity, or remove the relationship.`,
     });
     lines.push(
-      `  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_TARGET_NOT_EMITTED`,
+      `  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_TARGET_NOT_EMITTED`
     );
     return { lines, diagnostics };
   }
@@ -589,16 +696,16 @@ function emitRelationship(
   // (1) `through` → join-entity-mediated many-to-many.
   if (rel.through) {
     diagnostics.push({
-      severity: 'info',
-      code: 'PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED',
+      severity: "info",
+      code: "PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED",
       entity: entity.name,
       message:
         `Relationship '${entity.name}.${rel.name}' uses 'through ${rel.through}' (many-to-many via join entity). ` +
         `The projection does not emit this as a Prisma field — declare the join entity ('${rel.through}') ` +
-        `as its own entity with two belongsTo relations to wire the Prisma schema.`,
+        "as its own entity with two belongsTo relations to wire the Prisma schema.",
     });
     lines.push(
-      `  // ${rel.kind} ${rel.name}: ${rel.target} through ${rel.through} — see PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED`,
+      `  // ${rel.kind} ${rel.name}: ${rel.target} through ${rel.through} — see PRISMA_RELATION_VIA_THROUGH_UNIMPLEMENTED`
     );
     return { lines, diagnostics };
   }
@@ -606,7 +713,9 @@ function emitRelationship(
   // (2) Ambiguity: multiple relations between this pair of entities. Prisma
   // requires a named `@relation` on BOTH sides. We derive a deterministic name
   // anchored on the FK-owning side so both sides agree (see helpers above).
-  const sameTargetCount = entity.relationships.filter((r) => r.target === rel.target).length;
+  const sameTargetCount = entity.relationships.filter(
+    (r) => r.target === rel.target
+  ).length;
   const opposites = findOppositeRelations(entity.name, rel, ir);
   // Also ambiguous if autoBackRelations will add an inverse field to the same
   // target on this model (bidirectional A↔B belongsTo pairs) — count all the
@@ -617,25 +726,27 @@ function emitRelationship(
     totalRelationFields(entity.name, rel.target, ir, options) > 1;
   let relationName: string | undefined;
   if (isAmbiguous) {
-    if (rel.kind === 'belongsTo' || rel.kind === 'ref') {
+    if (rel.kind === "belongsTo" || rel.kind === "ref") {
       relationName = ambiguousRelationName(entity.name, rel.name);
     } else {
       relationName = resolveBacksideRelationName(entity, rel, ir);
       const fkBack = ir.entities
         .find((e) => e.name === rel.target)
         ?.relationships.filter(
-          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name,
+          (r) =>
+            (r.kind === "belongsTo" || r.kind === "ref") &&
+            r.target === entity.name
         );
       if (relationName && fkBack && fkBack.length > 1) {
         diagnostics.push({
-          severity: 'info',
-          code: 'PRISMA_RELATION_PAIRING_ASSUMED',
+          severity: "info",
+          code: "PRISMA_RELATION_PAIRING_ASSUMED",
           entity: entity.name,
           message:
             `Relationship '${entity.name}.${rel.name}' → ${rel.target} was paired with ` +
             `'${rel.target}.${relationName.slice(rel.target.length + 1)}' by declaration order ` +
             `(emitted as @relation("${relationName}")). The IR carries no inverse pointer; ` +
-            `verify the pairing is correct, or declare the relations in parallel order on both sides.`,
+            "verify the pairing is correct, or declare the relations in parallel order on both sides.",
         });
       }
     }
@@ -643,28 +754,30 @@ function emitRelationship(
       // hasMany/hasOne with no FK-owning back side: Prisma can't form the
       // relation at all. Surface it rather than emit invalid schema.
       diagnostics.push({
-        severity: 'warning',
-        code: 'PRISMA_RELATION_AMBIGUOUS',
+        severity: "warning",
+        code: "PRISMA_RELATION_AMBIGUOUS",
         entity: entity.name,
         message:
           `Relationship '${entity.name}.${rel.name}' → ${rel.target} is one of multiple relations between ` +
           `these entities, but ${rel.target} declares no 'belongsTo'/'ref' back to ${entity.name} to anchor a ` +
           `named relation. Add a FK-owning relation on ${rel.target}, or refactor to a single relation.`,
       });
-      lines.push(`  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_AMBIGUOUS`);
+      lines.push(
+        `  // ${rel.kind} ${rel.name}: ${rel.target} — see PRISMA_RELATION_AMBIGUOUS`
+      );
       return { lines, diagnostics };
     }
   }
-  const relNameArg = relationName ? `"${relationName}"` : '';
-  const relNameSuffix = relationName ? ` @relation(${relNameArg})` : '';
+  const relNameArg = relationName ? `"${relationName}"` : "";
+  const relNameSuffix = relationName ? ` @relation(${relNameArg})` : "";
 
   switch (rel.kind) {
-    case 'hasMany': {
+    case "hasMany": {
       lines.push(`  ${rel.name} ${rel.target}[]${relNameSuffix}`);
       if (opposites.length === 0) {
         diagnostics.push({
-          severity: 'warning',
-          code: 'PRISMA_RELATION_MISSING_BACKSIDE',
+          severity: "warning",
+          code: "PRISMA_RELATION_MISSING_BACKSIDE",
           entity: entity.name,
           message:
             `Relationship '${entity.name}.${rel.name}: ${rel.target}[]' has no back-relation declared on ${rel.target}. ` +
@@ -674,24 +787,24 @@ function emitRelationship(
       return { lines, diagnostics };
     }
 
-    case 'hasOne': {
+    case "hasOne": {
       lines.push(`  ${rel.name} ${rel.target}?${relNameSuffix}`);
       if (opposites.length === 0) {
         diagnostics.push({
-          severity: 'warning',
-          code: 'PRISMA_RELATION_MISSING_BACKSIDE',
+          severity: "warning",
+          code: "PRISMA_RELATION_MISSING_BACKSIDE",
           entity: entity.name,
           message:
             `Relationship '${entity.name}.${rel.name}: ${rel.target}?' has no back-relation declared on ${rel.target}. ` +
             `Prisma rejects one-sided relations — add a 'belongsTo' (or 'ref') from ${rel.target} back to ${entity.name}, ` +
-            `and the FK will be marked @unique automatically.`,
+            "and the FK will be marked @unique automatically.",
         });
       }
       return { lines, diagnostics };
     }
 
-    case 'belongsTo':
-    case 'ref': {
+    case "belongsTo":
+    case "ref": {
       // Config override can be a string (FK column name) or an object
       // (ForeignKeyConfig with fields, references, and optional referential actions).
       const configFkOverride = options.foreignKeys?.[entity.name]?.[rel.name];
@@ -700,53 +813,61 @@ function emitRelationship(
       let configOnDelete: string | undefined;
       let configOnUpdate: string | undefined;
 
-      if (configFkOverride !== undefined) {
-        if (typeof configFkOverride === 'string') {
-          // Legacy/simple form: just the FK column name.
-          fkFields = [configFkOverride];
-        } else {
-          // Object form: ForeignKeyConfig with fields, references, actions.
-          const fkObj = configFkOverride as ForeignKeyConfig;
-          fkFields = fkObj.fields;
-          configRefs = fkObj.references;
-          configOnDelete = fkObj.onDelete;
-          configOnUpdate = fkObj.onUpdate;
-        }
-      } else {
+      if (configFkOverride === undefined) {
         fkFields = rel.foreignKey?.fields ?? [`${rel.name}Id`];
+      } else if (typeof configFkOverride === "string") {
+        // Legacy/simple form: just the FK column name.
+        fkFields = [configFkOverride];
+      } else {
+        // Object form: ForeignKeyConfig with fields, references, actions.
+        const fkObj = configFkOverride as ForeignKeyConfig;
+        fkFields = fkObj.fields;
+        configRefs = fkObj.references;
+        configOnDelete = fkObj.onDelete;
+        configOnUpdate = fkObj.onUpdate;
       }
 
-      const refsFields: string[] = configRefs ?? rel.foreignKey?.references ?? ['id'];
+      const refsFields: string[] = configRefs ??
+        rel.foreignKey?.references ?? ["id"];
       const isComposite = fkFields.length > 1;
 
       // 1:1 if target has a `hasOne` pointing back at us.
-      const isOneToOne = opposites.some((o) => o.kind === 'hasOne');
+      const isOneToOne = opposites.some((o) => o.kind === "hasOne");
 
       // Emit FK column(s). Each local FK field gets a column line unless
       // the entity already declares a property with that name.
       for (let i = 0; i < fkFields.length; i++) {
         const fkField = fkFields[i];
-        const refField = refsFields[i] ?? 'id';
-        const fkAlreadyDeclared = entity.properties.some((p) => p.name === fkField);
+        const refField = refsFields[i] ?? "id";
+        const fkAlreadyDeclared = entity.properties.some(
+          (p) => p.name === fkField
+        );
         if (!fkAlreadyDeclared) {
-          const fkType = targetPropPrismaType(rel.target, refField, ir, options);
+          const fkType = targetPropPrismaType(
+            rel.target,
+            refField,
+            ir,
+            options
+          );
           // For single-column 1:1 → @unique on the column. For composite, @@unique at model level.
-          const uniqueAttr = (!isComposite && isOneToOne) ? ' @unique' : '';
+          const uniqueAttr = !isComposite && isOneToOne ? " @unique" : "";
           // Explicit columnMappings override wins; otherwise the auto-casing
           // convention maps the physical FK column name (identifier stays fkField).
           let physMap = options.columnMappings?.[entity.name]?.[fkField];
           if (!physMap && options.naming) {
             const phys = resolveColumnName(fkField, options.naming);
-            if (phys !== fkField) physMap = phys;
+            if (phys !== fkField) {
+              physMap = phys;
+            }
           }
-          const colMapAttr = physMap ? ` @map("${physMap}")` : '';
+          const colMapAttr = physMap ? ` @map("${physMap}")` : "";
           lines.push(`  ${fkField} ${fkType}${uniqueAttr}${colMapAttr}`);
         }
       }
 
       // For composite 1:1, emit @@unique at model level.
       if (isComposite && isOneToOne) {
-        lines.push(`  @@unique([${fkFields.join(', ')}])`);
+        lines.push(`  @@unique([${fkFields.join(", ")}])`);
       }
 
       // Prisma rule: if any FK scalar field is nullable, the relation field must
@@ -755,17 +876,19 @@ function emitRelationship(
       // nullability rule in emitPropertyLine (prop.type.nullable ? '?' : '').
       const fkOptional = fkFields.some((f) => {
         const prop = entity.properties.find((p) => p.name === f);
-        if (!prop) return false; // synthesized FK column is non-null
-        const isArr = prop.type.name === 'array' && !!prop.type.generic;
+        if (!prop) {
+          return false; // synthesized FK column is non-null
+        }
+        const isArr = prop.type.name === "array" && !!prop.type.generic;
         return !isArr && prop.type.nullable;
       });
-      const optionalMark = fkOptional ? '?' : '';
+      const optionalMark = fkOptional ? "?" : "";
 
       // Relation field line with correct fields/references and optional referential actions.
       // Config-level onDelete/onUpdate (from ForeignKeyConfig) take precedence over IR-level.
-      const nameAttr = relationName ? `${relNameArg}, ` : '';
-      const fieldsAttr = `fields: [${fkFields.join(', ')}]`;
-      const refsAttr = `references: [${refsFields.join(', ')}]`;
+      const nameAttr = relationName ? `${relNameArg}, ` : "";
+      const fieldsAttr = `fields: [${fkFields.join(", ")}]`;
+      const refsAttr = `references: [${refsFields.join(", ")}]`;
       // Prisma rejects the implicit SetNull/Cascade referential actions on a
       // self-relation or a reference cycle (e.g. A→B belongsTo while B→A
       // belongsTo). Such relations must carry NoAction on at least one side; we
@@ -776,34 +899,47 @@ function emitRelationship(
       const isMutualCycle =
         !isSelfRelation &&
         !!targetEntity?.relationships.some(
-          (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === entity.name && !r.through,
+          (r) =>
+            (r.kind === "belongsTo" || r.kind === "ref") &&
+            r.target === entity.name &&
+            !r.through
         );
       // `NoAction` is the cycle-breaker in relational mode, but it is not
       // implemented for Postgres under relationMode="prisma" — there the allowed
       // set is Cascade/Restrict/SetNull, so use Restrict to break the cycle.
       const cycleDefault =
         isSelfRelation || isMutualCycle
-          ? (options.relationMode === 'prisma' ? 'Restrict' : 'NoAction')
+          ? options.relationMode === "prisma"
+            ? "Restrict"
+            : "NoAction"
           : undefined;
-      const effectiveOnDelete = configOnDelete ?? (rel.onDelete ? toPrismaAction(rel.onDelete) : cycleDefault);
-      const effectiveOnUpdate = configOnUpdate ?? (rel.onUpdate ? toPrismaAction(rel.onUpdate) : cycleDefault);
-      const onDeleteAttr = effectiveOnDelete ? `, onDelete: ${effectiveOnDelete}` : '';
-      const onUpdateAttr = effectiveOnUpdate ? `, onUpdate: ${effectiveOnUpdate}` : '';
+      const effectiveOnDelete =
+        configOnDelete ??
+        (rel.onDelete ? toPrismaAction(rel.onDelete) : cycleDefault);
+      const effectiveOnUpdate =
+        configOnUpdate ??
+        (rel.onUpdate ? toPrismaAction(rel.onUpdate) : cycleDefault);
+      const onDeleteAttr = effectiveOnDelete
+        ? `, onDelete: ${effectiveOnDelete}`
+        : "";
+      const onUpdateAttr = effectiveOnUpdate
+        ? `, onUpdate: ${effectiveOnUpdate}`
+        : "";
       lines.push(
-        `  ${rel.name} ${rel.target}${optionalMark} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`,
+        `  ${rel.name} ${rel.target}${optionalMark} @relation(${nameAttr}${fieldsAttr}, ${refsAttr}${onDeleteAttr}${onUpdateAttr})`
       );
 
       // With autoBackRelations the projection emits the inverse on the target,
       // so a missing declared back-relation is no longer a problem.
       if (opposites.length === 0 && !options.autoBackRelations) {
         diagnostics.push({
-          severity: 'warning',
-          code: 'PRISMA_RELATION_MISSING_BACKSIDE',
+          severity: "warning",
+          code: "PRISMA_RELATION_MISSING_BACKSIDE",
           entity: entity.name,
           message:
             `Relationship '${entity.name}.${rel.name}: ${rel.target}' (${rel.kind}) has no back-relation declared on ${rel.target}. ` +
             `Prisma rejects one-sided relations — add 'hasMany' or 'hasOne' on ${rel.target} pointing back to ${entity.name}, ` +
-            `or enable projections.prisma.options.autoBackRelations to emit it automatically.`,
+            "or enable projections.prisma.options.autoBackRelations to emit it automatically.",
         });
       }
 
@@ -827,15 +963,25 @@ function emitRelationship(
  * `target`: `target`'s FK-owning relations back to `owner` not already covered
  * by a declared `hasMany`/`hasOne` on `owner`. Zero unless autoBackRelations.
  */
-function autoInverseCountFor(ownerName: string, targetName: string, ir: IR): number {
+function autoInverseCountFor(
+  ownerName: string,
+  targetName: string,
+  ir: IR
+): number {
   const owner = ir.entities.find((e) => e.name === ownerName);
   const target = ir.entities.find((e) => e.name === targetName);
-  if (!owner || !target) return 0;
+  if (!(owner && target)) {
+    return 0;
+  }
   const targetForwards = target.relationships.filter(
-    (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === ownerName && !r.through,
+    (r) =>
+      (r.kind === "belongsTo" || r.kind === "ref") &&
+      r.target === ownerName &&
+      !r.through
   ).length;
   const ownerDeclaredInverses = owner.relationships.filter(
-    (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === targetName,
+    (r) =>
+      (r.kind === "hasMany" || r.kind === "hasOne") && r.target === targetName
   ).length;
   return Math.max(0, targetForwards - ownerDeclaredInverses);
 }
@@ -851,12 +997,18 @@ function totalRelationFields(
   ownerName: string,
   targetName: string,
   ir: IR,
-  options: PrismaProjectionOptions,
+  options: PrismaProjectionOptions
 ): number {
   const owner = ir.entities.find((e) => e.name === ownerName);
-  if (!owner) return 0;
-  const declared = owner.relationships.filter((r) => r.target === targetName && !r.through).length;
-  const auto = options.autoBackRelations ? autoInverseCountFor(ownerName, targetName, ir) : 0;
+  if (!owner) {
+    return 0;
+  }
+  const declared = owner.relationships.filter(
+    (r) => r.target === targetName && !r.through
+  ).length;
+  const auto = options.autoBackRelations
+    ? autoInverseCountFor(ownerName, targetName, ir)
+    : 0;
   return declared + auto;
 }
 
@@ -868,16 +1020,28 @@ function totalRelationFields(
  * reference mandates the uniqueness), rather than assuming every composite `id`
  * is globally unique.
  */
-function isReferencedBySingleId(target: IREntity, ir: IR, options: PrismaProjectionOptions): boolean {
+function isReferencedBySingleId(
+  target: IREntity,
+  ir: IR,
+  options: PrismaProjectionOptions
+): boolean {
   for (const e of ir.entities) {
     for (const r of e.relationships) {
-      if ((r.kind !== 'belongsTo' && r.kind !== 'ref') || r.target !== target.name || r.through) continue;
+      if (
+        (r.kind !== "belongsTo" && r.kind !== "ref") ||
+        r.target !== target.name ||
+        r.through
+      ) {
+        continue;
+      }
       const cfg = options.foreignKeys?.[e.name]?.[r.name];
-      const refs =
-        (cfg && typeof cfg !== 'string' ? cfg.references : undefined) ??
-        r.foreignKey?.references ??
-        ['id'];
-      if (refs.length === 1 && refs[0] === 'id') return true;
+      const refs = (cfg && typeof cfg !== "string"
+        ? cfg.references
+        : undefined) ??
+        r.foreignKey?.references ?? ["id"];
+      if (refs.length === 1 && refs[0] === "id") {
+        return true;
+      }
     }
   }
   return false;
@@ -888,35 +1052,46 @@ function emitAutoInverseRelations(
   ir: IR,
   options: PrismaProjectionOptions,
   context: RelationContext,
-  existingFieldNames: Set<string>,
+  existingFieldNames: Set<string>
 ): RelationEmission {
   const lines: string[] = [];
   const diagnostics: ProjectionDiagnostic[] = [];
-  if (!options.autoBackRelations || !context.emittedEntities.has(target.name)) {
+  if (
+    !(options.autoBackRelations && context.emittedEntities.has(target.name))
+  ) {
     return { lines, diagnostics };
   }
 
   for (const owner of ir.entities) {
     // Self-relations are handled too: a self belongsTo (e.g. parent) needs a
     // named self-inverse (e.g. children) — Prisma requires names on both.
-    if (!context.emittedEntities.has(owner.name)) continue;
+    if (!context.emittedEntities.has(owner.name)) {
+      continue;
+    }
 
     // FK-owning relations owner → target (skip join-table relations).
     const forwards = owner.relationships.filter(
-      (r) => (r.kind === 'belongsTo' || r.kind === 'ref') && r.target === target.name && !r.through,
+      (r) =>
+        (r.kind === "belongsTo" || r.kind === "ref") &&
+        r.target === target.name &&
+        !r.through
     );
-    if (forwards.length === 0) continue;
+    if (forwards.length === 0) {
+      continue;
+    }
 
     // Inverses already declared on target pointing back at owner cover the
     // first N forwards (order-paired, consistent with resolveBacksideRelationName).
     const declaredInverses = target.relationships.filter(
-      (r) => (r.kind === 'hasMany' || r.kind === 'hasOne') && r.target === owner.name,
+      (r) =>
+        (r.kind === "hasMany" || r.kind === "hasOne") && r.target === owner.name
     );
 
     // A name is needed when this model will carry more than one field referencing
     // `owner` (declared + auto, either direction). A field-name suffix is needed
     // only when this single owner contributes more than one inverse here.
-    const needsName = totalRelationFields(target.name, owner.name, ir, options) > 1;
+    const needsName =
+      totalRelationFields(target.name, owner.name, ir, options) > 1;
     const needsSuffix = forwards.length > 1;
 
     for (let i = declaredInverses.length; i < forwards.length; i++) {
@@ -924,10 +1099,14 @@ function emitAutoInverseRelations(
       const base = lowerFirst(pluralize(owner.name));
       const field = needsSuffix ? `${base}${capitalizeFirst(fwd.name)}` : base;
       let unique = field;
-      for (let n = 2; existingFieldNames.has(unique); n++) unique = `${field}${n}`;
+      for (let n = 2; existingFieldNames.has(unique); n++) {
+        unique = `${field}${n}`;
+      }
       existingFieldNames.add(unique);
-      const relName = needsName ? ambiguousRelationName(owner.name, fwd.name) : undefined;
-      const relAttr = relName ? ` @relation("${relName}")` : '';
+      const relName = needsName
+        ? ambiguousRelationName(owner.name, fwd.name)
+        : undefined;
+      const relAttr = relName ? ` @relation("${relName}")` : "";
       lines.push(`  ${unique} ${owner.name}[]${relAttr}`);
     }
   }
@@ -947,15 +1126,15 @@ function capitalizeFirst(s: string): string {
 // ============================================================================
 
 interface ModelEmission {
-  lines: string[];
   diagnostics: ProjectionDiagnostic[];
+  lines: string[];
 }
 
 function emitModel(
   entity: IREntity,
   ir: IR,
   options: PrismaProjectionOptions,
-  context: RelationContext,
+  context: RelationContext
 ): ModelEmission {
   const diagnostics: ProjectionDiagnostic[] = [];
   const lines: string[] = [];
@@ -964,11 +1143,20 @@ function emitModel(
 
   let effectiveOptions = options;
   if (entity.timestamps) {
-    const merged = { ...options, fieldAttributes: { ...options.fieldAttributes } };
-    merged.fieldAttributes[entity.name] = { ...merged.fieldAttributes[entity.name] };
+    const merged = {
+      ...options,
+      fieldAttributes: { ...options.fieldAttributes },
+    };
+    merged.fieldAttributes[entity.name] = {
+      ...merged.fieldAttributes[entity.name],
+    };
     const fa = merged.fieldAttributes[entity.name];
-    if (!fa['createdAt']) fa['createdAt'] = ['@default(now())'];
-    if (!fa['updatedAt']) fa['updatedAt'] = ['@updatedAt'];
+    if (!fa["createdAt"]) {
+      fa["createdAt"] = ["@default(now())"];
+    }
+    if (!fa["updatedAt"]) {
+      fa["updatedAt"] = ["@updatedAt"];
+    }
     effectiveOptions = merged;
   }
 
@@ -976,36 +1164,49 @@ function emitModel(
   // STRUCTURAL invariant: iterate `properties` only. `computedProperties`
   // is a separate list and MUST never become columns.
   for (const prop of entity.properties) {
-    if (prop.name === 'id') sawIdProperty = true;
-    const { line, diagnostics: propDiags } = emitPropertyLine(entity, prop, ir, effectiveOptions);
+    if (prop.name === "id") {
+      sawIdProperty = true;
+    }
+    const { line, diagnostics: propDiags } = emitPropertyLine(
+      entity,
+      prop,
+      ir,
+      effectiveOptions
+    );
     diagnostics.push(...propDiags);
-    if (line !== null) lines.push(line);
+    if (line !== null) {
+      lines.push(line);
+    }
   }
 
   // Composite PK suppresses the PRISMA_NO_ID_PROPERTY check since
   // the entity's identity is established via @@id([...]) below.
   const hasCompositeKey = entity.key && entity.key.length > 0;
-  if (!sawIdProperty && !hasCompositeKey) {
+  if (!(sawIdProperty || hasCompositeKey)) {
     // No PK at all — Prisma will reject this model. Skip it rather than emitting
     // an invalid model that makes prisma validate fail on an otherwise clean schema.
     diagnostics.push({
-      severity: 'error',
-      code: 'PRISMA_NO_ID_PROPERTY',
+      severity: "error",
+      code: "PRISMA_NO_ID_PROPERTY",
       entity: entity.name,
       message:
         `Entity '${entity.name}' has no property named 'id' and no composite 'key' declaration. ` +
-        `Prisma requires every model to have at least one unique identity field. ` +
+        "Prisma requires every model to have at least one unique identity field. " +
         `Add 'property required id: string' to the entity or declare 'key [field1, field2, ...]'. ` +
-        `This model is skipped; all other models are still emitted.`,
+        "This model is skipped; all other models are still emitted.",
     });
     return { lines: [], diagnostics };
   }
 
   if (ir.tenant) {
     const tenantProp = ir.tenant.property;
-    const alreadyDeclared = entity.properties.some(p => p.name === tenantProp);
+    const alreadyDeclared = entity.properties.some(
+      (p) => p.name === tenantProp
+    );
     if (!alreadyDeclared) {
-      const tenantScalar = resolvePrismaScalar(ir.tenant.type.name, undefined, tenantProp) ?? 'String';
+      const tenantScalar =
+        resolvePrismaScalar(ir.tenant.type.name, undefined, tenantProp) ??
+        "String";
       lines.push(`  ${tenantProp} ${tenantScalar}`);
     }
   }
@@ -1014,27 +1215,47 @@ function emitModel(
   // relation field names don't collide with properties, FK columns, the tenant
   // column, or declared relation fields.
   const usedFieldNames = new Set<string>();
-  for (const p of entity.properties) usedFieldNames.add(p.name);
-  if (ir.tenant) usedFieldNames.add(ir.tenant.property);
+  for (const p of entity.properties) {
+    usedFieldNames.add(p.name);
+  }
+  if (ir.tenant) {
+    usedFieldNames.add(ir.tenant.property);
+  }
   for (const r of entity.relationships) {
     usedFieldNames.add(r.name);
-    for (const fk of r.foreignKey?.fields ?? [`${r.name}Id`]) usedFieldNames.add(fk);
+    for (const fk of r.foreignKey?.fields ?? [`${r.name}Id`]) {
+      usedFieldNames.add(fk);
+    }
   }
 
   // Relationships
   if (entity.relationships.length > 0) {
-    lines.push('');
+    lines.push("");
     for (const rel of entity.relationships) {
-      const { lines: relLines, diagnostics: relDiags } = emitRelationship(entity, rel, ir, options, context);
+      const { lines: relLines, diagnostics: relDiags } = emitRelationship(
+        entity,
+        rel,
+        ir,
+        options,
+        context
+      );
       lines.push(...relLines);
       diagnostics.push(...relDiags);
     }
   }
 
   // Auto-emitted inverse relations for one-sided belongsTo/ref pointing here.
-  const auto = emitAutoInverseRelations(entity, ir, options, context, usedFieldNames);
+  const auto = emitAutoInverseRelations(
+    entity,
+    ir,
+    options,
+    context,
+    usedFieldNames
+  );
   if (auto.lines.length > 0) {
-    if (entity.relationships.length === 0) lines.push('');
+    if (entity.relationships.length === 0) {
+      lines.push("");
+    }
     lines.push(...auto.lines);
   }
   diagnostics.push(...auto.diagnostics);
@@ -1045,89 +1266,128 @@ function emitModel(
   let tableMap = options.tableMappings?.[entity.name];
   if (!tableMap && options.naming) {
     const phys = resolveTableName(entity.name, options.naming);
-    if (phys !== entity.name) tableMap = phys;
+    if (phys !== entity.name) {
+      tableMap = phys;
+    }
   }
   let hadModelAttr = false;
   if (tableMap) {
-    lines.push('');
+    lines.push("");
     lines.push(`  @@map("${tableMap}")`);
     hadModelAttr = true;
   }
 
   // @@id for composite PK
   if (hasCompositeKey) {
-    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
-    lines.push(`  @@id([${entity.key!.join(', ')}])`);
+    if (!hadModelAttr) {
+      lines.push("");
+      hadModelAttr = true;
+    }
+    lines.push(`  @@id([${entity.key!.join(", ")}])`);
     // A composite PK does not make `id` alone unique. If some relation references
     // this model via single-column `[id]`, Prisma needs an explicit unique on id.
-    if (entity.key!.includes('id') && entity.key!.length > 1 && isReferencedBySingleId(entity, ir, options)) {
-      lines.push(`  @@unique([id])`);
+    if (
+      entity.key!.includes("id") &&
+      entity.key!.length > 1 &&
+      isReferencedBySingleId(entity, ir, options)
+    ) {
+      lines.push("  @@unique([id])");
     }
   }
 
   // @@unique for alternate keys (non-PK unique constraints for FK references targets)
   if (entity.alternateKeys && entity.alternateKeys.length > 0) {
-    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+    if (!hadModelAttr) {
+      lines.push("");
+      hadModelAttr = true;
+    }
     for (const ak of entity.alternateKeys) {
-      lines.push(`  @@unique([${ak.join(', ')}])`);
+      lines.push(`  @@unique([${ak.join(", ")}])`);
     }
   }
 
   // @@index lines
   const idx = options.indexes?.[entity.name];
   if (idx && idx.length > 0) {
-    if (!hadModelAttr) lines.push('');
-    for (const entry of idx) lines.push(buildIndexLine(entry));
+    if (!hadModelAttr) {
+      lines.push("");
+    }
+    for (const entry of idx) {
+      lines.push(buildIndexLine(entry));
+    }
   }
 
   // @@index for properties with the `indexed` modifier — emit one @@index per
   // such property, but skip any that are already covered by options.indexes.
-  const indexedModifierProps = entity.properties.filter(p => p.modifiers.includes('indexed'));
+  const indexedModifierProps = entity.properties.filter((p) =>
+    p.modifiers.includes("indexed")
+  );
   for (const indexedProp of indexedModifierProps) {
-    const alreadyInOptions = (idx ?? []).some(entry =>
-      Array.isArray(entry) ? entry.includes(indexedProp.name) : entry.fields.includes(indexedProp.name)
+    const alreadyInOptions = (idx ?? []).some((entry) =>
+      Array.isArray(entry)
+        ? entry.includes(indexedProp.name)
+        : entry.fields.includes(indexedProp.name)
     );
     if (!alreadyInOptions) {
-      if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+      if (!hadModelAttr) {
+        lines.push("");
+        hadModelAttr = true;
+      }
       lines.push(`  @@index([${indexedProp.name}])`);
     }
   }
 
   if (ir.tenant) {
     const tenantProp = ir.tenant.property;
-    const alreadyIndexed = (idx ?? []).some(entry =>
-      Array.isArray(entry) ? entry.includes(tenantProp) : entry.fields.includes(tenantProp)
-    ) || (entity.key ?? []).includes(tenantProp);
+    const alreadyIndexed =
+      (idx ?? []).some((entry) =>
+        Array.isArray(entry)
+          ? entry.includes(tenantProp)
+          : entry.fields.includes(tenantProp)
+      ) || (entity.key ?? []).includes(tenantProp);
     if (!alreadyIndexed) {
-      if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+      if (!hadModelAttr) {
+        lines.push("");
+        hadModelAttr = true;
+      }
       lines.push(`  @@index([${tenantProp}])`);
     }
   }
 
   // @@fulltext for searchable properties
-  const searchableFields = entity.properties.filter(p => p.modifiers.includes('searchable')).map(p => p.name);
+  const searchableFields = entity.properties
+    .filter((p) => p.modifiers.includes("searchable"))
+    .map((p) => p.name);
   if (searchableFields.length > 0) {
-    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
-    lines.push(`  @@fulltext([${searchableFields.join(', ')}])`);
+    if (!hadModelAttr) {
+      lines.push("");
+      hadModelAttr = true;
+    }
+    lines.push(`  @@fulltext([${searchableFields.join(", ")}])`);
   }
 
   // @@schema — preserve the model's module layout when multiSchema is enabled.
   const schemaName = resolveSchemaName(entity, options);
   if (schemaName) {
-    if (!hadModelAttr) { lines.push(''); hadModelAttr = true; }
+    if (!hadModelAttr) {
+      lines.push("");
+      hadModelAttr = true;
+    }
     lines.push(`  @@schema("${schemaName}")`);
   }
 
-  lines.push('}');
+  lines.push("}");
 
   if (ir.tenant) {
     const tableName = tableMap ?? entity.name;
     const tenantCol = ir.tenant.property;
-    lines.push('');
-    lines.push(`// -- RLS policy (apply manually or via migration):`);
+    lines.push("");
+    lines.push("// -- RLS policy (apply manually or via migration):");
     lines.push(`// ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;`);
     lines.push(`// CREATE POLICY tenant_isolation ON "${tableName}"`);
-    lines.push(`//   USING ("${tenantCol}" = current_setting('app.tenant_id'));`);
+    lines.push(
+      `//   USING ("${tenantCol}" = current_setting('app.tenant_id'));`
+    );
   }
 
   return { lines, diagnostics };
@@ -1138,12 +1398,14 @@ function emitModel(
 // ============================================================================
 
 function emitDatasourceBlock(
-  provider: PrismaProjectionOptions['provider'],
+  provider: PrismaProjectionOptions["provider"],
   schemas: readonly string[] = [],
-  relationMode?: PrismaProjectionOptions['relationMode'],
-  generator?: PrismaProjectionOptions['generator'],
+  relationMode?: PrismaProjectionOptions["relationMode"],
+  generator?: PrismaProjectionOptions["generator"]
 ): string[] {
-  if (!provider) return [];
+  if (!provider) {
+    return [];
+  }
   // Prisma 7+: datasource block carries only the provider — no `url` property.
   // The connection URL MUST be supplied by the consumer via prisma.config.ts.
   // A prisma.config.ts companion artifact is emitted alongside this schema.
@@ -1151,47 +1413,50 @@ function emitDatasourceBlock(
   // Multi-schema: when models declare `@@schema(...)`, the datasource must list
   // every referenced schema via `schemas = [...]`. multiSchema is GA in current
   // Prisma (no previewFeatures flag required).
-  const datasource = ['datasource db {', `  provider = "${provider}"`];
+  const datasource = ["datasource db {", `  provider = "${provider}"`];
   if (relationMode) {
     datasource.push(`  relationMode = "${relationMode}"`);
   }
   if (schemas.length > 0) {
-    datasource.push(`  schemas  = [${schemas.map(s => `"${s}"`).join(', ')}]`);
+    datasource.push(
+      `  schemas  = [${schemas.map((s) => `"${s}"`).join(", ")}]`
+    );
   }
-  datasource.push('}');
+  datasource.push("}");
 
   // generator client block — defaults to the legacy prisma-client-js generator
   // for back-compat; consumers override provider/output/moduleFormat/etc. via
   // the `generator` option. Keys/values are emitted verbatim.
-  const generatorFields = generator && Object.keys(generator).length > 0
-    ? generator
-    : { provider: 'prisma-client-js' };
+  const generatorFields =
+    generator && Object.keys(generator).length > 0
+      ? generator
+      : { provider: "prisma-client-js" };
   const generatorBlock = [
-    'generator client {',
+    "generator client {",
     ...Object.entries(generatorFields).map(([k, v]) => `  ${k} = "${v}"`),
-    '}',
+    "}",
   ];
 
-  return [...datasource, '', ...generatorBlock, ''];
+  return [...datasource, "", ...generatorBlock, ""];
 }
 
-function emitPrismaConfigTs(envVar = 'DATABASE_URL'): string {
+function emitPrismaConfigTs(envVar = "DATABASE_URL"): string {
   return [
-    '// Auto-generated by @manifest/projection-prisma',
-    '// Prisma 7+: connection URL lives here, not in schema.prisma.',
-    '// Set the DATABASE_URL environment variable (or replace with your env var name).',
+    "// Auto-generated by @manifest/projection-prisma",
+    "// Prisma 7+: connection URL lives here, not in schema.prisma.",
+    "// Set the DATABASE_URL environment variable (or replace with your env var name).",
     "import { defineConfig } from 'prisma/config';",
-    '',
-    'export default defineConfig({',
+    "",
+    "export default defineConfig({",
     // PrismaConfig (prisma >= 7.8 types) takes a singular flat `datasource`;
     // the legacy plural nested form typechecks red and was silently ignored
     // at runtime (the CLI fell back to env loading).
-    '  datasource: {',
+    "  datasource: {",
     `    url: process.env.${envVar},`,
-    '  },',
-    '});',
-    '',
-  ].join('\n');
+    "  },",
+    "});",
+    "",
+  ].join("\n");
 }
 
 // ============================================================================
@@ -1199,9 +1464,9 @@ function emitPrismaConfigTs(envVar = 'DATABASE_URL'): string {
 // ============================================================================
 
 export class PrismaProjection implements ProjectionTarget {
-  readonly name = 'prisma';
+  readonly name = "prisma";
   readonly description =
-    'Manifest IR → Prisma schema projection. Compile-time only. App-agnostic.';
+    "Manifest IR → Prisma schema projection. Compile-time only. App-agnostic.";
   readonly surfaces = SURFACES;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
@@ -1210,9 +1475,9 @@ export class PrismaProjection implements ProjectionTarget {
         artifacts: [],
         diagnostics: [
           {
-            severity: 'error',
-            code: 'UNKNOWN_SURFACE',
-            message: `Unknown surface '${request.surface}'. Available: ${SURFACES.join(', ')}.`,
+            severity: "error",
+            code: "UNKNOWN_SURFACE",
+            message: `Unknown surface '${request.surface}'. Available: ${SURFACES.join(", ")}.`,
           },
         ],
       };
@@ -1230,18 +1495,23 @@ export class PrismaProjection implements ProjectionTarget {
       !MULTISCHEMA_PROVIDERS.has(options.provider)
     ) {
       diagnostics.push({
-        severity: 'error',
-        code: 'PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER',
+        severity: "error",
+        code: "PRISMA_MULTISCHEMA_UNSUPPORTED_PROVIDER",
         message:
           `multiSchema is enabled but provider '${options.provider}' does not support multiple database schemas. ` +
           `Prisma multi-schema requires 'postgresql', 'cockroachdb', or 'sqlserver'. ` +
-          `Models are emitted WITHOUT @@schema (flat layout). Remove multiSchema or switch provider.`,
+          "Models are emitted WITHOUT @@schema (flat layout). Remove multiSchema or switch provider.",
       });
-      options = { ...options, multiSchema: { ...options.multiSchema, enabled: false } };
+      options = {
+        ...options,
+        multiSchema: { ...options.multiSchema, enabled: false },
+      };
     }
 
-    const storeByEntity = new Map<string, IRStore['target']>();
-    for (const s of ir.stores) storeByEntity.set(s.entity, s.target);
+    const storeByEntity = new Map<string, IRStore["target"]>();
+    for (const s of ir.stores) {
+      storeByEntity.set(s.entity, s.target);
+    }
 
     const toEmit: IREntity[] = [];
     const emittedEntities = new Set<string>();
@@ -1249,8 +1519,8 @@ export class PrismaProjection implements ProjectionTarget {
     for (const entity of ir.entities) {
       if ((entity as IREntity & { external?: boolean }).external === true) {
         diagnostics.push({
-          severity: 'info',
-          code: 'PRISMA_SKIPPED_EXTERNAL',
+          severity: "info",
+          code: "PRISMA_SKIPPED_EXTERNAL",
           entity: entity.name,
           message: `Entity '${entity.name}' is marked external; skipped (no Prisma model emitted).`,
         });
@@ -1260,8 +1530,8 @@ export class PrismaProjection implements ProjectionTarget {
       const target = storeByEntity.get(entity.name);
       if (target === undefined) {
         diagnostics.push({
-          severity: 'info',
-          code: 'PRISMA_SKIPPED_NO_STORE',
+          severity: "info",
+          code: "PRISMA_SKIPPED_NO_STORE",
           entity: entity.name,
           message: `Entity '${entity.name}' has no 'store' declaration; skipped. Add 'store ${entity.name} in durable' to emit a Prisma model.`,
         });
@@ -1269,8 +1539,8 @@ export class PrismaProjection implements ProjectionTarget {
       }
       if (!isPersistent(target)) {
         diagnostics.push({
-          severity: 'info',
-          code: 'PRISMA_SKIPPED_NON_DURABLE',
+          severity: "info",
+          code: "PRISMA_SKIPPED_NON_DURABLE",
           entity: entity.name,
           message: `Entity '${entity.name}' has store target '${target}'; skipped. Flip to 'durable' to emit a Prisma model.`,
         });
@@ -1287,13 +1557,18 @@ export class PrismaProjection implements ProjectionTarget {
     const referencedEnumNames = new Set<string>();
     for (const entity of toEmit) {
       for (const prop of entity.properties) {
-        const typeName = prop.type.name === 'array' && prop.type.generic
-          ? prop.type.generic.name
-          : prop.type.name;
-        if ((ir.enums ?? []).some(e => e.name === typeName)) referencedEnumNames.add(typeName);
+        const typeName =
+          prop.type.name === "array" && prop.type.generic
+            ? prop.type.generic.name
+            : prop.type.name;
+        if ((ir.enums ?? []).some((e) => e.name === typeName)) {
+          referencedEnumNames.add(typeName);
+        }
       }
     }
-    const enumsToEmit = (ir.enums ?? []).filter(e => referencedEnumNames.has(e.name));
+    const enumsToEmit = (ir.enums ?? []).filter((e) =>
+      referencedEnumNames.has(e.name)
+    );
 
     // Schemas referenced by the models/enums we are about to emit (empty when
     // multiSchema is disabled). Drives both the datasource `schemas = [...]`
@@ -1302,45 +1577,60 @@ export class PrismaProjection implements ProjectionTarget {
 
     // Models-only mode (no provider → no datasource block): @@schema is still
     // emitted, but the consumer's existing datasource must declare the schemas.
-    if (options.multiSchema?.enabled && !options.provider && schemasList.length > 0) {
+    if (
+      options.multiSchema?.enabled &&
+      !options.provider &&
+      schemasList.length > 0
+    ) {
       diagnostics.push({
-        severity: 'info',
-        code: 'PRISMA_MULTISCHEMA_MODELS_ONLY',
+        severity: "info",
+        code: "PRISMA_MULTISCHEMA_MODELS_ONLY",
         message:
-          `multiSchema is enabled with no provider (models-only mode). @@schema(...) is emitted on each model, ` +
-          `but no datasource block is generated. Ensure your existing datasource declares ` +
-          `schemas = [${schemasList.map(s => `"${s}"`).join(', ')}].`,
+          "multiSchema is enabled with no provider (models-only mode). @@schema(...) is emitted on each model, " +
+          "but no datasource block is generated. Ensure your existing datasource declares " +
+          `schemas = [${schemasList.map((s) => `"${s}"`).join(", ")}].`,
       });
     }
 
     const context: RelationContext = { emittedEntities };
     const modelBlocks: string[] = [];
     for (const entity of toEmit) {
-      const { lines, diagnostics: modelDiags } = emitModel(entity, ir, options, context);
+      const { lines, diagnostics: modelDiags } = emitModel(
+        entity,
+        ir,
+        options,
+        context
+      );
       diagnostics.push(...modelDiags);
-      modelBlocks.push(lines.join('\n'));
+      modelBlocks.push(lines.join("\n"));
     }
 
-    const enumBlocks: string[] = enumsToEmit.map(e => emitEnum(e, options));
+    const enumBlocks: string[] = enumsToEmit.map((e) => emitEnum(e, options));
 
     const header = [
-      '// Auto-generated by @manifest/projection-prisma',
-      '// DO NOT EDIT — regenerate with the projection.',
-      '',
-      ...emitDatasourceBlock(options.provider, schemasList, options.relationMode, options.generator),
+      "// Auto-generated by @manifest/projection-prisma",
+      "// DO NOT EDIT — regenerate with the projection.",
+      "",
+      ...emitDatasourceBlock(
+        options.provider,
+        schemasList,
+        options.relationMode,
+        options.generator
+      ),
     ];
 
-    const headerStr = header.join('\n');
+    const headerStr = header.join("\n");
     const bodyBlocks = [...modelBlocks, ...enumBlocks];
-    const code = (bodyBlocks.length > 0)
-      ? headerStr + '\n' + bodyBlocks.join('\n\n') + '\n'
-      : headerStr + '// No persistent entities found in IR.\n';
+    const code =
+      bodyBlocks.length > 0
+        ? headerStr + "\n" + bodyBlocks.join("\n\n") + "\n"
+        : headerStr + "// No persistent entities found in IR.\n";
 
     const artifacts: ProjectionArtifact[] = [
       {
-        id: 'prisma.schema',
+        id: "prisma.schema",
         pathHint: options.output,
-        contentType: 'prisma',
+        contentType: "prisma",
         code,
       },
     ];
@@ -1349,10 +1639,10 @@ export class PrismaProjection implements ProjectionTarget {
     // a complete, runnable output (Prisma 7 requires the URL here, not in schema).
     if (options.provider) {
       artifacts.push({
-        id: 'prisma.config.ts',
-        pathHint: 'prisma.config.ts',
-        contentType: 'typescript',
-        code: emitPrismaConfigTs(options.urlEnvVar ?? 'DATABASE_URL'),
+        id: "prisma.config.ts",
+        pathHint: "prisma.config.ts",
+        contentType: "typescript",
+        code: emitPrismaConfigTs(options.urlEnvVar ?? "DATABASE_URL"),
       });
     }
 
