@@ -17,6 +17,10 @@
   "type": "module",
   "license": "MIT",
   "private": false,
+  "packageManager": "pnpm@10.31.0",
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/manifest/runtime-engine.js",
   "types": "./dist/manifest/runtime-engine.d.ts",
   "exports": {
@@ -306,7 +310,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Angriff36/Manifest.git"
+    "url": "git+https://github.com/Angriff36/Manifest.git"
   },
   "scripts": {
     "version": "node scripts/sync-version.mjs && git add src/manifest/version.ts",
@@ -390,7 +394,7 @@
     "autoprefixer": "^10.4.18",
     "dpdm": "^4.2.0",
     "eslint": "^9.39.2",
-    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "fast-check": "^3.0.0",
     "globals": "^15.9.0",

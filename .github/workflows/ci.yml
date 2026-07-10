@@ -6,37 +6,37 @@ on:
   pull_request:
     branches: [main]
 
+# Newer pushes to the same branch/PR cancel in-flight runs — no point
+# finishing CI for a commit that has already been superseded.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Tests
+    name: Tests (Linux)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v5
 
-      # This repo is pnpm (pnpm-lock.yaml + per-package node_modules under
-      # packages/*). The previous CI used `npm ci` which failed because there
-      # is no package-lock.json. Mirror cut-release.yml so install actually works.
       - name: Setup pnpm
+        # Version comes from the "packageManager" field in package.json —
+        # the single source of truth for the pnpm version everywhere.
         uses: pnpm/action-setup@v4
-        with:
-          # pnpm-lock.yaml is lockfileVersion 9 (pnpm 9.x family).
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
+          # Keep CI on the minimum supported Node (see "engines" in
+          # package.json) so we notice when we break the floor.
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install root dependencies (frozen lockfile)
-        run: pnpm install --frozen-lockfile
-
-      - name: Install packages/cli dependencies (frozen lockfile)
-        # packages/cli is its own pnpm project (separate pnpm-lock.yaml),
-        # not a workspace member of the root. Tests in root pull from
-        # packages/cli/src/**, so its transitive deps must also be installed.
-        working-directory: packages/cli
+      - name: Install dependencies (frozen lockfile)
+        # This is a pnpm workspace (pnpm-workspace.yaml: packages/*).
+        # One install at the root covers packages/cli, mcp-server,
+        # lsp-server, stdlib, and the vscode extension.
         run: pnpm install --frozen-lockfile
 
       - name: Build root library
@@ -48,8 +48,7 @@ jobs:
 
       - name: Build CLI dist
         # enforce-surface.cli.test.ts spawns the built CLI to verify
-        # commander registration. Without a fresh build, CI runs the
-        # checked-in dist which lags behind source on every PR.
+        # commander registration.
         working-directory: packages/cli
         run: pnpm build
 
@@ -63,6 +62,58 @@ jobs:
         # metadata + links + spec headers + snippet doctest (every ```manifest
         # block in user-facing docs must compile with the real compiler).
         run: pnpm run docs:check
+
+      - name: Run test suite
+        run: pnpm test
+
+      - name: Packaging integrity (publint + pack/install smoke)
+        # The exports map in package.json is large and hand-written; a typo
+        # ships a broken subpath without anything else going red (v2.3.0
+        # shipped a dead tarball once). publint validates the map against
+        # the packed files, then we install the real tarball into a scratch
+        # project and import it, exactly like a consumer would.
+        run: |
+          pnpm --filter @manifest/mcp-server --filter @manifest/lsp-server run build
+          pnpm dlx publint@0.3.14
+          pnpm pack --out /tmp/manifest-pack.tgz
+          mkdir /tmp/pack-smoke
+          cd /tmp/pack-smoke
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund /tmp/manifest-pack.tgz
+          node -e "import('@angriff36/manifest').then(m => { if (typeof m.RuntimeEngine !== 'function') throw new Error('RuntimeEngine export missing'); console.log('pack smoke OK'); })"
+
+  test-windows:
+    name: Tests (Windows)
+    # All primary development happens on Windows and Windows-specific path
+    # bugs have shipped before (CLI path doubling, spurious `nul` files).
+    # Lint/docs/publint only run on Linux; this leg proves build + types +
+    # runtime behavior on win32.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build root library
+        run: pnpm run build:lib
+
+      - name: Build CLI dist
+        working-directory: packages/cli
+        run: pnpm build
+
+      - name: TypeScript type check
+        run: pnpm run typecheck
 
       - name: Run test suite
         run: pnpm test

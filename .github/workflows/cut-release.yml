@@ -47,9 +47,8 @@ jobs:
           fetch-depth: 0
 
       - name: Setup pnpm
+        # Version comes from the "packageManager" field in package.json.
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js (npm registry)
         uses: actions/setup-node@v5
@@ -85,11 +84,8 @@ jobs:
           fi
           node tools/release/ensure-changelog-section.mjs "${{ steps.ver.outputs.version }}" /tmp/commits.txt
 
-      - name: Install root dependencies (frozen lockfile)
-        run: pnpm install --frozen-lockfile
-
-      - name: Install packages/cli dependencies (frozen lockfile)
-        working-directory: packages/cli
+      - name: Install dependencies (frozen lockfile)
+        # pnpm workspace — one root install covers packages/* too.
         run: pnpm install --frozen-lockfile
 
       - name: Build root library
