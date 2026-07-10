@@ -1,5 +1,8 @@
 /**
  * Post-repair verification — reinspect and prove the finding is resolved.
+ *
+ * For wire-existing-control, consumer existence alone is not enough: the
+ * semantic match that justified the control must still hold.
  */
 
 import type { WiringContract } from '../types.js';
@@ -9,6 +12,7 @@ import {
 } from '../inspect/inspector.js';
 import type { WiringInspectConfig, ContractMismatch } from '../inspect/types.js';
 import type { RepairPlan, RepairVerificationResult } from './types.js';
+import { verifyWiredControlSemantics } from './control-semantic-match.js';
 
 export function verifyRepair(
   plan: RepairPlan,
@@ -62,24 +66,64 @@ export function verifyRepair(
     return true;
   });
 
+  const semantic = verifyWireExistingControlSemantics(plan, contract, fileContents);
+
   const ok =
     findingResolved &&
     newDefects.length === 0 &&
-    (!requireConsumed || capabilityConsumed === true);
+    (!requireConsumed || capabilityConsumed === true) &&
+    semantic.ok;
 
   return {
     ok,
-    findingResolved,
+    findingResolved: findingResolved && semantic.ok,
     capabilityConsumed,
     remainingMismatches: remaining,
     message: ok
       ? `Repair verified: ${plan.findingId} resolved`
-      : `Repair incomplete: ${plan.findingId} — remaining ${remaining.length} mismatch(es)` +
-        (newDefects.length
-          ? `; introduced ${newDefects.length} new defect(s)`
-          : '') +
-        (requireConsumed && !capabilityConsumed ? '; capability not consumed' : ''),
+      : !semantic.ok
+        ? `Repair incomplete: ${plan.findingId} — ${semantic.reason}`
+        : `Repair incomplete: ${plan.findingId} — remaining ${remaining.length} mismatch(es)` +
+          (newDefects.length
+            ? `; introduced ${newDefects.length} new defect(s)`
+            : '') +
+          (requireConsumed && !capabilityConsumed ? '; capability not consumed' : ''),
   };
+}
+
+function verifyWireExistingControlSemantics(
+  plan: RepairPlan,
+  contract: WiringContract,
+  fileContents: Map<string, string>,
+): { ok: boolean; reason: string } {
+  if (plan.repairKind !== 'wire-existing-control') {
+    return { ok: true, reason: '' };
+  }
+  const cap = contract.capabilities.find(c => c.capabilityId === plan.capabilityId);
+  if (!cap) {
+    return { ok: false, reason: `Unknown capability ${plan.capabilityId}` };
+  }
+  const wireEdit = plan.edits.find(e => e.operation.type === 'wire-control-to-binding');
+  if (!wireEdit || wireEdit.operation.type !== 'wire-control-to-binding') {
+    return { ok: false, reason: 'wire-existing-control plan missing wire edit' };
+  }
+  const file = wireEdit.file;
+  const content =
+    fileContents.get(file) ??
+    fileContents.get(file.replace(/\\/g, '/')) ??
+    [...fileContents.entries()].find(
+      ([k]) => k.replace(/\\/g, '/') === file.replace(/\\/g, '/'),
+    )?.[1];
+  if (!content) {
+    return { ok: false, reason: `Patched file not loaded: ${file}` };
+  }
+  const verdict = verifyWiredControlSemantics(
+    cap,
+    file,
+    content,
+    wireEdit.operation.bindingCallee,
+  );
+  return { ok: verdict.ok, reason: verdict.reason };
 }
 
 function mismatchKey(m: ContractMismatch): string {

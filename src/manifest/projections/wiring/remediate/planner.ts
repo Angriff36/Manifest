@@ -104,6 +104,9 @@ export function planWiringRepairs(options: PlanRepairsOptions): RepairPlanBundle
     plans.push(plan);
   }
 
+  // Unwired wire-existing-control without semantic proof must never outrank
+  // proven contract repairs in one-defect selection (priority already higher).
+
   plans.sort((a, b) => a.priority - b.priority || a.findingId.localeCompare(b.findingId));
 
   return {
@@ -428,6 +431,10 @@ function planWireExistingControl(
     controlSymbol: string;
     bindingCallee: string;
     ensureImport?: { module: string; names: string[] };
+    identityExpression?: string;
+    matchReasons?: string[];
+    handlerSnippet?: string;
+    labelText?: string;
   },
 ): RepairPlan {
   const findingId = `unwired:${cap.capabilityId}:${surface.file}`;
@@ -443,6 +450,7 @@ function planWireExistingControl(
       },
     },
   ];
+  const reasons = surface.matchReasons?.join(', ') ?? 'semantic match';
   return {
     findingId,
     entity: cap.entity,
@@ -452,15 +460,20 @@ function planWireExistingControl(
     decision: 'repairable-with-existing-pattern',
     confidence: 'high',
     automaticApplicationAllowed: true,
-    rationale: `Existing control ${surface.controlSymbol} matches ${cap.capabilityId}; attach generated binding`,
+    rationale:
+      `Proven control for ${cap.capabilityId} (${reasons}` +
+      (surface.identityExpression ? `; identity=${surface.identityExpression}` : '') +
+      `); attach generated binding`,
     evidence: [],
     sourceFiles: [surface.file],
     consumerTrace: [{ file: surface.file }],
-    preconditions: [],
+    preconditions: surface.handlerSnippet
+      ? [precondition(surface.file, surface.handlerSnippet, surface.handlerSnippet)]
+      : [],
     postconditions: [
       {
-        id: 'consumed',
-        description: `${cap.capabilityId} consumed after wiring`,
+        id: 'consumed-with-semantic-match',
+        description: `${cap.capabilityId} consumed on a semantically matched control`,
         resolvedMismatchKinds: [],
         requireConsumed: true,
       },

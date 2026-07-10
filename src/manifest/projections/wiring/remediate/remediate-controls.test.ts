@@ -20,7 +20,7 @@ describe('wiring remediate (controls & safety)', () => {
     const contract = await contractFrom(DOMAIN);
     const files = fileMapFromRecord({
       'apps/app/app/ui/archive-button.tsx': `
-        export function ArchiveButton() {
+        export function ArchiveButton({ taskId }: { taskId: string }) {
           // local-only
           return <button data-manifest-capability="Task.archive" onClick={noop}>Archive</button>;
         }

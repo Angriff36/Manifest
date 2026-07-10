@@ -6,6 +6,10 @@
  */
 
 import type { WiringCommandDescriptor } from '../types.js';
+import {
+  proveControlSemanticMatch,
+  type ControlSemanticSurface,
+} from './control-semantic-match.js';
 
 export interface LocalValueSource {
   expression: string;
@@ -22,6 +26,10 @@ export interface ControlSurface {
   controlSymbol: string;
   bindingCallee: string;
   ensureImport?: { module: string; names: string[] };
+  identityExpression?: string;
+  matchReasons?: string[];
+  handlerSnippet?: string;
+  labelText?: string;
 }
 
 export interface InvocationPattern {
@@ -163,61 +171,20 @@ export class PatternAdapter {
   }
 
   /**
-   * Detect an existing control that clearly represents this capability
-   * (placeholder / local-only / matching symbol name). Does not invent UI.
+   * Detect an existing control that strongly represents this capability.
+   * Requires semantic proof (entity surface, meaning, identity, safe handler).
+   * Does not invent UI. Nearby buttons / bare command words are not enough.
    */
   findExistingControlSurface(cap: WiringCommandDescriptor): ControlSurface | null {
-    const needles = [
-      `${cap.entity}${cap.command[0]!.toUpperCase()}${cap.command.slice(1)}`,
-      `${cap.command}${cap.entity}`,
-      cap.command,
-    ];
-    const bindingCallee = clientFn(cap.entity, cap.command);
-
+    let best: ControlSemanticSurface | null = null;
     for (const [file, content] of this.files) {
-      const norm = file.replace(/\\/g, '/').toLowerCase();
-      if (norm.includes('node_modules') || norm.includes('.generated')) continue;
-      if (!/\.(tsx|jsx|ts)$/.test(norm)) continue;
-
-      // Local-only setState that mirrors the command name
-      for (const needle of needles) {
-        const localOnly = new RegExp(
-          `\\b(onClick|onPress|action)\\s*=\\s*\\{?\\s*(?:\\(\\s*\\)\\s*=>\\s*)?(set[A-Z]\\w*|noop|undefined)`,
-        );
-        const symbolRe = new RegExp(`\\b${escape(needle)}\\b`, 'i');
-        if (
-          symbolRe.test(content) &&
-          (localOnly.test(content) ||
-            content.includes(`TODO wire ${cap.capabilityId}`) ||
-            content.includes(`// local-only`) ||
-            content.includes(`data-manifest-capability="${cap.capabilityId}"`))
-        ) {
-          return {
-            file,
-            controlSymbol: needle,
-            bindingCallee,
-            ensureImport: {
-              module: '@/app/lib/manifest-client.generated',
-              names: [bindingCallee],
-            },
-          };
-        }
-      }
-
-      // Explicit placeholder attribute
-      if (content.includes(`data-manifest-capability="${cap.capabilityId}"`)) {
-        return {
-          file,
-          controlSymbol: cap.command,
-          bindingCallee,
-          ensureImport: {
-            module: '@/app/lib/manifest-client.generated',
-            names: [bindingCallee],
-          },
-        };
+      const verdict = proveControlSemanticMatch(cap, file, content);
+      if (!verdict.ok || !verdict.surface) continue;
+      if (!best || verdict.surface.matchReasons.length > best.matchReasons.length) {
+        best = verdict.surface;
       }
     }
-    return null;
+    return best;
   }
 
   findCanonicalLifecycleCommand(

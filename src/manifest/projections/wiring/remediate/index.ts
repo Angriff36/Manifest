@@ -41,6 +41,10 @@ export type { RemediateOptions, RemediateMode } from './orchestrator.js';
 
 export { PatternAdapter } from './pattern-adapter.js';
 export {
+  proveControlSemanticMatch,
+  verifyWiredControlSemantics,
+} from './control-semantic-match.js';
+export {
   resolveRequiredInputSource,
   missingRequiredClientParams,
 } from './required-input-source.js';

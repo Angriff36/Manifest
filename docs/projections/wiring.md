@@ -190,7 +190,7 @@ manifest wiring-remediate --contract … --root apps/app \
 | `move-trusted-input-server-side` | Client supplies `from context.*` field — strip it |
 | `migrate-to-safe-binding` | Prefer generated bind helper / safe path |
 | `replace-fake-lifecycle-binding` | Control remapped to proven canonical lifecycle command |
-| `wire-existing-control` | Placeholder/local-only control matches a capability |
+| `wire-existing-control` | Placeholder/local-only control **semantically** matches a capability (see below) |
 | `add-invalidation` | Mutation succeeds but local data pattern lacks invalidation |
 
 ### Decision classes
@@ -203,6 +203,19 @@ manifest wiring-remediate --contract … --root apps/app \
 | `unsafe-to-apply`                  | **no** — destructive/security/low proof    |
 
 Missing required values are **never invented**. No new screens are created when no suitable surface exists.
+
+### `wire-existing-control` semantic proof
+
+Auto-apply only when Manifest strongly proves the existing control is the same business action. Required:
+
+1. Product surface is for the same entity (path and/or in-file entity identity)
+2. Instance commands have entity identity in scope (`taskId`, `milestoneId`, `id`, …)
+3. Control label, state, or explicit `data-manifest-capability` strongly matches the command meaning
+4. Command inputs are buildable without invented values
+5. Replacing the handler will not destroy unrelated local UI behavior (error-dismiss, modal close, filters, …)
+6. A nearby button or bare command word in prose is **not** enough
+
+Otherwise classify as `ambiguous-product-decision` and do not edit. Post-repair verification re-checks these semantic preconditions — consumer existence alone is insufficient.
 
 ### `add-required-input` source proof
 
