@@ -124,7 +124,7 @@ The `src/artifacts/` directory provides UI for viewing generated code:
 
 ## Testing Strategy
 
-### Test Suite (~3,754 tests / 210 files as of 2026-07-09 — run `pnpm test` for current counts)
+### Test Suite (~3,826 tests / 218 files as of 2026-07-09 — run `pnpm test` for current counts)
 1. **Conformance Tests**: Fixture-based testing with expected outputs
 2. **Unit Tests**: lexer, parser, IR compiler, runtime engine, adapters
 3. **Projection Tests**: snapshot + smoke tests across projection targets
