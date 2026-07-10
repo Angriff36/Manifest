@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.14] - 2026-07-10
+
+### Fixed
+
+- Wiring remediate: scope `replace-object-property-value` to the target property so empty-string sentinels (`""`) are not replaced at the first file-wide occurrence
+
 ## [3.4.13] - 2026-07-10
 
 ### Added

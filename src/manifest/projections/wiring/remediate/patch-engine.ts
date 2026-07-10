@@ -434,20 +434,34 @@ function replacePropertyText(
   fromExpression: string,
   toExpression: string,
 ): string {
-  const idx = content.indexOf(`${parameter}:`);
-  if (idx < 0) {
-    const idx2 = content.indexOf(`${parameter} :`);
-    if (idx2 < 0) return content;
-  }
-  const fromIdx = content.indexOf(fromExpression);
-  if (fromIdx < 0) {
-    // Try whitespace-flexible: strip .join(...)
+  // Scope to the property value — never replace the first file-wide occurrence of
+  // a short literal like "" (common in large modules).
+  const keyRe = new RegExp(`\\b${escape(parameter)}\\s*:\\s*`);
+  const keyMatch = keyRe.exec(content);
+  if (!keyMatch) {
     const joinRe = new RegExp(
       `(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
     );
     return content.replace(joinRe, `$1${toExpression}`);
   }
-  return content.slice(0, fromIdx) + toExpression + content.slice(fromIdx + fromExpression.length);
+  const valueStart = keyMatch.index + keyMatch[0].length;
+  const afterKey = content.slice(valueStart);
+  if (!afterKey.startsWith(fromExpression)) {
+    // Allow whitespace between key and value already consumed by keyRe.
+    // If fromExpression is not at the property value, try join-strip only.
+    const joinRe = new RegExp(
+      `(${escape(parameter)}\\s*:\\s*)([^,\\n}]+\\.join\\s*\\([^)]*\\))`,
+    );
+    if (joinRe.test(content)) {
+      return content.replace(joinRe, `$1${toExpression}`);
+    }
+    return content;
+  }
+  return (
+    content.slice(0, valueStart) +
+    toExpression +
+    content.slice(valueStart + fromExpression.length)
+  );
 }
 
 function normalizeExpr(s: string): string {

@@ -73,6 +73,8 @@ const LIVE_ACTION = `
 "use server";
 import { runManifestCommand } from "@/lib/manifest-command";
 
+const EMPTY_HINT = "";
+
 export async function createPrepTasks(eventDate: string, locationId: string) {
   const dueByDate = new Date(eventDate);
   dueByDate.setHours(dueByDate.getHours() - 6);
@@ -152,6 +154,7 @@ describe('replace-empty-date-sentinel with proven Date local', () => {
     )!;
     expect(content).toMatch(/dueByTime:\s*dueByDate\.toISOString\(\)/);
     expect(content).not.toMatch(/dueByTime:\s*""/);
+    expect(content).toContain('const EMPTY_HINT = ""');
     expect(content).toContain('estimatedMinutes: 30');
     expect(content).toContain('locationId');
 
