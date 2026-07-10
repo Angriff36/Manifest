@@ -8,6 +8,7 @@ dist-ssr/
 
 # Caches
 .turbo/
+coverage/
 .tmp/
 .cache/
 *.tsbuildinfo

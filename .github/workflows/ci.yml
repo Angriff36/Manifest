@@ -58,13 +58,18 @@ jobs:
       - name: ESLint
         run: pnpm run lint
 
+      - name: Circular dependency check
+        run: pnpm run check:cycles
+
       - name: Documentation integrity checks
         # metadata + links + spec headers + snippet doctest (every ```manifest
         # block in user-facing docs must compile with the real compiler).
         run: pnpm run docs:check
 
-      - name: Run test suite
-        run: pnpm test
+      - name: Run test suite (with coverage floors)
+        # Coverage thresholds live in vitest.config.ts — measured floors
+        # that fail the run if coverage regresses below them.
+        run: pnpm run test:coverage
 
       - name: Packaging integrity (publint + pack/install smoke)
         # The exports map in package.json is large and hand-written; a typo

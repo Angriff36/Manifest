@@ -156,7 +156,9 @@ describe('CLI changelog command', () => {
     const content = await fs.readFile(outPath, 'utf-8');
     expect(content).toContain('### Added');
     expect(content).toContain('Post');
-  });
+    // 15s: dynamic import + full IR diff is slow under coverage
+    // instrumentation on a saturated worker pool (flaked at the 5s default).
+  }, 15000);
 
   // --------------------------------------------------------------------------
   // Custom title

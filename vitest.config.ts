@@ -9,6 +9,28 @@ export default defineConfig({
     deps: {
       interopDefault: true,
     },
+    coverage: {
+      provider: 'v8',
+      // Library + shipped package sources only. The Vite diagnostic UI
+      // (src/App.tsx, src/artifacts) is exercised manually, not via vitest.
+      include: ['src/manifest/**', 'packages/*/src/**'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.bench.ts',
+        '**/conformance/expected/**',
+        '**/conformance/fixtures/**',
+      ],
+      reporter: ['text-summary', 'lcov'],
+      // Ratchet floors — set just below measured coverage (2026-07-10:
+      // 69.8% stmts / 61.7% branch / 70.1% func / 71.7% lines) so real
+      // regressions fail CI. Raise them as coverage grows; never lower.
+      thresholds: {
+        statements: 68,
+        branches: 60,
+        functions: 68,
+        lines: 70,
+      },
+    },
   },
   resolve: {
     // Subpath aliases mirror package.json `exports`. Specific entries
