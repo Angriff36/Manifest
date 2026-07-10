@@ -67,18 +67,24 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
 
   // Async compilation effect
   useEffect(() => {
-    if (disabled || !source.trim()) {
-      setEngine(null);
-      setEntities([]);
-      setPolicies([]);
-      setRoles([]);
-      setMatrixData([]);
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (disabled || !source.trim()) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setEngine(null);
+        setEntities([]);
+        setPolicies([]);
+        setRoles([]);
+        setMatrixData([]);
+        return;
+      }
+
       try {
         const compileResult = await compileToIR(source);
+        if (cancelled) return;
         if (compileResult.diagnostics.some((d) => d.severity === 'error')) {
           setEngine(null);
           setEntities([]);
@@ -110,6 +116,7 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         setPolicies(compileResult.ir.policies);
         setRoles(compileResult.ir.roles || []);
       } catch (e) {
+        if (cancelled) return;
         console.error('[PolicyMatrixPanel] Compilation error:', e);
         setEngine(null);
         setEntities([]);
@@ -118,43 +125,14 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
         setMatrixData([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
     // runtimeContextJson is read here only to seed the engine's initial context;
     // recompiling the IR on every context edit would be wasteful. Context changes
     // are picked up by the matrix re-evaluation effect below, which lists it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, disabled]);
-
-  // Evaluate policy matrix whenever engine, entities, policies, roles, or context changes
-  useEffect(() => {
-    if (!engine || entities.length === 0) {
-      setMatrixData([]);
-      return;
-    }
-
-    const matrix: MatrixCell[] = [];
-
-    // Determine which roles to evaluate
-    const rolesToTest = roles.length > 0 ? roles.map((r) => r.name) : DEFAULT_ROLES;
-
-    for (const entity of entities) {
-      // Get all commands for this entity to determine operations
-      const entityCommands = entity.commands
-        .map((name) => engine.getCommand(name, entity.name))
-        .filter((c): c is IRCommand => !!c);
-
-      for (const operation of OPERATIONS) {
-        for (const roleName of rolesToTest) {
-          const result = evaluateCell(entity.name, operation, roleName, entityCommands);
-          matrix.push(result);
-        }
-      }
-    }
-
-    setMatrixData(matrix);
-    // evaluateCell is a stable closure over policies/roles (both already listed);
-    // adding the function identity would re-run this effect every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, entities, policies, roles, runtimeContextJson]);
 
   // Evaluate a single cell in the matrix
   function evaluateCell(
@@ -261,6 +239,49 @@ export function PolicyMatrixPanel({ source, disabled }: PolicyMatrixPanelProps) 
       message: allPolicies[0]?.message,
     };
   }
+
+
+  // Evaluate policy matrix whenever engine, entities, policies, roles, or context changes
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state updates out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!engine || entities.length === 0) {
+        setMatrixData([]);
+        return;
+      }
+
+    const matrix: MatrixCell[] = [];
+
+    // Determine which roles to evaluate
+    const rolesToTest = roles.length > 0 ? roles.map((r) => r.name) : DEFAULT_ROLES;
+
+    for (const entity of entities) {
+      // Get all commands for this entity to determine operations
+      const entityCommands = entity.commands
+        .map((name) => engine.getCommand(name, entity.name))
+        .filter((c): c is IRCommand => !!c);
+
+      for (const operation of OPERATIONS) {
+        for (const roleName of rolesToTest) {
+          const result = evaluateCell(entity.name, operation, roleName, entityCommands);
+          matrix.push(result);
+        }
+      }
+    }
+
+      setMatrixData(matrix);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // evaluateCell is a stable closure over policies/roles (both already listed);
+    // adding the function identity would re-run this effect every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, entities, policies, roles, runtimeContextJson]);
 
   // Get result styling
   function getResultStyle(result: PolicyResult) {

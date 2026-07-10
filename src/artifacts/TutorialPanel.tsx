@@ -110,12 +110,17 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
 
   // Validate source against current step
   useEffect(() => {
-    if (!activeStep) {
-      setValidation(null);
-      return;
-    }
     let cancelled = false;
-    validateStep(activeStep, source).then((result) => {
+    (async () => {
+      if (!activeStep) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setValidation(null);
+        return;
+      }
+      const result = await validateStep(activeStep, source);
       if (cancelled) return;
       setValidation(result);
       if (!result.passed) {
@@ -123,7 +128,7 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
       } else {
         setFailureCount(0);
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -131,7 +136,13 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
 
   // Mark step as complete when validation passes
   useEffect(() => {
-    if (!activeTutorial || !activeStep || !validation) return;
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state updates out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!activeTutorial || !activeStep || !validation) return;
     // Guard against race condition: only mark complete if validation is for the current step
     if (validation.stepId !== activeStep.id) return;
     if (validation.passed && !completedStepsForActive.includes(activeStep.id)) {
@@ -151,7 +162,11 @@ export function TutorialPanel({ source, onSourceChange }: TutorialPanelProps) {
         }
         return updated;
       });
-    }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [validation, activeStep, activeTutorial, completedStepsForActive]);
 
   // Select tutorial

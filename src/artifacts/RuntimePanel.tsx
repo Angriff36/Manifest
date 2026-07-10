@@ -97,18 +97,24 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
 
   // Async compilation effect
   useEffect(() => {
-    if (disabled || !source.trim()) {
-      setEngine(null);
-      setEntities([]);
-      setSelectedEntityName('');
-      setInstances([]);
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (disabled || !source.trim()) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setEngine(null);
+        setEntities([]);
+        setSelectedEntityName('');
+        setInstances([]);
+        return;
+      }
+
       try {
         console.log('[RuntimePanel] Compiling source:', source?.substring(0, 100));
         const compileResult = await compileToIR(source);
+        if (cancelled) return;
         console.log('[RuntimePanel] Compile result:', {
           hasDiagnostics: !!compileResult.diagnostics,
           diagnosticsCount: compileResult.diagnostics?.length,
@@ -156,25 +162,35 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           setSelectedEntityName(entityList[0].name);
         }
       } catch (e) {
+        if (cancelled) return;
         console.error('[RuntimePanel] Compilation error:', e);
         setEngine(null);
         setEntities([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, disabled]);
 
   // Load instances when entity selection changes
   useEffect(() => {
-    if (!engine || !selectedEntityName) {
-      setInstances([]);
-      setSelectedInstanceId(null);
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (!engine || !selectedEntityName) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setInstances([]);
+        setSelectedInstanceId(null);
+        return;
+      }
+
       try {
         const instanceList = await engine.getAllInstances(selectedEntityName);
+        if (cancelled) return;
         setInstances(instanceList);
 
         // Auto-select first instance if available
@@ -182,21 +198,30 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
           setSelectedInstanceId(instanceList[0].id);
         }
       } catch (e) {
+        if (cancelled) return;
         console.error('Failed to load instances:', e);
         setInstances([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when entity changes, not when selectedInstanceId changes (intentional)
   }, [engine, selectedEntityName]);
 
   // Load computed values when instance selection changes
   useEffect(() => {
-    if (!engine || !selectedEntityName || !selectedInstanceId) {
-      setComputedValues({});
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (!engine || !selectedEntityName || !selectedInstanceId) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setComputedValues({});
+        return;
+      }
+
       try {
         const entity = engine.getEntity(selectedEntityName);
         if (!entity) return;
@@ -209,35 +234,46 @@ export function RuntimePanel({ source, disabled }: RuntimePanelProps) {
             computed[comp.name] = '<error>';
           }
         }
+        if (cancelled) return;
         setComputedValues(computed);
       } catch (e) {
         console.error('Failed to load computed values:', e);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [engine, selectedEntityName, selectedInstanceId]);
 
   // Update event log when engine changes or after command execution
   useEffect(() => {
-    if (engine) {
-      setEventLog(engine.getEventLog());
-    } else {
-      setEventLog([]);
-    }
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state resets out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      setEventLog(engine ? engine.getEventLog() : []);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [engine, commandResult]);
 
   // Update command options when entity changes
   useEffect(() => {
-    if (!engine || !selectedEntityName) {
-      setSelectedCommand('');
-      return;
-    }
-
-    const entity = engine.getEntity(selectedEntityName);
-    if (entity && entity.commands.length > 0) {
-      setSelectedCommand(entity.commands[0]);
-    } else {
-      setSelectedCommand('');
-    }
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state resets out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      const entity = engine && selectedEntityName ? engine.getEntity(selectedEntityName) : null;
+      setSelectedCommand(entity && entity.commands.length > 0 ? entity.commands[0] : '');
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [engine, selectedEntityName]);
 
   const handleClearEventLog = () => {

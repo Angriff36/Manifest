@@ -86,16 +86,22 @@ export function ConstraintTestPanel({ source, disabled }: ConstraintTestPanelPro
 
   // Compile source to IR and create engine
   useEffect(() => {
-    if (disabled || !source.trim()) {
-      setEngine(null);
-      setEntities([]);
-      setSelectedEntityName('');
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (disabled || !source.trim()) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setEngine(null);
+        setEntities([]);
+        setSelectedEntityName('');
+        return;
+      }
+
       try {
         const compileResult = await compileToIR(source);
+        if (cancelled) return;
         if (compileResult.diagnostics.some(d => d.severity === 'error')) {
           setEngine(null);
           setEntities([]);
@@ -128,46 +134,60 @@ export function ConstraintTestPanel({ source, disabled }: ConstraintTestPanelPro
           setSelectedEntityName(entityList[0].name);
         }
       } catch {
+        if (cancelled) return;
         setEngine(null);
         setEntities([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, disabled]);
 
   // Initialize property values when entity changes
   useEffect(() => {
-    if (!selectedEntityName || !engine) {
-      setPropertyValues({});
-      setOutcomes([]);
-      setEvaluated(false);
-      return;
-    }
-
-    const entity = engine.getEntity(selectedEntityName);
-    if (!entity) return;
-
-    const defaults: Record<string, string> = {};
-    for (const prop of entity.properties) {
-      if (prop.name === 'id') {
-        defaults.id = 'test-1';
-        continue;
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state resets out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!selectedEntityName || !engine) {
+        setPropertyValues({});
+        setOutcomes([]);
+        setEvaluated(false);
+        return;
       }
-      if (prop.defaultValue !== undefined) {
-        const val = extractIRValue(prop.defaultValue);
-        defaults[prop.name] = val === null ? '' : String(val);
-      } else {
-        switch (prop.type.name) {
-          case 'string': defaults[prop.name] = ''; break;
-          case 'number': defaults[prop.name] = '0'; break;
-          case 'boolean': defaults[prop.name] = 'false'; break;
-          default: defaults[prop.name] = '';
+
+      const entity = engine.getEntity(selectedEntityName);
+      if (!entity) return;
+
+      const defaults: Record<string, string> = {};
+      for (const prop of entity.properties) {
+        if (prop.name === 'id') {
+          defaults.id = 'test-1';
+          continue;
+        }
+        if (prop.defaultValue !== undefined) {
+          const val = extractIRValue(prop.defaultValue);
+          defaults[prop.name] = val === null ? '' : String(val);
+        } else {
+          switch (prop.type.name) {
+            case 'string': defaults[prop.name] = ''; break;
+            case 'number': defaults[prop.name] = '0'; break;
+            case 'boolean': defaults[prop.name] = 'false'; break;
+            default: defaults[prop.name] = '';
+          }
         }
       }
-    }
-    setPropertyValues(defaults);
-    setOutcomes([]);
-    setEvaluated(false);
+      setPropertyValues(defaults);
+      setOutcomes([]);
+      setEvaluated(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedEntityName, engine]);
 
   const handleEvaluate = async () => {

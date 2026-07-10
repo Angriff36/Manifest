@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ManifestCompiler } from '../../manifest/compiler';
 import type { ManifestProgram, CompilationError } from '../../manifest/types';
 import { compileToIR } from '../../manifest/ir-compiler';
@@ -30,34 +30,36 @@ const EMPTY: CompileResult = {
 
 export function useDebouncedCompile(source: string, debounceMs = 300): CompileResult {
   const [result, setResult] = useState<CompileResult>(EMPTY);
-  const sourceRef = useRef(source);
-  sourceRef.current = source;
+  const firstRunRef = useRef(true);
 
-  const doCompile = useCallback(async (src: string) => {
-    if (!src.trim()) {
-      setResult(EMPTY);
-      return;
-    }
-    const t0 = performance.now();
-    const syncResult = compiler.compile(src);
-    let ir: IR | null = null;
-    let diagnostics: CompileResult['diagnostics'] = [];
-    try {
-      const irResult = await compileToIR(src);
-      ir = irResult.ir;
-      diagnostics = (irResult.diagnostics || []).map(d => ({
-        message: d.message,
-        severity: d.severity || 'error',
-        line: d.line,
-        column: d.column,
-      }));
-    } catch {
-      // IR compilation failed — use sync errors
-    }
-    const compileMs = Math.round((performance.now() - t0) * 100) / 100;
+  useEffect(() => {
+    let cancelled = false;
 
-    // Only update if source hasn't changed during async compilation
-    if (sourceRef.current === src) {
+    const compile = async () => {
+      if (!source.trim()) {
+        if (!cancelled) setResult(EMPTY);
+        return;
+      }
+      const t0 = performance.now();
+      const syncResult = compiler.compile(source);
+      let ir: IR | null = null;
+      let diagnostics: CompileResult['diagnostics'] = [];
+      try {
+        const irResult = await compileToIR(source);
+        ir = irResult.ir;
+        diagnostics = (irResult.diagnostics || []).map(d => ({
+          message: d.message,
+          severity: d.severity || 'error',
+          line: d.line,
+          column: d.column,
+        }));
+      } catch {
+        // IR compilation failed — use sync errors
+      }
+      const compileMs = Math.round((performance.now() - t0) * 100) / 100;
+
+      // A newer source superseded this run — drop the stale result.
+      if (cancelled) return;
       setResult({
         ir,
         diagnostics,
@@ -68,19 +70,17 @@ export function useDebouncedCompile(source: string, debounceMs = 300): CompileRe
         errors: syncResult.errors || [],
         compileMs,
       });
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    const timer = setTimeout(() => doCompile(source), debounceMs);
-    return () => clearTimeout(timer);
-  }, [source, debounceMs, doCompile]);
-
-  // Compile immediately on first render
-  useEffect(() => {
-    doCompile(source);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Compile immediately on first render; debounce subsequent edits.
+    const delay = firstRunRef.current ? 0 : debounceMs;
+    firstRunRef.current = false;
+    const timer = setTimeout(compile, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [source, debounceMs]);
 
   return result;
 }

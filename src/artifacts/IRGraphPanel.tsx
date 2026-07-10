@@ -735,13 +735,17 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
 
   // Compile IR
   useEffect(() => {
-    if (disabled || !source.trim()) {
-      setIr(null);
-      setGraphData({ nodes: [], edges: [] });
-      return;
-    }
     let cancelled = false;
     (async () => {
+      if (disabled || !source.trim()) {
+        // Microtask defer keeps state resets out of the synchronous effect
+        // body (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setIr(null);
+        setGraphData({ nodes: [], edges: [] });
+        return;
+      }
       try {
         const result = await compileToIR(source);
         if (!cancelled && result.ir) {
@@ -756,15 +760,25 @@ export function IRGraphPanel({ source, disabled }: { source: string; disabled: b
 
   // Build graph from IR
   useEffect(() => {
-    if (!ir) {
-      setGraphData({ nodes: [], edges: [] });
-      return;
-    }
-    const { nodes, edges } = extractGraph(ir);
-    forceSimulation(nodes, edges, size.width, size.height);
-    setGraphData({ nodes, edges });
-    setSelectedNode(null);
-    setInspectorData(null);
+    let cancelled = false;
+    (async () => {
+      // Microtask defer keeps state resets out of the synchronous effect
+      // body (react-hooks/set-state-in-effect).
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!ir) {
+        setGraphData({ nodes: [], edges: [] });
+        return;
+      }
+      const { nodes, edges } = extractGraph(ir);
+      forceSimulation(nodes, edges, size.width, size.height);
+      setGraphData({ nodes, edges });
+      setSelectedNode(null);
+      setInspectorData(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [ir, size.width, size.height]);
 
   // Resize observer

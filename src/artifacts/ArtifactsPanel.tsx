@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Download, Copy, Check, Package, FolderTree, Rocket } from 'lucide-react';
 import { FileTree } from './FileTree';
 import { FileViewer } from './FileViewer';
@@ -44,11 +44,10 @@ export function ArtifactsPanel({
   const fileMap = buildFileMap(files);
   const projectName = generateProjectName(source);
 
-  useEffect(() => {
-    if (!selectedFile || !fileMap[selectedFile]) {
-      setSelectedFile('src/generated/client.ts');
-    }
-  }, [fileMap, selectedFile]);
+  // Fall back to the default file whenever the selection no longer exists in
+  // the generated file map — derived at render instead of reset via effect.
+  const effectiveFile =
+    selectedFile && fileMap[selectedFile] ? selectedFile : 'src/generated/client.ts';
 
   const handleExport = async () => {
     if (hasErrors) return;
@@ -182,7 +181,7 @@ export function ArtifactsPanel({
               </div>
               <FileTree
                 files={fileMap}
-                selectedFile={selectedFile}
+                selectedFile={effectiveFile}
                 onSelectFile={setSelectedFile}
               />
             </>
@@ -191,8 +190,8 @@ export function ArtifactsPanel({
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {panelMode === 'files' ? (
-            selectedFile && fileMap[selectedFile] ? (
-              <FileViewer path={selectedFile} content={fileMap[selectedFile]} />
+            fileMap[effectiveFile] ? (
+              <FileViewer path={effectiveFile} content={fileMap[effectiveFile]} />
             ) : (
               <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
                 Select a file to view

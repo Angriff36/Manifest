@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { compileToIR } from '../manifest/ir-compiler';
 import { RuntimeEngine } from '../manifest/runtime-engine';
 import type { CommandProfile, PhaseTiming } from '../manifest/profiling';
+import { buildProfilerCommandOptions, type ProfilerCommandOption } from './profiler-options';
 import {
   Flame,
   Zap,
@@ -17,16 +18,6 @@ interface FlameGraphPanelProps {
   disabled: boolean;
 }
 
-interface ProfilerCommandLike {
-  name: string;
-  entity?: string;
-}
-
-export interface ProfilerCommandOption {
-  commandName: string;
-  entityName?: string;
-  label: string;
-}
 
 interface FlameBarProps {
   phase: PhaseTiming;
@@ -145,16 +136,6 @@ function PhaseDetail({ phase, totalDuration }: { phase: PhaseTiming; totalDurati
   );
 }
 
-export function buildProfilerCommandOptions(ir: {
-  commands?: ProfilerCommandLike[];
-}): ProfilerCommandOption[] {
-  return (ir.commands || []).map((command) => ({
-    commandName: command.name,
-    entityName: command.entity,
-    label: command.entity ? `${command.entity}.${command.name}` : command.name,
-  }));
-}
-
 export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
   const [engine, setEngine] = useState<RuntimeEngine | null>(null);
   const [profiles, setProfiles] = useState<CommandProfile[]>([]);
@@ -166,18 +147,24 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
 
   // Async compilation effect
   useEffect(() => {
-    if (disabled || !source.trim()) {
-      setEngine(null);
-      setProfiles([]);
-      setSelectedProfile(null);
-      setCommandOptions([]);
-      setSelectedCommandLabel('');
-      return;
-    }
-
+    let cancelled = false;
     (async () => {
+      if (disabled || !source.trim()) {
+        // Defer to a microtask so state resets never run synchronously
+        // inside the effect (react-hooks/set-state-in-effect).
+        await Promise.resolve();
+        if (cancelled) return;
+        setEngine(null);
+        setProfiles([]);
+        setSelectedProfile(null);
+        setCommandOptions([]);
+        setSelectedCommandLabel('');
+        return;
+      }
+
       try {
         const compileResult = await compileToIR(source);
+        if (cancelled) return;
 
         if (compileResult.diagnostics.some((d: { severity: string }) => d.severity === 'error')) {
           setEngine(null);
@@ -220,6 +207,7 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
         });
         setError(null);
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Unknown error');
         setEngine(null);
         setProfiles([]);
@@ -228,6 +216,9 @@ export function FlameGraphPanel({ source, disabled }: FlameGraphPanelProps) {
         setSelectedCommandLabel('');
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [source, disabled]);
 
   const handleRunCommand = async (commandName: string, entityName?: string) => {

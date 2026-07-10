@@ -1,6 +1,6 @@
 import { isValidElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { APP_TABS, renderCenterPanel } from '../App';
+import { APP_TABS, renderCenterPanel } from '../app-tabs';
 import {
   BUILTIN_TUTORIALS,
   FlameGraphPanel,
@@ -8,7 +8,7 @@ import {
   TutorialPanel,
   validateTutorialJson,
 } from './index';
-import { buildProfilerCommandOptions } from './FlameGraphPanel';
+import { buildProfilerCommandOptions } from './profiler-options';
 
 describe('diagnostic UI wiring', () => {
   it('exposes tutorial, policy matrix, and profiler tabs in the app', () => {

@@ -69,6 +69,7 @@ export async function seedTemplateCommand(options: SeedTemplateCliOptions): Prom
     const ir = await loadIR(options.source);
     const pack = buildSeedTemplate(ir, {
       packId: options.packId ?? 'demo',
+      // eslint-disable-next-line manifest/no-hardcoded-versions -- default seed-pack version (user data), not the CLI version
       version: options.version ?? '1.0.0',
       profile: options.profile ?? 'demo',
       count: options.count ?? 2,

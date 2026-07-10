@@ -356,6 +356,7 @@ seedCmd
   .argument('<source>', 'Source .manifest or .ir.json')
   .requiredOption('-o, --output <dir>', 'Output pack directory')
   .option('--pack-id <id>', 'Pack id', 'demo')
+  // eslint-disable-next-line manifest/no-hardcoded-versions -- default seed-pack version (user data), not the CLI version
   .option('--pack-version <ver>', 'Pack version (avoid --version; reserved by CLI)', '1.0.0')
   .option('--profile <profile>', 'dev | staging | demo', 'demo')
   .option('--count <n>', 'Rows per entity', (v) => parseInt(v, 10), 2)
