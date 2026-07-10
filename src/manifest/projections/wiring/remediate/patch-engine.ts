@@ -60,6 +60,16 @@ export function applyRepairPlan(
         nextContents: new Map(fileContents),
       };
     }
+    const proven = extractProvenSourceExpression(plan);
+    if (proven && !provenSourceStillPresent(proven, content)) {
+      return {
+        ok: false,
+        filesChanged: [],
+        editsApplied: 0,
+        skippedReason: `Stale plan: expected source snippet no longer present in ${file}`,
+        nextContents: new Map(fileContents),
+      };
+    }
     // Fingerprint of expected snippet must appear OR full-file still contains key fragment
     const stillValid =
       content.includes(pre.sourceFingerprint) ||
@@ -501,10 +511,34 @@ function extractFromExpression(plan: RepairPlan): string | undefined {
       return e.operation.fromExpression;
     }
   }
+  return extractProvenSourceExpression(plan);
+}
+
+function extractProvenSourceExpression(plan: RepairPlan): string | undefined {
+  for (const e of plan.edits) {
+    if (e.operation.type === 'add-object-property' && e.operation.provenSource) {
+      return e.operation.provenSource;
+    }
+  }
   return undefined;
 }
 
+/**
+ * Proven sources must remain usable. Exact substring is required for aliases /
+ * conversions; host.prop may be constructible when the host binding remains.
+ */
+function provenSourceStillPresent(proven: string, content: string): boolean {
+  if (content.includes(proven)) return true;
+  const member = /^([A-Za-z_][\w]*)\.([A-Za-z_][\w]*)$/.exec(proven);
+  if (member) {
+    return new RegExp(`\\b${escape(member[1]!)}\\b`).test(content);
+  }
+  return false;
+}
+
 function preconditionSnippetPresent(plan: RepairPlan, content: string): boolean {
+  const proven = extractProvenSourceExpression(plan);
+  if (proven) return provenSourceStillPresent(proven, content);
   const from = extractFromExpression(plan);
   if (from && content.includes(from)) return true;
   if (plan.mismatch?.parameter && content.includes(plan.mismatch.parameter)) return true;

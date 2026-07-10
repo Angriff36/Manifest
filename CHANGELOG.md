@@ -10,6 +10,12 @@ _Auto-generated stub — expand with real release notes._
 
 ## [Unreleased]
 
+## [3.4.15] - 2026-07-10
+
+### Added
+
+- Wiring remediate: `add-required-input` proves closure-scoped `useState` bindings and unique `Number(name)` / alias conversions (e.g. `refundAmount` ← `amount` where `const amount = Number(refundAmount)`), without inventing literals or using file-wide names
+
 ## [3.4.14] - 2026-07-10
 
 ### Fixed
