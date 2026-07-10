@@ -4,23 +4,25 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [3.4.16] - 2026-07-10
-
-### Changed
-
-- feat(wiring): prove closure useState + Number alias for add-required-input
-
-## [3.4.15] - 2026-07-10
-
-_Auto-generated stub — expand with real release notes._
-
 ## [Unreleased]
 
-## [3.4.15] - 2026-07-10
+## [3.4.17] - 2026-07-10
+
+### Added
+
+- Wiring remediate: `add-required-input` proves unique sibling-call parameter bindings in the enclosing callable (e.g. `userId: currentUserId` already passed on `claim`/`release` → fill missing `userId` on `complete`/`start`), without inventing actor context or using file-wide names
+
+## [3.4.16] - 2026-07-10
 
 ### Added
 
 - Wiring remediate: `add-required-input` proves closure-scoped `useState` bindings and unique `Number(name)` / alias conversions (e.g. `refundAmount` ← `amount` where `const amount = Number(refundAmount)`), without inventing literals or using file-wide names
+
+## [3.4.15] - 2026-07-10
+
+### Changed
+
+- Version bump only (cut before the closure-scoped required-input source proof landed on main)
 
 ## [3.4.14] - 2026-07-10
 
