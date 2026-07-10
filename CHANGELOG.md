@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.22] - 2026-07-10
+
+### Fixed
+
+- Prisma projection: suppress `@default("")` on uuid-typed fields. The `uuid? = ""` unset-FK sentinel was projecting to `@default("")` on native uuid columns; `''` is not a valid uuid literal, so migration diffs emitted undeployable `SET DEFAULT ''` DDL (22P02). Sentinel seeding stays in the runtime (`""` → NULL); ordinary string fields keep empty-string defaults.
+
 ## [3.4.21] - 2026-07-10
 
 ### Added
