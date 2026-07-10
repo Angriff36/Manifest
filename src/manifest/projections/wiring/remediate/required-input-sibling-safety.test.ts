@@ -289,4 +289,39 @@ describe('sibling-binding entity/guard safety', () => {
     );
     expect(plan?.automaticApplicationAllowed).toBe(false);
   });
+
+  it('E7. named props type (TaskCardProps) still allows sibling string binding', async () => {
+    const contract = await contractFrom(TASK_ACTION_DOMAIN);
+    const files = fileMapFromRecord({
+      'apps/app/app/ui/task-card.tsx': `
+        import { taskComplete, taskClaim } from "@/lib/client";
+        type TaskCardProps = {
+          task: { id: string };
+          currentUserId?: string | null;
+        };
+        export function TaskCard({ task, currentUserId }: TaskCardProps) {
+          const claim = async () => {
+            if (!currentUserId) return;
+            await taskClaim({ id: task.id, userId: currentUserId });
+          };
+          const complete = async () => {
+            if (!currentUserId) return;
+            await taskComplete({ id: task.id });
+          };
+          return null;
+        }
+      `,
+    });
+    const result = remediateWiringSync({
+      contract,
+      fileContents: files,
+      mode: 'one-defect',
+      capabilityId: 'Task.complete',
+      autoFixableOnly: true,
+    });
+    expect(result.applied.some(a => a.applied && a.verification?.ok)).toBe(true);
+    expect([...resultToMap(files, result).values()][0]).toMatch(
+      /taskComplete\(\{[^}]*userId\s*:\s*currentUserId/,
+    );
+  });
 });

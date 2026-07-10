@@ -280,7 +280,8 @@ function bindingTypeInScope(
             ts.isIdentifier(el.name) &&
             el.name.text === name
           ) {
-            // Prefer inline type on the object param: ({ x }: { x?: string | null })
+            // Only inline object types prove a property type. Named props types
+            // (e.g. TaskCardProps) are opaque — do not treat them as the value type.
             if (p.type && ts.isTypeLiteralNode(p.type)) {
               for (const m of p.type.members) {
                 if (
@@ -293,7 +294,7 @@ function bindingTypeInScope(
                 }
               }
             }
-            return p.type?.getText(sf);
+            return undefined;
           }
         }
       }
