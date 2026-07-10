@@ -22,6 +22,9 @@ import {
   applyEnsureNamedImports,
   replaceCapabilityPayloadWithFullBody,
 } from './patch-full-body.js';
+import {
+  insertEarlyReturnGuard as insertGuardAtCall,
+} from './required-input-sibling-guard.js';
 
 export interface PatchApplyResult {
   ok: boolean;
@@ -161,6 +164,8 @@ function applyOperation(
       return removeProperty(content, fileName, op);
     case 'add-object-property':
       return addProperty(content, fileName, op);
+    case 'insert-early-return-guard':
+      return insertEarlyReturnGuardOp(content, fileName, op);
     case 'replace-call-expression':
       return replaceCall(content, fileName, op);
     case 'add-invalidation-after-mutation':
@@ -521,6 +526,22 @@ function extractProvenSourceExpression(plan: RepairPlan): string | undefined {
     }
   }
   return undefined;
+}
+
+function insertEarlyReturnGuardOp(
+  content: string,
+  fileName: string,
+  op: Extract<RepairOperation, { type: 'insert-early-return-guard' }>,
+): string | null {
+  return insertGuardAtCall(
+    content,
+    fileName,
+    op.capabilityId,
+    op.sourceExpression,
+    op.statement,
+    callMatchesCapability,
+    parseSource,
+  );
 }
 
 /**

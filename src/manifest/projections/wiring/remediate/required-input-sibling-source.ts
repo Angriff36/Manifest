@@ -5,6 +5,8 @@
  * `param: <expr>` into another call that shares the target call's identity
  * argument (e.g. both use `id: task.id`), that expression is a proven source —
  * never invent actor/context values, never borrow from a different dialog target.
+ *
+ * Sibling must also belong to the same Manifest entity as the target capability.
  */
 
 import ts from 'typescript';
@@ -12,13 +14,19 @@ import type { ProvenValueSource } from './required-input-source.js';
 
 const IDENTITY_KEYS = new Set(['id', 'entityId']);
 
+export interface SiblingBindingHit {
+  call: ts.CallExpression;
+  expression: string;
+  identityExpression: string;
+}
+
 /**
  * Collect `param: expr` bindings from sibling CallExpressions inside the
  * outermost enclosing callable (e.g. React component), excluding the target call.
  *
- * Sibling must share the same identity property expression as the target
- * (e.g. `id: task.id` on both claim and complete). Different targets
- * (`costTarget.id` vs `deactivateTarget.id`) do not qualify.
+ * Sibling must:
+ * - belong to the same Manifest entity as `capabilityId`
+ * - share the same identity property expression as the target
  *
  * - Exactly one unique expression → one candidate (rank 2)
  * - Multiple distinct expressions → all candidates at rank 2 (resolver → ambiguous)
@@ -30,37 +38,55 @@ export function collectSiblingParamBindings(
   scopes: ts.Node[],
   paramName: string,
   out: ProvenValueSource[],
-): void {
+  capabilityId: string,
+): SiblingBindingHit[] {
   const outermost = scopes[scopes.length - 1];
-  if (!outermost) return;
+  if (!outermost) return [];
+
+  const targetEntity = capabilityId.split('.')[0];
+  if (!targetEntity) return [];
 
   const targetIdentity = extractIdentityExpression(call, sf);
-  if (!targetIdentity) return;
+  if (!targetIdentity) return [];
 
-  const exprs = new Set<string>();
+  const hits: SiblingBindingHit[] = [];
   const visit = (node: ts.Node) => {
     if (node === call) return;
     if (ts.isCallExpression(node)) {
-      collectParamFromCallArgs(node, sf, call, paramName, targetIdentity, exprs);
+      collectParamFromCallArgs(
+        node,
+        sf,
+        call,
+        paramName,
+        targetIdentity,
+        targetEntity,
+        hits,
+      );
     }
     ts.forEachChild(node, visit);
   };
   visit(outermost);
 
-  if (exprs.size === 0) return;
+  const exprs = new Set(hits.map(h => h.expression));
+  if (exprs.size === 0) return [];
 
   for (const expression of [...exprs].sort()) {
     if (!expressionRootInScope(expression, scopes, sf, call.getStart(sf))) {
       continue;
     }
+    const typeText = resolveBindingTypeText(scopes, sf, expression, call.getStart(sf));
     out.push({
       expression,
       kind: 'local-variable',
       rank: 2,
-      typeText: undefined,
+      typeText,
       conversion: 'none',
     });
   }
+
+  return hits.filter(h =>
+    expressionRootInScope(h.expression, scopes, sf, call.getStart(sf)),
+  );
 }
 
 function collectParamFromCallArgs(
@@ -69,15 +95,71 @@ function collectParamFromCallArgs(
   targetCall: ts.CallExpression,
   paramName: string,
   targetIdentity: string,
-  exprs: Set<string>,
+  targetEntity: string,
+  hits: SiblingBindingHit[],
 ): void {
   if (node === targetCall) return;
+  if (!callBelongsToEntity(node, sf, targetEntity)) return;
   for (const arg of node.arguments) {
     if (!ts.isObjectLiteralExpression(arg)) continue;
     const siblingIdentity = identityFromObjectLiteral(arg, sf);
     if (!siblingIdentity || siblingIdentity !== targetIdentity) continue;
-    collectFromObjectLiteral(arg, sf, paramName, exprs);
+    for (const expression of expressionsForParam(arg, sf, paramName)) {
+      hits.push({
+        call: node,
+        expression,
+        identityExpression: siblingIdentity,
+      });
+    }
   }
+}
+
+function callBelongsToEntity(
+  node: ts.CallExpression,
+  sf: ts.SourceFile,
+  entity: string,
+): boolean {
+  const text = node.expression.getText(sf);
+  const camelPrefix = `${entity[0]!.toLowerCase()}${entity.slice(1)}`;
+  if (text === camelPrefix || text.endsWith(`.${camelPrefix}`)) return true;
+  if (
+    text.startsWith(camelPrefix) &&
+    text.length > camelPrefix.length &&
+    /^[A-Z]/.test(text.slice(camelPrefix.length))
+  ) {
+    return true;
+  }
+  if (text.endsWith(`.${camelPrefix}`) === false) {
+    const dotted = text.split('.').pop() ?? text;
+    if (
+      dotted.startsWith(camelPrefix) &&
+      dotted.length > camelPrefix.length &&
+      /^[A-Z]/.test(dotted.slice(camelPrefix.length))
+    ) {
+      return true;
+    }
+  }
+  if (text.includes('executeCommand') || text.endsWith('executeCommand')) {
+    const a0 = node.arguments[0];
+    return Boolean(a0 && ts.isStringLiteral(a0) && a0.text === entity);
+  }
+  if (text.includes('runManifestCommand')) {
+    const arg0 = node.arguments[0];
+    if (arg0 && ts.isObjectLiteralExpression(arg0)) {
+      for (const prop of arg0.properties) {
+        if (
+          ts.isPropertyAssignment(prop) &&
+          ts.isIdentifier(prop.name) &&
+          prop.name.text === 'entity' &&
+          ts.isStringLiteral(prop.initializer) &&
+          prop.initializer.text === entity
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 function extractIdentityExpression(
@@ -112,27 +194,28 @@ function identityFromObjectLiteral(
   return undefined;
 }
 
-function collectFromObjectLiteral(
+function expressionsForParam(
   obj: ts.ObjectLiteralExpression,
   sf: ts.SourceFile,
   paramName: string,
-  exprs: Set<string>,
-): void {
+): string[] {
+  const out: string[] = [];
   for (const prop of obj.properties) {
     if (ts.isShorthandPropertyAssignment(prop) && prop.name.text === paramName) {
-      exprs.add(paramName);
+      out.push(paramName);
       continue;
     }
     if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) continue;
     if (prop.name.text === 'body' && ts.isObjectLiteralExpression(prop.initializer)) {
-      collectFromObjectLiteral(prop.initializer, sf, paramName, exprs);
+      out.push(...expressionsForParam(prop.initializer, sf, paramName));
       continue;
     }
     if (prop.name.text !== paramName || !prop.initializer) continue;
     const text = prop.initializer.getText(sf).trim();
     if (!text || isTypeOnlyPlaceholder(text)) continue;
-    exprs.add(text);
+    out.push(text);
   }
+  return out;
 }
 
 function isTypeOnlyPlaceholder(text: string): boolean {
@@ -162,6 +245,84 @@ function expressionRootInScope(
 function expressionRoot(expression: string): string | undefined {
   const m = /^([A-Za-z_][\w]*)/.exec(expression.trim());
   return m?.[1];
+}
+
+function resolveBindingTypeText(
+  scopes: ts.Node[],
+  sf: ts.SourceFile,
+  expression: string,
+  beforePos: number,
+): string | undefined {
+  const root = expressionRoot(expression);
+  if (!root) return undefined;
+  for (const scope of scopes) {
+    const t = bindingTypeInScope(scope, sf, root, beforePos);
+    if (t) return t;
+  }
+  return undefined;
+}
+
+function bindingTypeInScope(
+  scope: ts.Node,
+  sf: ts.SourceFile,
+  name: string,
+  beforePos: number,
+): string | undefined {
+  if ('parameters' in scope) {
+    for (const p of (scope as ts.FunctionLikeDeclaration).parameters) {
+      if (ts.isIdentifier(p.name) && p.name.text === name) {
+        return p.type?.getText(sf);
+      }
+      if (ts.isObjectBindingPattern(p.name)) {
+        for (const el of p.name.elements) {
+          if (
+            ts.isBindingElement(el) &&
+            ts.isIdentifier(el.name) &&
+            el.name.text === name
+          ) {
+            // Prefer inline type on the object param: ({ x }: { x?: string | null })
+            if (p.type && ts.isTypeLiteralNode(p.type)) {
+              for (const m of p.type.members) {
+                if (
+                  ts.isPropertySignature(m) &&
+                  m.name &&
+                  ts.isIdentifier(m.name) &&
+                  m.name.text === name
+                ) {
+                  return m.type?.getText(sf);
+                }
+              }
+            }
+            return p.type?.getText(sf);
+          }
+        }
+      }
+    }
+  }
+  let found: string | undefined;
+  const visit = (node: ts.Node) => {
+    if (found || node.getStart(sf) >= beforePos) return;
+    if (ts.isVariableStatement(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === name) {
+          found = decl.type?.getText(sf);
+          return;
+        }
+      }
+    }
+    if (
+      node !== scope &&
+      (ts.isFunctionDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isMethodDeclaration(node))
+    ) {
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(scope);
+  return found;
 }
 
 function bindingNameInScope(

@@ -80,6 +80,13 @@ export type RepairOperation =
       provenSource: string;
     }
   | {
+      /** Insert a preflight-proven falsy early-return before the target call's function body. */
+      type: 'insert-early-return-guard';
+      capabilityId: string;
+      sourceExpression: string;
+      statement: string;
+    }
+  | {
       type: 'replace-call-expression';
       capabilityId: string;
       fromCalleePattern: string;

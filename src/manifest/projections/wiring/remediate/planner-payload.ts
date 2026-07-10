@@ -81,24 +81,40 @@ export function planMissingRequired(
   }
 
   const proven = proof.source;
-  const edits: RepairEditSpec[] = [
-    {
+  const edits: RepairEditSpec[] = [];
+  if (proof.guard && !proof.guard.alreadyPresent) {
+    edits.push({
       file,
-      description: `Add required ${paramName} from proven ${proven.kind} source ${proven.expression}`,
+      description: `Insert proven falsy guard for ${proven.expression}`,
       operation: {
-        type: 'add-object-property',
-        parameter: paramName,
-        expression: proven.expression,
+        type: 'insert-early-return-guard',
         capabilityId: cap.capabilityId,
-        provenSource: proven.expression,
+        sourceExpression: proof.guard.sourceExpression,
+        statement: proof.guard.statement,
       },
+    });
+  }
+  edits.push({
+    file,
+    description: `Add required ${paramName} from proven ${proven.kind} source ${proven.expression}`,
+    operation: {
+      type: 'add-object-property',
+      parameter: paramName,
+      expression: proven.expression,
+      capabilityId: cap.capabilityId,
+      provenSource: proven.expression,
     },
-  ];
+  });
 
   return classify(
     {
       ...basePlan(mismatch, cap, evidence, 'add-required-input', findingId),
-      preconditions: [precondition(file, content, proven.expression)],
+      preconditions: [
+        precondition(file, content, proven.expression),
+        ...(proof.guard && !proof.guard.alreadyPresent
+          ? [precondition(file, content, proof.guard.sourceExpression)]
+          : []),
+      ],
       postconditions: [
         {
           id: 'required-present',

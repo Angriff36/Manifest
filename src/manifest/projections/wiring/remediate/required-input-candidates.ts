@@ -37,6 +37,7 @@ export function collectCandidates(
   call: ts.CallExpression,
   scopes: ts.Node[],
   param: WiringParameterDescriptor,
+  capabilityId?: string,
 ): ProvenValueSource[] {
   const out: ProvenValueSource[] = [];
   const name = param.name;
@@ -50,7 +51,9 @@ export function collectCandidates(
   }
 
   // Sibling calls in the outermost callable already pass param: expr
-  collectSiblingParamBindings(sf, call, scopes, name, out);
+  if (capabilityId) {
+    collectSiblingParamBindings(sf, call, scopes, name, out, capabilityId);
+  }
 
   if (innermost && paramNeedsNumber(param)) {
     const converted = findProvenNumericConversion(innermost, sf, callPos, name);
@@ -121,10 +124,18 @@ export function isTypeCompatible(
     return source.rank <= 2 || source.kind === 'object-property';
   }
 
-  if (got !== want && !typesAssignable(got, want, param)) {
+  const gotWithoutNull = stripNullFromType(got);
+  if (gotWithoutNull !== want && !typesAssignable(gotWithoutNull, want, param)) {
     return false;
   }
   return true;
+}
+
+function stripNullFromType(typeText: string): string {
+  return typeText
+    .replace(/\s*\|\s*null\b/g, '')
+    .replace(/\bnull\s*\|\s*/g, '')
+    .replace(/\s+/g, '');
 }
 
 function collectSameNameParams(

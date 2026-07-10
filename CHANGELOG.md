@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.19] - 2026-07-10
+
+### Fixed
+
+- Wiring remediate: sibling-call param bindings require the same Manifest entity as the target capability (not just matching field names)
+- Wiring remediate: nullable sibling sources require a proven reusable `if (!expr) return` guard from same-identity siblings before `add-required-input` (insert when missing; reject when unproven)
+
 ## [3.4.18] - 2026-07-10
 
 ### Fixed

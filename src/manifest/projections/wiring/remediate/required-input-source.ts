@@ -13,6 +13,11 @@ import {
   enclosingCallableChain,
   isTypeCompatible,
 } from './required-input-candidates.js';
+import { collectSiblingParamBindings } from './required-input-sibling-source.js';
+import {
+  proveSiblingFalsyGuard,
+  sourceTypeNeedsFalsyGuard,
+} from './required-input-sibling-guard.js';
 
 export type ProvenSourceKind =
   | 'function-param'
@@ -44,6 +49,12 @@ export interface SourceProofResult {
   source?: ProvenValueSource;
   candidates: ProvenValueSource[];
   rationale: string;
+  /** Proven falsy early-return guard required/available for the source. */
+  guard?: {
+    sourceExpression: string;
+    statement: string;
+    alreadyPresent: boolean;
+  };
 }
 
 export interface ResolveRequiredInputOptions {
@@ -96,7 +107,14 @@ export function resolveRequiredInputSource(
   }
 
   const scopes = enclosingCallableChain(call);
-  const candidates = collectCandidates(sf, content, call, scopes, param);
+  const candidates = collectCandidates(
+    sf,
+    content,
+    call,
+    scopes,
+    param,
+    capabilityId,
+  );
 
   if (candidates.length === 0) {
     return {
@@ -132,11 +150,29 @@ export function resolveRequiredInputSource(
   }
 
   const chosen = compatible[0]!;
+  const guardResult = proveGuardForChosenSource({
+    sf,
+    call,
+    scopes,
+    capabilityId,
+    param,
+    chosen,
+  });
+  if (guardResult && 'reject' in guardResult) {
+    return {
+      status: 'unsafe',
+      source: chosen,
+      candidates: compatible,
+      rationale: guardResult.reject,
+    };
+  }
+
   return {
     status: 'proven',
     source: chosen,
     candidates: compatible,
     rationale: `Proven ${chosen.kind} source ${chosen.expression} (rank ${chosen.rank}) for '${param.name}'`,
+    guard: guardResult,
   };
 }
 
@@ -164,6 +200,44 @@ export function missingRequiredClientParams(
   return cap.parameters.filter(
     p => p.ownership === 'client' && p.required && !present.has(p.name),
   );
+}
+
+function proveGuardForChosenSource(options: {
+  sf: ts.SourceFile;
+  call: ts.CallExpression;
+  scopes: ts.Node[];
+  capabilityId: string;
+  param: WiringParameterDescriptor;
+  chosen: ProvenValueSource;
+}):
+  | {
+      sourceExpression: string;
+      statement: string;
+      alreadyPresent: boolean;
+    }
+  | { reject: string }
+  | undefined {
+  const { sf, call, scopes, capabilityId, param, chosen } = options;
+  const needsGuard = sourceTypeNeedsFalsyGuard(chosen.typeText, param.tsType);
+  if (!needsGuard) return undefined;
+
+  // Re-collect qualifying sibling hits for this expression only.
+  const hits = collectSiblingParamBindings(
+    sf,
+    call,
+    scopes,
+    param.name,
+    [],
+    capabilityId,
+  ).filter(h => h.expression === chosen.expression);
+
+  return proveSiblingFalsyGuard({
+    sf,
+    targetCall: call,
+    sourceExpression: chosen.expression,
+    qualifyingSiblingCalls: hits.map(h => h.call),
+    required: true,
+  });
 }
 
 function findCapabilityCall(
