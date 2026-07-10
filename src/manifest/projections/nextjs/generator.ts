@@ -5,34 +5,51 @@
  * Configurable for different auth providers and database setups.
  */
 
-import type { IR, IREntity, IRCommand, IREnum } from '../../ir';
+import type { IR, IRCommand, IREntity, IREnum } from '../../ir';
 import type {
-  ProjectionTarget,
+  NextJsProjectionOptions,
+  ProjectionDiagnostic,
   ProjectionRequest,
   ProjectionResult,
-  ProjectionDiagnostic,
-  NextJsProjectionOptions,
+  ProjectionTarget,
 } from '../interface';
+import { generateRuntimeFactoryModule, resolveLocalImportPathHint } from '../shared/companions.js';
 import {
-  NEXTJS_DEFAULTS,
+  type NamingConventionInput,
+  type RouteCasing,
+  resolveTableName,
+} from '../shared/naming.js';
+import {
+  detailEnvelopeKey,
+  listEnvelopeKey,
+  type RouteContract,
+  resolveEntitySegment,
+  resolveRouteContract,
+} from '../shared/route-contract.js';
+import {
+  CONCRETE_COMMAND_ROUTES_DEFAULTS,
   DEFAULT_TENANT_PROVIDER,
   DISPATCHER_DEFAULTS,
-  CONCRETE_COMMAND_ROUTES_DEFAULTS,
+  NEXTJS_DEFAULTS,
   READ_ROUTES_DEFAULTS,
   REALTIME_DEFAULTS,
 } from './defaults.js';
-import { resolveTableName, type NamingConventionInput, type RouteCasing } from '../shared/naming.js';
-import { resolveLocalImportPathHint, generateRuntimeFactoryModule } from '../shared/companions.js';
-import {
-  resolveRouteContract,
-  resolveEntitySegment,
-  listEnvelopeKey,
-  detailEnvelopeKey,
-  type RouteContract,
-} from '../shared/route-contract.js';
 import { generateScheduleCronRoutes } from './schedule-generator.js';
 import { generateWebhookRoutes } from './webhook-generator.js';
 
+// Re-export the projection-interface types so downstream consumers of
+// `@angriff36/manifest/projections/nextjs` can type the projection
+// boundary without reaching into '../interface' directly. CLI commands
+// (build.ts, generate.ts) consume these to type their `projection.generate`
+// pass-through helpers.
+export type {
+  NextJsProjectionOptions,
+  ProjectionArtifact,
+  ProjectionDiagnostic,
+  ProjectionRequest,
+  ProjectionResult,
+  ProjectionTarget,
+} from '../interface';
 /**
  * Re-export the canonical defaults so consumers of
  * `@angriff36/manifest/projections/nextjs` get the defaults from the same
@@ -41,29 +58,15 @@ import { generateWebhookRoutes } from './webhook-generator.js';
  * these names, not redeclare them.
  */
 export {
-  NEXTJS_DEFAULTS,
+  CONCRETE_COMMAND_ROUTES_DEFAULTS,
   DEFAULT_TENANT_PROVIDER,
   DISPATCHER_DEFAULTS,
-  CONCRETE_COMMAND_ROUTES_DEFAULTS,
-  READ_ROUTES_DEFAULTS,
-  ROUTES_DEFAULTS,
   getManifestDefaultsSnapshot,
   type ManifestDefaultsSnapshot,
+  NEXTJS_DEFAULTS,
+  READ_ROUTES_DEFAULTS,
+  ROUTES_DEFAULTS,
 } from './defaults.js';
-
-// Re-export the projection-interface types so downstream consumers of
-// `@angriff36/manifest/projections/nextjs` can type the projection
-// boundary without reaching into '../interface' directly. CLI commands
-// (build.ts, generate.ts) consume these to type their `projection.generate`
-// pass-through helpers.
-export type {
-  ProjectionRequest,
-  ProjectionArtifact,
-  ProjectionDiagnostic,
-  ProjectionResult,
-  ProjectionTarget,
-  NextJsProjectionOptions,
-} from '../interface';
 
 /**
  * Internal result shape used by private generation methods.
@@ -78,11 +81,11 @@ interface CodeResult {
  * can branch without nullish-checks.
  */
 interface NormalizedDispatcherOptions {
+  deriveInstanceId: boolean;
   enabled: boolean;
   executionMode: 'inline' | 'externalExecutor';
-  executorImportPath: string;
   executorImportName: string;
-  deriveInstanceId: boolean;
+  executorImportPath: string;
   path: string;
 }
 
@@ -98,8 +101,8 @@ interface NormalizedConcreteCommandRoutesOptions {
  * Normalized read-routes policy.
  */
 interface NormalizedReadRoutesOptions {
-  enabled: boolean;
   directDbReads: boolean;
+  enabled: boolean;
 }
 
 /**
@@ -113,48 +116,48 @@ interface NormalizedRealtimeOptions {
  * Normalized options for internal use (all required, no outputPath).
  */
 interface NormalizedNextJsOptions {
-  authProvider: 'clerk' | 'nextauth' | 'custom' | 'none';
-  authImportPath: string;
-  databaseImportPath: string;
-  responseImportPath: string;
-  runtimeImportPath: string;
-  includeTenantFilter: boolean;
-  includeSoftDeleteFilter: boolean;
-  tenantIdProperty: string;
-  deletedAtProperty: string;
+  accessorNames: Record<string, string>;
+  /** Explicit client/dispatcher URL bases; undefined ⇒ contract derives from appDir. */
+  apiBasePath?: string;
   appDir: string;
-  strictMode: boolean;
-  includeComments: boolean;
-  indentSize: number;
-  unauthorizedStatus: number;
-  tenantProvider?: {
-    importPath: string;
-    functionName: string;
-    lookupKey: 'orgId' | 'userId';
-  };
-  dispatcher: NormalizedDispatcherOptions;
+  authImportPath: string;
+  authProvider: 'clerk' | 'nextauth' | 'custom' | 'none';
+  /** Resolved ts.client fetch adapter (host-provided auth fetch), if configured. */
+  clientFetchAdapter?: { importPath: string; importName: string };
   concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions;
-  readRoutes: NormalizedReadRoutesOptions;
-  realtime: NormalizedRealtimeOptions;
+  databaseImportPath: string;
+  dateSerialization: 'date' | 'iso-string';
+  deletedAtProperty: string;
+  dispatcher: NormalizedDispatcherOptions;
+  dispatcherBasePath?: string;
+  emitCompanions: boolean;
+  includeComments: boolean;
+  includeSoftDeleteFilter: boolean;
+  includeTenantFilter: boolean;
+  indentSize: number;
+  naming?: NamingConventionInput;
   paths: {
     typesFile: string;
     clientFile: string;
     hooksDir: string;
     sharedRuntimeFile: string;
   };
-  sharedRuntimeImportPath: string;
-  naming?: NamingConventionInput;
-  accessorNames: Record<string, string>;
-  routeSegments: Record<string, string>;
+  readRoutes: NormalizedReadRoutesOptions;
+  realtime: NormalizedRealtimeOptions;
+  responseImportPath: string;
   routeCasing: RouteCasing;
-  dateSerialization: 'date' | 'iso-string';
-  emitCompanions: boolean;
+  routeSegments: Record<string, string>;
   runtimeConfigImport?: string;
-  /** Explicit client/dispatcher URL bases; undefined ⇒ contract derives from appDir. */
-  apiBasePath?: string;
-  dispatcherBasePath?: string;
-  /** Resolved ts.client fetch adapter (host-provided auth fetch), if configured. */
-  clientFetchAdapter?: { importPath: string; importName: string };
+  runtimeImportPath: string;
+  sharedRuntimeImportPath: string;
+  strictMode: boolean;
+  tenantIdProperty: string;
+  tenantProvider?: {
+    importPath: string;
+    functionName: string;
+    lookupKey: 'orgId' | 'userId';
+  };
+  unauthorizedStatus: number;
 }
 
 /**
@@ -167,15 +170,18 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
   const dispatcher: NormalizedDispatcherOptions = {
     enabled: options?.dispatcher?.enabled ?? DISPATCHER_DEFAULTS.enabled,
     executionMode: options?.dispatcher?.executionMode ?? DISPATCHER_DEFAULTS.executionMode,
-    executorImportPath: options?.dispatcher?.executorImportPath ?? DISPATCHER_DEFAULTS.executorImportPath,
-    executorImportName: options?.dispatcher?.executorImportName ?? DISPATCHER_DEFAULTS.executorImportName,
+    executorImportPath:
+      options?.dispatcher?.executorImportPath ?? DISPATCHER_DEFAULTS.executorImportPath,
+    executorImportName:
+      options?.dispatcher?.executorImportName ?? DISPATCHER_DEFAULTS.executorImportName,
     deriveInstanceId: options?.dispatcher?.deriveInstanceId ?? DISPATCHER_DEFAULTS.deriveInstanceId,
     path: options?.dispatcher?.path ?? DISPATCHER_DEFAULTS.path,
   };
   const concreteCommandRoutes: NormalizedConcreteCommandRoutesOptions = {
     enabled: options?.concreteCommandRoutes?.enabled ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.enabled,
     legacyAliasesOnly:
-      options?.concreteCommandRoutes?.legacyAliasesOnly ?? CONCRETE_COMMAND_ROUTES_DEFAULTS.legacyAliasesOnly,
+      options?.concreteCommandRoutes?.legacyAliasesOnly ??
+      CONCRETE_COMMAND_ROUTES_DEFAULTS.legacyAliasesOnly,
   };
   const readRoutes: NormalizedReadRoutesOptions = {
     enabled: options?.readRoutes?.enabled ?? READ_ROUTES_DEFAULTS.enabled,
@@ -192,7 +198,8 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     typesFile: options?.paths?.typesFile ?? `${generatedDir}/types/manifest-generated.ts`,
     clientFile: options?.paths?.clientFile ?? `${generatedDir}/lib/manifest-client.ts`,
     hooksDir: options?.paths?.hooksDir ?? `${generatedDir}/hooks`,
-    sharedRuntimeFile: options?.paths?.sharedRuntimeFile ?? `${generatedDir}/lib/manifest-shared-runtime.ts`,
+    sharedRuntimeFile:
+      options?.paths?.sharedRuntimeFile ?? `${generatedDir}/lib/manifest-shared-runtime.ts`,
   };
 
   // Derive the import path for the shared-runtime module from its pathHint.
@@ -206,7 +213,8 @@ function normalizeOptions(options?: NextJsProjectionOptions): NormalizedNextJsOp
     responseImportPath: options?.responseImportPath ?? NEXTJS_DEFAULTS.responseImportPath,
     runtimeImportPath: options?.runtimeImportPath ?? NEXTJS_DEFAULTS.runtimeImportPath,
     includeTenantFilter: options?.includeTenantFilter ?? NEXTJS_DEFAULTS.includeTenantFilter,
-    includeSoftDeleteFilter: options?.includeSoftDeleteFilter ?? NEXTJS_DEFAULTS.includeSoftDeleteFilter,
+    includeSoftDeleteFilter:
+      options?.includeSoftDeleteFilter ?? NEXTJS_DEFAULTS.includeSoftDeleteFilter,
     tenantIdProperty: options?.tenantIdProperty ?? NEXTJS_DEFAULTS.tenantIdProperty,
     deletedAtProperty: options?.deletedAtProperty ?? NEXTJS_DEFAULTS.deletedAtProperty,
     appDir: options?.appDir ?? NEXTJS_DEFAULTS.appDir,
@@ -272,11 +280,13 @@ function pathHintToImport(pathHint: string): string {
  * the shared singleton engine so subscriptions can observe command events.
  */
 function hasRealtimeEntities(ir: IR): boolean {
-  return ir.entities.some(e => e.realtime === true);
+  return ir.entities.some((e) => e.realtime === true);
 }
 
 function toLowerCamelCase(value: string): string {
-  if (!value) return value;
+  if (!value) {
+    return value;
+  }
   return value[0].toLowerCase() + value.slice(1);
 }
 
@@ -288,7 +298,9 @@ function toKebabCase(value: string): string {
 }
 
 function capitalizeFirst(value: string): string {
-  if (!value) return value;
+  if (!value) {
+    return value;
+  }
   return value[0].toUpperCase() + value.slice(1);
 }
 
@@ -303,8 +315,12 @@ function capitalizeFirst(value: string): string {
  */
 function resolveDbAccessor(entityName: string, options: NormalizedNextJsOptions): string {
   const explicit = options.accessorNames[entityName];
-  if (explicit) return explicit;
-  if (options.naming) return resolveTableName(entityName, options.naming);
+  if (explicit) {
+    return explicit;
+  }
+  if (options.naming) {
+    return resolveTableName(entityName, options.naming);
+  }
   return toLowerCamelCase(entityName);
 }
 
@@ -323,10 +339,7 @@ function resolveRouteSegment(entityName: string, options: NormalizedNextJsOption
 /**
  * Generate an import statement with proper path handling.
  */
-function generateImport(
-  module: string,
-  from: string
-): string {
+function generateImport(module: string, from: string): string {
   return `import ${module} from "${from}";`;
 }
 
@@ -370,9 +383,7 @@ function generateAuthBody(options: NormalizedNextJsOptions): string {
     case 'clerk': {
       const needsOrgId = options.tenantProvider?.lookupKey === 'orgId';
       const destructure = needsOrgId ? '{ orgId, userId }' : '{ userId }';
-      const authGuard = needsOrgId
-        ? 'if (!(userId && orgId)) {'
-        : 'if (!userId) {';
+      const authGuard = needsOrgId ? 'if (!(userId && orgId)) {' : 'if (!userId) {';
       return `  const ${destructure} = await auth();
   ${authGuard}
     return manifestErrorResponse({ error: "Unauthorized", diagnostics: [] }, ${status});
@@ -478,13 +489,11 @@ function entityHasProperty(entity: IREntity, propertyName: string): boolean {
  * when the entity declares them. Without this, every generated read route
  * assumes soft-delete + creation timestamps exist on every entity.
  */
-function generatePrismaQuery(
-  entity: IREntity,
-  options: NormalizedNextJsOptions
-): string {
+function generatePrismaQuery(entity: IREntity, options: NormalizedNextJsOptions): string {
   const accessorName = resolveDbAccessor(entity.name, options);
   const variableName = listEnvelopeKey(entity.name);
-  const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } = options;
+  const { includeTenantFilter, includeSoftDeleteFilter, tenantIdProperty, deletedAtProperty } =
+    options;
 
   const whereConditions: string[] = [];
 
@@ -497,11 +506,12 @@ function generatePrismaQuery(
     whereConditions.push(`${deletedAtProperty}: null`);
   }
 
-  const whereClause = whereConditions.length > 0
-    ? `where: {
+  const whereClause =
+    whereConditions.length > 0
+      ? `where: {
         ${whereConditions.join(',\n        ')}
       },`
-    : '';
+      : '';
 
   // orderBy must reference a real column. Prefer createdAt when present;
   // otherwise fall back to the always-present id so the query stays valid.
@@ -518,11 +528,20 @@ function generatePrismaQuery(
 /**
  * Convert IR type to TypeScript type.
  */
-function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { name: string; nullable: boolean; generic?: unknown } }, dateAsString = false): string {
+function irTypeToTsType(
+  irType: {
+    name: string;
+    nullable: boolean;
+    generic?: { name: string; nullable: boolean; generic?: unknown };
+  },
+  dateAsString = false,
+): string {
   // Arrays/lists carry their element type in `generic`. Recurse so we emit a
   // real `T[]` instead of leaking the bare `array` token (invalid TS).
   if (irType.name === 'array' || irType.name === 'list') {
-    const inner = irType.generic ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }, dateAsString) : 'unknown';
+    const inner = irType.generic
+      ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }, dateAsString)
+      : 'unknown';
     const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
     return irType.nullable ? `${elem} | null` : elem;
   }
@@ -532,8 +551,10 @@ function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { n
   }
   const tsTypeMap: Record<string, string> = {
     string: 'string',
+    text: 'string',
     number: 'number',
     boolean: 'boolean',
+    bool: 'boolean',
     date: 'Date',
     datetime: 'Date',
     any: 'unknown',
@@ -545,6 +566,16 @@ function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { n
     integer: 'number',
     bigint: 'number',
     float: 'number',
+    duration: 'number',
+    // String-shaped scalar aliases (same mappings as the wiring contract).
+    uuid: 'string',
+    email: 'string',
+    url: 'string',
+    uri: 'string',
+    time: 'string',
+    json: 'unknown',
+    // Matches the Zod projection (z.instanceof(Uint8Array)).
+    bytes: 'Uint8Array',
   };
 
   const baseType = tsTypeMap[irType.name] || irType.name;
@@ -555,7 +586,7 @@ function irTypeToTsType(irType: { name: string; nullable: boolean; generic?: { n
  * Generate TypeScript types from IR entity.
  */
 function generateEnumType(e: IREnum): string {
-  const members = e.values.map(v => JSON.stringify(v.name)).join(' | ');
+  const members = e.values.map((v) => JSON.stringify(v.name)).join(' | ');
   return `export type ${e.name} = ${members};`;
 }
 
@@ -565,9 +596,8 @@ function generateEntityTypes(entity: IREntity, dateAsString = false): string {
   lines.push(`export interface ${entity.name} {`);
   for (const prop of entity.properties) {
     const tsType = irTypeToTsType(prop.type, dateAsString);
-    const isOptional = prop.modifiers.includes('optional') ||
-                       prop.defaultValue !== undefined ||
-                       prop.type.nullable;
+    const isOptional =
+      prop.modifiers.includes('optional') || prop.defaultValue !== undefined || prop.type.nullable;
     const optional = isOptional ? '?' : '';
     lines.push(`  ${prop.name}${optional}: ${tsType};`);
   }
@@ -582,8 +612,22 @@ function generateEntityTypes(entity: IREntity, dateAsString = false): string {
  */
 export class NextJsProjection implements ProjectionTarget {
   readonly name = 'nextjs';
-  readonly description = 'Next.js App Router API routes with configurable auth and database support';
-  readonly surfaces = ['nextjs.route', 'nextjs.detail', 'nextjs.command', 'nextjs.dispatcher', 'nextjs.subscribe', 'nextjs.subscriptionHook', 'nextjs.sharedRuntime', 'nextjs.schedule', 'nextjs.webhook', 'nextjs.companions', 'ts.types', 'ts.client'] as const;
+  readonly description =
+    'Next.js App Router API routes with configurable auth and database support';
+  readonly surfaces = [
+    'nextjs.route',
+    'nextjs.detail',
+    'nextjs.command',
+    'nextjs.dispatcher',
+    'nextjs.subscribe',
+    'nextjs.subscriptionHook',
+    'nextjs.sharedRuntime',
+    'nextjs.schedule',
+    'nextjs.webhook',
+    'nextjs.companions',
+    'ts.types',
+    'ts.client',
+  ] as const;
 
   generate(ir: IR, request: ProjectionRequest): ProjectionResult {
     const options = request.options as NextJsProjectionOptions | undefined;
@@ -593,32 +637,42 @@ export class NextJsProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.route" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "nextjs.route" requires entity',
+              },
+            ],
           };
         }
         const opts = normalizeOptions(options);
         if (!opts.readRoutes.enabled) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'info',
-              code: 'READ_ROUTES_DISABLED',
-              message: 'readRoutes.enabled is false — skipping nextjs.route emission.',
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'info',
+                code: 'READ_ROUTES_DISABLED',
+                message: 'readRoutes.enabled is false — skipping nextjs.route emission.',
+                entity: request.entity,
+              },
+            ],
           };
         }
         const result = this._route(ir, request.entity, options);
-        if (result.diagnostics.some(d => d.severity === 'error')) {
+        if (result.diagnostics.some((d) => d.severity === 'error')) {
           return { artifacts: [], diagnostics: result.diagnostics };
         }
         return {
-          artifacts: [{
-            id: `nextjs.route:${request.entity}`,
-            pathHint: `${opts.appDir}/${resolveRouteSegment(request.entity, opts)}/list/route.ts`,
-            contentType: 'typescript',
-            code: result.code,
-          }],
+          artifacts: [
+            {
+              id: `nextjs.route:${request.entity}`,
+              pathHint: `${opts.appDir}/${resolveRouteSegment(request.entity, opts)}/list/route.ts`,
+              contentType: 'typescript',
+              code: result.code,
+            },
+          ],
           diagnostics: result.diagnostics,
         };
       }
@@ -627,32 +681,42 @@ export class NextJsProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.detail" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "nextjs.detail" requires entity',
+              },
+            ],
           };
         }
         const detailOpts = normalizeOptions(options);
         if (!detailOpts.readRoutes.enabled) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'info',
-              code: 'READ_ROUTES_DISABLED',
-              message: 'readRoutes.enabled is false — skipping nextjs.detail emission.',
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'info',
+                code: 'READ_ROUTES_DISABLED',
+                message: 'readRoutes.enabled is false — skipping nextjs.detail emission.',
+                entity: request.entity,
+              },
+            ],
           };
         }
         const detailResult = this._detail(ir, request.entity, options);
-        if (detailResult.diagnostics.some(d => d.severity === 'error')) {
+        if (detailResult.diagnostics.some((d) => d.severity === 'error')) {
           return { artifacts: [], diagnostics: detailResult.diagnostics };
         }
         return {
-          artifacts: [{
-            id: `nextjs.detail:${request.entity}`,
-            pathHint: `${detailOpts.appDir}/${resolveRouteSegment(request.entity, detailOpts)}/[id]/route.ts`,
-            contentType: 'typescript',
-            code: detailResult.code,
-          }],
+          artifacts: [
+            {
+              id: `nextjs.detail:${request.entity}`,
+              pathHint: `${detailOpts.appDir}/${resolveRouteSegment(request.entity, detailOpts)}/[id]/route.ts`,
+              contentType: 'typescript',
+              code: detailResult.code,
+            },
+          ],
           diagnostics: detailResult.diagnostics,
         };
       }
@@ -661,38 +725,55 @@ export class NextJsProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.command" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "nextjs.command" requires entity',
+              },
+            ],
           };
         }
         if (!request.command) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_COMMAND', message: 'surface "nextjs.command" requires command' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_COMMAND',
+                message: 'surface "nextjs.command" requires command',
+              },
+            ],
           };
         }
         const commandOpts = normalizeOptions(options);
         if (!commandOpts.concreteCommandRoutes.enabled) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'info',
-              code: 'CONCRETE_COMMAND_ROUTES_DISABLED',
-              message: 'concreteCommandRoutes.enabled is false — skipping per-command route emission. Use nextjs.dispatcher instead.',
-              entity: request.entity,
-            }],
+            diagnostics: [
+              {
+                severity: 'info',
+                code: 'CONCRETE_COMMAND_ROUTES_DISABLED',
+                message:
+                  'concreteCommandRoutes.enabled is false — skipping per-command route emission. Use nextjs.dispatcher instead.',
+                entity: request.entity,
+              },
+            ],
           };
         }
         const commandResult = this._command(ir, request.entity, request.command, options);
-        if (commandResult.diagnostics.some(d => d.severity === 'error')) {
+        if (commandResult.diagnostics.some((d) => d.severity === 'error')) {
           return { artifacts: [], diagnostics: commandResult.diagnostics };
         }
         return {
-          artifacts: [{
-            id: `nextjs.command:${request.entity}.${request.command}`,
-            pathHint: `${commandOpts.appDir}/${resolveRouteSegment(request.entity, commandOpts)}/${toKebabCase(request.command)}/route.ts`,
-            contentType: 'typescript',
-            code: commandResult.code,
-          }],
+          artifacts: [
+            {
+              id: `nextjs.command:${request.entity}.${request.command}`,
+              pathHint: `${commandOpts.appDir}/${resolveRouteSegment(request.entity, commandOpts)}/${toKebabCase(request.command)}/route.ts`,
+              contentType: 'typescript',
+              code: commandResult.code,
+            },
+          ],
           diagnostics: commandResult.diagnostics,
         };
       }
@@ -702,27 +783,31 @@ export class NextJsProjection implements ProjectionTarget {
         if (!dispatcherOpts.dispatcher.enabled) {
           return {
             artifacts: [],
-            diagnostics: [{
-              severity: 'info',
-              code: 'DISPATCHER_DISABLED',
-              message: 'dispatcher.enabled is false — skipping nextjs.dispatcher emission.',
-            }],
+            diagnostics: [
+              {
+                severity: 'info',
+                code: 'DISPATCHER_DISABLED',
+                message: 'dispatcher.enabled is false — skipping nextjs.dispatcher emission.',
+              },
+            ],
           };
         }
         const dispatcherResult = this._dispatcher(ir, options);
-        if (dispatcherResult.diagnostics.some(d => d.severity === 'error')) {
+        if (dispatcherResult.diagnostics.some((d) => d.severity === 'error')) {
           return { artifacts: [], diagnostics: dispatcherResult.diagnostics };
         }
         // Route the dispatcher pathHint through the contract so the emitted
         // file location and the client's dispatcher URL derive from one place.
         const dispatcherPathHint = buildRouteContract(dispatcherOpts).dispatcherRoutePathHint();
         return {
-          artifacts: [{
-            id: 'nextjs.dispatcher',
-            pathHint: dispatcherPathHint,
-            contentType: 'typescript',
-            code: dispatcherResult.code,
-          }],
+          artifacts: [
+            {
+              id: 'nextjs.dispatcher',
+              pathHint: dispatcherPathHint,
+              contentType: 'typescript',
+              code: dispatcherResult.code,
+            },
+          ],
           diagnostics: dispatcherResult.diagnostics,
         };
       }
@@ -731,21 +816,32 @@ export class NextJsProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.subscribe" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "nextjs.subscribe" requires entity',
+              },
+            ],
           };
         }
         const subscribeOpts = normalizeOptions(options);
         const subscribeResult = this._subscribe(ir, request.entity, options);
-        if (subscribeResult.diagnostics.some(d => d.severity === 'error') || !subscribeResult.code) {
+        if (
+          subscribeResult.diagnostics.some((d) => d.severity === 'error') ||
+          !subscribeResult.code
+        ) {
           return { artifacts: [], diagnostics: subscribeResult.diagnostics };
         }
         return {
-          artifacts: [{
-            id: `nextjs.subscribe:${request.entity}`,
-            pathHint: `${subscribeOpts.appDir}/${resolveRouteSegment(request.entity, subscribeOpts)}/subscribe/route.ts`,
-            contentType: 'typescript',
-            code: subscribeResult.code,
-          }],
+          artifacts: [
+            {
+              id: `nextjs.subscribe:${request.entity}`,
+              pathHint: `${subscribeOpts.appDir}/${resolveRouteSegment(request.entity, subscribeOpts)}/subscribe/route.ts`,
+              contentType: 'typescript',
+              code: subscribeResult.code,
+            },
+          ],
           diagnostics: subscribeResult.diagnostics,
         };
       }
@@ -754,21 +850,29 @@ export class NextJsProjection implements ProjectionTarget {
         if (!request.entity) {
           return {
             artifacts: [],
-            diagnostics: [{ severity: 'error', code: 'MISSING_ENTITY', message: 'surface "nextjs.subscriptionHook" requires entity' }],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'MISSING_ENTITY',
+                message: 'surface "nextjs.subscriptionHook" requires entity',
+              },
+            ],
           };
         }
         const opts = normalizeOptions(options);
         const hookResult = this._subscriptionHook(ir, request.entity, opts);
-        if (hookResult.diagnostics.some(d => d.severity === 'error') || !hookResult.code) {
+        if (hookResult.diagnostics.some((d) => d.severity === 'error') || !hookResult.code) {
           return { artifacts: [], diagnostics: hookResult.diagnostics };
         }
         return {
-          artifacts: [{
-            id: `nextjs.subscriptionHook:${request.entity}`,
-            pathHint: `${opts.paths.hooksDir}/use${request.entity}Subscription.ts`,
-            contentType: 'typescript',
-            code: hookResult.code,
-          }],
+          artifacts: [
+            {
+              id: `nextjs.subscriptionHook:${request.entity}`,
+              pathHint: `${opts.paths.hooksDir}/use${request.entity}Subscription.ts`,
+              contentType: 'typescript',
+              code: hookResult.code,
+            },
+          ],
           diagnostics: hookResult.diagnostics,
         };
       }
@@ -780,12 +884,14 @@ export class NextJsProjection implements ProjectionTarget {
           return { artifacts: [], diagnostics: sharedResult.diagnostics };
         }
         return {
-          artifacts: [{
-            id: 'nextjs.sharedRuntime',
-            pathHint: opts.paths.sharedRuntimeFile,
-            contentType: 'typescript',
-            code: sharedResult.code,
-          }],
+          artifacts: [
+            {
+              id: 'nextjs.sharedRuntime',
+              pathHint: opts.paths.sharedRuntimeFile,
+              contentType: 'typescript',
+              code: sharedResult.code,
+            },
+          ],
           diagnostics: sharedResult.diagnostics,
         };
       }
@@ -815,12 +921,14 @@ export class NextJsProjection implements ProjectionTarget {
         const opts = normalizeOptions(options);
         const result = this._types(ir, opts.dateSerialization === 'iso-string');
         return {
-          artifacts: [{
-            id: 'ts.types',
-            pathHint: opts.paths.typesFile,
-            contentType: 'typescript',
-            code: result.code,
-          }],
+          artifacts: [
+            {
+              id: 'ts.types',
+              pathHint: opts.paths.typesFile,
+              contentType: 'typescript',
+              code: result.code,
+            },
+          ],
           diagnostics: result.diagnostics,
         };
       }
@@ -829,12 +937,14 @@ export class NextJsProjection implements ProjectionTarget {
         const opts = normalizeOptions(options);
         const result = this._client(ir, opts);
         return {
-          artifacts: [{
-            id: 'ts.client',
-            pathHint: opts.paths.clientFile,
-            contentType: 'typescript',
-            code: result.code,
-          }],
+          artifacts: [
+            {
+              id: 'ts.client',
+              pathHint: opts.paths.clientFile,
+              contentType: 'typescript',
+              code: result.code,
+            },
+          ],
           diagnostics: result.diagnostics,
         };
       }
@@ -842,26 +952,28 @@ export class NextJsProjection implements ProjectionTarget {
       default:
         return {
           artifacts: [],
-          diagnostics: [{ severity: 'error', code: 'UNKNOWN_SURFACE', message: `Unknown surface: "${request.surface}"` }],
+          diagnostics: [
+            {
+              severity: 'error',
+              code: 'UNKNOWN_SURFACE',
+              message: `Unknown surface: "${request.surface}"`,
+            },
+          ],
         };
     }
   }
 
-  private _route(
-    ir: IR,
-    entityName: string,
-    options?: NextJsProjectionOptions
-  ): CodeResult {
+  private _route(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
     const opts = normalizeOptions(options);
 
     // Find the entity in IR
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
       diagnostics.push({
         severity: 'error',
         code: 'ENTITY_NOT_FOUND',
-        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
@@ -917,7 +1029,8 @@ export class NextJsProjection implements ProjectionTarget {
     // Optional host-provided fetch adapter (auth/credentials). Aliased to
     // apiFetch so read + command call sites are identical to the inline path.
     if (adapter) {
-      const binding = adapter.importName === 'apiFetch' ? 'apiFetch' : `${adapter.importName} as apiFetch`;
+      const binding =
+        adapter.importName === 'apiFetch' ? 'apiFetch' : `${adapter.importName} as apiFetch`;
       lines.push(`import { ${binding} } from ${JSON.stringify(adapter.importPath)};`);
       lines.push('');
     }
@@ -930,7 +1043,9 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push('export interface ManifestCommandResponse<T = unknown> {');
       lines.push('  data?: T;');
       lines.push('  events?: unknown[];');
-      lines.push('  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;');
+      lines.push(
+        '  diagnostics?: Array<{ kind?: string; code?: string; message?: string; [key: string]: unknown }>;',
+      );
       lines.push('  error?: string;');
       lines.push('}');
       lines.push('');
@@ -942,8 +1057,12 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push('async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {');
       lines.push('  const response = await fetch(url, init);');
       lines.push('  if (!response.ok) {');
-      lines.push('    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));');
-      lines.push('    throw new Error(body.error || body.message || `Request failed: ${response.status}`);');
+      lines.push(
+        '    const body = await response.json().catch(() => ({} as { error?: string; message?: string }));',
+      );
+      lines.push(
+        '    throw new Error(body.error || body.message || `Request failed: ${response.status}`);',
+      );
       lines.push('  }');
       lines.push('  return response.json();');
       lines.push('}');
@@ -956,9 +1075,11 @@ export class NextJsProjection implements ProjectionTarget {
 
       // List (findMany) function
       lines.push(`export async function get${entity.name}s(): Promise<${entity.name}[]> {`);
-      lines.push(`  const data = await apiFetch<{ ${listKey}: ${entity.name}[] }>(\`${contract.listPath(entity.name)}\`);`);
+      lines.push(
+        `  const data = await apiFetch<{ ${listKey}: ${entity.name}[] }>(\`${contract.listPath(entity.name)}\`);`,
+      );
       lines.push(`  return data.${listKey};`);
-      lines.push(`}`);
+      lines.push('}');
       lines.push('');
 
       // Detail (findUnique) function
@@ -967,7 +1088,7 @@ export class NextJsProjection implements ProjectionTarget {
         `  const data = await apiFetch<{ ${detailKey}: ${entity.name} }>(\`${contract.entityBasePath(entity.name)}/\${encodeURIComponent(id)}\`);`,
       );
       lines.push(`  return data.${detailKey};`);
-      lines.push(`}`);
+      lines.push('}');
       lines.push('');
     }
 
@@ -980,22 +1101,26 @@ export class NextJsProjection implements ProjectionTarget {
       const hasParams = command.parameters.length > 0;
       const inputType = hasParams
         ? `{ ${command.parameters
-            .map((p) => `${p.name}${p.required ? '' : '?'}: ${irTypeToTsType(p.type, dateAsString)}`)
+            .map(
+              (p) => `${p.name}${p.required ? '' : '?'}: ${irTypeToTsType(p.type, dateAsString)}`,
+            )
             .join('; ')} }`
         : 'Record<string, never>';
-      const returnType = command.returns ? irTypeToTsType(command.returns, dateAsString) : 'unknown';
+      const returnType = command.returns
+        ? irTypeToTsType(command.returns, dateAsString)
+        : 'unknown';
       const url = contract.dispatcherInvocationPath(entityName, command.name);
 
       lines.push(`export async function ${fnName}(`);
       lines.push(`  input${hasParams ? '' : '?'}: ${inputType},`);
-      lines.push(`  options?: { instanceId?: string },`);
+      lines.push('  options?: { instanceId?: string },');
       lines.push(`): Promise<ManifestCommandResponse<${returnType}>> {`);
       lines.push(`  return apiFetch<ManifestCommandResponse<${returnType}>>(\`${url}\`, {`);
       lines.push(`    method: "POST",`);
       lines.push(`    headers: { "Content-Type": "application/json" },`);
-      lines.push(`    body: JSON.stringify({ ...input, instanceId: options?.instanceId }),`);
-      lines.push(`  });`);
-      lines.push(`}`);
+      lines.push('    body: JSON.stringify({ ...input, instanceId: options?.instanceId }),');
+      lines.push('  });');
+      lines.push('}');
       lines.push('');
     }
 
@@ -1006,29 +1131,29 @@ export class NextJsProjection implements ProjectionTarget {
     ir: IR,
     entityName: string,
     commandName: string,
-    options?: NextJsProjectionOptions
+    options?: NextJsProjectionOptions,
   ): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
     const opts = normalizeOptions(options);
 
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
       diagnostics.push({
         severity: 'error',
         code: 'ENTITY_NOT_FOUND',
-        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
     }
 
-    const entityCommands = ir.commands.filter(c => c.entity === entityName);
-    const command = entityCommands.find(c => c.name === commandName);
+    const entityCommands = ir.commands.filter((c) => c.entity === entityName);
+    const command = entityCommands.find((c) => c.name === commandName);
     if (!command) {
       diagnostics.push({
         severity: 'error',
         code: 'COMMAND_NOT_FOUND',
-        message: `Command "${commandName}" not found on entity "${entityName}". Available commands: ${entityCommands.map(c => c.name).join(', ')}`,
+        message: `Command "${commandName}" not found on entity "${entityName}". Available commands: ${entityCommands.map((c) => c.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
@@ -1046,7 +1171,7 @@ export class NextJsProjection implements ProjectionTarget {
     entity: IREntity,
     command: IRCommand,
     options: NormalizedNextJsOptions,
-    useSharedRuntime: boolean
+    useSharedRuntime: boolean,
   ): string {
     const { responseImportPath, runtimeImportPath, dispatcher } = options;
     const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
@@ -1072,9 +1197,16 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Writes MUST flow through runtime to enforce guards, policies, and constraints.');
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
-    lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
+    lines.push(
+      generateImport(
+        '{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }',
+        responseImportPath,
+      ),
+    );
     if (useExternalExecutor) {
-      lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+      lines.push(
+        generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath),
+      );
     } else if (useShared) {
       lines.push(generateImport('{ getSharedRuntime }', options.sharedRuntimeImportPath));
     } else {
@@ -1082,19 +1214,28 @@ export class NextJsProjection implements ProjectionTarget {
     }
     if (options.includeTenantFilter) {
       if (options.tenantProvider) {
-        lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+        lines.push(
+          generateImport(
+            `{ ${options.tenantProvider.functionName} }`,
+            options.tenantProvider.importPath,
+          ),
+        );
       } else {
         lines.push(generateImport('{ database }', options.databaseImportPath));
       }
     }
     const authImport = generateAuthImport(options);
-    if (authImport) lines.push(authImport);
+    if (authImport) {
+      lines.push(authImport);
+    }
     lines.push('');
     lines.push('export async function POST(request: NextRequest) {');
     lines.push('  try {');
     lines.push(generateAuthBody(options));
     const tenantLookup = generateTenantLookup(options);
-    if (tenantLookup) lines.push(tenantLookup);
+    if (tenantLookup) {
+      lines.push(tenantLookup);
+    }
     lines.push('');
     lines.push('    const body = await request.json();');
     lines.push('');
@@ -1149,7 +1290,9 @@ export class NextJsProjection implements ProjectionTarget {
       lines.push('    });');
     }
     lines.push('');
-    lines.push(`    const normalized = normalizeCommandResult("${entity.name}", "${command.name}", result);`);
+    lines.push(
+      `    const normalized = normalizeCommandResult("${entity.name}", "${command.name}", result);`,
+    );
     lines.push('');
     lines.push('    if (!normalized.success) {');
     lines.push('      // Determine HTTP status based on diagnostic kind');
@@ -1158,10 +1301,14 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('        : firstDiagnostic?.kind === "guard_failure" ? 422');
     lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
     lines.push('        : 400;');
-    lines.push('      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);');
+    lines.push(
+      '      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);',
+    );
     lines.push('    }');
     lines.push('');
-    lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
+    lines.push(
+      '    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });',
+    );
     for (const errLine of emitRuntimeErrorReturn(
       options.unauthorizedStatus,
       `Error executing ${entity.name}.${command.name}:`,
@@ -1181,16 +1328,16 @@ export class NextJsProjection implements ProjectionTarget {
    * RuntimeEngine.runCommand. Single canonical write path for governed
    * mutations; downstream integrations may add aliases or CI gates.
    */
-  private _dispatcher(
-    ir: IR,
-    options?: NextJsProjectionOptions
-  ): CodeResult {
+  private _dispatcher(ir: IR, options?: NextJsProjectionOptions): CodeResult {
     const opts = normalizeOptions(options);
     const code = this._generateDispatcherHandler(opts, hasRealtimeEntities(ir));
     return { code, diagnostics: [] };
   }
 
-  private _generateDispatcherHandler(options: NormalizedNextJsOptions, useSharedRuntime: boolean): string {
+  private _generateDispatcherHandler(
+    options: NormalizedNextJsOptions,
+    useSharedRuntime: boolean,
+  ): string {
     const { responseImportPath, runtimeImportPath, dispatcher } = options;
     const useExternalExecutor = dispatcher.executionMode === 'externalExecutor';
     // Realtime SSE requires command execution and subscriptions to share ONE
@@ -1205,15 +1352,24 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// that delegate here.');
     if (useExternalExecutor) {
       lines.push('//');
-      lines.push(`// executionMode = "externalExecutor": delegates to ${dispatcher.executorImportName}`);
+      lines.push(
+        `// executionMode = "externalExecutor": delegates to ${dispatcher.executorImportName}`,
+      );
       lines.push(`// imported from "${dispatcher.executorImportPath}". The dispatcher does NOT`);
       lines.push('// construct a Manifest runtime — the executor owns that.');
     }
     lines.push('');
     lines.push('import type { NextRequest } from "next/server";');
-    lines.push(generateImport('{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }', responseImportPath));
+    lines.push(
+      generateImport(
+        '{ manifestErrorResponse, manifestSuccessResponse, normalizeCommandResult }',
+        responseImportPath,
+      ),
+    );
     if (useExternalExecutor) {
-      lines.push(generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath));
+      lines.push(
+        generateImport(`{ ${dispatcher.executorImportName} }`, dispatcher.executorImportPath),
+      );
     } else if (useShared) {
       lines.push(generateImport('{ getSharedRuntime }', options.sharedRuntimeImportPath));
     } else {
@@ -1221,13 +1377,20 @@ export class NextJsProjection implements ProjectionTarget {
     }
     if (options.includeTenantFilter) {
       if (options.tenantProvider) {
-        lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+        lines.push(
+          generateImport(
+            `{ ${options.tenantProvider.functionName} }`,
+            options.tenantProvider.importPath,
+          ),
+        );
       } else {
         lines.push(generateImport('{ database }', options.databaseImportPath));
       }
     }
     const authImport = generateAuthImport(options);
-    if (authImport) lines.push(authImport);
+    if (authImport) {
+      lines.push(authImport);
+    }
     lines.push('');
     lines.push('// Next.js 15 App Router: dynamic route params are async.');
     lines.push('// See https://nextjs.org/docs/app/api-reference/file-conventions/route');
@@ -1239,7 +1402,9 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('  try {');
     lines.push(generateAuthBody(options));
     const tenantLookup = generateTenantLookup(options);
-    if (tenantLookup) lines.push(tenantLookup);
+    if (tenantLookup) {
+      lines.push(tenantLookup);
+    }
     lines.push('');
     lines.push('    const body = await request.json();');
     lines.push('    const { entity, command } = await ctx.params;');
@@ -1323,10 +1488,14 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('        : firstDiagnostic?.kind === "guard_failure" ? 422');
     lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
     lines.push('        : 400;');
-    lines.push('      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);');
+    lines.push(
+      '      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);',
+    );
     lines.push('    }');
     lines.push('');
-    lines.push('    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });');
+    lines.push(
+      '    return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });',
+    );
     for (const errLine of emitRuntimeErrorReturn(
       options.unauthorizedStatus,
       'Manifest dispatcher error:',
@@ -1344,20 +1513,16 @@ export class NextJsProjection implements ProjectionTarget {
    * GET <appDir>/<entity>/subscribe/route.ts — streams runtime events whose
    * subject.entity matches, over the shared singleton engine.
    */
-  private _subscribe(
-    ir: IR,
-    entityName: string,
-    options?: NextJsProjectionOptions
-  ): CodeResult {
+  private _subscribe(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
     const opts = normalizeOptions(options);
 
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
       diagnostics.push({
         severity: 'error',
         code: 'ENTITY_NOT_FOUND',
-        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
@@ -1386,7 +1551,9 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push(generateImport('{ manifestErrorResponse }', opts.responseImportPath));
     lines.push(generateImport('{ getSharedRuntime }', opts.sharedRuntimeImportPath));
     const authImport = generateAuthImport(opts);
-    if (authImport) lines.push(authImport);
+    if (authImport) {
+      lines.push(authImport);
+    }
     lines.push('');
     lines.push('export async function GET(request: NextRequest) {');
     lines.push('  try {');
@@ -1398,7 +1565,9 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('    const stream = new ReadableStream({');
     lines.push('      start(controller) {');
     lines.push(`        const unsubscribe = runtime.subscribe("${entity.name}", (event) => {`);
-    lines.push('          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`));');
+    lines.push(
+      '          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`));',
+    );
     lines.push('        });');
     lines.push('        const close = () => {');
     lines.push('          unsubscribe();');
@@ -1435,15 +1604,19 @@ export class NextJsProjection implements ProjectionTarget {
    * Generate a typed client-side EventSource hook for a realtime entity,
    * with exponential-backoff reconnect.
    */
-  private _subscriptionHook(ir: IR, entityName: string, options: NormalizedNextJsOptions): CodeResult {
+  private _subscriptionHook(
+    ir: IR,
+    entityName: string,
+    options: NormalizedNextJsOptions,
+  ): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
 
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
       diagnostics.push({
         severity: 'error',
         code: 'ENTITY_NOT_FOUND',
-        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
@@ -1642,7 +1815,8 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
       diagnostics.push({
         severity: 'info',
         code: 'COMPANIONS_DISABLED',
-        message: 'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
+        message:
+          'emitCompanions is false — no companion modules emitted (hand-written workflow preserved).',
       });
       return { artifacts, diagnostics };
     }
@@ -1650,8 +1824,15 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     // Resolve a configured import specifier to its emission pathHint and push
     // the built module. Skip (with an info diagnostic) when the specifier is a
     // package the user owns rather than a local alias.
-    const emit = (id: string, importSpecifier: string, build: () => string, label: string): void => {
-      const pathHint = resolveLocalImportPathHint(importSpecifier, { framework: 'nextjs' });
+    const emit = (
+      id: string,
+      importSpecifier: string,
+      build: () => string,
+      label: string,
+    ): void => {
+      const pathHint = resolveLocalImportPathHint(importSpecifier, {
+        framework: 'nextjs',
+      });
       if (!pathHint) {
         diagnostics.push({
           severity: 'info',
@@ -1660,7 +1841,12 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
         });
         return;
       }
-      artifacts.push({ id, pathHint, contentType: 'typescript', code: build() });
+      artifacts.push({
+        id,
+        pathHint,
+        contentType: 'typescript',
+        code: build(),
+      });
     };
 
     // 1. Runtime factory — always. Inline command/dispatcher routes, the
@@ -1668,7 +1854,11 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     emit(
       'nextjs.companions.runtime',
       options.runtimeImportPath,
-      () => generateRuntimeFactoryModule({ ir, runtimeConfigImport: options.runtimeConfigImport }),
+      () =>
+        generateRuntimeFactoryModule({
+          ir,
+          runtimeConfigImport: options.runtimeConfigImport,
+        }),
       'runtime factory',
     );
 
@@ -1727,20 +1917,23 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
    * downstream because their path is a package); 'custom' points at an app
    * module; 'none' imports nothing.
    */
-  private _authCompanionSpec(
-    options: NormalizedNextJsOptions,
-  ): { importSpecifier: string; kind: 'getUser' | 'getServerSession' | 'clerkAuth' } | null {
+  private _authCompanionSpec(options: NormalizedNextJsOptions): {
+    importSpecifier: string;
+    kind: 'getUser' | 'getServerSession' | 'clerkAuth';
+  } | null {
     switch (options.authProvider) {
       case 'custom':
         return { importSpecifier: options.authImportPath, kind: 'getUser' };
       case 'nextauth':
         return {
-          importSpecifier: options.authImportPath === '@/lib/auth' ? 'next-auth' : options.authImportPath,
+          importSpecifier:
+            options.authImportPath === '@/lib/auth' ? 'next-auth' : options.authImportPath,
           kind: 'getServerSession',
         };
       case 'clerk':
         return {
-          importSpecifier: options.authImportPath === '@/lib/auth' ? '@clerk/nextjs' : options.authImportPath,
+          importSpecifier:
+            options.authImportPath === '@/lib/auth' ? '@clerk/nextjs' : options.authImportPath,
           kind: 'clerkAuth',
         };
       case 'none':
@@ -1781,7 +1974,9 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     lines.push('  return NextResponse.json(body, init);');
     lines.push('}');
     lines.push('');
-    lines.push('/** JSON error envelope. Accepts a bare message or a { error, diagnostics } body. */');
+    lines.push(
+      '/** JSON error envelope. Accepts a bare message or a { error, diagnostics } body. */',
+    );
     lines.push('export function manifestErrorResponse(');
     lines.push('  error: string | { error: string; diagnostics: ManifestDiagnostic[] },');
     lines.push('  status: number,');
@@ -1803,7 +1998,9 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     lines.push('): ManifestCommandResult<T> {');
     lines.push('  void entityName;');
     lines.push('  void commandName;');
-    lines.push('  const r = (result ?? {}) as Partial<ManifestCommandResult<T>> & { error?: string };');
+    lines.push(
+      '  const r = (result ?? {}) as Partial<ManifestCommandResult<T>> & { error?: string };',
+    );
     lines.push('  if (typeof r.success === "boolean") {');
     lines.push('    return {');
     lines.push('      success: r.success,');
@@ -1861,21 +2058,33 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     if (kind === 'getUser') {
       lines.push('import type { NextRequest } from "next/server";');
       lines.push('');
-      lines.push('export async function getUser(_request: NextRequest): Promise<{ id: string } | null> {');
+      lines.push(
+        'export async function getUser(_request: NextRequest): Promise<{ id: string } | null> {',
+      );
       lines.push('  throw new Error(');
-      lines.push('    "Manifest auth companion stub: implement getUser() to resolve the authenticated user from the request. Return { id } or null.",');
+      lines.push(
+        '    "Manifest auth companion stub: implement getUser() to resolve the authenticated user from the request. Return { id } or null.",',
+      );
       lines.push('  );');
       lines.push('}');
     } else if (kind === 'getServerSession') {
-      lines.push('export async function getServerSession(): Promise<{ user: { id: string } } | null> {');
+      lines.push(
+        'export async function getServerSession(): Promise<{ user: { id: string } } | null> {',
+      );
       lines.push('  throw new Error(');
-      lines.push('    "Manifest auth companion stub: implement getServerSession() to resolve the session. Return { user: { id } } or null.",');
+      lines.push(
+        '    "Manifest auth companion stub: implement getServerSession() to resolve the session. Return { user: { id } } or null.",',
+      );
       lines.push('  );');
       lines.push('}');
     } else {
-      lines.push('export async function auth(): Promise<{ userId: string | null; orgId: string | null }> {');
+      lines.push(
+        'export async function auth(): Promise<{ userId: string | null; orgId: string | null }> {',
+      );
       lines.push('  throw new Error(');
-      lines.push('    "Manifest auth companion stub: implement auth() to resolve { userId, orgId } from the request.",');
+      lines.push(
+        '    "Manifest auth companion stub: implement auth() to resolve { userId, orgId } from the request.",',
+      );
       lines.push('  );');
       lines.push('}');
     }
@@ -1903,11 +2112,15 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     lines.push('');
     lines.push(`export async function ${fn}(${key}: string): Promise<string | null> {`);
     lines.push('  const delegate = (database as unknown as {');
-    lines.push(`    userTenantMapping?: { findUnique(args: { where: { ${key}: string } }): Promise<{ tenantId: string } | null> };`);
+    lines.push(
+      `    userTenantMapping?: { findUnique(args: { where: { ${key}: string } }): Promise<{ tenantId: string } | null> };`,
+    );
     lines.push('  }).userTenantMapping;');
     lines.push('  if (!delegate?.findUnique) {');
     lines.push('    throw new Error(');
-    lines.push(`      "Manifest tenant companion: 'database.userTenantMapping' is unavailable. Implement ${fn} to map ${key} to a tenantId for your schema.",`);
+    lines.push(
+      `      "Manifest tenant companion: 'database.userTenantMapping' is unavailable. Implement ${fn} to map ${key} to a tenantId for your schema.",`,
+    );
     lines.push('    );');
     lines.push('  }');
     lines.push(`  const mapping = await delegate.findUnique({ where: { ${key} } });`);
@@ -1921,20 +2134,16 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
    * Generate detail (getById) route handler for an entity.
    * Uses direct Prisma findUnique (bypassing runtime) for efficiency.
    */
-  private _detail(
-    ir: IR,
-    entityName: string,
-    options?: NextJsProjectionOptions
-  ): CodeResult {
+  private _detail(ir: IR, entityName: string, options?: NextJsProjectionOptions): CodeResult {
     const diagnostics: ProjectionDiagnostic[] = [];
     const opts = normalizeOptions(options);
 
-    const entity = ir.entities.find(e => e.name === entityName);
+    const entity = ir.entities.find((e) => e.name === entityName);
     if (!entity) {
       diagnostics.push({
         severity: 'error',
         code: 'ENTITY_NOT_FOUND',
-        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map(e => e.name).join(', ')}`,
+        message: `Entity "${entityName}" not found in IR. Available entities: ${ir.entities.map((e) => e.name).join(', ')}`,
         entity: entityName,
       });
       return { code: '', diagnostics };
@@ -1964,15 +2173,21 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     // otherwise leaves an unused — and, since the tenant companion is only
     // emitted when filtering is on, dangling — import in the generated route.
     if (options.includeTenantFilter && options.tenantProvider) {
-      lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      lines.push(
+        generateImport(
+          `{ ${options.tenantProvider.functionName} }`,
+          options.tenantProvider.importPath,
+        ),
+      );
     }
-    lines.push(generateImport(`{ database }`, databaseImportPath));
-    lines.push(generateImport(
-      `{ manifestErrorResponse, manifestSuccessResponse }`,
-      responseImportPath
-    ));
+    lines.push(generateImport('{ database }', databaseImportPath));
+    lines.push(
+      generateImport('{ manifestErrorResponse, manifestSuccessResponse }', responseImportPath),
+    );
     const authImport = generateAuthImport(options);
-    if (authImport) lines.push(authImport);
+    if (authImport) {
+      lines.push(authImport);
+    }
     lines.push('');
     lines.push('export async function GET(request: NextRequest) {');
     lines.push('  try {');
@@ -1984,7 +2199,7 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     } else {
       // directDbReads disabled: emit a stub that returns an empty list and
       // a diagnostic telling the app to wire its own read source.
-      lines.push(`    // readRoutes.directDbReads = false: emit no inline Prisma call.`);
+      lines.push('    // readRoutes.directDbReads = false: emit no inline Prisma call.');
       lines.push(`    // Wire your read source here and assign to \`${variableName}\`.`);
       lines.push(`    const ${variableName}: unknown[] = [];`);
     }
@@ -2022,15 +2237,21 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
     // otherwise leaves an unused — and, since the tenant companion is only
     // emitted when filtering is on, dangling — import in the generated route.
     if (options.includeTenantFilter && options.tenantProvider) {
-      lines.push(generateImport(`{ ${options.tenantProvider.functionName} }`, options.tenantProvider.importPath));
+      lines.push(
+        generateImport(
+          `{ ${options.tenantProvider.functionName} }`,
+          options.tenantProvider.importPath,
+        ),
+      );
     }
-    lines.push(generateImport(`{ database }`, databaseImportPath));
-    lines.push(generateImport(
-      `{ manifestErrorResponse, manifestSuccessResponse }`,
-      responseImportPath
-    ));
+    lines.push(generateImport('{ database }', databaseImportPath));
+    lines.push(
+      generateImport('{ manifestErrorResponse, manifestSuccessResponse }', responseImportPath),
+    );
     const authImport = generateAuthImport(options);
-    if (authImport) lines.push(authImport);
+    if (authImport) {
+      lines.push(authImport);
+    }
     lines.push('');
     lines.push('export async function GET(');
     // Underscore-prefixed: no detail-route body variant consumes the request,
@@ -2065,21 +2286,25 @@ export function getSharedRuntime(): Promise<SharedRuntime> {
       ? `where: {
         ${whereConditions.join(',\n        ')}
       },`
-      : `where: { id },`;
+      : 'where: { id },';
 
     if (options.readRoutes.directDbReads) {
-      lines.push(`    // Using ${prismaMethod} — ${isMultiField ? 'multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+' : 'single id is a unique constraint'}.`);
+      lines.push(
+        `    // Using ${prismaMethod} — ${isMultiField ? 'multi-field filter (tenant/soft-delete) requires findFirst on Prisma 7+' : 'single id is a unique constraint'}.`,
+      );
       lines.push(`    const ${delegateName} = await database.${accessorName}.${prismaMethod}({`);
       lines.push(`      ${whereClause}`);
       lines.push('    });');
     } else {
-      lines.push(`    // readRoutes.directDbReads = false: emit no inline Prisma call.`);
+      lines.push('    // readRoutes.directDbReads = false: emit no inline Prisma call.');
       lines.push(`    // Wire your read source here and assign to \`${delegateName}\`.`);
       lines.push(`    const ${delegateName}: unknown = null;`);
     }
     lines.push('');
     lines.push(`    if (!${delegateName}) {`);
-    lines.push(`      return manifestErrorResponse({ error: "${entity.name} not found", diagnostics: [] }, 404);`);
+    lines.push(
+      `      return manifestErrorResponse({ error: "${entity.name} not found", diagnostics: [] }, 404);`,
+    );
     lines.push('    }');
     lines.push('');
     lines.push(`    return manifestSuccessResponse({ ${delegateName} });`);
