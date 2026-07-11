@@ -26,6 +26,7 @@ import type {
 } from '../interface';
 import { type RouteCasing } from '../shared/naming.js';
 import { resolveRouteContract, type RouteContract } from '../shared/route-contract.js';
+import { irTypeToTypeScript } from '../shared/typescript-types.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -209,35 +210,7 @@ function toKebabCase(value: string): string {
 }
 
 function irTypeToTsType(irType: IRType, dateAsString = false): string {
-  // Arrays/lists carry their element type in `generic`. Recurse so we emit a
-  // real `T[]` instead of leaking the bare `array` token (invalid TS).
-  if (irType.name === 'array' || irType.name === 'list') {
-    const inner = irType.generic ? irTypeToTsType(irType.generic, dateAsString) : 'unknown';
-    const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
-    return irType.nullable ? `${elem} | null` : elem;
-  }
-  // Wire-convention: dates serialize to ISO-8601 strings over JSON/HTTP.
-  if (dateAsString && (irType.name === 'date' || irType.name === 'datetime')) {
-    return irType.nullable ? 'string | null' : 'string';
-  }
-  const tsTypeMap: Record<string, string> = {
-    string: 'string',
-    number: 'number',
-    boolean: 'boolean',
-    date: 'Date',
-    datetime: 'Date',
-    any: 'unknown',
-    void: 'void',
-    // Numeric scalars with no TS equivalent map to number (matches runtime).
-    money: 'number',
-    decimal: 'number',
-    int: 'number',
-    integer: 'number',
-    bigint: 'number',
-    float: 'number',
-  };
-  const baseType = tsTypeMap[irType.name] || irType.name;
-  return irType.nullable ? `${baseType} | null` : baseType;
+  return irTypeToTypeScript(irType, dateAsString);
 }
 
 function parameterToTsType(param: IRParameter, dateAsString = false): string {
@@ -527,7 +500,7 @@ function generateHooks(ir: IR, opts: NormalizedOptions): CodeResult {
     lines.push(`) {`);
     lines.push(`  const queryClient = useQueryClient();`);
     lines.push(`  return useMutation({`);
-    lines.push(`    mutationFn: (${hasParams ? 'input' : ''}: ${inputTypeName}) =>`);
+    lines.push(`    mutationFn: ${hasParams ? `(input: ${inputTypeName})` : '()'} =>`);
     lines.push(`      apiFetch<${returnTypeName}>(\`${commandUrl}\`, {`);
     lines.push(`        method: 'POST',`);
     lines.push(`        headers: { 'Content-Type': 'application/json' },`);

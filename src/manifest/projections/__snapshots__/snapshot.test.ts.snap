@@ -1870,7 +1870,7 @@ const ir = {
 export async function createManifestEngine(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 
 // ── Router-facing runtime facade ────────────────────────────────────────
@@ -3160,7 +3160,7 @@ const ir = {
 export async function createManifestEngine(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 
 // ── Router-facing runtime facade ────────────────────────────────────────
@@ -3626,7 +3626,7 @@ const ir = {
 export async function createManifestEngine(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 
 // ── Router-facing runtime facade ────────────────────────────────────────
@@ -6341,7 +6341,7 @@ const ir = {
 export async function createManifestRuntime(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 ",
   "nextjs.detail:Task": "// Auto-generated Next.js API detail route for Task
@@ -6492,7 +6492,7 @@ export async function POST(request: NextRequest, ctx: DispatcherContext) {
         : firstDiagnostic?.kind === "guard_failure" ? 422
         : firstDiagnostic?.kind === "constraint_block" ? 422
         : 400;
-      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);
+      return manifestErrorResponse({ error: normalized.error ?? "Command failed", diagnostics: normalized.diagnostics ?? [] }, status);
     }
 
     return manifestSuccessResponse({ data: normalized.data, events: normalized.events, diagnostics: normalized.diagnostics });
@@ -6597,6 +6597,8 @@ const users = await database.user.findMany({
 ",
   "ts.client": "// Auto-generated client SDK from Manifest IR
 // DO NOT EDIT - This file is generated from .manifest source
+
+import type { Task, User } from '../types/manifest-generated';
 
 /** The command response body returned by the Manifest dispatcher. */
 export interface ManifestCommandResponse<T = unknown> {
@@ -8584,7 +8586,7 @@ const ir = {
 export async function createManifestRuntime(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 ",
   "remix.companions.types": "// Auto-generated Manifest shared types for Remix.
@@ -9835,7 +9837,7 @@ const ir = {
 export async function createManifestRuntime(
   context: ManifestContext = {},
 ): Promise<RuntimeEngine> {
-  return new RuntimeEngine(ir, context);
+  throw new Error("A storeProvider is required for durable stores: Task (durable), User (durable). Configure runtimeConfigImport; zero-config runtime creation is fail-closed.");
 }
 ",
   "sveltekit.load:Task": "/**

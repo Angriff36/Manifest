@@ -154,6 +154,8 @@ export interface RuntimeFactoryModuleInput {
  */
 export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): string {
   const { ir, runtimeConfigImport, exportName = 'createManifestRuntime' } = input;
+  const durableStores = ir.stores.filter((store) => !['memory', 'localStorage'].includes(store.target));
+  const durableStoreSummary = durableStores.map((store) => `${store.entity} (${store.target})`).join(', ');
   const irJson = JSON.stringify(ir, null, 2);
 
   const lines: string[] = [];
@@ -227,7 +229,11 @@ export function generateRuntimeFactoryModule(input: RuntimeFactoryModuleInput): 
     lines.push(`export async function ${exportName}(`);
     lines.push('  context: ManifestContext = {},');
     lines.push('): Promise<RuntimeEngine> {');
-    lines.push('  return new RuntimeEngine(ir, context);');
+    if (durableStores.length > 0) {
+      lines.push(`  throw new Error(${JSON.stringify(`A storeProvider is required for durable stores: ${durableStoreSummary}. Configure runtimeConfigImport; zero-config runtime creation is fail-closed.`)});`);
+    } else {
+      lines.push('  return new RuntimeEngine(ir, context);');
+    }
     lines.push('}');
   }
   lines.push('');

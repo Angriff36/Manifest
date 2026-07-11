@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
+import ts from 'typescript';
 import { compileToIR } from '../../ir-compiler';
 import { NextJsProjection } from './generator';
 
@@ -703,6 +704,8 @@ describe('NextJsProjection', () => {
 
       const code = firstCode(clientResult);
 
+      expect(code).toContain("import type { Recipe } from '../types/manifest-generated';");
+
       // List function — reads via apiFetch at the contract-derived URL and
       // extracts the shared list-envelope key.
       expect(code).toContain('export async function getRecipes()');
@@ -713,6 +716,31 @@ describe('NextJsProjection', () => {
       expect(code).toContain('export async function getRecipe(id: string): Promise<Recipe>');
       expect(code).toContain('`/api/recipe/${encodeURIComponent(id)}`');
       expect(code).toContain('return data.recipe;');
+    });
+
+    it('derives the client type import from a configured types artifact path', async () => {
+      const result = await compileToIR(`entity Recipe { property id: string }`);
+      const code = firstCode(projection.generate(result.ir!, { surface: 'ts.client', options: { paths: { typesFile: 'src/generated/domain.ts' } } }));
+      expect(code).toContain("import type { Recipe } from '../generated/domain';");
+    });
+
+    it('emits ts.types and ts.client artifacts that compile together', async () => {
+      const result = await compileToIR(`entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`);
+      const dir = await fs.mkdtemp(join(tmpdir(), 'manifest-generated-ts-'));
+      const options = { paths: { typesFile: 'src/types/manifest-generated.ts', clientFile: 'src/lib/manifest-client.ts' } };
+      const types = projection.generate(result.ir!, { surface: 'ts.types', options }).artifacts[0];
+      const client = projection.generate(result.ir!, { surface: 'ts.client', options }).artifacts[0];
+      for (const artifact of [types, client]) {
+        const target = join(dir, artifact.pathHint!);
+        await fs.mkdir(dirname(target), { recursive: true });
+        await fs.writeFile(target, artifact.code, 'utf8');
+      }
+      const program = ts.createProgram([join(dir, types.pathHint!), join(dir, client.pathHint!)], {
+        strict: true, noEmit: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler, lib: ['lib.es2022.d.ts', 'lib.dom.d.ts'],
+        baseUrl: dir, paths: { '@/*': ['src/*'] }, skipLibCheck: true,
+      });
+      expect(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
     });
   });
 

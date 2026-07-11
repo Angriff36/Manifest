@@ -815,6 +815,9 @@ export class IRCompiler {
       defaultValue: p.defaultValue ? this.transformExprToValue(p.defaultValue) : undefined,
       modifiers: p.modifiers as PropertyModifier[],
     };
+    if (prop.defaultValue && !this.isDefaultCompatible(prop.type, prop.defaultValue.kind)) {
+      this.emitDiagnostic('error', `Property default for '${p.name}' is incompatible with declared type '${prop.type.name}'.`);
+    }
     // A default like `= now()` is a call expression — transformExprToValue can't
     // represent it as a static IRValue, so it would otherwise be silently dropped
     // (the original `createdAt must not be null` bug). Lower recognized current-time
@@ -836,6 +839,16 @@ export class IRCompiler {
       prop.maskStrategy = this.transformMaskStrategy(p);
     }
     return prop;
+  }
+
+  private isDefaultCompatible(type: IRType, kind: IRValue['kind']): boolean {
+    if (kind === 'null') return type.nullable;
+    if (type.name === 'array' || type.name === 'list') return kind === 'array';
+    if (type.name === 'map' || type.name === 'json' || type.name === 'any' || type.name === 'object') return kind === 'object' || kind === 'array';
+    if (['date', 'datetime', 'timestamp'].includes(type.name)) return kind === 'number' || kind === 'string';
+    if (['number', 'money', 'decimal', 'int', 'integer', 'bigint', 'float', 'duration'].includes(type.name)) return kind === 'number';
+    if (['boolean', 'bool'].includes(type.name)) return kind === 'boolean';
+    return kind === 'string';
   }
 
   private static readonly MASK_STRATEGY_ARITY: Record<MaskStrategyType, number> = {

@@ -139,6 +139,12 @@ describe('generateRuntimeFactoryModule', () => {
     expect(code).toContain('return new RuntimeEngine(ir, context, { storeProvider });');
   });
 
+  it('fails closed during generation for durable IR without runtime configuration', () => {
+    const durableIR = { ...tinyIR, stores: [{ entity: 'Widget', target: 'postgres', config: {} }] } as unknown as IR;
+    const code = generateRuntimeFactoryModule({ ir: durableIR });
+    expect(code).toMatch(/throw new Error\(.*storeProvider.*Widget.*postgres/i);
+  });
+
   it('is deterministic — identical IR yields identical output', () => {
     expect(generateRuntimeFactoryModule({ ir: tinyIR })).toBe(
       generateRuntimeFactoryModule({ ir: tinyIR }),

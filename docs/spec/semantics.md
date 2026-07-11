@@ -78,6 +78,10 @@ not authoritative for Manifest semantics.
 - `readonly`: once an instance exists, an update that changes a `readonly` property to a different value MUST be rejected (the update returns no instance; through a command it fails with `E_READONLY`). Writing a `readonly` property while the creating command runs is allowed, as is an update that writes the property's current value (a no-op).
 - `unique`: on create and on update, if a property carrying the `unique` modifier is set to a non-null value already held by another instance, the write MUST be rejected (blocking outcome / rejection with code `E_UNIQUE`). Uniqueness is evaluated by scanning existing instances within the active tenant scope — a full scan; a runtime MAY delegate to a store-level uniqueness constraint where the adapter supports it. Null/undefined values are not uniqueness-checked.
 - `private`: excluded entirely from public reads — see Property Masking.
+
+### Property Default Type Compatibility
+
+A property literal default MUST be compatible with its declared type. The compiler MUST reject incompatible pairs (for example, `property metadata: string? = {}`) instead of emitting IR that downstream projections cannot type safely. `null` is valid only for nullable types; object and array literals are valid only for compatible composite, JSON, or `any` types.
 - `encrypted` and `masked` are enforced as described in their own sections.
 
 ### Computed Properties
@@ -751,6 +755,5 @@ The `drainJobs()` method on `RuntimeEngine` drains all pending jobs synchronousl
 
 ## Nonconformance
 There are no known nonconformances. All implementations conform to this specification.
-
 
 

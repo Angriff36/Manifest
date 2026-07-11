@@ -163,6 +163,25 @@ describe('ReactQueryProjection', () => {
       expect(code).not.toContain(': bigint');
     });
 
+    it('maps canonical TypeScript scalars without leaking Manifest tokens', async () => {
+      const result = await compileToIR(`entity Asset { property id: uuid property metadata: json property createdAt: timestamp property content: bytes }`);
+      expect(result.ir).not.toBeNull();
+      const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+      expect(code).toContain('id: string;');
+      expect(code).toContain('metadata: unknown;');
+      expect(code).toContain('createdAt: number;');
+      expect(code).toContain('content: Uint8Array;');
+    });
+
+    it('emits a valid zero-parameter mutation while retaining void options typing', async () => {
+      const result = await compileToIR(`entity Task { property id: string command archive() { mutate id = self.id } }`);
+      expect(result.ir).not.toBeNull();
+      const code = firstCode(projection.generate(result.ir!, { surface: 'react-query.hooks' }));
+      expect(code).toContain('UseMutationOptions<ManifestCommandResponse<unknown>, Error, void>');
+      expect(code).toContain('mutationFn: () =>');
+      expect(code).not.toContain('mutationFn: (: void)');
+    });
+
     it('emits Date for datetime by default, string under dateSerialization:iso-string', async () => {
       const source = `
         entity Log {

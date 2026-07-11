@@ -9,6 +9,11 @@ import { describe, it, expect } from 'vitest';
 import { IRCompiler, compileToIR } from './ir-compiler';
 
 describe('IRCompiler', () => {
+  it('rejects a property default incompatible with its declared scalar type', async () => {
+    const result = await compileToIR(`entity Item { property metadata: string? = {} }`);
+    expect(result.ir).toBeNull();
+    expect(result.diagnostics.some(d => d.severity === 'error' && /default.*metadata.*string/i.test(d.message))).toBe(true);
+  });
   describe('Basic Compilation', () => {
     it('should compile empty source', async () => {
       const compiler = new IRCompiler();

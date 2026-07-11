@@ -5,7 +5,7 @@
  * Configurable for different auth providers and database setups.
  */
 
-import type { IR, IRCommand, IREntity, IREnum } from '../../ir';
+import type { IR, IRCommand, IREntity, IREnum, IRType } from '../../ir';
 import type {
   NextJsProjectionOptions,
   ProjectionDiagnostic,
@@ -26,6 +26,7 @@ import {
   resolveEntitySegment,
   resolveRouteContract,
 } from '../shared/route-contract.js';
+import { irTypeToTypeScript } from '../shared/typescript-types.js';
 import {
   CONCRETE_COMMAND_ROUTES_DEFAULTS,
   DEFAULT_TENANT_PROVIDER,
@@ -271,6 +272,17 @@ function buildRouteContract(options: NormalizedNextJsOptions): RouteContract {
  */
 function pathHintToImport(pathHint: string): string {
   return '@/' + pathHint.replace(/^src\//, '').replace(/\.ts$/, '');
+}
+
+function relativeArtifactImport(importer: string, target: string): string {
+  const from = importer.replace(/\\/g, '/').split('/').slice(0, -1);
+  const to = target.replace(/\\/g, '/').replace(/\.ts$/, '').split('/');
+  while (from.length > 0 && to.length > 0 && from[0] === to[0]) {
+    from.shift();
+    to.shift();
+  }
+  const specifier = [...from.map(() => '..'), ...to].join('/');
+  return specifier.startsWith('.') ? specifier : `./${specifier}`;
 }
 
 /**
@@ -536,50 +548,7 @@ function irTypeToTsType(
   },
   dateAsString = false,
 ): string {
-  // Arrays/lists carry their element type in `generic`. Recurse so we emit a
-  // real `T[]` instead of leaking the bare `array` token (invalid TS).
-  if (irType.name === 'array' || irType.name === 'list') {
-    const inner = irType.generic
-      ? irTypeToTsType(irType.generic as { name: string; nullable: boolean }, dateAsString)
-      : 'unknown';
-    const elem = inner.includes(' | ') ? `(${inner})[]` : `${inner}[]`;
-    return irType.nullable ? `${elem} | null` : elem;
-  }
-  // Wire-convention: dates serialize to ISO-8601 strings over JSON/HTTP.
-  if (dateAsString && (irType.name === 'date' || irType.name === 'datetime')) {
-    return irType.nullable ? 'string | null' : 'string';
-  }
-  const tsTypeMap: Record<string, string> = {
-    string: 'string',
-    text: 'string',
-    number: 'number',
-    boolean: 'boolean',
-    bool: 'boolean',
-    date: 'Date',
-    datetime: 'Date',
-    any: 'unknown',
-    void: 'void',
-    // Numeric scalars with no TS equivalent map to number (matches runtime).
-    money: 'number',
-    decimal: 'number',
-    int: 'number',
-    integer: 'number',
-    bigint: 'number',
-    float: 'number',
-    duration: 'number',
-    // String-shaped scalar aliases (same mappings as the wiring contract).
-    uuid: 'string',
-    email: 'string',
-    url: 'string',
-    uri: 'string',
-    time: 'string',
-    json: 'unknown',
-    // Matches the Zod projection (z.instanceof(Uint8Array)).
-    bytes: 'Uint8Array',
-  };
-
-  const baseType = tsTypeMap[irType.name] || irType.name;
-  return irType.nullable ? `${baseType} | null` : baseType;
+  return irTypeToTypeScript(irType as IRType, dateAsString);
 }
 
 /**
@@ -989,7 +958,6 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Auto-generated TypeScript types from Manifest IR');
     lines.push('// DO NOT EDIT - This file is generated from .manifest source');
     lines.push('');
-
     // Enum declarations (string-literal unions) precede entities that
     // reference them. Previously omitted → enum-typed properties referenced
     // undeclared names (compile error).
@@ -1025,6 +993,10 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('// Auto-generated client SDK from Manifest IR');
     lines.push('// DO NOT EDIT - This file is generated from .manifest source');
     lines.push('');
+    if (ir.entities.length > 0) {
+      lines.push(`import type { ${ir.entities.map((entity) => entity.name).join(', ')} } from '${relativeArtifactImport(options.paths.clientFile, options.paths.typesFile)}';`);
+      lines.push('');
+    }
 
     // Optional host-provided fetch adapter (auth/credentials). Aliased to
     // apiFetch so read + command call sites are identical to the inline path.
@@ -1302,7 +1274,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
     lines.push('        : 400;');
     lines.push(
-      '      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);',
+      '      return manifestErrorResponse({ error: normalized.error ?? "Command failed", diagnostics: normalized.diagnostics ?? [] }, status);',
     );
     lines.push('    }');
     lines.push('');
@@ -1489,7 +1461,7 @@ export class NextJsProjection implements ProjectionTarget {
     lines.push('        : firstDiagnostic?.kind === "constraint_block" ? 422');
     lines.push('        : 400;');
     lines.push(
-      '      return manifestErrorResponse({ error: normalized.error, diagnostics: normalized.diagnostics }, status);',
+      '      return manifestErrorResponse({ error: normalized.error ?? "Command failed", diagnostics: normalized.diagnostics ?? [] }, status);',
     );
     lines.push('    }');
     lines.push('');
