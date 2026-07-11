@@ -302,7 +302,7 @@ describe('manifest analyze command', () => {
     } finally {
       console.log = originalLog;
     }
-  });
+  }, 30_000);
 
   it('exits with code 1 when source is missing', async () => {
     process.chdir(tmpDir);

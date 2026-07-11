@@ -30,6 +30,7 @@
     "@types/inquirer": "^9.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "latest",
+    "tsx": "^4.23.0",
     "typescript": "^5.5.3",
     "vitest": "latest"
   }
