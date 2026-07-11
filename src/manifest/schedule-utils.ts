@@ -67,6 +67,7 @@ export function isValidCronExpression(cronExpression: string): boolean {
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i];
     if (field === '*') continue;
+    if (/^\*\/\d+$/.test(field)) continue;
 
     // Check for valid cron patterns
     if (!/^[\d,/-]+$/.test(field)) {

@@ -60,4 +60,28 @@ on OrderRecorded run Order.record
     expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
     expect(ir).not.toBeNull();
   });
+
+  it('passes when reaction uses a field explicitly emitted for its event', async () => {
+    const { diagnostics, ir } = await compileToIR(`entity Event {
+  property required id: string
+  command applyExternalCalendarUpdate() {
+    emit ExternalCalendarUpdated { eventId: self.id }
+  }
+
+  command recordExternalCalendarUpdate(eventId: string) {
+    mutate id = eventId
+  }
+}
+
+store Event in memory
+
+event ExternalCalendarUpdated: "external-calendar.updated"
+
+on ExternalCalendarUpdated run Event.recordExternalCalendarUpdate
+  resolve payload.eventId
+  params { eventId: payload.eventId }`);
+
+    expect(diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+    expect(ir).not.toBeNull();
+  });
 });

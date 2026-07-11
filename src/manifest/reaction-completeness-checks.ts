@@ -7,7 +7,12 @@ export type ReactionCompletenessEmit = (
 
 const ENRICHED_PAYLOAD_FIELDS = new Set(['_subject', '_eventName', '_channel']);
 
-export type CommandEmitter = { entity: string; command: string; paramNames: Set<string> };
+export type CommandEmitter = {
+  entity: string;
+  command: string;
+  paramNames: Set<string>;
+  explicitPayloadFieldNames: Set<string>;
+};
 
 function collectMemberChain(expr: IRExpression): string[] | null {
   const chain: string[] = [];
@@ -59,6 +64,11 @@ export function buildEmittersByEvent(commands: IRCommand[]): Map<string, Command
         entity: cmd.entity ?? '',
         command: cmd.name,
         paramNames: new Set(cmd.parameters.map(p => p.name)),
+        explicitPayloadFieldNames: new Set(
+          cmd.emitPayloads
+            ?.filter(payload => payload.eventName === ev)
+            .flatMap(payload => payload.fields.map(field => field.name)) ?? [],
+        ),
       });
       emittersByEvent.set(ev, list);
     }
@@ -105,10 +115,10 @@ function checkInputPayloadReference(
   if (eventFields.has(head)) return;
 
   for (const em of emitters) {
-    if (em.paramNames.has(head)) continue;
+    if (em.paramNames.has(head) || em.explicitPayloadFieldNames.has(head)) continue;
     emit(
       'error',
-      `Reaction '${label}' references payload.${chainStr} but '${head}' is not a parameter of emitter ${em.entity}.${em.command} — undefined at runtime (payload = {...input, result}).`,
+      `Reaction '${label}' references payload.${chainStr} but '${head}' is neither a parameter nor an explicit payload field of emitter ${em.entity}.${em.command} — undefined at runtime.`,
     );
   }
 }

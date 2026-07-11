@@ -2066,6 +2066,32 @@ describe('IRCompiler', () => {
       expect(errors[0].message).toContain('Invalid cron expression');
     });
 
+    it('should compile cron schedules with step syntax', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule quarterHourly cron "*/15 * * * *" run Event.applyExternalCalendarUpdate
+      `);
+
+      expect(result.diagnostics.filter(d => d.severity === 'error')).toEqual([]);
+      expect(result.ir).not.toBeNull();
+      expect(result.ir?.schedules?.[0]?.trigger).toEqual({
+        kind: 'cron',
+        cron: '*/15 * * * *',
+      });
+    });
+
+    it('should reject malformed wildcard cron fields', async () => {
+      const compiler = new IRCompiler();
+      const result = await compiler.compileToIR(`
+        schedule malformed cron "1* * * * *" run Event.applyExternalCalendarUpdate
+      `);
+
+      expect(result.ir).toBeNull();
+      expect(result.diagnostics.some(d =>
+        d.severity === 'error' && d.message.includes('Invalid cron expression'),
+      )).toBe(true);
+    });
+
     it('should compile schedule with parameters', async () => {
       const compiler = new IRCompiler();
       const result = await compiler.compileToIR(`
