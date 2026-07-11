@@ -4,6 +4,12 @@ All notable changes to `@angriff36/manifest` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.4.25] - 2026-07-11
+
+### Changed
+
+- fix projection companion generation contracts
+
 ## [3.4.24] - 2026-07-11
 
 ### Changed
